@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+
+from typing import Any, Dict, List
+
+import pandas as pd
+from pytext.common.constants import (
+    DatasetFieldName,
+    DFColumn,
+    VocabMeta,
+)
+from pytext.config import ConfigBase
+from pytext.common.registry import DATA_HANDLER, component
+from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.data.shared_featurizer import SharedFeaturizer
+
+from .data_handler import COMMON_META, DataHandler
+from .field import Field, TextFeature
+
+
+FEATURE_ITOS_MAP = "feature_itos_map"
+
+
+class LanguageModelDataHandlerConfig(ConfigBase):
+    columns_to_read: List[str] = [DFColumn.UTTERANCE]
+    preprocess_workers: int = 32
+    pretrained_embeds_file: str = ""
+
+
+@component(DATA_HANDLER, config_cls=LanguageModelDataHandlerConfig)
+class LanguageModelDataHandler(DataHandler):
+    def __init__(
+        self, featurizer: SharedFeaturizer, num_workers: int, *args, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.featurizer = featurizer
+        self.num_workers = num_workers
+
+        self.df_to_feat_func_map = {
+            # features
+            DatasetFieldName.TEXT_FIELD: lambda row, field: row[
+                DFColumn.MODEL_FEATS
+            ].tokens
+        }
+
+    @classmethod
+    def from_config(
+        cls,
+        config: LanguageModelDataHandlerConfig,
+        feature_config: FeatureConfig,
+        label_config: LabelConfig,
+        **kwargs
+    ):
+        # For language modeling the only input is a collection of utterances.
+        # The input and the labels are created by the LangaugeModelDataHandler.
+        # The input at time step t+1 becomes a label for the input at time step t.
+        columns = config.columns_to_read
+        num_workers = config.preprocess_workers
+        features: List[Field] = [
+            TextFeature(
+                DatasetFieldName.TEXT_FIELD,
+                eos_token=VocabMeta.EOS_TOKEN,
+                init_token=VocabMeta.INIT_TOKEN,
+                export_input_names=feature_config.word_feat.export_input_names,
+            )
+        ]
+        labels: List[Field] = []
+        return cls(
+            featurizer=SharedFeaturizer(),
+            num_workers=num_workers,
+            raw_columns=columns,
+            features=features,
+            labels=labels,
+        )
+
+    def _gen_extra_metadata(self) -> Dict[str, Any]:
+        return {
+            "class_names": [
+                self.metadata[COMMON_META.FEATURE_VOCABS][
+                    self.text_field.export_input_names[0]
+                ].itos
+            ],
+            FEATURE_ITOS_MAP: {
+                k: v.itos for k, v in self.metadata[COMMON_META.FEATURE_VOCABS].items()
+            },
+        }
+
+    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        if DFColumn.DICT_FEAT not in df:
+            df[DFColumn.DICT_FEAT] = ""
+        df[DFColumn.RAW_FEATS] = df.apply(
+            lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
+        )
+        df[DFColumn.MODEL_FEATS] = pd.Series(
+            self.featurizer.featurize_parallel(
+                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+            )
+        )
+
+        return df
+
+    def _input_from_batch(self, batch):
+        # batch.text[1] is the length of each sequence
+        return (batch.text[0][:, 0:-1].contiguous(), batch.text[1] - 1)
+
+    def _target_from_batch(self, batch):
+        return (batch.text[0][:, 1:].contiguous(),)
+
+    def _context_from_batch(self, batch):
+        # batch.text[1] is the length of each sequence
+        res = {SEQ_LENS: batch.text[1]}
+        res.update(super()._context_from_batch(batch))
+        return res
