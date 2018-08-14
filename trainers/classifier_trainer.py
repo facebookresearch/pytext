@@ -53,6 +53,7 @@ class ClassifierTrainer(Trainer):
                 class_names,
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
                 context[DatasetFieldName.INDEX_FIELD],
+                context[DatasetFieldName.UTTERANCE_FIELD],
             )
             if all_targets is None:
                 all_preds = preds
@@ -64,7 +65,8 @@ class ClassifierTrainer(Trainer):
         result_table, weighted_metrics = test_utils.get_all_metrics(
             all_preds, all_targets.data, class_names
         )
-        return preds_table, result_table, weighted_metrics
+        # TODO: define frame metrics
+        return preds_table, result_table, weighted_metrics, None
 
     def update_test_results(
         self,
@@ -75,10 +77,9 @@ class ClassifierTrainer(Trainer):
         class_names,
         token_range_pair,
         orig_indices,
+        utterance,
     ):
-
         for i in range(len(token_range_pair)):
-            tokens = [t for t, _ in token_range_pair[i]]
             preds_table.append(
                 (
                     preds[i].item(),
@@ -87,6 +88,6 @@ class ClassifierTrainer(Trainer):
                     ",".join(
                         ["{0:.2f}".format(_s) for _s in F.softmax(m_out[i], 0).data]
                     ),
-                    " ".join(tokens).strip(),
+                    utterance[i],
                 )
             )

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from typing import Tuple, List
+from typing import Tuple, List, Set, Union
 
+from pytext import metrics
 from pytext.rnng.annotation import (
     Annotation,
     Intent,
@@ -239,3 +240,97 @@ def _insert_token(parent: Node, label: str) -> Node:
     token_node.parent = parent
     parent.children.append(token_node)
     return parent
+
+
+def tree_to_metric_node(tree: Tree) -> metrics.Node:
+    """
+    Creates a generic node (i.e., metrics.Node) from tree assuming the utterance
+    is a concatenation of the tokens by whitespaces. This is used in RNNG model
+    evalution to convert trees into frames to be consumed by metric computation.
+    The function does not necessarily reproduce the indices in the original utterance
+    as extra whitespaces can be introduced, so its use should be strictly limited to
+    the above mentioned case.
+    """
+    return _node_to_metrics_node(tree.root.children[0])
+
+
+def _node_to_metrics_node(node: Union[Intent, Slot], start: int = 0) -> metrics.Node:
+    """
+    input: start is the absolute start position in utterance
+    """
+    res_children: Set[metrics.Node] = set()
+    idx = start
+    for child in node.children:
+        if type(child) == Token:
+            idx += len(child.label) + 1
+        elif type(child) == Intent or type(child) == Slot:
+            res_child = _node_to_metrics_node(child, idx)
+            res_children.add(res_child)
+            idx = res_child.span.end + 1
+        else:
+            raise ValueError("Child must be Token, Intent or Slot!")
+    node = metrics.Node(
+        label=node.label, span=metrics.Span(start, idx - 1), children=res_children
+    )
+    return node
+
+
+# TODO: (wenfangxu) T32687283 remove this function when we have more elegant way
+#       of converting tree to intent frame in the compositional workflow.
+def tree_to_intent_frame(tree: Tree) -> IntentFrame:
+    """
+    Creates intent frame from tree by concatenating the tokens in the tree with
+    whitespaces. This is used in RNNG model evalution to convert trees into intent
+    frames to be consumed by metric computation. The function does not necessarily
+    reproduce the original utterance as extra whitespaces can be introduced, so its
+    use should be strictly limited to the above mentioned case.
+    """
+    return _intent_to_intent_frame(tree.root.children[0])
+
+
+def _intent_to_intent_frame(intent: Intent, start: int = 0) -> IntentFrame:
+    """
+    input: start is the relative start position in parent FilledSlot
+    """
+    intent_frame = IntentFrame(intent=intent.label, slots=[])
+    tokens: List[str] = []
+    idx = 0
+    for child in intent.children:
+        if type(child) == Token:
+            tokens.append(child.label)
+            idx += len(child.label) + 1
+        elif type(child) == Slot:
+            filled_slot = _slot_to_filled_slot(child, idx)
+            intent_frame.slots.append(filled_slot)
+            idx = filled_slot.span.end + 1
+            tokens.append(filled_slot.text)
+        else:
+            raise ValueError("Intent has child other than Slot or Token!")
+    intent_frame.span = Span(start, start + idx - 1)
+    intent_frame.utterance = " ".join(tokens)
+    return intent_frame
+
+
+def _slot_to_filled_slot(slot: Slot, start: int) -> FilledSlot:
+    """
+    input: start is the relative start position in parent IntentFrame
+    """
+    filled_slot = FilledSlot(id=slot.label)
+    tokens: List[str] = []
+    idx = 0
+    for child in slot.children:
+        if type(child) == Token:
+            tokens.append(child.label)
+            idx += len(child.label) + 1
+        elif type(child) == Intent:
+            intent_frame = _intent_to_intent_frame(child, idx)
+            filled_slot.subframe = intent_frame
+            idx = intent_frame.span.end + 1
+            tokens.append(intent_frame.utterance)
+        else:
+            raise ValueError("Slot has child other than Intent or Token!")
+    filled_slot.text = " ".join(tokens)
+    if idx - 1 != len(filled_slot.text):
+        raise Exception("Index and length of concatenated tokens do not match!")
+    filled_slot.span = Span(start=start, end=start + idx - 1)
+    return filled_slot

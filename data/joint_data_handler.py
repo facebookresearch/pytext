@@ -92,6 +92,7 @@ class JointModelDataHandler(DataHandler):
             RawField(DatasetFieldName.RAW_WORD_LABEL),
             RawField(DatasetFieldName.TOKEN_RANGE_PAIR),
             RawField(DatasetFieldName.INDEX_FIELD),
+            RawField(DatasetFieldName.UTTERANCE_FIELD),
         ]
 
         return cls(
@@ -150,6 +151,7 @@ class JointModelDataHandler(DataHandler):
             or 1.0,
             DatasetFieldName.RAW_WORD_LABEL: DFColumn.WORD_LABEL,
             DatasetFieldName.INDEX_FIELD: self.DF_INDEX,
+            DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
         }
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:

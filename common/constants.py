@@ -4,6 +4,7 @@
 class DatasetFieldName:
     DOC_LABEL_FIELD = "doc_label"
     WORD_LABEL_FIELD = "word_label"
+    UTTERANCE_FIELD = "utterance"
     TEXT_FIELD = "text"
     DICT_FIELD = "dict_feat"
     RAW_DICT_FIELD = "sparsefeat"

@@ -2,17 +2,21 @@
 import datetime
 from collections import OrderedDict
 from random import shuffle
-from typing import List
+from typing import List, Tuple
 
 import libfb.py.fbpkg as fbpkg
 import numpy as np
+import pandas as pd
+import pytext.rnng.read_data as read_data
 import pytext.utils.cuda_utils as cuda_utils
 import torch as torch
 import torch.multiprocessing as mp
+from messenger.assistant.cu.python.frame_builder import serialize_intent_frame
 from pytext.args import parse_config
 from pytext.config import PyTextConfig, config_to_json
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.jobspec import SemanticParsingJobSpec
+from pytext.metrics import Node, compute_all_metrics
 from pytext.optimizers import create_optimizer, optimizer_step, optimizer_zero_grad
 from pytext.rnng.agreement_calculator import (
     ConfusionMatrix,
@@ -22,9 +26,12 @@ from pytext.rnng.agreement_calculator import (
 from pytext.rnng.annotation import tree_from_tokens_and_indx_actions
 from pytext.rnng.Parser import RNNGParser as parser_py
 from pytext.rnng.predict_parser import load_model
-import pytext.rnng.read_data as read_data
 from pytext.rnng.rnng_cpp.caffe2_utils import get_model_config
 from pytext.rnng.rnng_cpp.predict import RNNGPredictor_CPP
+from pytext.rnng.tools.annotation_to_intent_frame import (
+    tree_to_intent_frame,
+    tree_to_metric_node,
+)
 from pytext.rnng.utils import BiDict
 from pytext.utils import embeddings_utils
 from rnng_bindings import Parser as parser_cpp
@@ -346,7 +353,7 @@ def train_eval_epochs(  # noqa: C901
             num_epoch % config.jobspec.trainer.eval_interval == 0
             or num_epoch == max_num_epochs - 1
         ):
-            evaluation, eval_avg_loss, frame_accuracy = eval_model(
+            evaluation, eval_avg_loss, frame_accuracy, _, _ = eval_model(
                 model=model,
                 test_taggedsents=dev_taggedsents,
                 terminal_bidict=oracle_dicts.terminal_bidict,
@@ -413,6 +420,11 @@ def eval_model(
     partial_confusion_matrix = ConfusionMatrix()
     test_out_w = open(test_out_path, "w") if test_out_path is not None else None
 
+    predictions_df = pd.DataFrame(
+        columns=["actual_frame_json", "predicted_frame_json", "text"]
+    )
+    frame_pairs: List[Tuple[Node, Node]] = []
+
     for tagged_sent_test in test_taggedsents:
         dev_instances += 1
         tokens_indices_rev = tagged_sent_test.sentence.indices_rev
@@ -451,10 +463,38 @@ def eval_model(
                     tagged_sent_test.sentence.raw, actions_bidict, actions_taken_idx
                 )
 
+            # TODO: Remove the old metrics below, consider removing the related
+            #       functions.
             STRICT_METRIC.tree_similarity((gold_tree, pred_tree), confusion_matrix)
-
             PARTIAL_METRIC.tree_similarity(
                 (gold_tree, pred_tree), partial_confusion_matrix
+            )
+
+            gold_frame = tree_to_metric_node(gold_tree)
+            pred_frame = tree_to_metric_node(pred_tree)
+            frame_pairs.append((pred_frame, gold_frame))
+
+            # TODO: (wenfangxu) T32687283 Move IntentFrame generation into
+            #       messenger.assistant.pytext.compositional_trainer. Here we should
+            #       write a generic frame instead of thrift IntentFrame.
+            gold_intent_frame = tree_to_intent_frame(gold_tree)
+            pred_intent_frame = tree_to_intent_frame(pred_tree)
+            if gold_intent_frame.utterance != pred_intent_frame.utterance:
+                raise Exception(
+                    "Predicted and gold utterances are supposed to be the same!"
+                    f' "{gold_intent_frame.utterance}" is not the same as'
+                    f' "{pred_intent_frame.utterance}".'
+                )
+            gold_frame_json = serialize_intent_frame(gold_intent_frame)
+            pred_frame_json = serialize_intent_frame(pred_intent_frame)
+            predictions_df = predictions_df.append(
+                [
+                    {
+                        "actual_frame_json": gold_frame_json,
+                        "predicted_frame_json": pred_frame_json,
+                        "text": gold_intent_frame.utterance,
+                    }
+                ]
             )
 
         if actions_taken_idx[0] == actions_idx_rev_dev[-1]:
@@ -476,9 +516,11 @@ def eval_model(
             strict_evaluation.all_scores.f1 * 100,
             partial_evaluation.all_scores.f1 * 100,
         )
+        frame_metrics = compute_all_metrics(frame_pairs)
     else:
         strict_evaluation = confusion_matrix.compute_metrics()
         all_metrics_str = ""
+        frame_metrics = None
 
     frame_accuracy = correct_frame / dev_instances * 100
     avg_loss = dev_loss / dev_instances  # noqa: T484
@@ -498,7 +540,7 @@ def eval_model(
     if test_out_w is not None:
         test_out_w.close()
 
-    return strict_evaluation, avg_loss, frame_accuracy
+    return strict_evaluation, avg_loss, frame_accuracy, frame_metrics, predictions_df
 
 
 def compute_loss(action_scores, targets):

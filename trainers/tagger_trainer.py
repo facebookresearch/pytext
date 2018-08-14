@@ -87,7 +87,8 @@ class TaggerTrainer(Trainer):
         result_table, weighted_metrics = test_utils.get_all_metrics(
             all_preds.data, all_targets.data, word_class_names
         )
-        return preds_table, result_table, weighted_metrics
+        # TODO: define frame metrics
+        return preds_table, result_table, weighted_metrics, None
 
     def update_test_results(
         self,

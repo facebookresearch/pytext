@@ -10,7 +10,8 @@ from pytext.common.constants import DatasetFieldName, Padding
 from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.utils import test_utils
+from pytext.metrics import Node, Span, compute_all_metrics
+from pytext.utils import data_utils, test_utils
 from sklearn.metrics import classification_report
 
 from .tagger_trainer import TaggerTrainer
@@ -23,6 +24,7 @@ class JointTrainerConfig(ConfigBase, TrainerConfig):
 
 @component(TRAINER, config_cls=JointTrainerConfig)
 class JointTrainer(Trainer):
+    # TODO: (wenfangxu) T32687556 define unified interfaces for report() and test()
     def report(self, stage, loss, preds, seq_lens, targets, target_names):
         d_target, w_target = targets
         d_preds, w_preds = preds
@@ -47,6 +49,7 @@ class JointTrainer(Trainer):
         model.eval()
 
         preds_table = []
+        frame_pairs = []
         [doc_class_names, word_class_names] = metadata["class_names"]
         word_class_names, mapping = TaggerTrainer.filter_word_labels(word_class_names)
 
@@ -54,7 +57,7 @@ class JointTrainer(Trainer):
         preds_table.append("#{0}".format(json.dumps(word_class_names)))
         preds_table.append(
             (
-                "#doc_index",
+                "doc_index",
                 "doc_prediction",
                 "doc_label",
                 "doc_scores",
@@ -63,6 +66,7 @@ class JointTrainer(Trainer):
                 "[word_pred:word_lab]",
                 "tokens",
                 "text",
+                # TODO: maybe stop reporting word_chunk_match
                 "word_chunk_match",
             )
         )
@@ -94,11 +98,14 @@ class JointTrainer(Trainer):
                 w_targets,
                 d_preds,
                 d_targets.data,
+                doc_class_names,
                 word_class_names,
                 context[SEQ_LENS],
                 context[DatasetFieldName.RAW_WORD_LABEL],
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
                 context[DatasetFieldName.INDEX_FIELD],
+                context[DatasetFieldName.UTTERANCE_FIELD],
+                frame_pairs,
             )
 
             # Bookkeeping to compute final metrics
@@ -120,10 +127,13 @@ class JointTrainer(Trainer):
             all_word_preds, all_word_targets.data, word_class_names
         )
 
+        frame_metrics = compute_all_metrics(frame_pairs)
+
         return (
             preds_table,
             [doc_result_table, word_result_table],
             [doc_weighted_metrics, word_weighted_metrics],
+            frame_metrics,
         )
 
     def update_test_results(
@@ -134,18 +144,21 @@ class JointTrainer(Trainer):
         w_targets,
         d_preds,
         d_targets,
-        class_names,
+        doc_class_names,
+        word_class_names,
         seq_lens,
         raw_word_labels,
         token_range_pair,
         orig_indices,
+        utterances,
+        frame_pairs,
     ):
         offset = 0
         for i in range(seq_lens.size()[0]):
             w_preds_idx = w_preds[offset : offset + seq_lens[i]]
             w_target_idx = w_targets[offset : offset + seq_lens[i]]
             offset += seq_lens[i]
-            w_preds_names = [class_names[p] for p in w_preds_idx]
+            w_preds_names = [word_class_names[p] for p in w_preds_idx]
             w_label_names = raw_word_labels[i]
             w_preds_names = test_utils.summarize(
                 seq_lens[i], token_range_pair[i], w_preds_names
@@ -167,10 +180,30 @@ class JointTrainer(Trainer):
                     w_label_names,
                     w_pred_lab,
                     tokens,
-                    " ".join(tokens),
+                    utterances[i],
                     test_utils.count_chunk_match(w_preds_names, w_label_names),
                 )
             )
+
+            predicted_frame = JointTrainer.create_frame(
+                doc_class_names, d_preds, i, w_preds_names, utterances
+            )
+            expected_frame = JointTrainer.create_frame(
+                doc_class_names, d_targets, i, w_label_names, utterances
+            )
+            frame_pairs.append((predicted_frame, expected_frame))
+
+    @staticmethod
+    def create_frame(doc_class_names, doc_class_indices, i, word_names, utterances):
+        frame = Node(
+            label=doc_class_names[doc_class_indices[i].item()],
+            span=Span(0, len(utterances[i])),
+            children={
+                Node(label=slot.label, span=Span(slot.start, slot.end))
+                for slot in data_utils.parse_slot_string(word_names)
+            },
+        )
+        return frame
 
     @staticmethod
     def frame_accuracy(d_target, w_targets, d_preds, w_preds, seq_lens):
