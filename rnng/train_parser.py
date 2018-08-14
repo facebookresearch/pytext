@@ -19,6 +19,7 @@ from Parser import RNNGParser as parser_py
 from pytext.args import parse_config
 from pytext.config import PyTextConfig, config_to_json
 from pytext.config.field_config import EmbedInitStrategy
+from pytext.jobspec import SemanticParsingJobSpec
 from pytext.optimizers import create_optimizer, optimizer_step, optimizer_zero_grad
 from pytext.rnng.annotation import tree_from_tokens_and_indx_actions
 from pytext.rnng.predict_parser import load_model
@@ -524,10 +525,13 @@ def print_debug(l, debug_w=None):
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float32)
     config = parse_config()
-    if config.features_params.pretrained_embeds_pkg:
+    if config.jobspec.data_handler.pretrained_embeds_file:
         print("Fetching embedding pkg")
-        embedding_pkg_path = fbpkg.fetch(
-            config.features_params.pretrained_embeds_pkg, dst="/tmp", verbose=False
+        pretrained_embeds_file = fbpkg.fetch(
+            config.jobspec.data_handler.pretrained_embeds_file,
+            dst="/tmp",
+            verbose=False,
         )
-        config.features_params.pretrained_embeds_pkg = embedding_pkg_path
+        config.jobspec.data_handler.pretrained_embeds_file = pretrained_embeds_file
+    assert isinstance(config.jobspec, SemanticParsingJobSpec)
     train_rnng(config)
