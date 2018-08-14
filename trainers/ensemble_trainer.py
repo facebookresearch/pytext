@@ -12,7 +12,7 @@ from .trainer import Trainer, TrainerConfig
 
 # TODO not the most generic way, need to revisit this part, maybe add TypeVar support
 # in ConfigBase
-class EnsembleTrainerConfig(ConfigBase, TrainerConfig):
+class EnsembleTrainerConfig(ConfigBase):
     real_trainer: Union[
         ClassifierTrainerConfig, TaggerTrainerConfig, JointTrainerConfig
     ]

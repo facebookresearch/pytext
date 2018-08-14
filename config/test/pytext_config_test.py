@@ -131,7 +131,16 @@ class PytextConfigTest(unittest.TestCase):
     def test_incorrect_input_type(self):
         config_json = json.loads(
             """
-            {"bar": 123}
+            {"foo": "abc"}
         """
         )
-        self.assertRaises(ConfigParseError, config_from_json, Model2, config_json)
+        self.assertRaises(ConfigParseError, config_from_json, Model1, config_json)
+
+    def test_implicit_type_cast(self):
+        config_json = json.loads(
+            """
+            {"foo": "123"}
+        """
+        )
+        config = config_from_json(Model1, config_json)
+        self.assertEqual(config.foo, 123)

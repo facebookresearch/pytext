@@ -350,7 +350,7 @@ def train_eval_epochs(  # noqa: C901
                 test_taggedsents=dev_taggedsents,
                 terminal_bidict=oracle_dicts.terminal_bidict,
                 actions_bidict=oracle_dicts.actions_bidict,
-                test_out_path=config.output_paths.test_out_path + "_" + str(num_epoch),
+                test_out_path=config.test_out_path + "_" + str(num_epoch),
                 num_epoch=num_epoch,
                 print_incorrect=False,
                 all_metrics=rnng_config.all_metrics,

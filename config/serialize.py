@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Dict
 
 
 class ConfigParseError(Exception):
@@ -65,10 +65,12 @@ def _value_from_json(cls, value):
     elif issubclass(cls, List):
         sub_cls = cls.__args__[0]
         value = [_value_from_json(sub_cls, v) for v in value]
-    elif type(value) is not cls:
-        raise IncorrectTypeError(
-            f"incorrect type {type(value)} of value {value} for type {cls}"
-        )
+    elif issubclass(cls, Dict):
+        # TODO T32764840 add type check for dict type
+        pass
+    # build in types
+    else:
+        value = cls(value)
     return value
 
 
@@ -79,24 +81,26 @@ def config_from_json(cls, json_obj):
     for field, f_cls in cls.__annotations__.items():
         value = None
         is_optional = _is_optional(f_cls)
-        try:
-            if field not in json_obj:
-                if field in cls._field_defaults:
-                    # if using default value, no conversion is needed
-                    value = cls._field_defaults.get(field)
-            else:
+
+        if field not in json_obj:
+            if field in cls._field_defaults:
+                # if using default value, no conversion is needed
+                value = cls._field_defaults.get(field)
+        else:
+            try:
                 value = _value_from_json(f_cls, json_obj[field])
-            # validate value
-            if value is None and not is_optional:
-                raise MissingValueError(f"missing value for {field} in class {cls}")
-            parsed_dict[field] = value
-        except ConfigParseError as e:
-            raise e
-        except Exception as e:
-            raise ConfigParseError(
-                f"failed to parse {field} to {f_cls} with json payload \
-                {value}"
-            ) from e
+            except ConfigParseError:
+                raise
+            except Exception as e:
+                raise ConfigParseError(
+                    f"failed to parse {field} to {f_cls} with json payload \
+                    {json_obj[field]}"
+                ) from e
+        # validate value
+        if value is None and not is_optional:
+            raise MissingValueError(f"missing value for {field} in class {cls}")
+        parsed_dict[field] = value
+
     return cls(**parsed_dict)
 
 
