@@ -2,7 +2,7 @@
 import argparse
 from typing import List
 from collections import Counter
-from utils import BiDict, UNKNOWN_WORD, NUM, is_number
+from pytext.rnng.utils import BiDict, UNKNOWN_WORD, NUM, is_number
 from pytext.rnng.annotation import Annotation
 
 EMPTY_BIDICT = BiDict()

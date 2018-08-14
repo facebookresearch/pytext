@@ -12,7 +12,7 @@ from pytext.rnng.annotation import (
 )
 from pytext.shared_tokenizer import SharedTokenizer
 from messenger.assistant.cu.core.ttypes import IntentFrame, FilledSlot, Span
-from utils import INTENT_PREFIX, SLOT_PREFIX
+from pytext.rnng.utils import INTENT_PREFIX, SLOT_PREFIX
 
 tokenizer = SharedTokenizer()
 

@@ -6,7 +6,7 @@ import copy
 from itertools import combinations
 import numpy as np
 from pandas import DataFrame
-from utils import INTENT_PREFIX
+from pytext.rnng.utils import INTENT_PREFIX
 from typing import Counter, DefaultDict
 
 DEFAULTLABEL = "noLabel"

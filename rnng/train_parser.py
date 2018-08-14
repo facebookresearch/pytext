@@ -7,27 +7,27 @@ from typing import List
 import libfb.py.fbpkg as fbpkg
 import numpy as np
 import pytext.utils.cuda_utils as cuda_utils
-import read_data
 import torch as torch
 import torch.multiprocessing as mp
-from agreement_calculator import (
-    ConfusionMatrix,
-    Label_and_Span_Calculator,
-    Strict_Label_and_Span_Calculator,
-)
-from Parser import RNNGParser as parser_py
 from pytext.args import parse_config
 from pytext.config import PyTextConfig, config_to_json
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.jobspec import SemanticParsingJobSpec
 from pytext.optimizers import create_optimizer, optimizer_step, optimizer_zero_grad
+from pytext.rnng.agreement_calculator import (
+    ConfusionMatrix,
+    Label_and_Span_Calculator,
+    Strict_Label_and_Span_Calculator,
+)
 from pytext.rnng.annotation import tree_from_tokens_and_indx_actions
+from pytext.rnng.Parser import RNNGParser as parser_py
 from pytext.rnng.predict_parser import load_model
+import pytext.rnng.read_data as read_data
 from pytext.rnng.rnng_cpp.caffe2_utils import get_model_config
 from pytext.rnng.rnng_cpp.predict import RNNGPredictor_CPP
+from pytext.rnng.utils import BiDict
 from pytext.utils import embeddings_utils
 from rnng_bindings import Parser as parser_cpp
-from utils import BiDict
 
 
 STRICT_METRIC = Strict_Label_and_Span_Calculator()

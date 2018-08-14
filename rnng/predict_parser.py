@@ -4,11 +4,11 @@ import os
 import torch
 import argparse
 import datetime
-import read_data
+import pytext.rnng.read_data as read_data
 import pytext.utils.cuda_utils as cuda_utils
 from typing import List, Tuple, Union
-from Parser import RNNGParser
-from utils import BiDict, NUM, is_number
+from pytext.rnng.Parser import RNNGParser
+from pytext.rnng.utils import BiDict, NUM, is_number
 from assistant.lib.feat.ttypes import ModelFeatures
 from pytext.config import PyTextConfig, config_from_json
 from pytext.shared_tokenizer import SharedTokenizer

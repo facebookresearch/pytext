@@ -10,8 +10,10 @@ import torch.nn.functional as F
 from pytext.rnng.config import CompositionalType
 from pytext.config import PyTextConfig
 from pytext.utils.cuda_utils import Variable, xaviervar
-from utils import BiDict, SHIFT, REDUCE
-from utils import (
+from pytext.rnng.utils import (
+    BiDict,
+    SHIFT,
+    REDUCE,
     is_valid_nonterminal,
     is_slot_nonterminal,
     is_intent_nonterminal,

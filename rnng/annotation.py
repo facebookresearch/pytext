@@ -3,7 +3,7 @@ from typing import Any, List, Tuple
 
 from assistant.lib.feat.ttypes import ModelFeatures
 from pytext.data.shared_featurizer import SharedFeaturizer
-from utils import (
+from pytext.rnng.utils import (
     COMBINATION_INTENT_LABEL,
     COMBINATION_SLOT_LABEL,
     INTENT_PREFIX,
