@@ -108,6 +108,16 @@ class CompositionalNN(nn.Module):
         self.linear_seq = nn.Sequential(nn.Linear(2 * lstm_dim, lstm_dim), nn.Tanh())
 
     def forward(self, x):
+        """
+        Embed the sequence. If the input corresponds to [IN:GL where am I at]:
+        - x will contain the embeddings of [at I am where IN:GL] in that order.
+        - Forward LSTM will embed the sequence [IN:GL where am I at].
+        - Backward LSTM will embed the sequence [IN:GL at I am where].
+        The final hidden states are concatenated and then projected.
+
+        Args:
+            x: Embeddings of the input tokens in *reversed* order
+        """
         # reset hidden every time
         lstm_hidden_fwd = (
             xaviervar(1, 1, self.lstm_dim),
@@ -118,11 +128,12 @@ class CompositionalNN(nn.Module):
             xaviervar(1, 1, self.lstm_dim),
         )
         nt_element = x[-1]
-        rest = x[:-1]
-        stacked_fwd = self.lstm_fwd(torch.stack(x), lstm_hidden_fwd)[0][0]
-        stacked_rev = self.lstm_rev(torch.stack(rest + [nt_element]), lstm_hidden_rev)[
-            0
-        ][0]
+        rev_rest = x[:-1]
+        # Always put nt_element at the front
+        fwd_input = [nt_element] + rev_rest[::-1]
+        rev_input = [nt_element] + rev_rest
+        stacked_fwd = self.lstm_fwd(torch.stack(fwd_input), lstm_hidden_fwd)[0][0]
+        stacked_rev = self.lstm_rev(torch.stack(rev_input), lstm_hidden_rev)[0][0]
         combined = torch.cat([stacked_fwd, stacked_rev], dim=1)
         subtree_embedding = self.linear_seq(combined)
         return subtree_embedding
