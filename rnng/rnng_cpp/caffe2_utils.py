@@ -54,7 +54,7 @@ def get_model_config(pytext_config) -> List[float]:
         rnng_config.lstm.num_layers,
         jobspec.features.word_feat.embed_dim,
         rnng_config.max_open_NT,
-        jobspec.features.dict_feat.embed_dim,
+        jobspec.features.dict_feat.embed_dim if jobspec.features.dict_feat else 0,
         rnng_config.dropout,
     ]
     return [float(mc) for mc in model_config]
