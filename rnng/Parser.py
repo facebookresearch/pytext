@@ -21,6 +21,7 @@ from pytext.rnng.utils import (
 )
 from pytext.models.configs.embedding_config import DictEmbeddingConfig
 from pytext.models.embeddings.dict_embedding import DictEmbedding
+from pytext.rnng.ontology_constraint import OntologyConstraint
 
 EMPTY_BIDICT = BiDict()
 
@@ -208,6 +209,10 @@ class RNNGParser(nn.Module):
         rnng_config = config.jobspec.model
         self.config = rnng_config
         self.constraints = rnng_config.constraints
+        if self.constraints.ontology:
+            self.ontology_constraint = OntologyConstraint(
+                self.constraints.ontology, self.actions_bidict,
+            )
 
         self.shift_idx: int = actions_bidict.index(SHIFT)
         self.reduce_idx: int = actions_bidict.index(REDUCE)
@@ -351,6 +356,10 @@ class RNNGParser(nn.Module):
                         and state.found_unsupported
                     ):
                         pass
+                    elif self.constraints.ontology:
+                        valid_actions += (
+                            self.ontology_constraint.valid_SL_for_IN(last_open_NT.node)
+                        )
                     else:
                         valid_actions += self.valid_SL_idxs
             else:

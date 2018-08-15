@@ -21,6 +21,8 @@ class RNNGConstraints(ConfigBase):
     intent_slot_nesting: bool = True
     ignore_loss_for_unsupported: bool = False
     no_slots_inside_unsupported: bool = True
+    # Path to ontology JSON
+    ontology: str = ""
 
 
 class RNNGConfig(ConfigBase):
