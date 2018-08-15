@@ -4,16 +4,16 @@ import unittest
 
 import numpy as np
 import pandas as pd
-from pytext.common.registry import JOB_SPEC, Registry
-from pytext.config import PyTextConfig
-from pytext.jobspec import *
+from pytext.jobspec import register_buildin_jobspec
 from pytext.predictors.joint_predictor import JointPredictor
 from pytext.serialize import load
 
 
+register_buildin_jobspec()
+
+
 class JointPredictorTest(unittest.TestCase):
     def test_predict(self):
-        PyTextConfig._field_types["jobspec"].__args__ = tuple(Registry.values(JOB_SPEC))
         model_path = "pytext/tests/data/joint_model.pt"
         test_text = "I want to hear Beethoven's 7th Symphony. Bernstein only."
         test_dict = ""

@@ -2,7 +2,6 @@
 
 import argparse
 from pytext.config import PyTextConfig, config_from_json
-from pytext.common.registry import Registry, JOB_SPEC
 import os
 import json
 
@@ -28,7 +27,6 @@ def parse_pytext_config(config_json):
     """
     Parse json object into PyTextConfig object
     """
-    PyTextConfig._field_types["jobspec"].__args__ = tuple(Registry.values(JOB_SPEC))
     return config_from_json(PyTextConfig, config_json)
 
 

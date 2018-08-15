@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import collections
-from typing import Any, Dict, Iterable, Type
-
+from typing import Any, Dict, Iterable, Type, Union, List
 import pytext.optimizers as opt
-
+from pytext.config import PyTextConfig
 
 JOB_SPEC = "job_spec"
 DATA_HANDLER = "data_handler"
@@ -55,9 +54,12 @@ def _from_config(cls, config, **metadata):
     return cls(config, **metadata)
 
 
-def jobspec(cls: Type):
-    Registry.add(JOB_SPEC, cls, cls)
-    return cls
+def register_jobspec(cls_list: Union[Type, List[Type]]):
+    if not isinstance(cls_list, Iterable):
+        cls_list = [cls_list]
+    for cls in cls_list:
+        Registry.add(JOB_SPEC, cls, cls)
+    PyTextConfig._field_types["jobspec"].__args__ = tuple(Registry.values(JOB_SPEC))
 
 
 def component(component_type: str, config_cls: Type):

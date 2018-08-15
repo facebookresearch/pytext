@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import Optional, Union
 
-from pytext.common.registry import jobspec
+from pytext.common.registry import register_jobspec
 from pytext.config import ConfigBase
 from pytext.config.field_config import (
     DocLabelConfig,
@@ -10,9 +10,7 @@ from pytext.config.field_config import (
     WordLabelConfig,
 )
 from pytext.config.pytext_config import OptimizerParams
-from pytext.data.compositional_data_handler import (
-    CompositionalDataHandlerConfig
-)
+from pytext.data.compositional_data_handler import CompositionalDataHandlerConfig
 from pytext.data.joint_data_handler import JointTextModelDataHandlerConfig
 from pytext.data.language_model_data_handler import LanguageModelDataHandlerConfig
 from pytext.exporters.exporter import TextModelExporterConfig
@@ -21,36 +19,22 @@ from pytext.loss.classifier_loss import (
     CrossEntropyLossConfig,
 )
 from pytext.loss.joint_loss import JointLossConfig
-from pytext.loss.language_model_loss import (
-    LanguageModelCrossEntropyLossConfig
-)
-from pytext.loss.tagger_loss import (
-    CRFLossConfig,
-    TaggerCrossEntropyLossConfig,
-)
+from pytext.loss.language_model_loss import LanguageModelCrossEntropyLossConfig
+from pytext.loss.tagger_loss import CRFLossConfig, TaggerCrossEntropyLossConfig
 from pytext.models.doc_models import DocBLSTMConfig, DocNNConfig
-from pytext.models.ensembles.bagging_doc_ensemble import (
-    BaggingDocEnsembleConfig
-)
-from pytext.models.ensembles.bagging_joint_ensemble import (
-    BaggingJointEnsembleConfig
-)
+from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsembleConfig
+from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsembleConfig
 from pytext.models.joint_models import JointBLSTMConfig, JointCNNConfig
 from pytext.models.language_models.lmlstm import LMLSTMConfig
 from pytext.models.word_models import WordBLSTMConfig, WordCNNConfig
-from pytext.rnng.config import (
-    CompositionalTrainerConfig,
-    RNNGConfig,
-    Seq2SeqConfig,
-)
+from pytext.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
 from pytext.trainers.classifier_trainer import ClassifierTrainerConfig
 from pytext.trainers.ensemble_trainer import EnsembleTrainerConfig
 from pytext.trainers.joint_trainer import JointTrainerConfig
-from pytext.trainers.tagger_trainer import TaggerTrainerConfig
 from pytext.trainers.language_model_trainer import LMTrainerConfig
+from pytext.trainers.tagger_trainer import TaggerTrainerConfig
 
 
-@jobspec
 class EnsembleJobSpec(ConfigBase):
     model: Union[BaggingDocEnsembleConfig, BaggingJointEnsembleConfig]
     loss: Union[CrossEntropyLossConfig, BinaryCrossEntropyLossConfig, JointLossConfig]
@@ -62,7 +46,6 @@ class EnsembleJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-@jobspec
 class DocClassifyJobSpec(ConfigBase):
     model: Union[DocNNConfig, DocBLSTMConfig]
     loss: Union[CrossEntropyLossConfig, BinaryCrossEntropyLossConfig]
@@ -74,7 +57,6 @@ class DocClassifyJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-@jobspec
 class WordTagJobSpec(ConfigBase):
     model: Union[WordBLSTMConfig, WordCNNConfig]
     loss: Union[CRFLossConfig, TaggerCrossEntropyLossConfig]
@@ -86,7 +68,6 @@ class WordTagJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-@jobspec
 class JointTextJobSpec(ConfigBase):
     model: Union[JointBLSTMConfig, JointCNNConfig]
     loss: JointLossConfig
@@ -98,7 +79,6 @@ class JointTextJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-@jobspec
 class LMJobSpec(ConfigBase):
     model: LMLSTMConfig = LMLSTMConfig()
     loss: LanguageModelCrossEntropyLossConfig = LanguageModelCrossEntropyLossConfig()
@@ -111,7 +91,6 @@ class LMJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-@jobspec
 class SemanticParsingJobSpec(ConfigBase):
     model: Union[RNNGConfig, Seq2SeqConfig]
     trainer: CompositionalTrainerConfig = CompositionalTrainerConfig()
@@ -120,3 +99,16 @@ class SemanticParsingJobSpec(ConfigBase):
     optimizer: OptimizerParams = OptimizerParams()
     # TODO implement the actual exporter later
     exporter: Optional[TextModelExporterConfig] = None
+
+
+def register_buildin_jobspec():
+    register_jobspec(
+        [
+            DocClassifyJobSpec,
+            WordTagJobSpec,
+            JointTextJobSpec,
+            LMJobSpec,
+            SemanticParsingJobSpec,
+            EnsembleJobSpec,
+        ]
+    )
