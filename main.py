@@ -7,10 +7,10 @@ from pytext.fb.experimental import I18NJointTextJobSpec
 from pytext.workflow import test_model, train_model
 
 from .args import parse_config
-from .jobspec import register_buildin_jobspec
+from .jobspec import register_builtin_jobspecs
 
 
-register_buildin_jobspec()
+register_builtin_jobspecs()
 register_jobspec([I18NJointTextJobSpec])
 
 

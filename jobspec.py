@@ -101,7 +101,7 @@ class SemanticParsingJobSpec(ConfigBase):
     exporter: Optional[TextModelExporterConfig] = None
 
 
-def register_buildin_jobspec():
+def register_builtin_jobspecs():
     register_jobspec(
         [
             DocClassifyJobSpec,

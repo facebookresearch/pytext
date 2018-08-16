@@ -15,7 +15,7 @@ from messenger.assistant.cu.python.frame_builder import serialize_intent_frame
 from pytext.args import parse_config
 from pytext.config import PyTextConfig, config_to_json
 from pytext.config.field_config import EmbedInitStrategy
-from pytext.jobspec import SemanticParsingJobSpec
+from pytext.jobspec import SemanticParsingJobSpec, register_builtin_jobspecs
 from pytext.metrics import Node, compute_all_metrics
 from pytext.optimizers import create_optimizer, optimizer_step, optimizer_zero_grad
 from pytext.rnng.agreement_calculator import (
@@ -566,6 +566,7 @@ def print_debug(l, debug_w=None):
 
 if __name__ == "__main__":
     torch.set_default_dtype(torch.float32)
+    register_builtin_jobspecs()
     config = parse_config()
     if config.jobspec.data_handler.pretrained_embeds_file:
         print("Fetching embedding pkg")

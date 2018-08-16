@@ -4,12 +4,12 @@ import unittest
 
 import numpy as np
 import pandas as pd
-from pytext.jobspec import register_buildin_jobspec
+from pytext.jobspec import register_builtin_jobspecs
 from pytext.predictors.joint_predictor import JointPredictor
 from pytext.serialize import load
 
 
-register_buildin_jobspec()
+register_builtin_jobspecs()
 
 
 class JointPredictorTest(unittest.TestCase):
