@@ -45,7 +45,7 @@ class LanguageModelTrainer(Trainer):
         best_perplexity = float("inf")
         last_best_epoch = 0
         best_model = None
-        train_loss = 0.0
+        train_loss_sum = 0.0
         n_batches = 0
 
         for _epoch in range(1, self.params.epochs + 1):
@@ -59,23 +59,28 @@ class LanguageModelTrainer(Trainer):
                 targets = [target.view(-1) for target in targets]
 
                 loss = loss_fn.loss(m_out, targets, model, context)
-                train_loss += loss.item()
+                train_loss_sum += loss.item()
                 n_batches += 1
 
                 loss.backward()
                 optimizer_step(optimizers)
 
             # The metric here is perplexity
-            train_perplexity, eval_perplexity, eval_loss = None, None, None
+            train_perplexity, train_loss, eval_perplexity, eval_loss = (
+                None,
+                None,
+                None,
+                None,
+            )
 
             if _epoch % self.params.log_interval == 0:
                 # Report Train Loss per batch
-                train_loss = train_loss / float(n_batches)
+                train_loss = train_loss_sum / float(n_batches)
                 train_perplexity = self.report(
                     "Training-Epoch-Snapshot[{}]".format(_epoch), train_loss
                 )
-                # Reset train_loss and n_batches to 0 for reporting next time
-                train_loss = 0.0
+                # Reset train_loss_sum and n_batches to 0 for reporting next time
+                train_loss_sum = 0.0
                 n_batches = 0
 
             if _epoch % self.params.eval_interval == 0:
@@ -100,6 +105,7 @@ class LanguageModelTrainer(Trainer):
 
             if (
                 train_perplexity is not None
+                and train_loss is not None
                 and eval_perplexity is not None
                 and eval_loss is not None
                 and metrics_reporter is not None

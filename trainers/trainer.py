@@ -54,7 +54,7 @@ class Trainer:
         best_metric = float("-inf")
         last_best_epoch = 0
         best_model = None
-        train_loss = 0.0
+        train_loss_sum = 0.0
         n_batches = 0
 
         # TODO: This needs to be unified. Model with CRF should use CRF loss.
@@ -78,13 +78,13 @@ class Trainer:
                     targets = [target.view(-1) for target in targets]
 
                 loss = loss_fn.loss(m_out, targets, model, context)
-                train_loss += loss.item()
+                train_loss_sum += loss.item()
                 n_batches += 1
 
                 loss.backward()
                 optimizer_step(optimizers)
 
-            train_metric, eval_metric, eval_loss = None, None, None
+            train_metric, train_loss, eval_metric, eval_loss = None, None, None, None
             if self.use_crf:
                 # decode and arrange such that the decoded word has max prob
                 m_out[-1] = model.crf.decode_crf(m_out[-1], targets[-1])
@@ -97,7 +97,7 @@ class Trainer:
                     for i, logit in enumerate(m_out)
                 ]
                 # Report Train Loss per batch
-                train_loss = train_loss / float(n_batches)
+                train_loss = train_loss_sum / float(n_batches)
                 train_metric = self.report(
                     "Training-Epoch-Snapshot[{}]".format(_epoch),
                     train_loss,
@@ -106,12 +106,14 @@ class Trainer:
                     targets,
                     class_names,
                 )
-                # Reset train_loss and n_batches to 0 for reporting next time
-                train_loss = 0.0
+                # Reset train_loss_sum and n_batches to 0 for reporting next time
+                train_loss_sum = 0.0
                 n_batches = 0
 
             if _epoch % self.params.eval_interval == 0:
-                eval_metric, eval_loss = self.evaluate(eval_iter, model, loss_fn, class_names)
+                eval_metric, eval_loss = self.evaluate(
+                    eval_iter, model, loss_fn, class_names
+                )
 
                 if eval_metric > best_metric:
                     last_best_epoch = _epoch
@@ -131,6 +133,7 @@ class Trainer:
 
             if (
                 train_metric is not None
+                and train_loss is not None
                 and eval_metric is not None
                 and eval_loss is not None
                 and metrics_reporter is not None
