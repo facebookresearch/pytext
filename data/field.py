@@ -5,6 +5,7 @@ import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.custom_fields.char_field import CharField
 from pytext.custom_fields.dict_field import DictFeatField
+from pytext.custom_fields.text_field import TextField
 from pytext.utils import data_utils
 from torchtext import data as textdata
 
@@ -74,7 +75,9 @@ class TextFeature(Field):
         tokenize=data_utils.no_tokenize,
     ):
         super().__init__(name, export_input_names)
-        self.field = textdata.Field(
+        # TODO: using custom field TextField because texdata.field does
+        # not allow the passing of existing vocabulary to build_vocab
+        self.field = TextField(
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,

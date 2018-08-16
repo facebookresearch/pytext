@@ -146,7 +146,6 @@ union WordModel {
 union JointModel {
   4: JointBLSTM jointblstm,
   14: JointCNN jointcnn,
-  19: I18NJointBLSTM i18n_jointblstm,
 }
 
 union PairModel {
@@ -258,18 +257,6 @@ struct JointCNN {
   6: float default_word_loss_weight = 0.5,
   7: bool use_crf = false,
   8: bool use_doc_probs_in_word = true,
-}
-
-struct I18NJointBLSTM {
-  1: float dropout = 0.4,
-  2: i32 self_attn_dim = 64,
-  3: LSTMParams lstm,
-  // When slot attention is enabled, ONNX export will fail
-  4: SlotAttentionType slot_attention_type = NO_ATTENTION,
-  5: bool use_doc_probs_in_word = false,
-  6: bool use_crf = false,
-  7: float default_doc_loss_weight = 0.2,
-  8: float default_word_loss_weight = 0.5
 }
 
 enum CompositionalType{
@@ -403,7 +390,6 @@ union Model {
   16: BaggingDocEnsemble bagging_doc_ensemble,
   17: BaggingJointEnsemble bagging_joint_ensemble,
   18: LMLSTM lmlstm,
-  19: I18NJointBLSTM i18n_jointblstm,
 }
 
 union PairNNSubModel {

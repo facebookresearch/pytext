@@ -3,7 +3,7 @@
 import libfb.py.fbpkg as fbpkg
 from pytext.common.registry import register_jobspec
 from pytext.config import PyTextConfig
-from pytext.fb.experimental import I18NJointTextJobSpec
+from pytext.fb.experimental import I18NJointTextJobSpec, I18NDocClassifyJobSpec
 from pytext.workflow import test_model, train_model
 
 from .args import parse_config
@@ -11,7 +11,7 @@ from .jobspec import register_builtin_jobspecs
 
 
 register_builtin_jobspecs()
-register_jobspec([I18NJointTextJobSpec])
+register_jobspec([I18NJointTextJobSpec, I18NDocClassifyJobSpec])
 
 
 def main():
