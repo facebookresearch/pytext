@@ -74,7 +74,7 @@ class JointTextJobSpec(ConfigBase):
     trainer: JointTrainerConfig = JointTrainerConfig()
     data_handler: JointTextModelDataHandlerConfig = JointTextModelDataHandlerConfig()
     features: FeatureConfig = FeatureConfig()
-    labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
+    labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig(),word_label=WordLabelConfig())
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporterConfig] = None
 
