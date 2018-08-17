@@ -4,7 +4,7 @@ from caffe2.python.onnx import backend as caffe2_backend
 # TODO @shicong figure out why open source version is not working
 import caffe2.caffe2.fb.predictor.predictor_exporter as pe
 # import caffe2.python.predictor.predictor_exporter as pe
-from caffe2.python import workspace, core, dyndep
+from caffe2.python import workspace, core
 
 import onnx
 import torch
@@ -14,7 +14,6 @@ import numpy as np
 def pytorch_to_caffe2(
     model, export_input, external_input_names, output_names, export_path
 ):
-    dyndep.InitOpsLibrary("@/caffe2/caffe2/contrib/aten:aten_op")
     all_input_names = external_input_names[:]
     for name, _ in model.named_parameters():
         all_input_names.append(name)

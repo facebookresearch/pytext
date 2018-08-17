@@ -17,7 +17,7 @@ from pytext.jobspec import (
     JointTextJobSpec,
     WordTagJobSpec,
 )
-from caffe2.python import dyndep, workspace
+from caffe2.python import workspace
 from hypothesis import given
 
 
@@ -162,7 +162,6 @@ INPUT_NAMES = [
     PredictorInputNames.DICT_FEAT_WEIGHTS,
     PredictorInputNames.DICT_FEAT_LENS,
 ]
-dyndep.InitOpsLibrary("@/caffe2/caffe2/contrib/aten:aten_op")
 
 
 class TextModelExporterTest(hu.HypothesisTestCase):
