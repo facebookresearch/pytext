@@ -3,7 +3,7 @@
 import libfb.py.fbpkg as fbpkg
 from pytext.common.registry import register_jobspec
 from pytext.config import PyTextConfig
-from pytext.fb.experimental import I18NJointTextJobSpec, I18NDocClassifyJobSpec
+from pytext.fb.experimental import I18NDocClassifyJobSpec, I18NJointTextJobSpec
 from pytext.workflow import test_model, train_model
 
 from .args import parse_config
@@ -26,7 +26,13 @@ def main():
                 dst="/tmp",
                 verbose=False,
             )
-            config.jobspec.data_handler.pretrained_embeds_file = pretrained_embeds_file
+            config = config._replace(
+                jobspec=config.jobspec._replace(
+                    data_handler=config.jobspec.data_handler._replace(
+                        pretrained_embeds_file=pretrained_embeds_file
+                    )
+                )
+            )
         print("Starting training...")
         train_model(config)
         print("Starting testing...")
