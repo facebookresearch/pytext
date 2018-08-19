@@ -127,7 +127,7 @@ class RNNGParserOp : public Operator<Context> {
     CAFFE_THROW("Unknown type meta");
   }
   at::Type& typeFor(const Tensor& ten) {
-    return at::getType(at::kCPU, atScalarTypeFor(ten.meta()));
+    return at::getType(at::Backend::CPU, atScalarTypeFor(ten.meta()));
   }
   at::Tensor tensorWrapping(const Tensor& ten_) {
     auto& ten = const_cast<Tensor&>(ten_);

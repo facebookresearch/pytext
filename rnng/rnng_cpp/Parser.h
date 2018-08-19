@@ -166,14 +166,14 @@ AUTOGRAD_CONTAINER_CLASS(Parser) {
                 (void*)&(v.data())[0], {static_cast<long>(v.size())})
             .clone();
     if (cuda_) {
-      tempTensor = tempTensor.toBackend(at::kCUDA);
+      tempTensor = tempTensor.cuda();
     }
     return autograd::Var(tempTensor, false);
   }
 
   template <typename T>
   static inline std::vector<T> vecFromVar_(const autograd::Variable& v) {
-    auto datatensor = v.toBackend(at::kCPU);
+    auto datatensor = v.cpu();
     auto dataptr = static_cast<T*>(datatensor.data_ptr());
     int datasize = datatensor.dim() == 0 ? 1 : datatensor.size(0);
     return std::vector<T>(dataptr, dataptr + datasize);
