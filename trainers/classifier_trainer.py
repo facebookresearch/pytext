@@ -20,16 +20,17 @@ class ClassifierTrainerConfig(ConfigBase, TrainerConfig):
 
 @component(TRAINER, config_cls=ClassifierTrainerConfig)
 class ClassifierTrainer(Trainer):
-
     def report(self, stage, loss, preds, seq_lens, target, target_names):
         [target], [preds] = target, preds
         [target_names] = target_names
 
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
         sys.stdout.write(
-            classification_report(target.data, preds, target_names=target_names)
+            classification_report(
+                target.cpu(), preds.cpu(), target_names=target_names
+            )
         )
-        return f1_score(target.data, preds, average="weighted")
+        return f1_score(target.cpu(), preds.cpu(), average="weighted")
 
     def test(self, model, test_iter, metadata):
         model.eval()
@@ -63,7 +64,7 @@ class ClassifierTrainer(Trainer):
                 all_preds = torch.cat((all_preds, preds), 0)
 
         result_table, weighted_metrics = test_utils.get_all_metrics(
-            all_preds, all_targets.data, class_names
+            all_preds.cpu(), all_targets.cpu(), class_names
         )
         # TODO: define frame metrics
         return preds_table, result_table, weighted_metrics, None

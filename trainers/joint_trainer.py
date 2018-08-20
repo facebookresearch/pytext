@@ -30,12 +30,14 @@ class JointTrainer(Trainer):
         d_preds, w_preds = preds
         w_preds, w_target = TaggerTrainer.remove_padding(w_preds, w_target)
         sys.stdout.write(
-            classification_report(d_target.data, d_preds, target_names=target_names[0])
+            classification_report(
+                d_target.data.cpu(), d_preds.cpu(), target_names=target_names[0]
+            )
         )
         sys.stdout.write(
             classification_report(
-                w_target,
-                w_preds,
+                w_target.cpu(),
+                w_preds.cpu(),
                 target_names=target_names[1][Padding.WORD_LABEL_PAD_IDX + 1 :],
             )
         )
@@ -121,10 +123,10 @@ class JointTrainer(Trainer):
                 all_word_targets = torch.cat((all_word_targets, w_targets), 0)
 
         doc_result_table, doc_weighted_metrics = test_utils.get_all_metrics(
-            all_doc_preds, all_doc_targets.data, doc_class_names
+            all_doc_preds.cpu(), all_doc_targets.cpu(), doc_class_names
         )
         word_result_table, word_weighted_metrics = test_utils.get_all_metrics(
-            all_word_preds, all_word_targets.data, word_class_names
+            all_word_preds.cpu(), all_word_targets.cpu(), word_class_names
         )
 
         frame_metrics = compute_all_metrics(frame_pairs)

@@ -27,12 +27,12 @@ class TaggerTrainer(Trainer):
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
         sys.stdout.write(
             classification_report(
-                target.data,
-                preds,
+                target.cpu(),
+                preds.cpu(),
                 target_names=target_names[Padding.WORD_LABEL_PAD_IDX + 1 :],
             )
         )
-        return f1_score(target.data, preds, average="weighted")
+        return f1_score(target.data.cpu(), preds.cpu(), average="weighted")
 
     def test(self, model, test_iter, metadata):
         model.eval()
@@ -85,7 +85,7 @@ class TaggerTrainer(Trainer):
                 all_targets = torch.cat((all_targets, targets), 0)
 
         result_table, weighted_metrics = test_utils.get_all_metrics(
-            all_preds.data, all_targets.data, word_class_names
+            all_preds.cpu(), all_targets.cpu(), word_class_names
         )
         # TODO: define frame metrics
         return preds_table, result_table, weighted_metrics, None
