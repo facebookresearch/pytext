@@ -6,6 +6,9 @@ import sys
 from typing import List
 
 import torch
+import torch.nn.functional as F
+
+from pytext.common.constants import DatasetFieldName
 from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
 from pytext.loss.loss import Loss
@@ -21,9 +24,13 @@ class LMTrainerConfig(ConfigBase, TrainerConfig):
 
 @component(TRAINER, config_cls=LMTrainerConfig)
 class LanguageModelTrainer(Trainer):
+
+    def calculate_perplexity(self, loss):
+        return math.exp(loss)
+
     def report(self, stage, loss):
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
-        perplexity = math.exp(loss)
+        perplexity = self.calculate_perplexity(loss)
         sys.stdout.write("{} - perplexity: {:.6f}\n".format(stage, perplexity))
         return perplexity
 
@@ -140,3 +147,50 @@ class LanguageModelTrainer(Trainer):
         eval_perplexity = self.report("Evaluation", average_batch_loss)
 
         return eval_perplexity, average_batch_loss
+
+    def test(self, model, test_iter, metadata):
+        model.eval()
+        [vocab] = metadata["class_names"]
+
+        # Write header lines
+        preds_table = []
+        preds_table.append(("text", "perplexity"))
+        metrics = []
+        for m_input, targets, context in test_iter:
+            m_out = model(*m_input)
+            # m_out dim: (bsize x seq_len x vocab)
+            # Reshape m_out to (bsize x vocab x seq_len) for cross_entropy_loss
+            m_out = [logits.transpose(1, 2) for logits in m_out]
+
+            # While calculating loss/perplexity, we would like to mask out the
+            # loss from the padding token
+            weight = torch.ones(len(vocab))
+            # Mask the loss from padding token
+            weight[metadata["pad_idx"]] = 0
+
+            # Set correct device for the weight tesnor
+            if next(model.parameters()).is_cuda:
+                weight = weight.cuda()
+
+            # loss dim: (bsize x seq_len)
+            loss = F.cross_entropy(m_out[0], targets[0], reduce=False, weight=weight)
+            # m_input[1] s the length of each sequence
+            # sequence_loss is the loss per word for each sequence in the batch
+            # sequence_loss dim: (bsize,)
+            sequence_loss = loss.sum(1) / m_input[1].float()
+            self.update_test_results(
+                preds_table, sequence_loss, context[DatasetFieldName.TOKEN_RANGE_PAIR]
+            )
+            metrics.extend([self.calculate_perplexity(l) for l in sequence_loss])
+
+        # Return  perplexity for every utterance and average perplexity
+        # for all utterances, for now. There are no Frame metrics here
+        # # TODO: Figure out a better way to abstract the metrics reporting
+        return preds_table, metrics, torch.tensor(metrics).float().mean().item(), None
+
+    def update_test_results(self, preds_table, sequence_loss, token_range_pair):
+        for i in range(len(token_range_pair)):
+            tokens = [t for t, _ in token_range_pair[i]]
+            preds_table.append(
+                (" ".join(tokens).strip(), self.calculate_perplexity(sequence_loss[i]))
+            )

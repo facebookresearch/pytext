@@ -13,9 +13,10 @@ from pytext.common.registry import DATA_HANDLER, component
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.utils import data_utils
 
 from .data_handler import COMMON_META, DataHandler
-from .field import Field, TextFeature
+from .field import Field, RawField, TextFeature
 
 
 FEATURE_ITOS_MAP = "feature_itos_map"
@@ -65,12 +66,14 @@ class LanguageModelDataHandler(DataHandler):
             )
         ]
         labels: List[Field] = []
+        extra_fields: List[Field] = [RawField(DatasetFieldName.TOKEN_RANGE_PAIR)]
         return cls(
             featurizer=SharedFeaturizer(),
             num_workers=num_workers,
             raw_columns=columns,
             features=features,
             labels=labels,
+            extra_fields=extra_fields,
         )
 
     def _gen_extra_metadata(self) -> Dict[str, Any]:
@@ -96,6 +99,12 @@ class LanguageModelDataHandler(DataHandler):
                 df[DFColumn.RAW_FEATS].tolist(), self.num_workers
             )
         )
+        df[DFColumn.TOKEN_RANGE_PAIR] = [
+            data_utils.parse_token(
+                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].tokenRanges
+            )
+            for _, row in df.iterrows()
+        ]
 
         return df
 

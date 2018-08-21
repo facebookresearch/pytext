@@ -97,7 +97,7 @@ def test_model(config):
         model = model.cuda()
 
     # TODO T31914569 should move test out of trainer?
-    trainer = create_trainer(config.jobspec.trainer)
+    trainer = create_trainer(config.jobspec.trainer, **data_handler.metadata)
     test_iter = data_handler.get_test_batch(
         config.test_file_path, config.test_batch_size
     )
