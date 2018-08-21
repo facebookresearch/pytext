@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
-from pytext.config.module_config import CNNParams
+from pytext.config.module_config import CNNParams, MLPParams
 from pytext.models.configs import (
     CharacterEmbeddingConfig,
     DictEmbeddingConfig,
@@ -13,13 +13,14 @@ from pytext.models.configs import (
 from pytext.models.crf import CRF
 from pytext.models.embeddings.token_embedding import TokenEmbedding
 from pytext.models.model import Model
-from pytext.models.projections.linear_projection import LinearProjection
+from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
 
 
 class WordCNNConfig(ConfigBase):
     dropout: float = 0.4
-    cnn = CNNParams()
+    cnn: CNNParams = CNNParams()
+    mlp: MLPParams = MLPParams()
     fwd_bwd_context_len: int = 5
     surrounding_context_len: int = 2
     use_crf: bool = False
@@ -63,7 +64,9 @@ class WordCNN(Model):
             out_channels,
             kernel_sizes,
         )
-        self.projection = LinearProjection(
-            self.representation.representation_dim, word_class_num
+        self.projection = MLPProjection(
+            self.representation.representation_dim,
+            model_config.mlp.hidden_dims,
+            word_class_num,
         )
         self.crf = CRF(word_class_num) if model_config.use_crf else None

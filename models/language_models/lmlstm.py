@@ -5,7 +5,7 @@ from typing import Tuple
 from pytext.common.constants import PredictorInputNames
 from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
-from pytext.config.module_config import LSTMParams
+from pytext.config.module_config import LSTMParams, MLPParams
 from pytext.data.data_handler import COMMON_META
 from pytext.models.configs import (
     CharacterEmbeddingConfig,
@@ -14,15 +14,14 @@ from pytext.models.configs import (
 )
 from pytext.models.embeddings.token_embedding import TokenEmbedding
 from pytext.models.model import Model
-from pytext.models.projections.linear_projection import LinearProjection
+from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 
 
 class LMLSTMConfig(ConfigBase):
     dropout: float = 0.4
-
     lstm: LSTMParams = LSTMParams()
-
+    mlp: MLPParams = MLPParams()
     tied_weights: bool = False
 
 
@@ -54,8 +53,10 @@ class LMLSTM(Model):
             self_attn_dim=0,
             bidirectional=False,
         )
-        self.projection = LinearProjection(
-            self.representation.representation_dim, num_classes
+        self.projection = MLPProjection(
+            self.representation.representation_dim,
+            model_config.mlp.hidden_dims,
+            num_classes,
         )
         if model_config.tied_weights is True:
             if not embedding_config[0]:

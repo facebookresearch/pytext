@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pytext.common.registry import MODEL, component
 from pytext.config.pytext_config import ConfigBase
-from pytext.config.module_config import CNNParams
+from pytext.config.module_config import CNNParams, MLPParams
 from pytext.models.configs import (
     CharacterEmbeddingConfig,
     DictEmbeddingConfig,
@@ -12,13 +12,14 @@ from pytext.models.configs import (
 )
 from pytext.models.embeddings.token_embedding import TokenEmbedding
 from pytext.models.model import Model
-from pytext.models.projections.linear_projection import LinearProjection
+from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.docnn import DocNNRepresentation
 
 
 class DocNNConfig(ConfigBase):
     dropout: float = 0.4
     cnn: CNNParams = CNNParams()
+    mlp: MLPParams = MLPParams()
 
 
 @component(MODEL, config_cls=DocNNConfig)
@@ -48,6 +49,8 @@ class DocNN(Model):
             model_config.dropout,
             pad_idx,
         )
-        self.projection = LinearProjection(
-            self.representation.representation_dim, doc_class_num
+        self.projection = MLPProjection(
+            self.representation.representation_dim,
+            model_config.mlp.hidden_dims,
+            doc_class_num,
         )
