@@ -7,7 +7,6 @@ from typing import List
 
 import torch
 import torch.nn.functional as F
-
 from pytext.common.constants import DatasetFieldName
 from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
@@ -24,7 +23,6 @@ class LMTrainerConfig(ConfigBase, TrainerConfig):
 
 @component(TRAINER, config_cls=LMTrainerConfig)
 class LanguageModelTrainer(Trainer):
-
     def calculate_perplexity(self, loss):
         return math.exp(loss)
 
@@ -53,7 +51,7 @@ class LanguageModelTrainer(Trainer):
         last_best_epoch = 0
         best_model = None
         train_loss_sum = 0.0
-        n_batches = 0
+        n_words = 0
 
         for _epoch in range(1, self.params.epochs + 1):
             print("Starting epoch# {}".format(_epoch))
@@ -66,8 +64,9 @@ class LanguageModelTrainer(Trainer):
                 targets = [target.view(-1) for target in targets]
 
                 loss = loss_fn.loss(m_out, targets, model, context)
-                train_loss_sum += loss.item()
-                n_batches += 1
+                num_words_in_batch = torch.sum(m_input[1]).item()
+                train_loss_sum += loss.item() * num_words_in_batch
+                n_words += num_words_in_batch
 
                 loss.backward()
                 optimizer_step(optimizers)
@@ -82,13 +81,13 @@ class LanguageModelTrainer(Trainer):
 
             if _epoch % self.params.log_interval == 0:
                 # Report Train Loss per batch
-                train_loss = train_loss_sum / float(n_batches)
+                train_loss = train_loss_sum / float(n_words)
                 train_perplexity = self.report(
                     "Training-Epoch-Snapshot[{}]".format(_epoch), train_loss
                 )
                 # Reset train_loss_sum and n_batches to 0 for reporting next time
                 train_loss_sum = 0.0
-                n_batches = 0
+                n_words = 0
 
             if _epoch % self.params.eval_interval == 0:
                 eval_perplexity, eval_loss = self.evaluate(eval_iter, model, loss_fn)
@@ -126,14 +125,17 @@ class LanguageModelTrainer(Trainer):
     def evaluate(self, eval_iter, model, loss_fn):
         model.eval()
         all_targets = None
-        total_loss, n_batches = 0, 0
+        total_loss, n_words = 0, 0
         for m_input, targets, context in eval_iter:
             m_out = model(*m_input)
-            n_batches += 1
+            num_words_in_batch = torch.sum(m_input[1]).item()
+            n_words += num_words_in_batch
 
             m_out = [self._flatten_2d(logits) for logits in m_out]
             targets = [target.view(-1) for target in targets]
-            total_loss += loss_fn.loss(m_out, targets, model, context).item()
+            total_loss += (
+                loss_fn.loss(m_out, targets, model, context).item() * num_words_in_batch
+            )
 
             if all_targets is None:
                 all_targets = targets
@@ -142,11 +144,11 @@ class LanguageModelTrainer(Trainer):
                     all_targets[i] = torch.cat((all_targets[i], target), 0)
 
         model.train()
-        average_batch_loss = total_loss / float(n_batches)
+        loss_per_word = total_loss / float(n_words)
 
-        eval_perplexity = self.report("Evaluation", average_batch_loss)
+        eval_perplexity = self.report("Evaluation", loss_per_word)
 
-        return eval_perplexity, average_batch_loss
+        return eval_perplexity, loss_per_word
 
     def test(self, model, test_iter, metadata):
         model.eval()
@@ -156,6 +158,8 @@ class LanguageModelTrainer(Trainer):
         preds_table = []
         preds_table.append(("text", "perplexity"))
         metrics = []
+        total_loss = 0.0
+        n_words = 0
         for m_input, targets, context in test_iter:
             m_out = model(*m_input)
             # m_out dim: (bsize x seq_len x vocab)
@@ -174,6 +178,11 @@ class LanguageModelTrainer(Trainer):
 
             # loss dim: (bsize x seq_len)
             loss = F.cross_entropy(m_out[0], targets[0], reduce=False, weight=weight)
+
+            num_words_in_batch = torch.sum(m_input[1]).item()
+            n_words += num_words_in_batch
+            total_loss += torch.sum(loss).item()
+
             # m_input[1] s the length of each sequence
             # sequence_loss is the loss per word for each sequence in the batch
             # sequence_loss dim: (bsize,)
@@ -186,7 +195,12 @@ class LanguageModelTrainer(Trainer):
         # Return  perplexity for every utterance and average perplexity
         # for all utterances, for now. There are no Frame metrics here
         # # TODO: Figure out a better way to abstract the metrics reporting
-        return preds_table, metrics, torch.tensor(metrics).float().mean().item(), None
+        return (
+            preds_table,
+            metrics,
+            self.calculate_perplexity(total_loss / float(n_words)),
+            None,
+        )
 
     def update_test_results(self, preds_table, sequence_loss, token_range_pair):
         for i in range(len(token_range_pair)):
