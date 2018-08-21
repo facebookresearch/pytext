@@ -8,7 +8,7 @@ from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
-from .field import Field
+from pytext.fields import Field
 
 
 class COMMON_META:
@@ -112,15 +112,15 @@ class DataHandler:
         self.metadata = metadata
         for f in self.features:
             if (
-                f.field.use_vocab
+                f.use_vocab
                 and f.export_input_names[0] in metadata[COMMON_META.FEATURE_VOCABS]
             ):
-                f.field.vocab = metadata[COMMON_META.FEATURE_VOCABS][
+                f.vocab = metadata[COMMON_META.FEATURE_VOCABS][
                     f.export_input_names[0]
                 ]
         for f in self.labels:
-            if f.field.use_vocab and f.name in metadata[COMMON_META.LABEL_VOCABS]:
-                f.field.vocab = metadata[COMMON_META.LABEL_VOCABS][f.name]
+            if f.use_vocab and f.name in metadata[COMMON_META.LABEL_VOCABS]:
+                f.vocab = metadata[COMMON_META.LABEL_VOCABS][f.name]
 
     def gen_dataset_from_file(
         self, file_name: str, include_label_fields: bool = True, use_cache: bool = True
@@ -145,7 +145,7 @@ class DataHandler:
         if include_label_fields:
             to_process = self.labels + to_process
         # define torch text fields
-        fields = [(feat.name, feat.field) for feat in to_process]
+        fields = [(feat.name, feat) for feat in to_process]
         # generate example from dataframe
         all_examples = [
             textdata.Example.fromlist(row, fields)
@@ -188,15 +188,15 @@ class DataHandler:
             # Need test data to make sure we cover all of the labels in it
             # It is particularly important when BIO is enabled as a B-[Label] can
             # appear in train and eval but test can have B-[Label] and I-[Label]
-            if label.field.use_vocab:
+            if label.use_vocab:
                 print("building vocab for label {}".format(label.name))
-                label.field.build_vocab(train_data, eval_data, test_data)
+                label.build_vocab(train_data, eval_data, test_data)
 
         # build vocabs for features
         for feat in self.features:
-            if feat.field.use_vocab:
+            if feat.use_vocab:
                 print("building vocab for feature {}".format(feat.name))
-                feat.field.build_vocab(train_data)
+                feat.build_vocab(train_data)
 
         # field metadata
         for f in self.features + self.labels:
@@ -205,20 +205,20 @@ class DataHandler:
 
         # feature vocabs
         self.metadata[COMMON_META.FEATURE_VOCABS] = {
-            f.export_input_names[0]: f.field.vocab
+            f.export_input_names[0]: f.vocab
             for f in self.features
-            if f.field.use_vocab
+            if f.use_vocab
         }
         # label vocabs
         self.metadata[COMMON_META.LABEL_VOCABS] = {
-            f.name: f.field.vocab for f in self.labels if f.field.use_vocab
+            f.name: f.vocab for f in self.labels if f.use_vocab
         }
         # pretrained embedding weight
         if self.pretrained_embeds_file:
             self.metadata[
                 COMMON_META.PRETRAINED_EMBEDS_WEIGHT
             ] = embeddings_utils.init_pretrained_embeddings(
-                self.text_field.field.vocab.stoi,
+                self.text_field.vocab.stoi,
                 self.pretrained_embeds_file,
                 self.embed_dim,
                 VocabMeta.UNK_TOKEN,

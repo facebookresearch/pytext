@@ -3,15 +3,15 @@
 from typing import List
 
 import pandas as pd
+from eit.llama.common.thriftutils import dict_to_thrift
+from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
-from pytext.data.field import DictFeature, Field, TextFeature
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fields import DictFeatureField, Field, TextFeatureField
 from pytext.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
 from pytext.utils import data_utils
-from eit.llama.common.thriftutils import dict_to_thrift
-from messenger.assistant.cu.core.ttypes import IntentFrame
 from torchtext import data as textdata
 
 from .data_handler import DataHandler
@@ -25,8 +25,8 @@ def _reverse(arr, vocab):
 # TODO move it to field folder
 class ActionField(Field):
     def __init__(self, name):
-        super().__init__(name)
-        self.field = textdata.Field(
+        super().__init__(
+            name,
             use_vocab=True,
             sequential=True,
             batch_first=True,
@@ -58,8 +58,8 @@ class CompositionalDataHandler(DataHandler):
         super().__init__(
             features=[
                 # TODO assuming replacing numbers with NUM and unkify be done in featurizer
-                TextFeature(DatasetFieldName.TEXT_FIELD, postprocessing=_reverse),
-                DictFeature(DatasetFieldName.DICT_FIELD),
+                TextFeatureField(DatasetFieldName.TEXT_FIELD, postprocessing=_reverse),
+                DictFeatureField(DatasetFieldName.DICT_FIELD),
                 ActionField("action_idx_feature"),
             ],
             labels=[ActionField("action_idx_label")],

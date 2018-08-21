@@ -10,7 +10,7 @@ from pytext.common.constants import (
     PredictorInputNames,
     VocabMeta,
 )
-from pytext.data.field import Field, TextFeature
+from pytext.fields import Field, TextFeatureField
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.data.shared_featurizer import SharedFeaturizer
 
@@ -28,7 +28,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         columns = [DFColumn.UTTERANCE]
         num_workers = 16
         features: List[Field] = [
-            TextFeature(
+            TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,

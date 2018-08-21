@@ -3,20 +3,16 @@
 from typing import Any, Dict, List
 
 import pandas as pd
-from pytext.common.constants import (
-    DatasetFieldName,
-    DFColumn,
-    VocabMeta,
-)
-from pytext.config import ConfigBase
+from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.common.registry import DATA_HANDLER, component
+from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
 from .data_handler import COMMON_META, DataHandler
-from .field import Field, RawField, TextFeature
 
 
 FEATURE_ITOS_MAP = "feature_itos_map"
@@ -58,7 +54,7 @@ class LanguageModelDataHandler(DataHandler):
         columns = config.columns_to_read
         num_workers = config.preprocess_workers
         features: List[Field] = [
-            TextFeature(
+            TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,

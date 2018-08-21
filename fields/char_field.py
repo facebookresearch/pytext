@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
 import copy
-import torch
-from . import no_tokenize
-from typing import List
 from collections import Counter
-from torchtext import vocab
-from torchtext import data as textdata
+from typing import Any, Dict, List
+
+import torch
+from pytext.common.constants import VocabMeta
+from pytext.utils.data_utils import no_tokenize
+from torchtext import data as textdata, vocab
+
+from .field import Field
 
 
-class CharField(textdata.Field):
-    def __init__(self, pad_token, unk_token, batch_first=True):
-        super(CharField, self).__init__(
+class CharFeatureField(Field):
+    def __init__(
+        self,
+        name,
+        export_input_names=None,
+        pad_token=VocabMeta.PAD_TOKEN,
+        unk_token=VocabMeta.UNK_TOKEN,
+        batch_first=True,
+    ):
+        super().__init__(
+            name,
+            export_input_names=export_input_names,
             sequential=True,  # Otherwise pad is set to None in textdata.Field
             batch_first=batch_first,
             tokenize=no_tokenize,
@@ -18,6 +30,9 @@ class CharField(textdata.Field):
             pad_token=pad_token,
             unk_token=unk_token,
         )
+
+    def get_meta(self) -> Dict[str, Any]:
+        return {"char_embed_num": len(self.vocab)}
 
     def build_vocab(self, *args, **kwargs):
         sources = []
@@ -78,8 +93,6 @@ class CharField(textdata.Field):
     def numericalize(self, batch, device=None):
         batch_char_ids = []
         for sentence in batch:
-            sentence_char_ids = super(CharField, self).numericalize(
-                sentence, device=device
-            )
+            sentence_char_ids = super().numericalize(sentence, device=device)
             batch_char_ids.append(sentence_char_ids)
         return torch.stack(batch_char_ids, dim=0)

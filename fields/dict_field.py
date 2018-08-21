@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
-import torch
-from . import no_tokenize
-from typing import List, Tuple
 from collections import Counter
-from torchtext import vocab
-from torchtext import data as textdata
+from typing import Any, Dict, List, Tuple
+
+import torch
+from torchtext import data as textdata, vocab
+
+from pytext.utils.data_utils import no_tokenize
+from .field import Field
+from pytext.common.constants import VocabMeta
 
 
-class DictFeatField(textdata.Field):
-    def __init__(self, pad_token, unk_token, batch_first=True):
-        super(DictFeatField, self).__init__(
+class DictFeatureField(Field):
+    def __init__(
+        self,
+        name,
+        export_input_names=None,
+        pad_token=VocabMeta.PAD_TOKEN,
+        unk_token=VocabMeta.UNK_TOKEN,
+        batch_first=True,
+    ):
+        super().__init__(
+            name,
+            export_input_names,
             sequential=True,
             batch_first=batch_first,
             tokenize=no_tokenize,
@@ -17,6 +29,9 @@ class DictFeatField(textdata.Field):
             pad_token=pad_token,
             unk_token=unk_token,
         )
+
+    def get_meta(self) -> Dict[str, Any]:
+        return {"dict_embed_num": len(self.vocab)}
 
     def build_vocab(self, *args, **kwargs):
         sources = []

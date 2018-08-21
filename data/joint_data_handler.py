@@ -8,20 +8,20 @@ from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fields import (
+    CapFeatureField,
+    CharFeatureField,
+    DictFeatureField,
+    DocLabelField,
+    Field,
+    FloatField,
+    RawField,
+    TextFeatureField,
+    WordLabelField,
+)
 from pytext.utils import data_utils
 
 from .data_handler import DataHandler
-from .field import (
-    CapFeature,
-    CharFeature,
-    DictFeature,
-    DocLabelField,
-    Field,
-    LossWeightField,
-    RawField,
-    TextFeature,
-    WordLabelField,
-)
 
 
 SEQ_LENS = "seq_lens"
@@ -59,22 +59,22 @@ class JointModelDataHandler(DataHandler):
         **kwargs
     ):
         features: List[Field] = [
-            TextFeature(
+            TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
                 export_input_names=feature_config.word_feat.export_input_names,
             )
         ]
         if feature_config.dict_feat:
             features.append(
-                DictFeature(
+                DictFeatureField(
                     DatasetFieldName.DICT_FIELD,
                     export_input_names=feature_config.dict_feat.export_input_names,
                 )
             )
         if feature_config.cap_feat:
-            features.append(CapFeature(DatasetFieldName.CAP_FIELD))
+            features.append(CapFeatureField(DatasetFieldName.CAP_FIELD))
         if feature_config.char_feat:
-            features.append(CharFeature(DatasetFieldName.CHAR_FIELD))
+            features.append(CharFeatureField(DatasetFieldName.CHAR_FIELD))
 
         labels: List[Field] = []
         if label_config.doc_label:
@@ -87,8 +87,8 @@ class JointModelDataHandler(DataHandler):
                 )
             )
         extra_fields: List[Field] = [
-            LossWeightField(DatasetFieldName.DOC_WEIGHT_FIELD),
-            LossWeightField(DatasetFieldName.WORD_WEIGHT_FIELD),
+            FloatField(DatasetFieldName.DOC_WEIGHT_FIELD),
+            FloatField(DatasetFieldName.WORD_WEIGHT_FIELD),
             RawField(DatasetFieldName.RAW_WORD_LABEL),
             RawField(DatasetFieldName.TOKEN_RANGE_PAIR),
             RawField(DatasetFieldName.INDEX_FIELD),
@@ -193,7 +193,7 @@ class JointModelDataHandler(DataHandler):
 
     def _gen_extra_metadata(self) -> Dict[str, Any]:
         return {
-            "class_names": [label.field.vocab.itos for label in self.labels],
+            "class_names": [label.vocab.itos for label in self.labels],
             "feature_itos_map": {
                 k: v.itos for k, v in self.metadata["feature_vocabs"].items()
             },

@@ -5,7 +5,7 @@ import unittest
 from collections import Counter
 
 from pytext.common.constants import VocabMeta
-from pytext.custom_fields.char_field import CharField
+from pytext.fields.char_field import CharFeatureField
 
 
 pad = VocabMeta.PAD_TOKEN
@@ -13,7 +13,8 @@ pad = VocabMeta.PAD_TOKEN
 
 class CharFieldTest(unittest.TestCase):
     def test_build_vocab(self):
-        char_field = CharField(
+        char_field = CharFeatureField(
+            "char_feat",
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,
@@ -54,7 +55,8 @@ class CharFieldTest(unittest.TestCase):
         self.assertEqual(char_field.vocab.freqs, expected_freqs)
 
     def test_pad_and_numericalize(self):
-        char_field = CharField(
+        char_field = CharFeatureField(
+            "char_feat",
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,

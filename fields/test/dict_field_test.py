@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 from pytext.common.constants import VocabMeta
-from pytext.custom_fields.dict_field import DictFeatField
+from pytext.fields.dict_field import DictFeatureField
 
 
 FEATS_VOCAB = [[["texasHandler_cities"]], [["cities"]], [["time"]]]
@@ -40,7 +40,8 @@ NUMERICAL_FEATS = np.array([[1, 1, 1, 1, 3, 2], [1, 1, 4, 1, 1, 1]])
 
 class DictFieldTest(unittest.TestCase):
     def setUp(self):
-        self.dict_field = DictFeatField(
+        self.dict_field = DictFeatureField(
+            "dict_feat",
             batch_first=True,
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
