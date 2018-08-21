@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from .pytext_config import ConfigBase
 
@@ -9,6 +9,7 @@ class LSTMParams(ConfigBase):
     # The number of features in the lstm hidden state
     lstm_dim: int = 100
     num_layers: int = 1
+    projection_dim: Optional[int] = None
 
 
 class CNNParams(ConfigBase):
@@ -16,6 +17,10 @@ class CNNParams(ConfigBase):
     kernel_num: int = 100
     # Kernel sizes to use in convolution
     kernel_sizes: List[int] = [3, 4]
+
+class MLPParams(ConfigBase):
+    # Intermediate hidden dimensions
+    hidden_dims: List[int] = []
 
 
 class PoolingType(Enum):

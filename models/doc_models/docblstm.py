@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
-from pytext.config.module_config import LSTMParams
+from pytext.config.module_config import LSTMParams, MLPParams
 from pytext.models.configs import (
     CharacterEmbeddingConfig,
     DictEmbeddingConfig,
@@ -12,7 +12,7 @@ from pytext.models.configs import (
 )
 from pytext.models.embeddings.token_embedding import TokenEmbedding
 from pytext.models.model import Model
-from pytext.models.projections.linear_projection import LinearProjection
+from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 
 
@@ -21,6 +21,7 @@ class DocBLSTMConfig(ConfigBase):
     # The hidden dimension for the self attention layer
     self_attn_dim: int = 64
     lstm: LSTMParams = LSTMParams()
+    mlp: MLPParams = MLPParams()
 
 
 @component(MODEL, config_cls=DocBLSTMConfig)
@@ -48,7 +49,10 @@ class DocBLSTM(Model):
             model_config.lstm.num_layers,
             model_config.dropout,
             model_config.self_attn_dim,
+            model_config.lstm.projection_dim,
         )
-        self.projection = LinearProjection(
-            self.representation.representation_dim, doc_class_num
+        self.projection = MLPProjection(
+            from_dim=self.representation.representation_dim,
+            to_dim=doc_class_num,
+            hidden_dims=model_config.mlp.hidden_dims,
         )

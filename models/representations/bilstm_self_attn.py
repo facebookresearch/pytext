@@ -17,10 +17,12 @@ class BiLSTMSelfAttention(RepresentationBase):
         lstm_num_layers: int,
         dropout_ratio: float,
         self_attn_dim: int,
+        projection_dim: int = None,
         bidirectional: bool = True,
     ) -> None:
         super().__init__()
 
+        self.projection = projection_dim is not None
         self.dropout = nn.Dropout(dropout_ratio)
         seq_in_size = lstm_hidden_dim * 2 if bidirectional is True else lstm_hidden_dim
         self.lstm = nn.LSTM(
@@ -34,10 +36,13 @@ class BiLSTMSelfAttention(RepresentationBase):
             if self_attn_dim > 0
             else None
         )
-        self.relu = nn.ReLU()
-        self.dense = nn.Sequential(nn.Linear(seq_in_size, seq_in_size), self.relu)
-
-        self.representation_dim = seq_in_size
+        if self.projection:
+            self.relu = nn.ReLU()
+            self.dense = nn.Sequential(
+                nn.Linear(seq_in_size, projection_dim), self.relu)
+            self.representation_dim = projection_dim
+        else:
+            self.representation_dim = seq_in_size
 
     def forward(self, tokens: torch.Tensor, tokens_lens: torch.Tensor) -> torch.Tensor:
         rep = self.dropout(tokens)
@@ -49,4 +54,7 @@ class BiLSTMSelfAttention(RepresentationBase):
         )
         if self.attention:
             rep = self.attention(rep)
-        return self.dense(rep)
+        if self.projection:
+            return self.dense(rep)
+        else:
+            return rep
