@@ -42,7 +42,11 @@ class JointTrainer(Trainer):
             )
         )
         frame_accuracy = JointTrainer.frame_accuracy(
-            d_target.data, w_target.data, d_preds, w_preds, seq_lens
+            d_target.cpu(),
+            w_target.cpu(),
+            d_preds.cpu(),
+            w_preds.cpu(),
+            seq_lens.cpu(),
         )
         sys.stdout.write("\nFrame accuracy : {:.3f} \n\n".format(frame_accuracy))
         return frame_accuracy
