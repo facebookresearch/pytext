@@ -36,6 +36,7 @@ class Annotation:
         brackets: str = "[]",
         combination_labels: bool = True,
         add_dict_feat: bool = False,
+        accept_flat_intents_slots: bool = False,
     ) -> None:
         super(Annotation, self).__init__()
         self.OPEN = brackets[0]
@@ -60,7 +61,10 @@ class Annotation:
             raise ValueError("Cannot parse annotation_string")
 
         self.items = self.split_seqlogical()
-        self.tree = Tree(self.build_tree(), combination_labels)
+        self.tree = Tree(
+            self.build_tree(accept_flat_intents_slots),
+            combination_labels
+        )
         self.root: Root = self.tree.root
 
     def split_seqlogical(self):
@@ -84,11 +88,11 @@ class Annotation:
         return "".join(result).split()
 
     # add parameter to turn off the added build method
-    def build_tree(self):  # noqa
+    def build_tree(self, accept_flat_intents_slots: bool = False):  # noqa
         token_count = 0
         root = Root()
 
-        node_stack = [root]
+        node_stack: List[Any] = [root]
         num_topintent = 0
 
         for item in self.items:
@@ -98,20 +102,39 @@ class Annotation:
                     raise ValueError("Not a valid tree.")
                 node_stack.pop()
             elif item.startswith(self.OPEN):
+                if len(node_stack) < 1:
+                    raise ValueError("Not a valid tree.")
+
                 # either intent or slot non-terminal
                 label = item[1:]
                 if item.startswith(self.OPEN + INTENT_PREFIX):
                     node_stack.append(Intent(label))
-
                 elif item.startswith(self.OPEN + SLOT_PREFIX):
                     node_stack.append(Slot(label))
                 else:
-                    raise ValueError(
-                        "Label "
-                        + item
-                        + " must start with IN: or SL: for "
-                        + str(self.seqlogical)
-                    )
+                    if accept_flat_intents_slots:
+                        # Temporary, for compatibility with flat annotations
+                        # that does not contain IN:, SL: prefixes
+                        #
+                        # This assumes any child of ROOT or SLOT must be INTENT,
+                        # and any child of INTENT must be SLOT
+                        if type(node_stack[-1]) == Root or \
+                                type(node_stack[-1]) == Slot:
+                            node_stack.append(Intent(label))
+                        elif type(node_stack[-1]) == Intent:
+                            node_stack.append(Slot(label))
+                        else:
+                            raise ValueError(
+                                'The previous object in node_stack is not of'
+                                + ' type Root, Intent or Slot.'
+                            )
+                    else:
+                        raise ValueError(
+                            "Label "
+                            + item
+                            + " must start with IN: or SL: for "
+                            + str(self.seqlogical)
+                        )
 
                 if len(node_stack) < 2:
                     raise ValueError("Not a valid tree.")

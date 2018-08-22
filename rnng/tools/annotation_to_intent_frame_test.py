@@ -62,11 +62,60 @@ class TestAnnotationToIntentFrame(testutil.BaseFacebookTestCase):
                 ],
                 span=Span(start=0, end=19),
             )
+        elif case == 2:
+            utterance = "repeat the 3:00pm alarm for Sunday august 12th"
+            annotation_string = (
+                "[alarm/set_alarm    "
+                + "repeat the [datetime 3 : 00 pm ]"
+                + "  [alarm/name alarm ]  [datetime for Sunday august 12th ]  ] "
+            )
+            annotation_token_spans = SharedTokenizer().tokenize_with_ranges(
+                utterance
+            )
+            annotation = Annotation(
+                annotation_string,
+                accept_flat_intents_slots=True
+            )
+
+            intent_frame = IntentFrame(
+                utterance=utterance,
+                domain="alarm",
+                intent="alarm/set_alarm",
+                slots=[
+                    FilledSlot(
+                        id="datetime",
+                        span=Span(start=11, end=17),
+                        text="3:00pm"
+                    ),
+                    FilledSlot(
+                        id="alarm/name",
+                        span=Span(start=18, end=23),
+                        text="alarm"
+                    ),
+                    FilledSlot(
+                        id="datetime",
+                        span=Span(start=24, end=46),
+                        text="for Sunday august 12th",
+                    ),
+                ],
+                span=Span(start=0, end=46),
+            )
 
         return annotation, utterance, annotation_token_spans, intent_frame
 
     def test_flat_annotation_to_intent_frame(self):
         test_annotation, test_utterance, test_annotation_token_spans, test_intent_frame = self.get_flat_data()
+
+        frame = annotation_to_intent_frame(
+            test_annotation, test_utterance, test_annotation_token_spans, domain="alarm"
+        )
+
+        self.assertEqual(frame, test_intent_frame)
+
+    def test_flat_annotation_to_intent_frame_accepting_flat_labels(self):
+        test_annotation, test_utterance, \
+            test_annotation_token_spans, \
+            test_intent_frame = self.get_flat_data(2)
 
         frame = annotation_to_intent_frame(
             test_annotation, test_utterance, test_annotation_token_spans, domain="alarm"
