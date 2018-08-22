@@ -3,6 +3,7 @@
 from typing import Any, Dict, List
 
 import pandas as pd
+import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
@@ -106,7 +107,18 @@ class LanguageModelDataHandler(DataHandler):
 
     def _input_from_batch(self, batch):
         # batch.text[1] is the length of each sequence
-        return (batch.text[0][:, 0:-1].contiguous(), batch.text[1] - 1)
+        # length of the longest sequences will be subtracted by 1, but for other
+        # smaller sequences, it will remain the same
+        # Example Batch:
+        # [[how, are, you],
+        #  [hello, world, <pad>]]
+        # Input for the above batch will be:
+        # [[how, are],
+        #  [hello, world]]
+        return (
+            batch.text[0][:, 0:-1].contiguous(),
+            torch.min(batch.text[1], batch.text[1].max() - 1),
+        )
 
     def _target_from_batch(self, batch):
         return (batch.text[0][:, 1:].contiguous(),)

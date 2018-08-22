@@ -101,7 +101,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
             ],
         )
         # sequence_length -> tensor of dim (bsize)
-        np.testing.assert_array_equal(batch[0][1], [12, 8, 7, 5, 4])
+        np.testing.assert_array_equal(batch[0][1], [12, 9, 8, 6, 5])
 
         # target -> tensor of same dim as input_sequences (bsize, max_seq_length)
         np.testing.assert_array_equal(
