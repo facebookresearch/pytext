@@ -42,14 +42,22 @@ class ModelExporter:
         """
         return c2_prepared, input_names
 
-    def interpret_output(
-        self, predict_net: core.Net, output_names: List[str]
-    ) -> Tuple[List[core.BlobReference], List[str]]:
-        """Interpret the model output, generate additional blobs for human readable
+    def postprocess_output(
+        self,
+        init_net: core.Net,
+        predict_net: core.Net,
+        workspace: core.workspace,
+        output_names: List[str],
+        py_model,
+    ):
+        """Postprocess the model output, generate additional blobs for human readable
             result.
             args:
+            init_net: caffe2 init net created by the current graph
             predict_net: caffe2 net created by the current graph
+            workspace: caffe2 current workspace
             output_names: current output names of the caffe2 net
+            py_model: original pytorch model object
             returns:
             list of blobs that will be added to the caffe2 model
             list of output names of the blobs to add
@@ -67,15 +75,19 @@ class ModelExporter:
         c2_prepared, final_input_names = self.prepend_operators(
             c2_prepared, self.input_names
         )
+
         # Required because of https://github.com/pytorch/pytorch/pull/6456/files
         with c2_prepared.workspace._ctx:
             predict_net = core.Net(c2_prepared.predict_net)
-            net_outputs, final_out_names = self.interpret_output(
-                predict_net, self.output_names
+            init_net = core.Net(c2_prepared.init_net)
+
+            net_outputs, final_out_names = self.postprocess_output(
+                init_net, predict_net, c2_prepared.workspace, self.output_names, model
             )
             for output in net_outputs:
                 predict_net.AddExternalOutput(output)
             c2_prepared.predict_net = predict_net.Proto()
+            c2_prepared.init_net = init_net.Proto()
 
         # Save predictor net to file
         onnx_utils.export_nets_to_predictor_file(
@@ -179,16 +191,27 @@ class TextModelExporter(ModelExporter):
             c2_prepared, self.vocab_map, input_names
         )
 
-    def interpret_output(
-        self, predict_net: core.Net, output_names: List[str]
+    def postprocess_output(
+        self,
+        init_net: core.Net,
+        predict_net: core.Net,
+        workspace: core.workspace,
+        output_names: List[str],
+        py_model,
     ) -> Tuple[List[core.BlobReference], List[str]]:
         res = []
         for class_names, output_score, axis in zip(
             self.class_names_list, output_names, self.score_axis_list
         ):
-            softmax_out = predict_net.Softmax(output_score, axis=axis)
-            log_softmax_out = predict_net.Log(softmax_out)
-            label_scores = predict_net.Split(log_softmax_out, class_names, axis=axis)
+            if hasattr(py_model, "crf") and py_model.crf and axis == 2:
+                tmp_out_score = py_model.crf.export_to_caffe2(
+                    workspace, init_net, predict_net, output_score
+                )
+            else:
+                softmax_out = predict_net.Softmax(output_score, axis=axis)
+                tmp_out_score = predict_net.Log(softmax_out)
+            label_scores = predict_net.Split(tmp_out_score, class_names, axis=axis)
+
             # Make sure label_scores is iterable
             if not isinstance(label_scores, tuple):
                 label_scores = (label_scores,)

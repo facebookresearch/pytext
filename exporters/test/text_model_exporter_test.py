@@ -9,16 +9,12 @@ import hypothesis.strategies as st
 import numpy as np
 import torch
 import torch.nn.functional as F
+from caffe2.python import workspace
+from hypothesis import given
 from pytext.common.constants import PredictorInputNames
 from pytext.common.registry import create_exporter, create_model
 from pytext.config import config_from_json
-from pytext.jobspec import (
-    DocClassifyJobSpec,
-    JointTextJobSpec,
-    WordTagJobSpec,
-)
-from caffe2.python import workspace
-from hypothesis import given
+from pytext.jobspec import DocClassifyJobSpec, JointTextJobSpec, WordTagJobSpec
 
 
 JOINT_CONFIG = """
@@ -27,9 +23,10 @@ JOINT_CONFIG = """
       "JointBLSTMConfig": {
         "lstm": {
           "lstm_dim": 30,
-          "num_layers": 1,
-          "use_doc_probs_in_word": true
-        }
+          "num_layers": 1
+        },
+        "use_crf": true,
+        "use_doc_probs_in_word": true
       }
     },
     "labels": {
@@ -116,8 +113,8 @@ DOC_CONFIGS = [
 
     """,
 ]
-WORD_CONFIG = """
-{
+WORD_CONFIGS = [
+    """{
     "model": {
       "WordBLSTMConfig": {
         "lstm": {
@@ -133,17 +130,40 @@ WORD_CONFIG = """
       "word_label": {}
     },
     "features": {
-        "word_feat": {},
-        "dict_feat": {
-            "embed_dim": 10
-        }
+      "word_feat": {},
+      "dict_feat": {
+        "embed_dim": 10
+      }
     },
-    "exporter": {
-
-    }
-}
-
-"""
+    "exporter": {}
+  }
+""",
+    """{
+    "model": {
+      "WordBLSTMConfig": {
+        "lstm": {
+          "lstm_dim": 30,
+          "num_layers": 2
+        },
+        "use_crf": true
+      }
+    },
+    "loss": {
+      "TaggerCrossEntropyLossConfig": {}
+    },
+    "labels": {
+      "word_label": {}
+    },
+    "features": {
+      "word_feat": {},
+      "dict_feat": {
+        "embed_dim": 10
+      }
+    },
+    "exporter": {}
+  }
+""",
+]
 
 W_VOCAB_SIZE = 10
 UNK_IDX = 0
@@ -238,37 +258,47 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_dict_feat,
         num_predictions,
     ):
-        config = self._get_config(WordTagJobSpec, WORD_CONFIG)
-        metadata = self._get_metadata(0, num_word_classes)
-        py_model = create_model(config.model, config.features, **metadata)
-        exporter = create_exporter(
-            config.exporter, config.features, config.labels, **metadata
-        )
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".{}".format(".predictor")
-        ) as pred_file:
-            output_names = exporter.export_to_caffe2(py_model, pred_file.name)
-            workspace.ResetWorkspace()
-        pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
-        for _i in range(num_predictions):
-            test_inputs = self._get_rand_input(
-                BATCH_SIZE,
-                W_VOCAB_SIZE,
-                DICT_VOCAB_SIZE,
-                test_num_words,
-                test_num_dict_feat,
+        for WORD_CONFIG in WORD_CONFIGS:
+            config = self._get_config(WordTagJobSpec, WORD_CONFIG)
+            metadata = self._get_metadata(0, num_word_classes)
+            py_model = create_model(config.model, config.features, **metadata)
+            exporter = create_exporter(
+                config.exporter, config.features, config.labels, **metadata
             )
-            self._feed_c2_input(workspace, test_inputs, metadata["feature_itos_map"])
-            workspace.RunNetOnce(pred_net)
-            c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
-            py_model.eval()
-            [py_outs] = py_model(*test_inputs)
-            # Do log_softmax since we do that before exporting predictor nets
-            py_outs = F.log_softmax(py_outs, 2)
-            np.testing.assert_array_almost_equal(
-                torch.transpose(py_outs, 1, 2).contiguous().view(-1).detach().numpy(),
-                np.array(c2_out).flatten(),
-            )
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".{}".format(".predictor")
+            ) as pred_file:
+                output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+                workspace.ResetWorkspace()
+            pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
+            for _i in range(num_predictions):
+                test_inputs = self._get_rand_input(
+                    BATCH_SIZE,
+                    W_VOCAB_SIZE,
+                    DICT_VOCAB_SIZE,
+                    test_num_words,
+                    test_num_dict_feat,
+                )
+                self._feed_c2_input(
+                    workspace, test_inputs, metadata["feature_itos_map"]
+                )
+                workspace.RunNetOnce(pred_net)
+                c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
+                py_model.eval()
+                [py_outs] = py_model(*test_inputs)
+                if hasattr(py_model, "crf") and py_model.crf:
+                    py_outs = py_model.crf.decode_crf_lengths(py_outs, test_inputs[1])
+                else:
+                    # Do log_softmax since we do that before exporting predictor nets
+                    py_outs = F.log_softmax(py_outs, 2)
+                np.testing.assert_array_almost_equal(
+                    torch.transpose(py_outs, 1, 2)
+                    .contiguous()
+                    .view(-1)
+                    .detach()
+                    .numpy(),
+                    np.array(c2_out).flatten(),
+                )
 
     @given(
         export_num_words=st.integers(1, 5),
@@ -324,9 +354,14 @@ class TextModelExporterTest(hu.HypothesisTestCase):
 
             py_model.eval()
             [py_doc_out, py_word_out] = py_model(*test_inputs)
-            # Do log_softmax since we do that before exporting predictor nets
             py_doc_out = F.log_softmax(py_doc_out, 1)
-            py_word_out = F.log_softmax(py_word_out, 2)
+            if hasattr(py_model, "crf") and py_model.crf:
+                py_word_out = py_model.crf.decode_crf_lengths(
+                    py_word_out, test_inputs[1]
+                )
+            else:
+                # Do log_softmax since we do that before exporting predictor nets
+                py_word_out = F.log_softmax(py_word_out, 2)
 
             c2_doc_out = []
             for o_name in doc_output_names:

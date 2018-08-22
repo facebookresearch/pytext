@@ -8,6 +8,7 @@ from typing import List, Union
 import numpy as np
 import torch
 import torch.nn as nn
+from caffe2.python.fb.text.crf_predict import apply_crf
 from pytext.common.constants import Padding
 from pytext.utils.cuda_utils import Variable as Var
 from torch.autograd import Variable
@@ -116,7 +117,6 @@ class CRF(nn.Module):
                     ]
                 )
             )
-
         return mask.contiguous()
 
     def decode_crf(self, w_out, w_target):
@@ -125,18 +125,37 @@ class CRF(nn.Module):
         w_out = self._rearrange_output(w_out, w_preds)
         return w_out
 
+    def decode_crf_lengths(self, w_out, w_lengths):
+        mask = self.make_mask_from_lengths(w_out.size()[:-1], w_lengths)
+        w_preds = self._decode(torch.transpose(w_out, 0, 1).contiguous(), mask=mask)
+        w_out = self._rearrange_output(w_out, w_preds)
+        return w_out
+
+    def make_mask_from_lengths(self, w_size, lengths):
+        max_len = max(lengths).item()
+        mask = Var(torch.ByteTensor(w_size))
+        for i, length in enumerate(lengths):
+            tmp_mask = [1] * int(length)
+            tmp_mask.extend([0] * (max_len - int(length)))
+            mask[i, :] = torch.from_numpy(np.asarray(tmp_mask))
+        return torch.transpose(mask, 0, 1).contiguous()
+
     def _rearrange_output(self, w_out, w_preds):
         """
         rearrange the word logits so that the decoded word has the highest logits
         so that the rest of the flow would be seamless
         """
-        for batch in range(len(w_preds)):
-            for i, word in enumerate(w_preds[batch]):
-                word_label = word.item()
+        for batch_idx, v_path in enumerate(w_preds):
+            for w_idx, word in enumerate(v_path):
+                w_logits = w_out[batch_idx][w_idx]
+                v_label = word.item()
                 # make the word on the optimal path the greatest
-                maxLog = torch.max(w_out[batch][i], 0)[0]
-                w_out[batch][i][word_label] = maxLog + .1
-
+                _, maxIndex = torch.max(w_logits, 0)
+                w_logits[v_label], w_logits[maxIndex] = (
+                    w_logits[maxIndex].item(),
+                    w_logits[v_label].item(),
+                )
+                w_out[batch_idx][w_idx] = w_logits
         return w_out
 
     def _decode(
@@ -323,6 +342,28 @@ class CRF(nn.Module):
         # Reverse the order because we start from the last timestep
         best_tags.reverse()
         return best_tags
+
+    """Exports the crf layer to caffe2 by manually adding the necessary operators
+        to the init_net and predict net.
+        init_net: caffe2 init net created by the current graph
+        predict_net: caffe2 net created by the current graph
+        workspace: caffe2 current workspace
+        output_names: current output names of the caffe2 net
+        py_model: original pytorch model object
+        Returns:
+        The updated predictions blob name
+    """
+
+    def export_to_caffe2(self, workspace, init_net, predict_net, logits_output_name):
+        crf_transitions = init_net.AddExternalInput(init_net.NextName())
+        workspace.FeedBlob(str(crf_transitions), self.get_transitions().numpy())
+        logits_squeezed = predict_net.Squeeze(logits_output_name, dims=[0])
+        new_logits = apply_crf(
+            init_net, predict_net, crf_transitions, logits_squeezed, self.num_tags
+        )
+        new_logits = predict_net.ExpandDims(new_logits, dims=[0])
+        predict_net.Copy(new_logits, logits_output_name)
+        return logits_output_name
 
     @staticmethod
     def _log_sum_exp(tensor: Variable, dim: int) -> Variable:
