@@ -5,7 +5,8 @@ from .loss import Loss
 
 
 class PairRankLoss(Loss):
-    def __init__(self, margin: float) -> None:
+    def __init__(self, config, margin: float, **kwargs) -> None:
+        super().__init__(config)
         self._margin = margin
 
     def loss(self, m_out, targets, model=None, reduce: bool=True):

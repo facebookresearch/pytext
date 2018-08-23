@@ -8,8 +8,8 @@ from pytext.utils import cuda_utils
 
 
 class BaggingDataHandler(DataHandler):
-    def __init__(self, data_fraction: float, *arg, **kwarg) -> None:
-        super(BaggingDataHandler, self).__init__(*arg, **kwarg)
+    def __init__(self, data_fraction: float, *args, **kwargs) -> None:
+        super(BaggingDataHandler, self).__init__(*args, **kwargs)
         self.data_fraction = data_fraction
 
     def batch(
@@ -28,11 +28,9 @@ class BaggingDataHandler(DataHandler):
 
 
 def sample(dataset: textdata.Dataset, data_fraction: float) -> textdata.Dataset:
-    desired_n_rows = int(len(dataset) * data_fraction)
-    sampled_indices = random.sample(range(len(dataset)), desired_n_rows)
-    sampled_examples = [dataset.examples[i] for i in sampled_indices]
+    number_of_samples = max(int(len(dataset) * data_fraction), 1, len(dataset))
     return textdata.Dataset(
-        examples=sampled_examples,
+        examples=random.sample(dataset.examples, number_of_samples),
         fields=dataset.fields,
         preprocess_workers=dataset.preprocess_workers,
     )

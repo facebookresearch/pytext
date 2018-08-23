@@ -4,14 +4,14 @@ import csv
 import os
 
 import torch
-from pytext.common.registry import (
+from pytext.config.component import (
     create_data_handler,
     create_exporter,
     create_loss,
     create_model,
-    create_optimizer,
     create_trainer,
 )
+from pytext.optimizer import create_optimizer
 from pytext.config import PyTextConfig
 
 from .serialize import load, save
@@ -56,7 +56,7 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
         model = model.cuda()
 
     loss = create_loss(jobspec.loss, **metadata)
-    optimizer = create_optimizer(jobspec.optimizer, model)
+    optimizer = create_optimizer(model, jobspec.optimizer)
     trainer = create_trainer(jobspec.trainer, **metadata)
     trained_model = trainer.train(
         train_iter,
@@ -77,7 +77,7 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     if config.jobspec.exporter:
         print("Saving caffe2 model to: " + config.export_caffe2_path)
         exporter = create_exporter(
-            jobspec.exporter, jobspec.features, jobspec.labels, **data_handler.metadata
+            jobspec.exporter, jobspec.features, jobspec.labels, **metadata
         )
         exporter.export_to_caffe2(trained_model, config.export_caffe2_path)
 

@@ -14,10 +14,9 @@ PairNNBatch = namedtuple("PairNNBatch", ["query_text", "results"])
 
 
 class PairRankTrainer(Trainer):
-    def __init__(self, loss: PairRankLoss, config) -> None:
+    def __init__(self, loss: PairRankLoss, config, **kwargs) -> None:
         assert isinstance(loss, PairRankLoss)
-        super(PairRankTrainer, self).__init__(loss)
-        self.config = config
+        super().__init__(config)
 
     def process_batch(self, batch, model):
         targets = cuda_utils.Variable(torch.FloatTensor([1] * batch.batch_size))

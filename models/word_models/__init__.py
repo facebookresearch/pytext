@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from .wordcnn import WordCNN, WordCNNConfig
-from .wordblstm import WordBLSTM, WordBLSTMConfig
+from .wordblstm import WordBLSTM
+from .wordcnn import WordCNN
 
-__all__ = ['WordCNN', 'WordBLSTM', 'WordCNNConfig', 'WordBLSTMConfig']
+__all__ = ["WordBLSTM", "WordCNN"]

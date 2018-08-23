@@ -2,18 +2,18 @@
 from typing import Any, List
 
 import torch.nn as nn
-from pytext.common.registry import create_model
+from pytext.config.component import create_model
 from pytext.config import ConfigBase
+from pytext.models.model import Model
 
 
-class EnsembleModelConfig(ConfigBase):
-    models: List[Any]
-    sample_rate: float = 1.0
+class Ensemble(Model):
+    class Config(ConfigBase):
+        models: List[Any]
+        sample_rate: float = 1.0
 
-
-class Ensemble(nn.Module):
     def __init__(self, config, models, **metadata):
-        super().__init__()
+        super().__init__(config)
         self.models = nn.ModuleList(models)
 
     def forward(self, *args, **kwargs):

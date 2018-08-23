@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-from .jointblstm import JointBLSTM, JointBLSTMConfig
-from .jointcnn import JointCNN, JointCNNConfig
+from .jointblstm import JointBLSTM
+from .jointcnn import JointCNN
 
-
-__all__ = [
-    "JointBLSTM",
-    "JointCNN",
-    "JointBLSTMConfig",
-    "JointCNNConfig",
-]
+__all__ = ["JointBLSTM", "JointCNN"]

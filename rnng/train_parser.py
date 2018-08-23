@@ -17,7 +17,7 @@ from pytext.config import PyTextConfig, config_to_json
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.jobspec import SemanticParsingJobSpec, register_builtin_jobspecs
 from pytext.metrics import Node, compute_all_metrics
-from pytext.optimizers import create_optimizer, optimizer_step, optimizer_zero_grad
+from pytext.optimizer import create_optimizer, optimizer_step, optimizer_zero_grad
 from pytext.rnng.agreement_calculator import (
     ConfusionMatrix,
     Label_and_Span_Calculator,

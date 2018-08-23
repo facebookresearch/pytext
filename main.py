@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import libfb.py.fbpkg as fbpkg
-from pytext.common.registry import register_jobspec
 from pytext.config import PyTextConfig
+from pytext.config.component import register_jobspec
 from pytext.fb.experimental import I18NDocClassifyJobSpec, I18NJointTextJobSpec
 from pytext.workflow import test_model, train_model
 

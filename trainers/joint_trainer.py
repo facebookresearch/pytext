@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName, Padding
-from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.metrics import Node, Span, compute_all_metrics
@@ -15,14 +14,9 @@ from pytext.utils import data_utils, test_utils
 from sklearn.metrics import classification_report
 
 from .tagger_trainer import TaggerTrainer
-from .trainer import Trainer, TrainerConfig
+from .trainer import Trainer
 
 
-class JointTrainerConfig(ConfigBase, TrainerConfig):
-    pass
-
-
-@component(TRAINER, config_cls=JointTrainerConfig)
 class JointTrainer(Trainer):
     # TODO: (wenfangxu) T32687556 define unified interfaces for report() and test()
     def report(self, stage, loss, preds, seq_lens, targets, target_names):

@@ -2,7 +2,6 @@
 
 from typing import Tuple, Optional
 
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.config.module_config import LSTMParams, MLPParams
 from pytext.models.configs import (
@@ -16,31 +15,29 @@ from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 
 
-class DocBLSTMConfig(ConfigBase):
-    dropout: float = 0.4
-    # The hidden dimension for the self attention layer
-    self_attn_dim: int = 64
-    lstm: LSTMParams = LSTMParams()
-    mlp: MLPParams = MLPParams()
-
-
-@component(MODEL, config_cls=DocBLSTMConfig)
 class DocBLSTM(Model):
     """
     An n-ary document classification model that uses bidirectional LSTM to
     represent the document.
     """
 
+    class Config(ConfigBase):
+        dropout: float = 0.4
+        # The hidden dimension for the self attention layer
+        self_attn_dim: int = 64
+        lstm: LSTMParams = LSTMParams()
+        mlp: MLPParams = MLPParams()
+
     def __init__(
         self,
-        model_config: DocBLSTMConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
         doc_class_num: int,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
 
         self.embedding = TokenEmbedding(*embedding_config)
         self.representation = BiLSTMSelfAttention(

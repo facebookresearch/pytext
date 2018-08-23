@@ -3,24 +3,29 @@
 import torch
 import torch.nn as nn
 from typing import Tuple, List
-from pytext.utils import cuda_utils
+from pytext.config.component import Component, ComponentType
 from pytext.models.configs import gen_embedding_config
+from pytext.utils import cuda_utils
 
 
-class Model(nn.Module):
+class Model(nn.Module, Component):
     """
     Generic model class that depends on input
     embedding, representation and projection to produce predicitons.
     """
+    __COMPONENT_TYPE__ = ComponentType.MODEL
 
     @classmethod
     def from_config(cls, model_config, feat_config, **metadata):
         return cls(
-            model_config, gen_embedding_config(feat_config, **metadata), **metadata
+            model_config,
+            gen_embedding_config(feat_config, **metadata),
+            **metadata,
         )
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, model_config) -> None:
+        nn.Module.__init__(self)
+        Component.__init__(self, model_config)
 
     def forward(
         self,

@@ -4,6 +4,7 @@ from typing import Any, Dict, Generator, List, Tuple
 
 import pandas as pd
 from pytext.common.constants import VocabMeta
+from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
@@ -46,8 +47,7 @@ class BatchIterator:
             )
 
 
-class DataHandler:
-
+class DataHandler(Component):
     """ Defines a pipeline to process data and generate tensors to be consumed by model,
         1 construct the DataHandler object
         2 call init_vocab to build necessary vocabs
@@ -68,6 +68,8 @@ class DataHandler:
             2 feat_name -> column_name
             3 feat_name -> function, take one row as input and output the feature
     """
+
+    __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
     # special df index field to record initial position of examples
     DF_INDEX = "__df_index"

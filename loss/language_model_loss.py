@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 
 import torch.nn.functional as F
-from pytext.common.registry import LOSS, component
-from pytext.config import ConfigBase
 
 from .loss import Loss
 
 
-class LanguageModelCrossEntropyLossConfig(ConfigBase):
-    pass
-
-
-# TODO @shicong unify loss
-@component(LOSS, config_cls=LanguageModelCrossEntropyLossConfig)
 class LanguageModelCrossEntropyLoss(Loss):
-    def __init__(self, confdig, pad_idx, **kwargs):
+    def __init__(self, config, pad_idx, **kwargs):
+        super().__init__(config)
         self._ignore_index = pad_idx
 
     def loss(

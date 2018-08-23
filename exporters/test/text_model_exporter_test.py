@@ -12,7 +12,7 @@ import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
 from pytext.common.constants import PredictorInputNames
-from pytext.common.registry import create_exporter, create_model
+from pytext.config.component import create_exporter, create_model
 from pytext.config import config_from_json
 from pytext.jobspec import DocClassifyJobSpec, JointTextJobSpec, WordTagJobSpec
 
@@ -20,7 +20,7 @@ from pytext.jobspec import DocClassifyJobSpec, JointTextJobSpec, WordTagJobSpec
 JOINT_CONFIG = """
 {
     "model": {
-      "JointBLSTMConfig": {
+      "JointBLSTM": {
         "lstm": {
           "lstm_dim": 30,
           "num_layers": 1
@@ -41,10 +41,10 @@ JOINT_CONFIG = """
     },
     "loss": {
       "doc_loss": {
-        "CrossEntropyLossConfig": {}
+        "CrossEntropyLoss": {}
       },
       "word_loss": {
-        "TaggerCrossEntropyLossConfig": {}
+        "TaggerCrossEntropyLoss": {}
       }
     },
     "exporter": {
@@ -57,7 +57,7 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-    "DocBLSTMConfig": {
+    "DocBLSTM": {
       "lstm": {},
       "dict_embed": {
         "embed_dim": 10
@@ -65,7 +65,7 @@ DOC_CONFIGS = [
     }
   },
   "loss": {
-    "CrossEntropyLossConfig": {}
+    "CrossEntropyLoss": {}
   },
   "labels": {
     "doc_label": {}
@@ -87,12 +87,12 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-    "docnnconfig": {
+    "DocNN": {
       "cnn": {}
     }
   },
   "loss": {
-    "CrossEntropyLossConfig": {}
+    "CrossEntropyLoss": {}
   },
   "labels": {
     "doc_label": {}
@@ -116,7 +116,7 @@ DOC_CONFIGS = [
 WORD_CONFIGS = [
     """{
     "model": {
-      "WordBLSTMConfig": {
+      "WordBLSTM": {
         "lstm": {
           "lstm_dim": 30,
           "num_layers": 2
@@ -124,7 +124,7 @@ WORD_CONFIGS = [
       }
     },
     "loss": {
-      "TaggerCrossEntropyLossConfig": {}
+      "TaggerCrossEntropyLoss": {}
     },
     "labels": {
       "word_label": {}
@@ -140,7 +140,7 @@ WORD_CONFIGS = [
 """,
     """{
     "model": {
-      "WordBLSTMConfig": {
+      "WordBLSTM": {
         "lstm": {
           "lstm_dim": 30,
           "num_layers": 2
@@ -149,7 +149,7 @@ WORD_CONFIGS = [
       }
     },
     "loss": {
-      "TaggerCrossEntropyLossConfig": {}
+      "TaggerCrossEntropyLoss": {}
     },
     "labels": {
       "word_label": {}

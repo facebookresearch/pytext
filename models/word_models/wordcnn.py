@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.config.module_config import CNNParams, MLPParams
 from pytext.models.configs import (
@@ -17,25 +16,22 @@ from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
 
 
-class WordCNNConfig(ConfigBase):
-    dropout: float = 0.4
-    cnn: CNNParams = CNNParams()
-    mlp: MLPParams = MLPParams()
-    fwd_bwd_context_len: int = 5
-    surrounding_context_len: int = 2
-    use_crf: bool = False
-
-
-@component(MODEL, config_cls=WordCNNConfig)
 class WordCNN(Model):
     """
     Word tagging model that uses CNN to represent the document.
     Specifically it uses BidirectionalSeqCNN for sentence representation.
     """
+    class Config(ConfigBase):
+        dropout: float = 0.4
+        cnn = CNNParams()
+        mlp: MLPParams = MLPParams()
+        fwd_bwd_context_len: int = 5
+        surrounding_context_len: int = 2
+        use_crf: bool = False
 
     def __init__(
         self,
-        model_config: WordCNNConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
@@ -43,7 +39,7 @@ class WordCNN(Model):
         pad_idx: int,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
 
         in_channels = 1
         out_channels = model_config.cnn.kernel_num

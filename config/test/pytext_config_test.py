@@ -2,7 +2,7 @@
 
 import json
 import unittest
-from typing import Union
+from typing import List, Union
 
 from pytext.config.pytext_config import ConfigBase
 from pytext.config.serialize import (
@@ -10,7 +10,10 @@ from pytext.config.serialize import (
     MissingValueError,
     UnionTypeError,
     config_from_json,
+    config_to_json,
 )
+
+from pytext.config.component import Component, ComponentType
 
 
 class Model1(ConfigBase):
@@ -27,7 +30,7 @@ class Model2Sub1(Model2, ConfigBase):
 
 class Model2Sub1Sub1(Model2Sub1, ConfigBase):
     m2s1s1: str
-    bar: int = 3  # noqa
+    bar: int = 3
 
 
 class Model3(ConfigBase):
@@ -45,6 +48,17 @@ class Task2(ConfigBase):
 class PyTextConfig(ConfigBase):
     task: Union[Task1, Task2]
     output: str
+
+
+class RegisteredModel(Component):
+    __COMPONENT_TYPE__ = ComponentType.MODEL
+    Config = Model2Sub1Sub1
+
+
+class JointModel(Component):
+    __COMPONENT_TYPE__ = ComponentType.MODEL
+    class Config(Model1, ConfigBase):
+        models: List[RegisteredModel.Config]
 
 
 class ConfigBaseTest(unittest.TestCase):
@@ -84,9 +98,9 @@ class PytextConfigTest(unittest.TestCase):
             """
             {
                 "task": {
-                    "task1": {
+                    "Task1": {
                         "model": {
-                            "model2": {
+                            "Model2": {
                                 "bar": "test"
                             }
                         }
@@ -100,6 +114,48 @@ class PytextConfigTest(unittest.TestCase):
         self.assertTrue(isinstance(config.task, Task1))
         self.assertTrue(isinstance(config.task.model, Model2))
         self.assertEqual(config.task.model.bar, "test")
+
+    def test_component(self):
+        config_json = json.loads("""{
+            "bar": 13,
+            "m2s1s1": "sub_foo"
+        }""")
+        config = config_from_json(RegisteredModel.Config, config_json)
+        self.assertEqual(config.bar, 13)
+        self.assertEqual(config.m2s1s1, "sub_foo")
+        self.assertEqual(config.m2s1, 5)
+
+    def test_component_subconfig_serialize(self):
+        config_json = json.loads("""{
+            "foo": 5,
+            "models": [{
+                "bar": 12,
+                "m2s1s1": "thing"
+            }, {
+                "m2s1s1": "thing2"
+            }]
+        }""")
+        config = config_from_json(JointModel.Config, config_json)
+        serialized = config_to_json(JointModel.Config, config)
+        again = config_from_json(JointModel.Config, serialized)
+        self.assertEqual(again.foo, 5)
+        self.assertEqual(again.models[0].m2s1s1, "thing")
+        self.assertEqual(again.models[1].bar, 3)
+
+    def test_component_subconfig_deserialize(self):
+        config_json = json.loads("""{
+            "foo": 5,
+            "models": [{
+                "bar": 12,
+                "m2s1s1": "thing"
+            }, {
+                "m2s1s1": "thing2"
+            }]
+        }""")
+        config = config_from_json(JointModel.Config, config_json)
+        self.assertEqual(config.foo, 5)
+        self.assertEqual(len(config.models), 2)
+        self.assertEqual(config.models[1].m2s1s1, "thing2")
 
     def test_missing_value(self):
         config_json = json.loads(

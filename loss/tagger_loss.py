@@ -3,21 +3,10 @@
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import Padding
-from pytext.common.registry import LOSS, component
-from pytext.config import ConfigBase
 
 from .loss import Loss
 
 
-class TaggerCrossEntropyLossConfig(ConfigBase):
-    pass
-
-
-class CRFLossConfig(ConfigBase):
-    pass
-
-
-@component(LOSS, config_cls=TaggerCrossEntropyLossConfig)
 class TaggerCrossEntropyLoss(Loss):
     def loss(self, m_out, targets, model=None, context=None, reduce: bool = True):
         [m_out], [targets] = m_out, targets
@@ -30,7 +19,6 @@ class TaggerCrossEntropyLoss(Loss):
         )
 
 
-@component(LOSS, config_cls=CRFLossConfig)
 class CRFLoss(Loss):
     def loss(self, m_out, targets, model=None, context=None, reduce: bool = True):
         assert model is not None, "Model cannot be None for CRFLoss"

@@ -6,7 +6,6 @@ import pandas as pd
 from eit.llama.common.thriftutils import dict_to_thrift
 from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
 from pytext.data.shared_featurizer import SharedFeaturizer
 from pytext.fields import DictFeatureField, Field, TextFeatureField
@@ -40,20 +39,18 @@ class ActionField(Field):
 TREE_COLUMN = "tree"
 
 
-class CompositionalDataHandlerConfig(ConfigBase):
-    columns_to_read: List[str] = [
-        DFColumn.DOC_LABEL,
-        DFColumn.WORD_LABEL,
-        DFColumn.UTTERANCE,
-        DFColumn.DICT_FEAT,
-    ]
-    preprocess_workers: int = 32
-    pretrained_embeds_file: str = ""
-    shuffle: bool = True
-
-
-@component(DATA_HANDLER, config_cls=CompositionalDataHandlerConfig)
 class CompositionalDataHandler(DataHandler):
+    class Config(ConfigBase):
+        columns_to_read: List[str] = [
+            DFColumn.DOC_LABEL,
+            DFColumn.WORD_LABEL,
+            DFColumn.UTTERANCE,
+            DFColumn.DICT_FEAT,
+        ]
+        preprocess_workers: int = 32
+        pretrained_embeds_file: str = ""
+        shuffle: bool = True
+
     def __init__(self, num_workers=1, **kwargs) -> None:
         super().__init__(
             features=[

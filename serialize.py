@@ -5,7 +5,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from pytext.common.registry import create_data_handler, create_model
+from pytext.config.component import create_data_handler, create_model
 from pytext.config import PyTextConfig, config_from_json, config_to_json
 from pytext.data.data_handler import DataHandler
 
@@ -35,7 +35,6 @@ def load(load_path: str) -> Tuple[PyTextConfig, nn.Module, DataHandler]:
         jobspec.data_handler, jobspec.features, jobspec.labels
     )
     data_handler.load_metadata(metadata)
-    print(predictor_state["config_json"])
     model = create_model(jobspec.model, jobspec.features, **data_handler.metadata)
     model.load_state_dict(model_state_dict)
     return config, model, data_handler

@@ -1,31 +1,23 @@
 #!/usr/bin/env python3
 from typing import Union
 
-from pytext.common.registry import TRAINER, component, create_trainer
+from pytext.config.component import create_trainer
 from pytext.config.pytext_config import ConfigBase
 
-from .classifier_trainer import ClassifierTrainerConfig
-from .joint_trainer import JointTrainerConfig
-from .tagger_trainer import TaggerTrainerConfig
-from .trainer import Trainer, TrainerConfig
+from .classifier_trainer import ClassifierTrainer
+from .joint_trainer import JointTrainer
+from .tagger_trainer import TaggerTrainer
+from .trainer import Trainer
 
 
-# TODO not the most generic way, need to revisit this part, maybe add TypeVar support
-# in ConfigBase
-class EnsembleTrainerConfig(ConfigBase):
-    real_trainer: Union[
-        ClassifierTrainerConfig, TaggerTrainerConfig, JointTrainerConfig
-    ]
-
-
-@component(TRAINER, config_cls=EnsembleTrainerConfig)
 class EnsembleTrainer(Trainer):
-    @classmethod
-    def from_config(cls, config: EnsembleTrainerConfig, **metadata):
-        return cls(create_trainer(config.real_trainer, **metadata))
+    class Config(ConfigBase):
+        real_trainer: Union[
+            ClassifierTrainer.Config, TaggerTrainer.Config, JointTrainer.Config
+        ]
 
-    def __init__(self, trainer):
-        self.real_trainer = trainer
+    def __init__(self, config, **kwargs):
+        self.real_trainer = create_trainer(config.real_trainer, **kwargs)
 
     def test(self, model, test_iter, metadata):
         return self.real_trainer.test(model, test_iter, metadata)

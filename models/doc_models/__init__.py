@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-from .docblstm import DocBLSTM, DocBLSTMConfig
-from .docnn import DocNN, DocNNConfig
+from .docblstm import DocBLSTM
+from .docnn import DocNN
 
-
-__all__ = ["DocBLSTMConfig", "DocBLSTM", "DocNNConfig", "DocNN"]
+__all__ = ["DocBLSTM", "DocNN"]

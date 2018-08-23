@@ -2,21 +2,18 @@
 from typing import List, Union
 
 import torch
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.models.crf import CRF
-from pytext.models.joint_models import JointBLSTMConfig, JointCNNConfig
+from pytext.models.joint_models import JointBLSTM, JointCNN
 
-from .ensemble import Ensemble, EnsembleModelConfig
-
-
-class BaggingJointEnsembleConfig(EnsembleModelConfig, ConfigBase):
-    models: List[Union[JointBLSTMConfig, JointCNNConfig]]
-    use_crf: bool = False
+from .ensemble import Ensemble
 
 
-@component(MODEL, config_cls=BaggingJointEnsembleConfig)
 class BaggingJointEnsemble(Ensemble):
+    class Config(Ensemble.Config, ConfigBase):
+        models: List[Union[JointBLSTM.Config, JointCNN.Config]]
+        use_crf: bool = False
+
     def __init__(self, config, models, word_class_num, **metadata):
         super().__init__(config, models)
         if config.use_crf:

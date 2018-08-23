@@ -4,16 +4,13 @@ import unittest
 
 from pytext.common.constants import DFColumn
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.joint_data_handler import (
-    JointModelDataHandler,
-    JointTextModelDataHandlerConfig,
-)
+from pytext.data.joint_data_handler import JointModelDataHandler
 
 
 class JointDataHandlerTest(unittest.TestCase):
     def test_create_from_config(self):
         data_handler = JointModelDataHandler.from_config(
-            JointTextModelDataHandlerConfig(), FeatureConfig(), LabelConfig()
+            JointModelDataHandler.Config(), FeatureConfig(), LabelConfig()
         )
         expected_columns = [
             DFColumn.DOC_LABEL,
@@ -30,7 +27,7 @@ class JointDataHandlerTest(unittest.TestCase):
     def test_read_from_file(self):
         file_name = "pytext/tests/data/music_train_tiny.tsv"
         data_handler = JointModelDataHandler.from_config(
-            JointTextModelDataHandlerConfig(), FeatureConfig(), LabelConfig()
+            JointModelDataHandler.Config(), FeatureConfig(), LabelConfig()
         )
 
         df = data_handler.read_from_file(file_name, data_handler.raw_columns)
@@ -46,7 +43,7 @@ class JointDataHandlerTest(unittest.TestCase):
     def test_tokenization(self):
         file_name = "pytext/tests/data/music_train_tiny.tsv"
         data_handler = JointModelDataHandler.from_config(
-            JointTextModelDataHandlerConfig(), FeatureConfig(), LabelConfig()
+            JointModelDataHandler.Config(), FeatureConfig(), LabelConfig()
         )
 
         df = data_handler.read_from_file(file_name, data_handler.raw_columns)

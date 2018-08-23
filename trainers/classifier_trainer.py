@@ -6,19 +6,13 @@ import sys
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
 from pytext.utils import test_utils
 from sklearn.metrics import classification_report, f1_score
 
-from .trainer import Trainer, TrainerConfig
+from .trainer import Trainer
 
 
-class ClassifierTrainerConfig(ConfigBase, TrainerConfig):
-    pass
-
-
-@component(TRAINER, config_cls=ClassifierTrainerConfig)
 class ClassifierTrainer(Trainer):
     def report(self, stage, loss, preds, seq_lens, target, target_names):
         [target], [preds] = target, preds

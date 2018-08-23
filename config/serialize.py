@@ -23,18 +23,24 @@ class IncorrectTypeError(Exception):
     pass
 
 
+def _canonical_typename(cls):
+    if cls.__name__.endswith('.Config'):
+        return cls.__name__[:-len('.Config')]
+    return cls.__name__
+
+
 def _union_from_json(union_cls, json_obj):
     if type(json_obj) is not dict:
-        raise IncorrectTypeError(f"incorrect Union value {json_obj} for {union_cls}")
+        raise IncorrectTypeError(
+            f"incorrect Union value {json_obj} for {union_cls}")
     type_name = list(json_obj)[0]
 
     for subclass in union_cls.__args__:
-        if type(None) != subclass and type_name.lower() == subclass.__name__.lower():
-            if hasattr(subclass, "_fields"):
-                return config_from_json(subclass, json_obj[type_name])
-            else:
-                return json_obj[type_name]
-    raise UnionTypeError(f"no suitable type found for {type_name} in union {union_cls}")
+        if type(None) != subclass and (
+                type_name.lower() == _canonical_typename(subclass).lower()):
+            return _value_from_json(subclass, json_obj[type_name])
+    raise UnionTypeError(
+        f"no suitable type found for {type_name} in union {union_cls}")
 
 
 def _is_optional(cls):
@@ -51,27 +57,30 @@ def _enum_from_json(enum_cls, json_obj):
 def _value_from_json(cls, value):
     if value is None:
         return value
+    # Unions must be first because Union explicitly doesn't
+    # support __subclasscheck__.
     # optional with more than 2 classes is treated as Union
-    if _is_optional(cls) and len(cls.__args__) == 2:
-        sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
-        value = config_from_json(sub_cls, value)
+    elif _is_optional(cls) and len(cls.__args__) == 2:
+        sub_cls = (
+            cls.__args__[0] if type(None) != cls.__args__[0]
+            else cls.__args__[1]
+        )
+        return _value_from_json(sub_cls, value)
     # nested config
     elif hasattr(cls, "_fields"):
-        value = config_from_json(cls, value)
+        return config_from_json(cls, value)
     elif type(cls) is type(Union):
-        value = _union_from_json(cls, value)
+        return _union_from_json(cls, value)
     elif issubclass(cls, Enum):
-        value = _enum_from_json(cls, value)
+        return _enum_from_json(cls, value)
     elif issubclass(cls, List):
         sub_cls = cls.__args__[0]
-        value = [_value_from_json(sub_cls, v) for v in value]
+        return [_value_from_json(sub_cls, v) for v in value]
     elif issubclass(cls, Dict):
         # TODO T32764840 add type check for dict type
-        pass
-    # build in types
-    else:
-        value = cls(value)
-    return value
+        return value
+    # built in types
+    return cls(value)
 
 
 def config_from_json(cls, json_obj):
@@ -109,22 +118,22 @@ def _value_to_json(cls, value):
     if value is None:
         return value
     # optional with more than 2 classes is treated as Union
-    if _is_optional(cls) and len(cls.__args__) == 2:
+    elif _is_optional(cls) and len(cls.__args__) == 2:
         sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
-        value = config_to_json(sub_cls, value)
+        return _value_to_json(sub_cls, value)
     # nested config
     elif hasattr(cls, "_fields"):
-        value = config_to_json(cls, value)
+        return config_to_json(cls, value)
     elif type(cls) is type(Union):
         union_cls = type(value)
         if hasattr(union_cls, "_fields"):
             value = config_to_json(union_cls, value)
-        value = {union_cls.__name__: value}
+        return {_canonical_typename(union_cls): value}
     elif issubclass(cls, Enum):
-        value = value.value
+        return value.value
     elif issubclass(cls, List):
         sub_cls = cls.__args__[0]
-        value = [_value_to_json(sub_cls, v) for v in value]
+        return [_value_to_json(sub_cls, v) for v in value]
     return value
 
 

@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.config.module_config import CNNParams
 from pytext.models.configs import (
@@ -19,18 +18,6 @@ from pytext.models.projections.joint_model_projection import (
 from pytext.models.representations.jointcnn_rep import JointCNNRepresentation
 
 
-class JointCNNConfig(ConfigBase):
-    default_doc_loss_weight: float = 0.2
-    default_word_loss_weight: float = 0.5
-    dropout: float = 0.4
-    cnn: CNNParams = CNNParams()
-    fwd_bwd_context_len: int = 5
-    surrounding_context_len: int = 2
-    use_crf: bool = False
-    use_doc_probs_in_word: bool = False
-
-
-@component(MODEL, config_cls=JointCNNConfig)
 class JointCNN(Model):
     """
     Joint intent detection and slot filling model that uses CNNs
@@ -38,10 +25,19 @@ class JointCNN(Model):
     the document.
     Token embedding parameters are shared between the representations.
     """
+    class Config(ConfigBase):
+        default_doc_loss_weight: float = 0.2
+        default_word_loss_weight: float = 0.5
+        dropout: float = 0.4
+        cnn: CNNParams = CNNParams()
+        fwd_bwd_context_len: int = 5
+        surrounding_context_len: int = 2
+        use_crf: bool = False
+        use_doc_probs_in_word: bool = False
 
     def __init__(
         self,
-        model_config: JointCNNConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
@@ -50,7 +46,7 @@ class JointCNN(Model):
         pad_idx: int,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
 
         self.embedding = TokenEmbedding(*embedding_config)
         self.representation = JointCNNRepresentation(

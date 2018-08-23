@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-from pytext.common.registry import MODEL, component
 from pytext.config.pytext_config import ConfigBase
 from pytext.config.module_config import CNNParams, MLPParams
 from pytext.models.configs import (
@@ -16,22 +15,20 @@ from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.docnn import DocNNRepresentation
 
 
-class DocNNConfig(ConfigBase):
-    dropout: float = 0.4
-    cnn: CNNParams = CNNParams()
-    mlp: MLPParams = MLPParams()
-
-
-@component(MODEL, config_cls=DocNNConfig)
 class DocNN(Model):
     """
     An n-ary document classification model that uses CNN to
     represent the document.
     """
 
+    class Config(ConfigBase):
+        dropout: float = 0.4
+        cnn: CNNParams = CNNParams()
+        mlp: MLPParams = MLPParams()
+
     def __init__(
         self,
-        model_config: DocNNConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
@@ -39,7 +36,7 @@ class DocNN(Model):
         pad_idx: int,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
 
         self.embedding = TokenEmbedding(*embedding_config)
         self.representation = DocNNRepresentation(

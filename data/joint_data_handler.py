@@ -4,7 +4,6 @@ from typing import Any, Dict, List
 
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.shared_featurizer import SharedFeaturizer
@@ -27,21 +26,18 @@ from .data_handler import DataHandler
 SEQ_LENS = "seq_lens"
 
 
-class JointTextModelDataHandlerConfig(ConfigBase):
-    columns_to_read: List[str] = [
-        DFColumn.DOC_LABEL,
-        DFColumn.WORD_LABEL,
-        DFColumn.UTTERANCE,
-        DFColumn.DICT_FEAT,
-        DFColumn.DOC_WEIGHT,
-        DFColumn.WORD_WEIGHT,
-    ]
-    preprocess_workers: int = 32
-    pretrained_embeds_file: str = ""
-
-
-@component(DATA_HANDLER, config_cls=JointTextModelDataHandlerConfig)
 class JointModelDataHandler(DataHandler):
+    class Config(ConfigBase):
+        columns_to_read: List[str] = [
+            DFColumn.DOC_LABEL,
+            DFColumn.WORD_LABEL,
+            DFColumn.UTTERANCE,
+            DFColumn.DICT_FEAT,
+            DFColumn.DOC_WEIGHT,
+            DFColumn.WORD_WEIGHT,
+        ]
+        preprocess_workers: int = 32
+        pretrained_embeds_file: str = ""
 
     FULL_FEATURES = [
         DatasetFieldName.TEXT_FIELD,
@@ -53,7 +49,7 @@ class JointModelDataHandler(DataHandler):
     @classmethod
     def from_config(
         cls,
-        config: JointTextModelDataHandlerConfig,
+        config: Config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
         **kwargs

@@ -4,30 +4,32 @@ import copy
 from typing import List
 
 import torch
+from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.loss.loss import Loss
-from pytext.optimizers import optimizer_step, optimizer_zero_grad
+from pytext.optimizer import optimizer_step, optimizer_zero_grad
 from pytext.utils import cuda_utils
 from pytext.utils.data_utils import Slot
 
 
-class TrainerConfig(ConfigBase):
-    # Manual random seed
-    random_seed: int = 0
-    # Training epochs
-    epochs: int = 10
-    # Stop after how many epochs when the eval metric is not improving
-    early_stop_after: int = 0
-    # Print the training metrics every log_interval epochs
-    log_interval: int = 1
-    # Evaluate the model every eval_interval epochs
-    eval_interval: int = 1
+class Trainer(Component):
+    __COMPONENT_TYPE__ = ComponentType.TRAINER
 
+    class Config(ConfigBase):
+        # Manual random seed
+        random_seed: int = 0
+        # Training epochs
+        epochs: int = 10
+        # Stop after how many epochs when the eval metric is not improving
+        early_stop_after: int = 0
+        # Print the training metrics every log_interval epochs
+        log_interval: int = 1
+        # Evaluate the model every eval_interval epochs
+        eval_interval: int = 1
 
-class Trainer:
-    def __init__(self, config: TrainerConfig, **metadata) -> None:
-        self.params = config
+    def __init__(self, config=None, **metadata):
+        super().__init__(config)
 
     def report(self, stage, loss, preds, seq_lens, targets, target_names):
         # Print training/eval metrics report
@@ -63,7 +65,7 @@ class Trainer:
             hasattr(loss_fn, "is_crf") and loss_fn.is_crf()
         ), "CRFLoss is needed for CRF models"
 
-        for _epoch in range(1, self.params.epochs + 1):
+        for _epoch in range(1, self.config.epochs + 1):
             print("Starting epoch# {}".format(_epoch))
             for m_input, targets, context in train_iter:
                 optimizer_zero_grad(optimizers)
@@ -91,7 +93,7 @@ class Trainer:
                 m_out = [self._flatten_2d(logits) for logits in m_out]
                 targets = [target.view(-1) for target in targets]
 
-            if _epoch % self.params.log_interval == 0:
+            if _epoch % self.config.log_interval == 0:
                 preds = [
                     torch.max(logit, 1)[1].view(targets[i].size()).data
                     for i, logit in enumerate(m_out)
@@ -110,7 +112,7 @@ class Trainer:
                 train_loss_sum = 0.0
                 n_batches = 0
 
-            if _epoch % self.params.eval_interval == 0:
+            if _epoch % self.config.eval_interval == 0:
                 eval_metric, eval_loss = self.evaluate(
                     eval_iter, model, loss_fn, class_names
                 )
@@ -121,12 +123,12 @@ class Trainer:
                     print("Found a better model! Saving it...")
                     best_model = copy.deepcopy(model)
 
-            if self.params.early_stop_after > 0 and (
-                _epoch - last_best_epoch == self.params.early_stop_after
+            if self.config.early_stop_after > 0 and (
+                _epoch - last_best_epoch == self.config.early_stop_after
             ):
                 print(
                     "Eval metric hasn't changed for {} epochs, stopping now...".format(
-                        self.params.early_stop_after
+                        self.config.early_stop_after
                     )
                 )
                 break

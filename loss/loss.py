@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-from abc import ABC, abstractmethod
+from pytext.config.component import Component, ComponentType
 
 
-class Loss(ABC):
+class Loss(Component):
     """Base class for loss functions"""
-    def __init__(self, config, **kwargs):
-        pass
+    __COMPONENT_TYPE__ = ComponentType.LOSS
 
-    @abstractmethod
+    def __init__(self, config=None, **metadata):
+        super().__init__(config)
+
     def loss(self, m_out, targets, model=None, context=None, reduce: bool=True):
-        pass
+        raise NotImplementedError

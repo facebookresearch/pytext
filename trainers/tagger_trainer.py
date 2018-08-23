@@ -8,17 +8,11 @@ from pytext.data.joint_data_handler import SEQ_LENS
 from sklearn.metrics import classification_report, f1_score
 from pytext.utils import test_utils
 from pytext.utils.data_utils import Slot
-from pytext.common.registry import TRAINER, component
 from pytext.config.pytext_config import ConfigBase
 import json
-from .trainer import Trainer, TrainerConfig
+from .trainer import Trainer
 
 
-class TaggerTrainerConfig(ConfigBase, TrainerConfig):
-    pass
-
-
-@component(TRAINER, config_cls=TaggerTrainerConfig)
 class TaggerTrainer(Trainer):
     def report(self, stage, loss, preds, seq_lens, target, target_names):
         [target], [preds] = target, preds

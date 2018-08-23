@@ -4,30 +4,26 @@ from typing import Union
 
 import torch
 from pytext.common.constants import DatasetFieldName
-from pytext.common.registry import LOSS, component, create_loss
+from pytext.config.component import create_loss
 from pytext.config import ConfigBase
 
-from .classifier_loss import BinaryCrossEntropyLossConfig, CrossEntropyLossConfig
+from .classifier_loss import BinaryCrossEntropyLoss, CrossEntropyLoss
 from .loss import Loss
-from .tagger_loss import CRFLoss, CRFLossConfig, TaggerCrossEntropyLossConfig
+from .tagger_loss import CRFLoss, TaggerCrossEntropyLoss
 
 
-class JointLossConfig(ConfigBase):
-    doc_loss: Union[CrossEntropyLossConfig, BinaryCrossEntropyLossConfig]
-    word_loss: Union[CRFLossConfig, TaggerCrossEntropyLossConfig]
-
-
-@component(LOSS, config_cls=JointLossConfig)
 class JointLoss(Loss):
     """Base class for joint classification and word tagging loss functions"""
 
-    @classmethod
-    def from_config(cls, config: JointLossConfig, **kwargs):
-        return cls(create_loss(config.doc_loss), create_loss(config.word_loss))
+    class Config(ConfigBase):
+        # TODO: have these be types instead of config types?
+        doc_loss: Union[CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config]
+        word_loss: Union[CRFLoss.Config, TaggerCrossEntropyLoss.Config]
 
-    def __init__(self, doc_loss: Loss, word_loss: Loss) -> None:
-        self._d_loss = doc_loss
-        self._w_loss = word_loss
+    def __init__(self, config, **kwargs) -> None:
+        super().__init__(config)
+        self._d_loss = create_loss(config.doc_loss)
+        self._w_loss = create_loss(config.word_loss)
 
     def loss(self, m_out, targets, model, context, reduce: bool = True):
         d_logit, w_logit = m_out

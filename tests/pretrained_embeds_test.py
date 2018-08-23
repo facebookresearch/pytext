@@ -11,10 +11,7 @@ from pytext.config.field_config import (
     WordFeatConfig,
 )
 from pytext.data.data_handler import COMMON_META
-from pytext.data.joint_data_handler import (
-    JointModelDataHandler,
-    JointTextModelDataHandlerConfig,
-)
+from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.utils.embeddings_utils import PretrainedEmbedding
 
 
@@ -143,7 +140,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
 
     def test_intializing_embeds_from_config(self):
         data_handler = JointModelDataHandler.from_config(
-            JointTextModelDataHandlerConfig(
+            JointModelDataHandler.Config(
                 pretrained_embeds_file=PRETRAINED_EMBED_PATH
             ),
             FeatureConfig(
@@ -163,7 +160,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
         )
 
         data_handler = JointModelDataHandler.from_config(
-            JointTextModelDataHandlerConfig(
+            JointModelDataHandler.Config(
                 pretrained_embeds_file=PRETRAINED_EMBED_PATH
             ),
             FeatureConfig(

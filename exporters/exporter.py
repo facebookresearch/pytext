@@ -3,7 +3,7 @@
 from typing import Dict, List, Tuple
 
 import torch
-from pytext.common.registry import EXPORTER, component
+from pytext.config.component import Component, ComponentType
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.utils import onnx_utils
@@ -11,8 +11,10 @@ from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
 
 
-class ModelExporter:
+class ModelExporter(Component):
     """Export the PyTorch model to Caffe2 model through ONNX (optional)"""
+
+    __COMPONENT_TYPE__ = ComponentType.EXPORTER
 
     def __init__(self, input_names, output_names, dummy_model_input):
         """Define the names and shapes of input/output
@@ -96,11 +98,6 @@ class ModelExporter:
         return final_out_names
 
 
-class TextModelExporterConfig(ConfigBase):
-    pass
-
-
-@component(EXPORTER, config_cls=TextModelExporterConfig)
 class TextModelExporter(ModelExporter):
     """Exporter for doc classifier and word tagger models
         args:
@@ -142,7 +139,7 @@ class TextModelExporter(ModelExporter):
     @classmethod
     def from_config(
         cls,
-        config: TextModelExporterConfig,
+        unused_config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
         class_names: List[List[str]],

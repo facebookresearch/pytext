@@ -3,7 +3,6 @@
 from typing import Tuple
 
 from pytext.common.constants import PredictorInputNames
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.config.module_config import LSTMParams, MLPParams
 from pytext.data.data_handler import COMMON_META
@@ -18,28 +17,25 @@ from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 
 
-class LMLSTMConfig(ConfigBase):
-    dropout: float = 0.4
-    lstm: LSTMParams = LSTMParams()
-    mlp: MLPParams = MLPParams()
-    tied_weights: bool = False
-
-
-@component(MODEL, config_cls=LMLSTMConfig)
 class LMLSTM(Model):
     """
     A word-level language model that uses LSTM to represent the document
     """
+    class Config(ConfigBase):
+        dropout: float = 0.4
+        lstm: LSTMParams = LSTMParams()
+        mlp: MLPParams = MLPParams()
+        tied_weights: bool = False
 
     def __init__(
         self,
-        model_config: LMLSTMConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
         num_classes = len(
             kwargs[COMMON_META.FEATURE_VOCABS].get(PredictorInputNames.TOKENS_IDS).itos
         )

@@ -1,32 +1,22 @@
 #!/usr/bin/env python3
 
 import torch.nn.functional as F
-from pytext.common.registry import LOSS, component
 from pytext.config import ConfigBase
 from pytext.utils.cuda_utils import FloatTensor
 
 from .loss import Loss
 
 
-class CrossEntropyLossConfig(ConfigBase):
-    pass
-
-
-class BinaryCrossEntropyLossConfig(ConfigBase):
-    reweight_negative: bool = True
-
-
-@component(LOSS, config_cls=CrossEntropyLossConfig)
 class CrossEntropyLoss(Loss):
     def loss(self, m_out, targets, model=None, context=None, reduce: bool = True):
         [m_out], [targets] = m_out, targets
         return F.cross_entropy(m_out, targets, reduce=reduce)
 
 
-@component(LOSS, config_cls=BinaryCrossEntropyLossConfig)
 class BinaryCrossEntropyLoss(Loss):
-    def __init__(self, config: BinaryCrossEntropyLossConfig, **kwargs) -> None:
-        self._reweight_negative = config.reweight_negative
+
+    class Config(ConfigBase):
+        reweight_negative: bool = True
 
     def loss(self, m_out, targets, model=None, context=None, reduce: bool = True):
         """
@@ -48,7 +38,7 @@ class BinaryCrossEntropyLoss(Loss):
 
         loss = F.binary_cross_entropy_with_logits(m_out, one_hot_targets, reduce=False)
 
-        if self._reweight_negative:
+        if self.config.reweight_negative:
             # This makes sure we have same weights for all negative classes and
             # single positive class. Weight is 1 for the correct class and
             # 1 / (n - 1) for other ones.

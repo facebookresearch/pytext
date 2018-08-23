@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#TODO: convert these to ConfigBase types
+
 
 class WordEmbeddingConfig:
     __slots__ = [

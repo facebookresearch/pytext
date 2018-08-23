@@ -8,20 +8,13 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.common.registry import TRAINER, component
-from pytext.config.pytext_config import ConfigBase
 from pytext.loss.loss import Loss
-from pytext.optimizers import optimizer_step, optimizer_zero_grad
+from pytext.optimizer import optimizer_step, optimizer_zero_grad
 from pytext.utils import cuda_utils
 
-from .trainer import Trainer, TrainerConfig
+from .trainer import Trainer
 
 
-class LMTrainerConfig(ConfigBase, TrainerConfig):
-    pass
-
-
-@component(TRAINER, config_cls=LMTrainerConfig)
 class LanguageModelTrainer(Trainer):
     def calculate_perplexity(self, loss):
         return math.exp(loss)
@@ -53,7 +46,7 @@ class LanguageModelTrainer(Trainer):
         train_loss_sum = 0.0
         n_words = 0
 
-        for _epoch in range(1, self.params.epochs + 1):
+        for _epoch in range(1, self.config.epochs + 1):
             print("Starting epoch# {}".format(_epoch))
             for m_input, targets, context in train_iter:
                 optimizer_zero_grad(optimizers)
@@ -79,7 +72,7 @@ class LanguageModelTrainer(Trainer):
                 None,
             )
 
-            if _epoch % self.params.log_interval == 0:
+            if _epoch % self.config.log_interval == 0:
                 # Report Train Loss per batch
                 train_loss = train_loss_sum / float(n_words)
                 train_perplexity = self.report(
@@ -89,7 +82,7 @@ class LanguageModelTrainer(Trainer):
                 train_loss_sum = 0.0
                 n_words = 0
 
-            if _epoch % self.params.eval_interval == 0:
+            if _epoch % self.config.eval_interval == 0:
                 eval_perplexity, eval_loss = self.evaluate(eval_iter, model, loss_fn)
 
                 # Lower perplexity implies a better model
@@ -99,12 +92,12 @@ class LanguageModelTrainer(Trainer):
                     print("Found a better model! Saving it...")
                     best_model = copy.deepcopy(model)
 
-            if self.params.early_stop_after > 0 and (
-                _epoch - last_best_epoch == self.params.early_stop_after
+            if self.config.early_stop_after > 0 and (
+                _epoch - last_best_epoch == self.config.early_stop_after
             ):
                 print(
                     "Eval metric hasn't changed for {} epochs, stopping now...".format(
-                        self.params.early_stop_after
+                        self.config.early_stop_after
                     )
                 )
                 break

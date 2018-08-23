@@ -5,7 +5,6 @@ from typing import Any, Dict, List
 import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
-from pytext.common.registry import DATA_HANDLER, component
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
@@ -19,14 +18,12 @@ from .data_handler import COMMON_META, DataHandler
 FEATURE_ITOS_MAP = "feature_itos_map"
 
 
-class LanguageModelDataHandlerConfig(ConfigBase):
-    columns_to_read: List[str] = [DFColumn.UTTERANCE]
-    preprocess_workers: int = 32
-    pretrained_embeds_file: str = ""
-
-
-@component(DATA_HANDLER, config_cls=LanguageModelDataHandlerConfig)
 class LanguageModelDataHandler(DataHandler):
+    class Config(ConfigBase):
+        columns_to_read: List[str] = [DFColumn.UTTERANCE]
+        preprocess_workers: int = 32
+        pretrained_embeds_file: str = ""
+
     def __init__(
         self, featurizer: SharedFeaturizer, num_workers: int, *args, **kwargs
     ) -> None:
@@ -44,7 +41,7 @@ class LanguageModelDataHandler(DataHandler):
     @classmethod
     def from_config(
         cls,
-        config: LanguageModelDataHandlerConfig,
+        config: Config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
         **kwargs

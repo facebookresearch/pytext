@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-from pytext.common.registry import MODEL, component
 from pytext.config import ConfigBase
 from pytext.config.module_config import LSTMParams, SlotAttentionType
 from pytext.models.configs import (
@@ -21,22 +20,20 @@ from pytext.models.representations.jointblstm_rep import (
 )
 
 
-class JointBLSTMConfig(ConfigBase):
-    default_doc_loss_weight: float = 0.2
-    default_word_loss_weight: float = 0.5
-    dropout: float = 0.4
-    self_attn_dim: int = 64
-    lstm: LSTMParams = LSTMParams()
-    slot_attention_type: SlotAttentionType = SlotAttentionType.NO_ATTENTION
-    use_crf: bool = False
-    use_doc_probs_in_word: bool = False
-
-
-@component(MODEL, config_cls=JointBLSTMConfig)
 class JointBLSTM(Model):
+    class Config(ConfigBase):
+        default_doc_loss_weight: float = 0.2
+        default_word_loss_weight: float = 0.5
+        dropout: float = 0.4
+        self_attn_dim: int = 64
+        lstm: LSTMParams = LSTMParams()
+        slot_attention_type: SlotAttentionType = SlotAttentionType.NO_ATTENTION
+        use_crf: bool = False
+        use_doc_probs_in_word: bool = False
+
     def __init__(
         self,
-        model_config: JointBLSTMConfig,
+        model_config: Config,
         embedding_config: Tuple[
             WordEmbeddingConfig, DictEmbeddingConfig, CharacterEmbeddingConfig
         ],
@@ -44,7 +41,7 @@ class JointBLSTM(Model):
         word_class_num: int,
         **kwargs,
     ) -> None:
-        super().__init__()
+        super().__init__(model_config)
 
         self.embedding = TokenEmbedding(*embedding_config)
         self.representation = JointBLSTMRepresentation(

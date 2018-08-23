@@ -3,7 +3,7 @@ from enum import Enum
 
 from pytext.config import ConfigBase
 from pytext.config.module_config import LSTMParams
-from pytext.trainers.trainer import TrainerConfig
+from pytext.trainers.trainer import Trainer
 
 
 class CompositionalType(Enum):
@@ -45,6 +45,6 @@ class Seq2SeqConfig(ConfigBase):
 
 
 # TODO move it to generic place when refactoring rnng
-class CompositionalTrainerConfig(TrainerConfig, ConfigBase):
+class CompositionalTrainerConfig(Trainer.Config, ConfigBase):
     # num of workers for hogwild training
     num_workers: int = 1
