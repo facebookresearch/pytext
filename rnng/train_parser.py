@@ -2,7 +2,7 @@
 import datetime
 from collections import OrderedDict
 from random import shuffle
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import libfb.py.fbpkg as fbpkg
 import numpy as np
@@ -420,9 +420,12 @@ def eval_model(
     partial_confusion_matrix = ConfusionMatrix()
     test_out_w = open(test_out_path, "w") if test_out_path is not None else None
 
-    predictions_df = pd.DataFrame(
-        columns=["actual_frame_json", "predicted_frame_json", "text"]
-    )
+    dataframe: Dict[str, List[Any]] = {
+        "doc_index": [],
+        "text": [],
+        "actual_frame_json": [],
+        "predicted_frame_json": [],
+    }
     frame_pairs: List[Tuple[Node, Node]] = []
 
     for tagged_sent_test in test_taggedsents:
@@ -479,23 +482,14 @@ def eval_model(
             #       write a generic frame instead of thrift IntentFrame.
             gold_intent_frame = tree_to_intent_frame(gold_tree)
             pred_intent_frame = tree_to_intent_frame(pred_tree)
-            if gold_intent_frame.utterance != pred_intent_frame.utterance:
-                raise Exception(
-                    "Predicted and gold utterances are supposed to be the same!"
-                    f' "{gold_intent_frame.utterance}" is not the same as'
-                    f' "{pred_intent_frame.utterance}".'
-                )
             gold_frame_json = serialize_intent_frame(gold_intent_frame)
             pred_frame_json = serialize_intent_frame(pred_intent_frame)
-            predictions_df = predictions_df.append(
-                [
-                    {
-                        "actual_frame_json": gold_frame_json,
-                        "predicted_frame_json": pred_frame_json,
-                        "text": gold_intent_frame.utterance,
-                    }
-                ]
-            )
+
+            dataframe["doc_index"].append(tagged_sent_test.doc_index)
+            # The original utterance
+            dataframe["text"].append(tagged_sent_test.utterance)
+            dataframe["actual_frame_json"].append(gold_frame_json)
+            dataframe["predicted_frame_json"].append(pred_frame_json)
 
         if actions_taken_idx[0] == actions_idx_rev_dev[-1]:
             num_correct_topintent += 1
@@ -539,6 +533,8 @@ def eval_model(
 
     if test_out_w is not None:
         test_out_w.close()
+
+    predictions_df = pd.DataFrame(dataframe)
 
     return strict_evaluation, avg_loss, frame_accuracy, frame_metrics, predictions_df
 

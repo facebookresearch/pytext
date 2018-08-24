@@ -170,6 +170,53 @@ class TestAnnotationToIntentFrame(testutil.BaseFacebookTestCase):
 
             self.assertEqual(frame, test_frame)
 
+    # TODO: (wenfangxu) T32687283 remove this unit test when we do not depend on
+    #       tree_to_intent_frame()
+    def test_flat_tree_to_intent_frame(self):
+        for case in range(2):
+            _, _, _, test_intent_frame = self.get_flat_data(case)
+
+            tree = intent_frame_to_tree(test_intent_frame)
+            intent_frame = tree_to_intent_frame(tree)
+            if case == 0:
+                test_intent_frame = IntentFrame(
+                    utterance="repeat the 3 : 00 pm alarm for Sunday august 12th",
+                    domain="alarm",
+                    intent="IN:alarm/set_alarm",
+                    slots=[
+                        FilledSlot(
+                            id="SL:datetime",
+                            span=Span(start=11, end=20),
+                            text="3 : 00 pm",
+                        ),
+                        FilledSlot(
+                            id="SL:alarm/name",
+                            span=Span(start=21, end=26),
+                            text="alarm",
+                        ),
+                        FilledSlot(
+                            id="SL:datetime",
+                            span=Span(start=27, end=49),
+                            text="for Sunday august 12th",
+                        ),
+                    ],
+                    span=Span(start=0, end=49),
+                )
+            elif case == 1:
+                test_intent_frame = IntentFrame(
+                    utterance="call moms cellphone",
+                    domain="calling",
+                    intent="IN:calling/call_friend",
+                    slots=[
+                        FilledSlot(
+                            id="SL:person", span=Span(start=5, end=9), text="moms"
+                        )
+                    ],
+                    span=Span(start=0, end=19),
+                )
+
+            self.assertEqual(frames_are_equal(intent_frame, test_intent_frame), True)
+
     def get_compositional_data(self):
         utterance = "I need directions to the jazz festival"
         annotation_string = (

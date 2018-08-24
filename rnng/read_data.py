@@ -44,10 +44,14 @@ class Sentence:
 
 
 class TaggedSentence:
-    def __init__(self, sentence, actions_rev, actions_idx_rev):
+    def __init__(
+        self, sentence, actions_rev, actions_idx_rev, utterance, doc_index
+    ):
         self.sentence = sentence
         self.actions_rev = actions_rev
         self.actions_idx_rev = actions_idx_rev
+        self.utterance = utterance
+        self.doc_index = doc_index
 
     def __str__(self):
         return "( {}; {} )".format(str(self.sentence), str(self.actions_rev[::-1]))
@@ -257,6 +261,7 @@ def read_annotated_file(
 ) -> List[TaggedSentence]:
     # remember to call set_tokens_indices after this
     num_sent = 0
+    doc_index = -1
     tagged_sentences: list = []
     with open(filename) as f:
         for line in f:
@@ -269,6 +274,8 @@ def read_annotated_file(
             if len(line) == 0:
                 break
 
+            doc_index += 1
+
             try:
                 annotation_tree = Annotation(
                     line, brackets=brackets, add_dict_feat=add_dict_feat
@@ -280,6 +287,7 @@ def read_annotated_file(
 
             terminals = annotation_tree.tree.list_tokens()
             actions = annotation_tree.tree.to_actions()
+            utterance = annotation_tree.utterance
             if add_dict_feat and annotation_tree.model_feats is not None:
                 dict_feats = annotation_tree.model_feats.dictFeats
                 dict_feat_weights = annotation_tree.model_feats.dictFeatWeights
@@ -310,7 +318,11 @@ def read_annotated_file(
             actions.reverse()
             actions_idx_rev = [actions_bidict.index(a) for a in actions]
             tagged_sentence = TaggedSentence(
-                sentence=sentence, actions_rev=actions, actions_idx_rev=actions_idx_rev
+                sentence=sentence,
+                actions_rev=actions,
+                actions_idx_rev=actions_idx_rev,
+                utterance=utterance,
+                doc_index=doc_index,
             )
             tagged_sentences.append(tagged_sentence)
             num_sent += 1

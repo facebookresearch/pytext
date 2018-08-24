@@ -50,6 +50,7 @@ class Annotation:
         parts = annotation_string.rstrip().split("\t")
         if len(parts) == 5:
             [_, _, utterance, sparse_feat, self.seqlogical] = parts
+            self.utterance = utterance
             if add_dict_feat:
                 self.model_feats: ModelFeatures = SharedFeaturizer().featurize(
                     utterance, sparse_feat
