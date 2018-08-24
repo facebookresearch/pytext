@@ -101,9 +101,7 @@ def test_model(config):
     test_iter = data_handler.get_test_batch(
         config.test_file_path, config.test_batch_size
     )
-    results, metrics, weighted_metrics, frame_metrics = trainer.test(
-        model, test_iter, data_handler.metadata
-    )
+    results, metrics = trainer.test(model, test_iter, data_handler.metadata)
 
     with open(config.test_out_path, "w+", encoding="utf-8") as of:
         tsv_writer = csv.writer(
@@ -120,4 +118,5 @@ def test_model(config):
                 of.write("\n")
             else:
                 tsv_writer.writerow([f for f in l])
-    return metrics, weighted_metrics, frame_metrics
+
+    return metrics

@@ -2,6 +2,7 @@
 
 import json
 import sys
+from typing import List
 
 import numpy as np
 import torch
@@ -9,7 +10,7 @@ import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName, Padding
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.metrics import Node, Span, compute_all_metrics
+from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
 from pytext.utils import data_utils, test_utils
 from sklearn.metrics import classification_report
 
@@ -49,7 +50,7 @@ class JointTrainer(Trainer):
         model.eval()
 
         preds_table = []
-        frame_pairs = []
+        frame_pairs: List[FramePredictionPair] = []
         [doc_class_names, word_class_names] = metadata["class_names"]
         word_class_names, mapping = TaggerTrainer.filter_word_labels(word_class_names)
 
@@ -120,21 +121,9 @@ class JointTrainer(Trainer):
                 all_word_preds = torch.cat((all_word_preds, w_preds), 0)
                 all_word_targets = torch.cat((all_word_targets, w_targets), 0)
 
-        doc_result_table, doc_weighted_metrics = test_utils.get_all_metrics(
-            all_doc_preds.cpu(), all_doc_targets.cpu(), doc_class_names
-        )
-        word_result_table, word_weighted_metrics = test_utils.get_all_metrics(
-            all_word_preds.cpu(), all_word_targets.cpu(), word_class_names
-        )
-
         frame_metrics = compute_all_metrics(frame_pairs)
 
-        return (
-            preds_table,
-            [doc_result_table, word_result_table],
-            [doc_weighted_metrics, word_weighted_metrics],
-            frame_metrics,
-        )
+        return preds_table, frame_metrics
 
     def update_test_results(
         self,

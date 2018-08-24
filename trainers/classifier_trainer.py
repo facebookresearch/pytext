@@ -2,12 +2,13 @@
 
 import json
 import sys
+from typing import List
 
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
 from pytext.config.pytext_config import ConfigBase
-from pytext.utils import test_utils
+from pytext.metrics import LabelPredictionPair, compute_classification_metrics
 from sklearn.metrics import classification_report, f1_score
 
 from .trainer import Trainer
@@ -32,6 +33,7 @@ class ClassifierTrainer(Trainer):
 
         # Write header lines
         preds_table = []
+        label_pairs: List[LabelPredictionPair] = []
         preds_table.append("#{0}".format(json.dumps(class_names)))
         preds_table.append(("#predictions", "label", "doc_index", "scores", "text"))
         all_targets, all_preds = None, None
@@ -49,6 +51,7 @@ class ClassifierTrainer(Trainer):
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
                 context[DatasetFieldName.INDEX_FIELD],
                 context[DatasetFieldName.UTTERANCE_FIELD],
+                label_pairs,
             )
             if all_targets is None:
                 all_preds = preds
@@ -57,11 +60,9 @@ class ClassifierTrainer(Trainer):
                 all_targets = torch.cat((all_targets, targets), 0)
                 all_preds = torch.cat((all_preds, preds), 0)
 
-        result_table, weighted_metrics = test_utils.get_all_metrics(
-            all_preds.cpu(), all_targets.cpu(), class_names
-        )
-        # TODO: define frame metrics
-        return preds_table, result_table, weighted_metrics, None
+        metrics = compute_classification_metrics(label_pairs)
+
+        return preds_table, metrics
 
     def update_test_results(
         self,
@@ -72,7 +73,8 @@ class ClassifierTrainer(Trainer):
         class_names,
         token_range_pair,
         orig_indices,
-        utterance,
+        utterances,
+        label_pairs,
     ):
         for i in range(len(token_range_pair)):
             preds_table.append(
@@ -83,6 +85,10 @@ class ClassifierTrainer(Trainer):
                     ",".join(
                         ["{0:.2f}".format(_s) for _s in F.softmax(m_out[i], 0).data]
                     ),
-                    utterance[i],
+                    utterances[i],
                 )
             )
+
+            predicted_label = class_names[preds[i].item()]
+            expected_label = class_names[labels_idx[i].item()]
+            label_pairs.append(LabelPredictionPair(predicted_label, expected_label))

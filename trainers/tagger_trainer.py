@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 
-import sys
-import torch
-from pytext.utils.cuda_utils import Variable
-from pytext.common.constants import Padding, DatasetFieldName
-from pytext.data.joint_data_handler import SEQ_LENS
-from sklearn.metrics import classification_report, f1_score
-from pytext.utils import test_utils
-from pytext.utils.data_utils import Slot
-from pytext.config.pytext_config import ConfigBase
 import json
+import sys
+from collections import Counter as counter
+from typing import List
+
+import torch
+from pytext.common.constants import DatasetFieldName, Padding
+from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.metrics import (
+    Node,
+    NodesPredictionPair,
+    Span,
+    compute_classification_metrics_from_nodes_pairs,
+)
+from pytext.utils import test_utils
+from pytext.utils.cuda_utils import Variable
+from pytext.utils.data_utils import Slot, parse_slot_string
+from sklearn.metrics import classification_report, f1_score
+
 from .trainer import Trainer
 
 
@@ -32,6 +41,7 @@ class TaggerTrainer(Trainer):
         model.eval()
 
         preds_table = []
+        slots_pairs: List[NodesPredictionPair] = []
         [word_class_names] = metadata["class_names"]
         word_class_names, mapping = TaggerTrainer.filter_word_labels(word_class_names)
 
@@ -70,6 +80,8 @@ class TaggerTrainer(Trainer):
                 context[DatasetFieldName.RAW_WORD_LABEL],
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
                 context[DatasetFieldName.INDEX_FIELD],
+                context[DatasetFieldName.UTTERANCE_FIELD],
+                slots_pairs,
             )
             if all_preds is None:
                 all_preds = preds
@@ -78,11 +90,9 @@ class TaggerTrainer(Trainer):
                 all_preds = torch.cat((all_preds, preds), 0)
                 all_targets = torch.cat((all_targets, targets), 0)
 
-        result_table, weighted_metrics = test_utils.get_all_metrics(
-            all_preds.cpu(), all_targets.cpu(), word_class_names
-        )
-        # TODO: define frame metrics
-        return preds_table, result_table, weighted_metrics, None
+        _, metrics = compute_classification_metrics_from_nodes_pairs(slots_pairs)
+
+        return preds_table, metrics
 
     def update_test_results(
         self,
@@ -94,6 +104,8 @@ class TaggerTrainer(Trainer):
         raw_labels,
         tokenized_examples,
         orig_indices,
+        utterances,
+        slots_pairs,
     ):
         offset = 0
         for i in range(seq_lens.size()[0]):
@@ -120,6 +132,18 @@ class TaggerTrainer(Trainer):
                     test_utils.count_chunk_match(preds_names, label_names),
                 )
             )
+
+            predicted_slots = TaggerTrainer.get_slots(preds_names)
+            expected_slots = TaggerTrainer.get_slots(label_names)
+            slots_pairs.append(NodesPredictionPair(predicted_slots, expected_slots))
+
+    @staticmethod
+    def get_slots(word_names):
+        slots = {
+            Node(label=slot.label, span=Span(slot.start, slot.end))
+            for slot in parse_slot_string(word_names)
+        }
+        return counter(slots)
 
     @staticmethod
     def remove_padding(preds, targets):

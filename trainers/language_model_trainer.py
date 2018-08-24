@@ -150,7 +150,6 @@ class LanguageModelTrainer(Trainer):
         # Write header lines
         preds_table = []
         preds_table.append(("text", "perplexity"))
-        metrics = []
         total_loss = 0.0
         n_words = 0
         for m_input, targets, context in test_iter:
@@ -183,17 +182,11 @@ class LanguageModelTrainer(Trainer):
             self.update_test_results(
                 preds_table, sequence_loss, context[DatasetFieldName.TOKEN_RANGE_PAIR]
             )
-            metrics.extend([self.calculate_perplexity(l) for l in sequence_loss])
 
         # Return  perplexity for every utterance and average perplexity
         # for all utterances, for now. There are no Frame metrics here
         # # TODO: Figure out a better way to abstract the metrics reporting
-        return (
-            preds_table,
-            metrics,
-            self.calculate_perplexity(total_loss / float(n_words)),
-            None,
-        )
+        return preds_table, self.calculate_perplexity(total_loss / float(n_words))
 
     def update_test_results(self, preds_table, sequence_loss, token_range_pair):
         for i in range(len(token_range_pair)):

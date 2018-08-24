@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from typing import Any, Dict, List
-from unittest import TestCase
 
 from pytext.metrics import (
     AllClassificationMetrics,
@@ -13,8 +12,11 @@ from pytext.metrics import (
     Node,
     Span,
     compare_frames,
+    compute_all_metrics,
     compute_intent_slot_metrics,
 )
+
+from .metrics_test_base import MetricsTestBase
 
 
 TEST_EXAMPLES: List[Dict[str, Any]] = [
@@ -334,7 +336,7 @@ TEST_EXAMPLES: List[Dict[str, Any]] = [
 ]
 
 
-class MetricsTest(TestCase):
+class MetricsTest(MetricsTestBase):
     def test_compare_frames(self) -> None:
         i = 0
         for example in TEST_EXAMPLES:
@@ -421,9 +423,8 @@ class MetricsTest(TestCase):
         for i in range(7, 11):
             pairs.append((TEST_EXAMPLES[i]["predicted"], TEST_EXAMPLES[i]["expected"]))
 
-        bracket_metrics = compute_intent_slot_metrics(pairs, tree_based=False)
         self.assertMetricsAlmostEqual(
-            bracket_metrics,
+            compute_intent_slot_metrics(pairs, tree_based=False),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -463,12 +464,9 @@ class MetricsTest(TestCase):
                 ),
             ),
         )
-        # Just to test print_metrics() prints without errors
-        bracket_metrics.print_metrics()
 
-        tree_metrics = compute_intent_slot_metrics(pairs, tree_based=True)
         self.assertMetricsAlmostEqual(
-            tree_metrics,
+            compute_intent_slot_metrics(pairs, tree_based=True),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -506,21 +504,10 @@ class MetricsTest(TestCase):
                 ),
             ),
         )
-        tree_metrics.print_metrics()
 
-    def assertMetricsAlmostEqual(self, first: Any, second: Any) -> None:
-        self.assertEqual(type(first), type(second))
-        if isinstance(first, int):
-            self.assertEqual(first, second)
-        elif isinstance(first, float):
-            self.assertAlmostEqual(first, second)
-        elif isinstance(first, dict):
-            self.assertEqual(first.keys(), second.keys())
-            for key in first.keys():
-                self.assertMetricsAlmostEqual(first[key], second[key])
-        # Then "first" and "second" should be of type NamedTuple
-        else:
-            for attr in first._fields:
-                self.assertMetricsAlmostEqual(
-                    getattr(first, attr), getattr(second, attr)
-                )
+    # Just to test the metrics print without errors
+    def test_print_compute_all_metrics(self) -> None:
+        frame_pairs = [
+            (example["predicted"], example["expected"]) for example in TEST_EXAMPLES
+        ]
+        compute_all_metrics(frame_pairs, overall_metrics=True).print_metrics()

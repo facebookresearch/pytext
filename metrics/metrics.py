@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import collections
+from collections import Counter as counter, defaultdict
 from copy import deepcopy
 from typing import (
     Any,
@@ -52,6 +52,21 @@ class Node:
         )
 
 
+class LabelPredictionPair(NamedTuple):
+    predicted_label: str
+    expected_label: str
+
+
+class FramePredictionPair(NamedTuple):
+    predicted_frame: Node
+    expected_frame: Node
+
+
+class NodesPredictionPair(NamedTuple):
+    predicted_nodes: Counter[Node]
+    expected_nodes: Counter[Node]
+
+
 class IntentsAndSlots(NamedTuple):
     intents: Counter[Node]
     slots: Counter[Node]
@@ -90,7 +105,7 @@ class MacroClassificationMetrics(NamedTuple):
 class PerLabelMetrics(NamedTuple):
     """
     Return type of compute_metrics() in class PerLabelMetrics. It contains both
-    per_label_scores and macro_scores because they are both computed on a per label
+    per_label_scores and macro_scores because they are both computed on per label
     basis.
     """
 
@@ -107,7 +122,7 @@ class AllClassificationMetrics(NamedTuple):
     macro_scores: MacroClassificationMetrics
     micro_scores: ClassificationMetrics
 
-    def print_metrics(self):
+    def print_metrics(self) -> None:
         print("Per label scores:")
         for label, label_metrics in self.per_label_scores.items():
             print(
@@ -129,48 +144,57 @@ class AllClassificationMetrics(NamedTuple):
         )
 
 
-class IntentSlotMetrics(NamedTuple):
+class IntentSlotMetrics:
     """
     Intent and slot metrics.
     """
 
-    intent_metrics: AllClassificationMetrics
-    slot_metrics: AllClassificationMetrics
-    overall_metrics: ClassificationMetrics
-
-    def print_metrics(self):
-        print("\nIntent Metrics")
-        self.intent_metrics.print_metrics()
-        print("\nSlot Metrics")
-        self.slot_metrics.print_metrics()
-        print("\nMerging Intent and Slot Metrics")
-        print(
-            f"  P = {self.overall_metrics.precision * 100:.2f} "
-            f"R = {self.overall_metrics.recall * 100:.2f}, "
-            f"F1 = {self.overall_metrics.f1 * 100:.2f}.\n"
-        )
-
-
-# TODO: add frame accuracy to the metrics
-class AllMetrics:
-    __slots__ = (
-        "intent_bracket_scores",
-        "intent_tree_scores",
-        "slot_bracket_scores",
-        "slot_tree_scores",
-    )
+    __slots__ = "intent_metrics", "slot_metrics", "overall_metrics"
 
     def __init__(
         self,
-        intent_bracket_scores: Optional[AllClassificationMetrics] = None,
-        intent_tree_scores: Optional[AllClassificationMetrics] = None,
-        slot_bracket_scores: Optional[AllClassificationMetrics] = None,
-        slot_tree_scores: Optional[AllClassificationMetrics] = None,
+        intent_metrics: Optional[AllClassificationMetrics],
+        slot_metrics: Optional[AllClassificationMetrics],
+        overall_metrics: Optional[ClassificationMetrics],
     ) -> None:
-        self.intent_bracket_scores = intent_bracket_scores
-        self.intent_tree_scores = intent_tree_scores
-        self.slot_bracket_scores = slot_bracket_scores
-        self.slot_tree_scores = slot_tree_scores
+        self.intent_metrics = intent_metrics
+        self.slot_metrics = slot_metrics
+        self.overall_metrics = overall_metrics
+
+    def print_metrics(self) -> None:
+        if self.intent_metrics:
+            print("\nIntent Metrics")
+            self.intent_metrics.print_metrics()
+        if self.slot_metrics:
+            print("\nSlot Metrics")
+            self.slot_metrics.print_metrics()
+        if self.overall_metrics:
+            print("\nMerged Intent and Slot Metrics")
+            print(
+                f"  P = {self.overall_metrics.precision * 100:.2f} "
+                f"R = {self.overall_metrics.recall * 100:.2f}, "
+                f"F1 = {self.overall_metrics.f1 * 100:.2f}."
+            )
+
+
+class AllMetrics:
+    __slots__ = "bracket_metrics", "tree_metrics"
+
+    def __init__(
+        self,
+        bracket_metrics: Optional[IntentSlotMetrics],
+        tree_metrics: Optional[IntentSlotMetrics],
+    ) -> None:
+        self.bracket_metrics = bracket_metrics
+        self.tree_metrics = tree_metrics
+
+    def print_metrics(self) -> None:
+        if self.bracket_metrics:
+            print("\n\nBracket Metrics")
+            self.bracket_metrics.print_metrics()
+        if self.tree_metrics:
+            print("\n\nTree Metrics")
+            self.tree_metrics.print_metrics()
 
 
 # We need a mutable type here (instead of NamedTuple) because we want to
@@ -223,9 +247,7 @@ class PerLabelConfusions:
     __slots__ = "dictionary"
 
     def __init__(self) -> None:
-        self.dictionary: DefaultDict[str, Confusions] = collections.defaultdict(
-            Confusions
-        )
+        self.dictionary: DefaultDict[str, Confusions] = defaultdict(Confusions)
 
     def update(self, label: str, item: str, count: int) -> None:
         confusions = self.dictionary[label]
@@ -250,6 +272,26 @@ class PerLabelConfusions:
                 recall=_safe_division(recall_sum, num_labels),
                 f1=_safe_division(f1_sum, num_labels),
             ),
+        )
+
+
+class AllConfusions:
+    """
+    A class that stores per label confusions as well as the total confusion counts
+    """
+
+    __slots__ = "per_label_confusions", "confusions"
+
+    def __init__(self) -> None:
+        self.per_label_confusions = PerLabelConfusions()
+        self.confusions = Confusions()
+
+    def compute_metrics(self) -> AllClassificationMetrics:
+        per_label_metrics = self.per_label_confusions.compute_metrics()
+        return AllClassificationMetrics(
+            per_label_scores=per_label_metrics.per_label_scores,
+            macro_scores=per_label_metrics.macro_scores,
+            micro_scores=self.confusions.compute_metrics(),
         )
 
 
@@ -289,8 +331,8 @@ def _compare_nodes(
 
 
 def _get_intents_and_slots(frame: Node, tree_based: bool) -> IntentsAndSlots:
-    intents: Counter[Node] = collections.Counter()
-    slots: Counter[Node] = collections.Counter()
+    intents: Counter[Node] = counter()
+    slots: Counter[Node] = counter()
 
     def process_node(node: Node, is_intent: bool) -> None:
         for child in node.children:
@@ -338,8 +380,27 @@ def compare_frames(
     )
 
 
+# TODO: split this file, move compute_classification_metrics() (bottom) to a separate
+#   file, and rename this function to compute_classification_metrics().
+def compute_classification_metrics_from_nodes_pairs(
+    nodes_pairs: List[NodesPredictionPair]
+) -> Tuple[AllConfusions, AllClassificationMetrics]:
+    """
+    Compute classification metrics given a list of pairs of predicted and expected
+    node sets.
+    """
+    all_confusions = AllConfusions()
+    for (predicted_nodes, expected_nodes) in nodes_pairs:
+        all_confusions.confusions += _compare_nodes(
+            predicted_nodes, expected_nodes, all_confusions.per_label_confusions
+        )
+    return all_confusions, all_confusions.compute_metrics()
+
+
 def compute_intent_slot_metrics(
-    frame_pairs: List[Tuple[Node, Node]], tree_based: bool
+    frame_pairs: List[FramePredictionPair],
+    tree_based: bool,
+    overall_metrics: bool = True,
 ) -> IntentSlotMetrics:
     """
     Given a list of (predicted_frame, expected_frame) tuples in Node type,
@@ -349,56 +410,75 @@ def compute_intent_slot_metrics(
     The input parameter tree_based determines whether bracket (tree_based=False) or
     tree (tree_based=True) scores are computed.
     """
-
-    intent_confusions, slot_confusions = Confusions(), Confusions()
-    intent_per_label_confusions, slot_per_label_confusions = (
-        PerLabelConfusions(),
-        PerLabelConfusions(),
-    )
+    intents_pairs: List[NodesPredictionPair] = []
+    slots_pairs: List[NodesPredictionPair] = []
     for (predicted_frame, expected_frame) in frame_pairs:
-        intent_slot_confusions = compare_frames(
-            predicted_frame,
-            expected_frame,
-            tree_based=tree_based,
-            intent_per_label_confusions=intent_per_label_confusions,
-            slot_per_label_confusions=slot_per_label_confusions,
-        )
-        intent_confusions += intent_slot_confusions.intent_confusions
-        slot_confusions += intent_slot_confusions.slot_confusions
+        predicted = _get_intents_and_slots(predicted_frame, tree_based=tree_based)
+        expected = _get_intents_and_slots(expected_frame, tree_based=tree_based)
+        intents_pairs.append(NodesPredictionPair(predicted.intents, expected.intents))
+        slots_pairs.append(NodesPredictionPair(predicted.slots, expected.slots))
+    intent_confusions, intent_metrics = compute_classification_metrics_from_nodes_pairs(
+        intents_pairs
+    )
+    slot_confusions, slot_metrics = compute_classification_metrics_from_nodes_pairs(
+        slots_pairs
+    )
 
-    intent_metrics = intent_per_label_confusions.compute_metrics()
-    slot_metrics = slot_per_label_confusions.compute_metrics()
     return IntentSlotMetrics(
-        intent_metrics=AllClassificationMetrics(
-            per_label_scores=intent_metrics.per_label_scores,
-            macro_scores=intent_metrics.macro_scores,
-            micro_scores=intent_confusions.compute_metrics(),
-        ),
-        slot_metrics=AllClassificationMetrics(
-            per_label_scores=slot_metrics.per_label_scores,
-            macro_scores=slot_metrics.macro_scores,
-            micro_scores=slot_confusions.compute_metrics(),
-        ),
-        overall_metrics=(intent_confusions + slot_confusions).compute_metrics(),
+        intent_metrics=intent_metrics,
+        slot_metrics=slot_metrics,
+        overall_metrics=(
+            intent_confusions.confusions + slot_confusions.confusions
+        ).compute_metrics()
+        if overall_metrics
+        else None,
     )
 
 
 def compute_all_metrics(
-    frame_pairs: List[Tuple[Node, Node]], bracket: bool = True, tree: bool = True
+    frame_pairs: List[FramePredictionPair],
+    bracket_metrics: bool = True,
+    tree_metrics: bool = True,
+    overall_metrics: bool = False,
 ) -> AllMetrics:
     """
     Given a list of (predicted_frame, expected_frame) tuples in Node type,
     return both bracket and tree metrics.
     """
-
-    if bracket:
-        bracket_metrics = compute_intent_slot_metrics(frame_pairs, tree_based=False)
-    if tree:
-        tree_metrics = compute_intent_slot_metrics(frame_pairs, tree_based=True)
-
-    return AllMetrics(
-        bracket_metrics.intent_metrics if bracket else None,
-        tree_metrics.intent_metrics if tree else None,
-        bracket_metrics.slot_metrics if bracket else None,
-        tree_metrics.slot_metrics if tree else None,
+    bracket = (
+        compute_intent_slot_metrics(
+            frame_pairs, tree_based=False, overall_metrics=overall_metrics
+        )
+        if bracket_metrics
+        else None
     )
+    tree = (
+        compute_intent_slot_metrics(
+            frame_pairs, tree_based=True, overall_metrics=overall_metrics
+        )
+        if tree_metrics
+        else None
+    )
+
+    return AllMetrics(bracket, tree)
+
+
+def compute_classification_metrics(
+    label_pairs: List[LabelPredictionPair]
+) -> AllClassificationMetrics:
+    """
+    A general function that computes classification metrics given a list of pairs of
+    predicted and expected labels.
+    """
+    all_confusions = AllConfusions()
+    for (predicted_label, expected_label) in label_pairs:
+        if predicted_label == expected_label:
+            all_confusions.confusions.TP += 1
+            all_confusions.per_label_confusions.update(expected_label, "TP", 1)
+        else:
+            all_confusions.confusions.FP += 1
+            all_confusions.confusions.FN += 1
+            all_confusions.per_label_confusions.update(expected_label, "FN", 1)
+            all_confusions.per_label_confusions.update(predicted_label, "FP", 1)
+
+    return all_confusions.compute_metrics()
