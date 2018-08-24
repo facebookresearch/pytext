@@ -8,10 +8,9 @@ from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
 from pytext.fields import DictFeatureField, Field, TextFeatureField
-from pytext.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
 from pytext.utils import data_utils
-from torchtext import data as textdata
 
 from .data_handler import DataHandler
 

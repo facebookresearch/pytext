@@ -31,7 +31,7 @@ from pytext.models.ensembles.bagging_joint_ensemble import (
 from pytext.models.joint_models import JointBLSTM, JointCNN
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.word_models import WordBLSTM, WordCNN
-from pytext.rnng.config import (
+from pytext.fb.rnng.config import (
     CompositionalTrainerConfig,
     RNNGConfig,
     Seq2SeqConfig,
