@@ -121,7 +121,7 @@ class JointTrainer(Trainer):
                 all_word_preds = torch.cat((all_word_preds, w_preds), 0)
                 all_word_targets = torch.cat((all_word_targets, w_targets), 0)
 
-        frame_metrics = compute_all_metrics(frame_pairs)
+        frame_metrics = compute_all_metrics(frame_pairs, frame_accuracy=True)
 
         return preds_table, frame_metrics
 

@@ -13,6 +13,7 @@ from pytext.metrics import (
     Span,
     compare_frames,
     compute_all_metrics,
+    compute_frame_accuracy,
     compute_intent_slot_metrics,
 )
 
@@ -504,6 +505,12 @@ class MetricsTest(MetricsTestBase):
                 ),
             ),
         )
+
+    def test_compute_frame_accuracy(self) -> None:
+        frame_pairs = [
+            (example["predicted"], example["expected"]) for example in TEST_EXAMPLES
+        ]
+        self.assertAlmostEqual(compute_frame_accuracy(frame_pairs), 2.0 / 11)
 
     # Just to test the metrics print without errors
     def test_print_compute_all_metrics(self) -> None:

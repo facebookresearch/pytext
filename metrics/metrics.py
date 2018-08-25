@@ -178,17 +178,21 @@ class IntentSlotMetrics:
 
 
 class AllMetrics:
-    __slots__ = "bracket_metrics", "tree_metrics"
+    __slots__ = "frame_accuracy", "bracket_metrics", "tree_metrics"
 
     def __init__(
         self,
+        frame_accuracy: Optional[float],
         bracket_metrics: Optional[IntentSlotMetrics],
         tree_metrics: Optional[IntentSlotMetrics],
     ) -> None:
+        self.frame_accuracy = frame_accuracy
         self.bracket_metrics = bracket_metrics
         self.tree_metrics = tree_metrics
 
     def print_metrics(self) -> None:
+        if self.frame_accuracy:
+            print(f"\n\nFrame accuracy = {self.frame_accuracy * 100:.2f}")
         if self.bracket_metrics:
             print("\n\nBracket Metrics")
             self.bracket_metrics.print_metrics()
@@ -435,16 +439,26 @@ def compute_intent_slot_metrics(
     )
 
 
+def compute_frame_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
+    num_correct = 0
+    num_samples = len(frame_pairs)
+    for (predicted_frame, expected_frame) in frame_pairs:
+        num_correct += int(predicted_frame == expected_frame)
+    return _safe_division(num_correct, num_samples)
+
+
 def compute_all_metrics(
     frame_pairs: List[FramePredictionPair],
     bracket_metrics: bool = True,
     tree_metrics: bool = True,
+    frame_accuracy: bool = False,
     overall_metrics: bool = False,
 ) -> AllMetrics:
     """
     Given a list of (predicted_frame, expected_frame) tuples in Node type,
     return both bracket and tree metrics.
     """
+    accuracy = compute_frame_accuracy(frame_pairs) if frame_accuracy else None
     bracket = (
         compute_intent_slot_metrics(
             frame_pairs, tree_based=False, overall_metrics=overall_metrics
@@ -460,7 +474,7 @@ def compute_all_metrics(
         else None
     )
 
-    return AllMetrics(bracket, tree)
+    return AllMetrics(accuracy, bracket, tree)
 
 
 def compute_classification_metrics(
