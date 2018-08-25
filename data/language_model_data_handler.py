@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, List
+from typing import List
 
 import pandas as pd
 import torch
@@ -12,7 +12,7 @@ from pytext.data.shared_featurizer import SharedFeaturizer
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
-from .data_handler import COMMON_META, DataHandler
+from .data_handler import DataHandler
 
 
 FEATURE_ITOS_MAP = "feature_itos_map"
@@ -56,7 +56,7 @@ class LanguageModelDataHandler(DataHandler):
                 DatasetFieldName.TEXT_FIELD,
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,
-                export_input_names=feature_config.word_feat.export_input_names,
+                export_names=feature_config.word_feat.export_input_names,
             )
         ]
         labels: List[Field] = []
@@ -70,16 +70,10 @@ class LanguageModelDataHandler(DataHandler):
             extra_fields=extra_fields,
         )
 
-    def _gen_extra_metadata(self) -> Dict[str, Any]:
-        return {
-            "class_names": [
-                self.metadata[COMMON_META.FEATURE_VOCABS][
-                    self.text_field.export_input_names[0]
-                ].itos
-            ],
-            FEATURE_ITOS_MAP: {
-                k: v.itos for k, v in self.metadata[COMMON_META.FEATURE_VOCABS].items()
-            },
+    def _gen_extra_metadata(self):
+        # a bit hacky here, the label vocab is just the word token vocab
+        self.metadata.labels = {
+            "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
         }
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:

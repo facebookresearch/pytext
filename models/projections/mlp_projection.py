@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 
+from typing import List
+
 import torch
 import torch.nn as nn
-from typing import List
+from pytext.config import ConfigBase
 from .projection_base import ProjectionBase
 
 
 class MLPProjection(ProjectionBase):
-    def __init__(self, from_dim: int, hidden_dims: List[int], to_dim: int) -> None:
-        super().__init__()
+    class Config(ConfigBase):
+        # Intermediate hidden dimensions
+        hidden_dims: List[int] = []
+
+    def __init__(self, config: Config, from_dim: int, to_dim: int) -> None:
+        super().__init__(config)
         layers = []
-        for dim in hidden_dims:
+        for dim in config.hidden_dims or []:
             layers.append(nn.Linear(from_dim, dim))
             layers.append(nn.ReLU())
             from_dim = dim

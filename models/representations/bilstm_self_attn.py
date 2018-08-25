@@ -2,45 +2,49 @@
 
 import torch
 import torch.nn as nn
+from pytext.config import ConfigBase
+from pytext.config.module_config import LSTMParams
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from .self_attention import SelfAttention
+
 from .representation_base import RepresentationBase
+from .self_attention import SelfAttention
 
 
 class BiLSTMSelfAttention(RepresentationBase):
     """Bidirectional LSTM based representation with self attention."""
 
-    def __init__(
-        self,
-        token_embeddings_dim: int,
-        lstm_hidden_dim: int,
-        lstm_num_layers: int,
-        dropout_ratio: float,
-        self_attn_dim: int,
-        projection_dim: int = None,
-        bidirectional: bool = True,
-    ) -> None:
-        super().__init__()
+    class Config(ConfigBase):
+        bidirectional: bool = True
+        dropout: float = 0.4
+        self_attn_dim: int = 64
+        lstm: LSTMParams = LSTMParams()
 
-        self.projection = projection_dim is not None
-        self.dropout = nn.Dropout(dropout_ratio)
-        seq_in_size = lstm_hidden_dim * 2 if bidirectional is True else lstm_hidden_dim
+    def __init__(self, config: Config, embed_dim: int) -> None:
+        super().__init__(config)
+        self.projection = config.lstm.projection_dim is not None
+        self.dropout = nn.Dropout(config.dropout)
+        seq_in_size = (
+            config.lstm.lstm_dim * 2
+            if config.bidirectional is True
+            else config.lstm.lstm_dim
+        )
         self.lstm = nn.LSTM(
-            token_embeddings_dim,
-            lstm_hidden_dim,
-            num_layers=lstm_num_layers,
-            bidirectional=bidirectional,
+            embed_dim,
+            config.lstm.lstm_dim,
+            num_layers=config.lstm.num_layers,
+            bidirectional=config.bidirectional,
         )
         self.attention = (
-            SelfAttention(seq_in_size, self_attn_dim, dropout_ratio)
-            if self_attn_dim > 0
+            SelfAttention(seq_in_size, config.self_attn_dim, config.dropout)
+            if config.self_attn_dim > 0
             else None
         )
         if self.projection:
             self.relu = nn.ReLU()
             self.dense = nn.Sequential(
-                nn.Linear(seq_in_size, projection_dim), self.relu)
-            self.representation_dim = projection_dim
+                nn.Linear(seq_in_size, config.lstm.projection_dim), self.relu
+            )
+            self.representation_dim = config.lstm.projection_dim
         else:
             self.representation_dim = seq_in_size
 

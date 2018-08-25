@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import torch.nn as nn
+from pytext.models.module import Module
 
 
-class ProjectionBase(nn.Module):
-    def __init__(self):
-        super().__init__()
+class ProjectionBase(Module):
+    def __init__(self, config):
+        super().__init__(config)
         self.in_dim = 0
         self.out_dim = 0
 

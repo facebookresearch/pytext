@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import torch
 from pytext.config.component import Component, ComponentType
 from pytext.config import ConfigBase
+from pytext.data import CommonMetadata
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.utils import onnx_utils
 from caffe2.python import core
@@ -101,7 +102,7 @@ class ModelExporter(Component):
 class TextModelExporter(ModelExporter):
     """Exporter for doc classifier and word tagger models
         args:
-        class_names_list: a list of output target class names e.g:
+        label_names_list: a list of output target class names e.g:
             [
                 ["DOC1","DOC2","DOC3","DOC4"],
                 ["WORD1","WORD2","WORD3","WORD4"]
@@ -118,14 +119,14 @@ class TextModelExporter(ModelExporter):
 
     def __init__(
         self,
-        class_names: List[List[str]],
+        label_names: List[List[str]],
         feature_itos_map: Dict[str, List[str]],
         score_axis_list: List[int],
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
-        self.class_names_list = class_names
+        self.label_names_list = label_names
         self.score_axis_list = score_axis_list
         self.vocab_map = feature_itos_map
         # validate vocab_map
@@ -142,9 +143,7 @@ class TextModelExporter(ModelExporter):
         unused_config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
-        class_names: List[List[str]],
-        feature_itos_map: Dict[str, List[str]],
-        **kwargs,
+        meta: CommonMetadata,
     ):
         input_names = list(feature_config.word_feat.export_input_names)
         if feature_config.dict_feat:
@@ -171,9 +170,14 @@ class TextModelExporter(ModelExporter):
                 torch.tensor([1, 1], dtype=torch.long),
             ),
         )
-
+        label_names = [label.vocab.itos for label in meta.labels.values()]
+        feature_itos_map = {
+            f_meta.vocab_export_name: f_meta.vocab.itos
+            for f_meta in meta.features.values()
+            if hasattr(f_meta, 'vocab')
+        }
         return cls(
-            class_names,
+            label_names,
             feature_itos_map,
             axis,
             input_names,
@@ -198,7 +202,7 @@ class TextModelExporter(ModelExporter):
     ) -> Tuple[List[core.BlobReference], List[str]]:
         res = []
         for class_names, output_score, axis in zip(
-            self.class_names_list, output_names, self.score_axis_list
+            self.label_names_list, output_names, self.score_axis_list
         ):
             if hasattr(py_model, "crf") and py_model.crf and axis == 2:
                 tmp_out_score = py_model.crf.export_to_caffe2(

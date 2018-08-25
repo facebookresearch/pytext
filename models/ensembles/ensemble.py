@@ -12,17 +12,17 @@ class Ensemble(Model):
         models: List[Any]
         sample_rate: float = 1.0
 
-    def __init__(self, config, models, **metadata):
-        super().__init__(config)
+    def __init__(self, config, models, *arg, **kwargs):
+        nn.Module.__init__(self)
         self.models = nn.ModuleList(models)
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError()
 
     @classmethod
-    def from_config(cls, model_config, feat_config, **metadata):
+    def from_config(cls, model_config, feat_config, *arg, **kwargs):
         sub_models = [
-            create_model(sub_model_config, feat_config, **metadata)
+            create_model(sub_model_config, feat_config, *arg, **kwargs)
             for sub_model_config in model_config.models
         ]
-        return cls(model_config, sub_models, **metadata)
+        return cls(model_config, sub_models, *arg, **kwargs)

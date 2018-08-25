@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-import torch.nn as nn
+from pytext.models.module import Module
 
 
-class RepresentationBase(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.representation_dim = 0
+class RepresentationBase(Module):
+    def __init__(self, config):
+        super().__init__(config)
+        self.representation_dim = None
 
     def forward(self, *input):
         raise NotImplementedError()

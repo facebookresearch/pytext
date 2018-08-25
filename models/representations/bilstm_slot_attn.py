@@ -2,43 +2,51 @@
 
 import torch
 import torch.nn as nn
+from pytext.config import ConfigBase
+from pytext.config.module_config import LSTMParams, SlotAttentionType
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-from pytext.config.module_config import SlotAttentionType
-from .slot_attention import SlotAttention
+
 from .representation_base import RepresentationBase
+from .slot_attention import SlotAttention
 
 
 class BiLSTMSlotAttention(RepresentationBase):
     """Bidirectional LSTM based representation with slot attention."""
 
-    def __init__(
-        self,
-        token_embeddings_dim: int,
-        lstm_hidden_dim: int,
-        lstm_num_layers: int,
-        dropout_ratio: float,
-        slot_attention_type: SlotAttentionType,
-        slot_attn_dim: int,
-        bidirectional: bool = True,
-    ) -> None:
-        super().__init__()
+    class Config(ConfigBase):
+        bidirectional: bool = True
+        dropout: float = 0.4
+        lstm: LSTMParams = LSTMParams()
+        slot_attn_dim: int = 64
+        slot_attention_type: SlotAttentionType = SlotAttentionType.NO_ATTENTION
 
-        self.dropout = nn.Dropout(dropout_ratio)
+    def __init__(self, config: Config, embed_dim: int) -> None:
+        super().__init__(config)
+
+        self.dropout = nn.Dropout(config.dropout)
         self.relu = nn.ReLU()
 
         self.lstm = nn.LSTM(
-            token_embeddings_dim,
-            lstm_hidden_dim,
-            num_layers=lstm_num_layers,
-            bidirectional=bidirectional,
+            embed_dim,
+            config.lstm.lstm_dim,
+            num_layers=config.lstm.num_layers,
+            bidirectional=config.bidirectional,
         )
 
         self.attention = None
-        seq_in_size = lstm_hidden_dim * 2 if bidirectional is True else lstm_hidden_dim
+        seq_in_size = (
+            config.lstm.lstm_dim * 2 if config.bidirectional else config.lstm.lstm_dim
+        )
         word_input = seq_in_size
-        if slot_attn_dim > 0 and slot_attention_type != SlotAttentionType.NO_ATTENTION:
+        if (
+            config.slot_attn_dim > 0
+            and config.slot_attention_type != SlotAttentionType.NO_ATTENTION
+        ):
             self.attention = SlotAttention(
-                slot_attention_type, slot_attn_dim, seq_in_size, batch_first=True
+                config.slot_attention_type,
+                config.slot_attn_dim,
+                seq_in_size,
+                batch_first=True,
             )
             word_input += seq_in_size
 

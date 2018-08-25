@@ -2,16 +2,15 @@
 
 import libfb.py.fbpkg as fbpkg
 from pytext.config import PyTextConfig
-from pytext.config.component import register_jobspec
-from pytext.fb.experimental import I18NDocClassifyJobSpec, I18NJointTextJobSpec
+from pytext.fb.experimental import I18NDocClassificationJobSpec, I18NJointTextJobSpec
 from pytext.workflow import test_model, train_model
 
 from .args import parse_config
-from .jobspec import register_builtin_jobspecs
+from .jobspec import register_builtin_jobspecs, register_jobspec
 
 
 register_builtin_jobspecs()
-register_jobspec([I18NJointTextJobSpec, I18NDocClassifyJobSpec])
+register_jobspec([I18NJointTextJobSpec, I18NDocClassificationJobSpec])
 
 
 def main():

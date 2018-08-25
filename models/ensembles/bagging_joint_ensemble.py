@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
-from typing import List, Union
+from typing import List
 
 import torch
+from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.models.crf import CRF
-from pytext.models.joint_models import JointBLSTM, JointCNN
+from pytext.models.joint_model import JointModel
 
 from .ensemble import Ensemble
 
 
 class BaggingJointEnsemble(Ensemble):
     class Config(Ensemble.Config, ConfigBase):
-        models: List[Union[JointBLSTM.Config, JointCNN.Config]]
+        models: List[JointModel.Config]
         use_crf: bool = False
 
-    def __init__(self, config, models, word_class_num, **metadata):
+    def __init__(self, config, models, metadata):
         super().__init__(config, models)
+        word_label_num = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD].vocab_size
         if config.use_crf:
             self.crf_transition_matrices = []
-            self.crf = CRF(word_class_num)
+            self.crf = CRF(word_label_num)
 
     def forward(self, *args, **kwargs):
         logit_d_list, logit_w_list = None, None

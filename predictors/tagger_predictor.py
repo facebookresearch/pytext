@@ -11,8 +11,9 @@ class TaggerPredictor(Predictor):
     def fill_predictions(
         self, model_output: List[Any], context: Dict[str, Any]
     ) -> List[Any]:
+        [label_meta] = self.data_handler.metadata.labels.values()
         return TaggerPredictor.fill_tagger_predictions(
-            self.data_handler.metadata["class_names"][0],
+            label_meta.vocab.itos,
             model_output[0],
             context[DatasetFieldName.INDEX_FIELD],
             context[DatasetFieldName.TOKEN_RANGE_PAIR],

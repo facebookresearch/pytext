@@ -11,8 +11,9 @@ class ClassifierPredictor(Predictor):
     def fill_predictions(
         self, model_output: List[Any], context: Dict[str, Any]
     ) -> List[Any]:
+        [label_meta] = self.data_handler.metadata.labels.values()
         return ClassifierPredictor.fill_classifier_predictions(
-            self.data_handler.metadata["class_names"][0],
+            label_meta.vocab.itos,
             model_output[0],
             context[DatasetFieldName.INDEX_FIELD],
         )

@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+from collections import Counter
 
 import caffe2.python.hypothesis_test_util as hu
 import caffe2.python.predictor.predictor_exporter as pe
@@ -11,33 +12,39 @@ import torch
 import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
-from pytext.common.constants import PredictorInputNames
-from pytext.config.component import create_exporter, create_model
+from pytext.common.constants import DatasetFieldName, PredictorInputNames
 from pytext.config import config_from_json
-from pytext.jobspec import DocClassifyJobSpec, JointTextJobSpec, WordTagJobSpec
+from pytext.config.component import create_exporter, create_model
+from pytext.data import CommonMetadata
+from pytext.fields import FieldMeta
+from pytext.jobspec import (
+    DocClassificationJobSpec,
+    JointTextJobSpec,
+    WordTaggingJobSpec,
+)
+from torchtext.vocab import Vocab
 
 
 JOINT_CONFIG = """
 {
     "model": {
-      "JointBLSTM": {
-        "lstm": {
-          "lstm_dim": 30,
-          "num_layers": 1
+        "repr_config": {
+            "JointBLSTMRepresentation": {
+                "lstm": {
+                  "lstm_dim": 30,
+                  "num_layers": 1
+                },
+                "use_crf": true,
+                "use_doc_probs_in_word": true
+            }
         },
-        "use_crf": true,
-        "use_doc_probs_in_word": true
-      }
-    },
-    "labels": {
-      "doc_label": {},
-      "word_label": {}
+        "proj_config": {
+            "use_doc_probs_in_word": true
+        }
     },
     "features": {
       "word_feat": {},
-      "dict_feat": {
-
-      }
+      "dict_feat": {}
     },
     "loss": {
       "doc_loss": {
@@ -57,23 +64,16 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-    "DocBLSTM": {
-      "lstm": {},
-      "dict_embed": {
-        "embed_dim": 10
-      }
+    "repr_config": {
+        "BiLSTMSelfAttention": {}
     }
   },
   "loss": {
     "CrossEntropyLoss": {}
   },
-  "labels": {
-    "doc_label": {}
-  },
   "features": {
-    "word_feat": {},
     "dict_feat": {
-
+        "embed_dim": 10
     }
   },
   "trainer": {
@@ -87,15 +87,12 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-    "DocNN": {
-      "cnn": {}
-    }
+      "repr_config": {
+        "DocNNRepresentation": {}
+      }
   },
   "loss": {
     "CrossEntropyLoss": {}
-  },
-  "labels": {
-    "doc_label": {}
   },
   "features": {
     "word_feat": {},
@@ -116,37 +113,37 @@ DOC_CONFIGS = [
 WORD_CONFIGS = [
     """{
     "model": {
-      "WordBLSTM": {
-        "lstm": {
-          "lstm_dim": 30,
-          "num_layers": 2
+        "repr_config": {
+            "BiLSTMSlotAttention": {
+                "lstm": {
+                  "lstm_dim": 30,
+                  "num_layers": 2
+                }
+            }
         }
-      }
     },
     "loss": {
       "TaggerCrossEntropyLoss": {}
     },
-    "labels": {
-      "word_label": {}
-    },
     "features": {
-      "word_feat": {},
-      "dict_feat": {
-        "embed_dim": 10
-      }
+        "dict_feat": {
+            "embed_dim": 10
+        }
     },
     "exporter": {}
   }
 """,
     """{
     "model": {
-      "WordBLSTM": {
-        "lstm": {
-          "lstm_dim": 30,
-          "num_layers": 2
-        },
-        "use_crf": true
-      }
+        "repr_config": {
+            "BiLSTMSlotAttention": {
+                "lstm": {
+                  "lstm_dim": 30,
+                  "num_layers": 2
+                },
+                "use_crf": true
+            }
+        }
     },
     "loss": {
       "TaggerCrossEntropyLoss": {}
@@ -203,11 +200,11 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         num_predictions,
     ):
         for config in DOC_CONFIGS:
-            config = self._get_config(DocClassifyJobSpec, config)
+            config = self._get_config(DocClassificationJobSpec, config)
             metadata = self._get_metadata(num_doc_classes, 0)
-            py_model = create_model(config.model, config.features, **metadata)
+            py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
-                config.exporter, config.features, config.labels, **metadata
+                config.exporter, config.features, config.labels, metadata
             )
 
             with tempfile.NamedTemporaryFile(
@@ -227,9 +224,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     test_num_words,
                     test_num_dict_feat,
                 )
-                self._feed_c2_input(
-                    workspace, test_inputs, metadata["feature_itos_map"]
-                )
+                self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
                 workspace.RunNetOnce(pred_net)
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
 
@@ -259,11 +254,11 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         num_predictions,
     ):
         for WORD_CONFIG in WORD_CONFIGS:
-            config = self._get_config(WordTagJobSpec, WORD_CONFIG)
+            config = self._get_config(WordTaggingJobSpec, WORD_CONFIG)
             metadata = self._get_metadata(0, num_word_classes)
-            py_model = create_model(config.model, config.features, **metadata)
+            py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
-                config.exporter, config.features, config.labels, **metadata
+                config.exporter, config.features, config.labels, metadata
             )
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".{}".format(".predictor")
@@ -279,9 +274,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     test_num_words,
                     test_num_dict_feat,
                 )
-                self._feed_c2_input(
-                    workspace, test_inputs, metadata["feature_itos_map"]
-                )
+                self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
                 workspace.RunNetOnce(pred_net)
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
                 py_model.eval()
@@ -321,9 +314,9 @@ class TextModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(JointTextJobSpec, JOINT_CONFIG)
         metadata = self._get_metadata(num_doc_classes, num_word_classes)
-        py_model = create_model(config.model, config.features, **metadata)
+        py_model = create_model(config.model, config.features, metadata)
         exporter = create_exporter(
-            config.exporter, config.features, config.labels, **metadata
+            config.exporter, config.features, config.labels, metadata
         )
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".{}".format(".predictor")
@@ -341,15 +334,15 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 test_num_words,
                 test_num_dict_feat,
             )
-            self._feed_c2_input(workspace, test_inputs, metadata["feature_itos_map"])
+            self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
             workspace.RunNetOnce(pred_net)
             doc_output_names = [
                 "{}:{}".format("doc_scores", class_name)
-                for class_name in metadata["class_names"][0]
+                for class_name in metadata.label_names[0]
             ]
             word_output_names = [
                 "{}:{}".format("word_scores", class_name)
-                for class_name in metadata["class_names"][1]
+                for class_name in metadata.label_names[1]
             ]
 
             py_model.eval()
@@ -385,24 +378,51 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             )
 
     def _get_metadata(self, num_doc_classes, num_word_classes):
-        class_names = []
+        labels = {}
         if num_doc_classes:
-            class_names.append(["C_{}".format(i) for i in range(num_doc_classes)])
+            vocab = Vocab(Counter())
+            vocab.itos = ["C_{}".format(i) for i in range(num_doc_classes)]
+            label_meta = FieldMeta()
+            label_meta.vocab_size = num_doc_classes
+            label_meta.vocab = vocab
+            labels[DatasetFieldName.DOC_LABEL_FIELD] = label_meta
+
         if num_word_classes:
-            class_names.append(["W_{}".format(i) for i in range(num_word_classes)])
-        return {
-            "class_names": class_names,
-            "feature_itos_map": {
-                PredictorInputNames.TOKENS_IDS: W_VOCAB,
-                PredictorInputNames.DICT_FEAT_IDS: DICT_VOCAB,
-            },
-            "embed_num": W_VOCAB_SIZE,
-            "unk_idx": UNK_IDX,
-            "pad_idx": PAD_IDX,
-            "dict_embed_num": DICT_VOCAB_SIZE,
-            "doc_class_num": num_doc_classes,
-            "word_class_num": num_word_classes,
+            vocab = Vocab(Counter())
+            vocab.itos = ["W_{}".format(i) for i in range(num_word_classes)]
+            label_meta = FieldMeta()
+            label_meta.vocab_size = num_word_classes
+            label_meta.vocab = vocab
+            labels[DatasetFieldName.WORD_LABEL_FIELD] = label_meta
+
+        w_vocab = Vocab(Counter())
+        dict_vocab = Vocab(Counter())
+        w_vocab.itos = W_VOCAB
+        dict_vocab.itos = DICT_VOCAB
+
+        text_feat_meta = FieldMeta()
+        text_feat_meta.unk_token_idx = UNK_IDX
+        text_feat_meta.pad_token_idx = PAD_IDX
+        text_feat_meta.vocab_size = W_VOCAB_SIZE
+        text_feat_meta.vocab = w_vocab
+        text_feat_meta.vocab_export_name = PredictorInputNames.TOKENS_IDS
+
+        dict_feat_meat = FieldMeta()
+        dict_feat_meat.vocab_size = DICT_VOCAB_SIZE
+        dict_feat_meat.vocab = dict_vocab
+        dict_feat_meat.vocab_export_name = PredictorInputNames.DICT_FEAT_IDS
+
+        meta = CommonMetadata()
+        meta.features = {
+            DatasetFieldName.TEXT_FIELD: text_feat_meta,
+            DatasetFieldName.DICT_FIELD: dict_feat_meat,
         }
+        meta.labels = labels
+        meta.label_names = [label.vocab.itos for label in labels.values()]
+        meta.feature_itos_map = {
+            f.vocab_export_name: f.vocab.itos for _, f in meta.features.items()
+        }
+        return meta
 
     def _get_rand_input(
         self, batch_size, w_vocab_size, d_vocab_size, num_words, num_dict_feats

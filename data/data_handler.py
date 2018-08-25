@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 import csv
-from typing import Any, Dict, Generator, List, Tuple
+from copy import copy
+from typing import Any, Dict, Generator, List, Tuple, Type
 
 import pandas as pd
+import torch
 from pytext.common.constants import VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import EmbedInitStrategy
-from pytext.fields import Field
+from pytext.fields import Field, FieldMeta
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
 
-class COMMON_META:
-    FEATURE_VOCABS: str = "feature_vocabs"
-    LABEL_VOCABS: str = "label_vocabs"
-    PRETRAINED_EMBEDS_WEIGHT: str = "pretrained_embeds_weight"
+class CommonMetadata:
+    features: Dict[str, FieldMeta]
+    labels: Dict[str, FieldMeta]
+    pretrained_embeds_weight: torch.Tensor = None
 
 
 class BatchIterator:
@@ -95,31 +97,28 @@ class DataHandler(Component):
         self.embed_dim = embed_dim
         self.embed_init_strategy = embed_init_strategy
         self.df_to_feat_func_map: Dict = {}
-        self.metadata: Dict = {}
+        self.metadata_cls: Type = CommonMetadata
+        self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: Dict = {}
 
     def sort_key(self, ex: textdata.Example) -> Any:
         return len(getattr(ex, self.text_field.name))
 
-    def metadata_to_save(self) -> Dict[str, Any]:
+    def metadata_to_save(self):
         # make a copy
-        metadata = dict(self.metadata)
+        metadata = copy(self.metadata)
         # pretrained_embeds_weight takes a lot space and is not needed in inference time
-        if COMMON_META.PRETRAINED_EMBEDS_WEIGHT in metadata:
-            del metadata[COMMON_META.PRETRAINED_EMBEDS_WEIGHT]
+        metadata.pretrained_embeds_weight = None
         return metadata
 
-    def load_metadata(self, metadata: Dict[str, Any]):
+    def load_metadata(self, metadata: CommonMetadata):
         self.metadata = metadata
         for f in self.features:
-            if (
-                f.use_vocab
-                and f.export_input_names[0] in metadata[COMMON_META.FEATURE_VOCABS]
-            ):
-                f.vocab = metadata[COMMON_META.FEATURE_VOCABS][f.export_input_names[0]]
+            if f.use_vocab and f.name in metadata.features:
+                f.vocab = metadata.features[f.name].vocab
         for f in self.labels:
-            if f.use_vocab and f.name in metadata[COMMON_META.LABEL_VOCABS]:
-                f.vocab = metadata[COMMON_META.LABEL_VOCABS][f.name]
+            if f.use_vocab and f.name in metadata.labels:
+                f.vocab = metadata.labels[f.name].vocab
 
     def gen_dataset_from_file(
         self, file_name: str, include_label_fields: bool = True, use_cache: bool = True
@@ -198,36 +197,26 @@ class DataHandler(Component):
                 feat.build_vocab(train_data)
 
         # field metadata
-        for f in self.features + self.labels:
-            for k, v in f.get_meta().items():
-                self.metadata[k] = v
+        self.metadata.features = {f.name: f.get_meta() for f in self.features}
+        self.metadata.labels = {f.name: f.get_meta() for f in self.labels}
 
-        # feature vocabs
-        self.metadata[COMMON_META.FEATURE_VOCABS] = {
-            f.export_input_names[0]: f.vocab for f in self.features if f.use_vocab
-        }
-        # label vocabs
-        self.metadata[COMMON_META.LABEL_VOCABS] = {
-            f.name: f.vocab for f in self.labels if f.use_vocab
-        }
         # pretrained embedding weight
         if self.pretrained_embeds_file:
-            self.metadata[
-                COMMON_META.PRETRAINED_EMBEDS_WEIGHT
-            ] = embeddings_utils.init_pretrained_embeddings(
+            weight = embeddings_utils.init_pretrained_embeddings(
                 self.text_field.vocab.stoi,
                 self.pretrained_embeds_file,
                 self.embed_dim,
                 VocabMeta.UNK_TOKEN,
                 init_strategy=self.embed_init_strategy,
             )
+            self.metadata.pretrained_embeds_weight = weight
 
-        self.metadata.update(self._gen_extra_metadata())
+        self._gen_extra_metadata()
 
-    def _gen_extra_metadata(self) -> Dict[str, Any]:
+    def _gen_extra_metadata(self) -> None:
         """Subclass can overwrite to add more necessary metadata
         """
-        return {}
+        pass
 
     def get_train_batch_from_file(
         self, file_names: Tuple[str, ...], batch_size: Tuple[int, ...]

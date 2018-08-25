@@ -114,7 +114,6 @@ class CompositionalDataHandlerTest(unittest.TestCase):
 
     def test_process_data(self):
         self.dh.init_metadata_from_df(self.train_data, self.eval_data, self.test_data)
-        print(self.dh.metadata['feature_vocabs']['text'].itos)
         train_iter = self.dh.get_train_batch_from_df((self.train_data,), (1,))[0]
         for input, target, _ in train_iter:
             print(input)

@@ -28,7 +28,7 @@ class Trainer(Component):
         # Evaluate the model every eval_interval epochs
         eval_interval: int = 1
 
-    def __init__(self, config=None, **metadata):
+    def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(config)
 
     def report(self, stage, loss, preds, seq_lens, targets, target_names):
@@ -46,9 +46,11 @@ class Trainer(Component):
         model,
         optimizers: List[torch.optim.Optimizer],
         loss_fn: Loss,
-        class_names,
+        labels,
         metrics_reporter=None,
     ):
+        # TODO this var will be part of MetricReporter T33077795
+        label_names = [label.vocab.itos for label in labels.values()]
         if cuda_utils.CUDA_ENABLED:
             model.cuda()
 
@@ -106,7 +108,7 @@ class Trainer(Component):
                     preds,
                     context[SEQ_LENS],
                     targets,
-                    class_names,
+                    label_names,
                 )
                 # Reset train_loss_sum and n_batches to 0 for reporting next time
                 train_loss_sum = 0.0
@@ -114,7 +116,7 @@ class Trainer(Component):
 
             if _epoch % self.config.eval_interval == 0:
                 eval_metric, eval_loss = self.evaluate(
-                    eval_iter, model, loss_fn, class_names
+                    eval_iter, model, loss_fn, label_names
                 )
 
                 if eval_metric > best_metric:
@@ -146,7 +148,7 @@ class Trainer(Component):
 
         return best_model
 
-    def evaluate(self, eval_iter, model, loss_fn, class_names):
+    def evaluate(self, eval_iter, model, loss_fn, label_names):
         model.eval()
         all_targets, all_preds, all_seq_lengths = None, None, None
         total_loss, n_batches = 0, 0
@@ -189,7 +191,7 @@ class Trainer(Component):
             all_preds,
             all_seq_lengths,
             all_targets,
-            class_names,
+            label_names,
         )
 
         return eval_acc, total_loss
@@ -197,10 +199,10 @@ class Trainer(Component):
     def _flatten_2d(self, in_tensor):
         return in_tensor.view(-1, in_tensor.size()[-1])
 
-    def _filter_bio_prefix(self, word_class_names):
+    def _filter_bio_prefix(self, word_label_names):
         # Transform labels to non-BIO format
         filtered_names = []
-        for c_name in word_class_names:
+        for c_name in word_label_names:
             to_strip = 0
             if c_name.startswith(Slot.B_LABEL_PREFIX) or c_name.startswith(
                 Slot.I_LABEL_PREFIX

@@ -5,25 +5,24 @@ from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.config import ConfigBase
 
 from .projection_base import ProjectionBase
 
 
 class JointModelProjection(ProjectionBase):
-    def __init__(
-        self,
-        from_dim_doc,
-        from_dim_word,
-        to_dim_doc,
-        to_dim_word,
-        use_doc_probs_in_word,
-    ) -> None:
-        super().__init__()
+    class Config(ConfigBase):
+        use_doc_probs_in_word: bool = False
 
-        self.use_doc_probs_in_word = use_doc_probs_in_word
+    def __init__(
+        self, config, from_dim_doc, from_dim_word, to_dim_doc, to_dim_word
+    ) -> None:
+        super().__init__(config)
+
+        self.use_doc_probs_in_word = config.use_doc_probs_in_word
         self.out_d = nn.Linear(from_dim_doc, to_dim_doc)
 
-        if use_doc_probs_in_word:
+        if self.use_doc_probs_in_word:
             from_dim_word += to_dim_doc
 
         self.out_w = nn.Linear(from_dim_word, to_dim_word)

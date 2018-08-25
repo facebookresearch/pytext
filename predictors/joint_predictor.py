@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 
-from pytext.predictors.predictor import Predictor
-from pytext.predictors.classifier_predictor import ClassifierPredictor
-from pytext.predictors.tagger_predictor import TaggerPredictor
-from typing import List, Any, Dict
+from typing import Any, Dict, List
+
 from pytext.common.constants import DatasetFieldName
 from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.predictors.classifier_predictor import ClassifierPredictor
+from pytext.predictors.predictor import Predictor
+from pytext.predictors.tagger_predictor import TaggerPredictor
 
 
 class JointPredictor(Predictor):
     def fill_predictions(
         self, model_output: List[Any], context: Dict[str, Any]
     ) -> List[List[Dict]]:
-        [doc_class_names, word_class_names] = self.data_handler.metadata["class_names"]
+        doc_label_names = self.data_handler.metadata.labels[
+            DatasetFieldName.DOC_LABEL_FIELD
+        ].vocab.itos
+        word_label_names = self.data_handler.metadata.labels[
+            DatasetFieldName.WORD_LABEL_FIELD
+        ].vocab.itos
+
         word_predictions = TaggerPredictor.fill_tagger_predictions(
-            word_class_names,
+            word_label_names,
             model_output[1],
             context[DatasetFieldName.INDEX_FIELD],
             context[DatasetFieldName.TOKEN_RANGE_PAIR],
@@ -22,7 +29,7 @@ class JointPredictor(Predictor):
             "word_scores",
         )
         doc_predictions = ClassifierPredictor.fill_classifier_predictions(
-            doc_class_names,
+            doc_label_names,
             model_output[0],
             context[DatasetFieldName.INDEX_FIELD],
             "doc_scores",

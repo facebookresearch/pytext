@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-from typing import List, Union
+from typing import List
 
 import torch
 from pytext.config import ConfigBase
-from pytext.models.doc_models import DocBLSTM, DocNN
+from pytext.models.doc_model import DocModel
+
 from .ensemble import Ensemble
 
 
 class BaggingDocEnsemble(Ensemble):
     class Config(Ensemble.Config, ConfigBase):
-        models: List[Union[DocBLSTM.Config, DocNN.Config]]
+        models: List[DocModel.Config]
 
     def forward(self, *args, **kwargs):
         logit_d_list = None

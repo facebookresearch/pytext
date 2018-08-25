@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
 import torch.nn.functional as F
+from pytext.common.constants import DatasetFieldName
+from pytext.data import CommonMetadata
 
 from .loss import Loss
 
 
 class LanguageModelCrossEntropyLoss(Loss):
-    def __init__(self, config, pad_idx, **kwargs):
-        super().__init__(config)
+    @classmethod
+    def from_config(cls, config, metadata: CommonMetadata, *args, **kwargs):
+        return cls(metadata.features[DatasetFieldName.TEXT_FIELD].pad_token_idx)
+
+    def __init__(self, pad_idx):
         self._ignore_index = pad_idx
 
     def loss(

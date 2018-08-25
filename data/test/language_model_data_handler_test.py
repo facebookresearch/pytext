@@ -32,7 +32,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
                 DatasetFieldName.TEXT_FIELD,
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,
-                export_input_names=[PredictorInputNames.TOKENS_IDS],
+                export_names=[PredictorInputNames.TOKENS_IDS],
             )
         ]
         labels: List[Field] = []
@@ -47,35 +47,12 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
     def test_data_handler(self):
         data_handler = self.create_language_model_data_handler()
         data_handler.init_metadata_from_file(FILE_NAME, FILE_NAME, FILE_NAME)
-        self.assertEqual(data_handler.metadata["embed_num"], 25)
-        self.assertEqual(data_handler.metadata["pad_idx"], 1)
-        self.assertEqual(data_handler.metadata["unk_idx"], 0)
-        self.assertEqual(data_handler.metadata["init_token_idx"], 2)
-        self.assertEqual(data_handler.metadata["eos_token_idx"], 3)
-        self.assertEqual(
-            data_handler.metadata["feature_itos_map"]["tokens_vals"][
-                data_handler.metadata["pad_idx"]
-            ],
-            VocabMeta.PAD_TOKEN,
-        )
-        self.assertEqual(
-            data_handler.metadata["feature_itos_map"]["tokens_vals"][
-                data_handler.metadata["unk_idx"]
-            ],
-            VocabMeta.UNK_TOKEN,
-        )
-        self.assertEqual(
-            data_handler.metadata["feature_itos_map"]["tokens_vals"][
-                data_handler.metadata["init_token_idx"]
-            ],
-            VocabMeta.INIT_TOKEN,
-        )
-        self.assertEqual(
-            data_handler.metadata["feature_itos_map"]["tokens_vals"][
-                data_handler.metadata["eos_token_idx"]
-            ],
-            VocabMeta.EOS_TOKEN,
-        )
+        text_feat_meta = data_handler.metadata.features[DatasetFieldName.TEXT_FIELD]
+        self.assertEqual(text_feat_meta.vocab_size, 25)
+        self.assertEqual(text_feat_meta.pad_token_idx, 1)
+        self.assertEqual(text_feat_meta.unk_token_idx, 0)
+        self.assertEqual(text_feat_meta.init_token_idx, 2)
+        self.assertEqual(text_feat_meta.eos_token_idx, 3)
 
         train_iter = data_handler.get_train_batch_from_file(
             (FILE_NAME,), (BATCH_SIZE,)

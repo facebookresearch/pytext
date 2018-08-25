@@ -4,13 +4,14 @@ import torch
 import torch.nn as nn
 import torch.onnx.operators
 from pytext.config.module_config import PoolingType
-from pytext.models.configs.embedding_config import DictEmbeddingConfig
 
 
 class DictEmbedding(nn.Embedding):
-    def __init__(self, config: DictEmbeddingConfig) -> None:
-        super().__init__(config.vocab_size, config.embedding_dim)
-        self.pooling_type = config.pooling_type
+    def __init__(
+        self, embed_num: int, embed_dim: int, pooling_type: PoolingType
+    ) -> None:
+        super().__init__(embed_num, embed_dim)
+        self.pooling_type = pooling_type
         self.weight.data.uniform_(0, 0.1)
 
     def forward(

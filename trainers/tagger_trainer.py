@@ -42,8 +42,9 @@ class TaggerTrainer(Trainer):
 
         preds_table = []
         slots_pairs: List[NodesPredictionPair] = []
-        [word_class_names] = metadata["class_names"]
-        word_class_names, mapping = TaggerTrainer.filter_word_labels(word_class_names)
+        [label_meta] = metadata.labels.values()
+        label_names = label_meta.vocab.itos
+        word_class_names, mapping = TaggerTrainer.filter_word_labels(label_names)
 
         preds_table.append("#{0}".format(json.dumps(word_class_names)))
         preds_table.append(

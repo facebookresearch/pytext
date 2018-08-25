@@ -2,30 +2,31 @@
 
 import torch
 import torch.nn as nn
-from typing import List
 import torch.nn.functional as F
+from pytext.config import ConfigBase
+from pytext.config.module_config import CNNParams
+
 from .representation_base import RepresentationBase
 
 
 class DocNNRepresentation(RepresentationBase):
     """CNN based representation of a document."""
 
-    def __init__(
-        self,
-        embedding_dim: int,
-        kernel_num: int,
-        kernel_sizes: List[int],
-        dropout: float,
-        pad_idx: int,
-    ) -> None:
-        super().__init__()
-        self.max_kernel = max(kernel_sizes)
+    class Config(ConfigBase):
+        dropout: float = 0.4
+        cnn: CNNParams = CNNParams()
+
+    def __init__(self, config: Config, embed_dim: int) -> None:
+        super().__init__(config)
+        self.max_kernel = max(config.cnn.kernel_sizes)
         self.convs = nn.ModuleList(
-            [nn.Conv1d(embedding_dim, kernel_num, K, padding=K) for K in kernel_sizes]
+            [
+                nn.Conv1d(embed_dim, config.cnn.kernel_num, K, padding=K)
+                for K in config.cnn.kernel_sizes
+            ]
         )
-        self.dropout = nn.Dropout(dropout)
-        self.representation_dim = len(kernel_sizes) * kernel_num
-        self.pad_idx = pad_idx
+        self.dropout = nn.Dropout(config.dropout)
+        self.representation_dim = len(config.cnn.kernel_sizes) * config.cnn.kernel_num
 
     def forward(self, tokens: torch.Tensor, *args) -> torch.Tensor:
         # tokens of size (N,W,D)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, List
+from typing import List
 
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
@@ -57,14 +57,14 @@ class JointModelDataHandler(DataHandler):
         features: List[Field] = [
             TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
-                export_input_names=feature_config.word_feat.export_input_names,
+                export_names=feature_config.word_feat.export_input_names,
             )
         ]
         if feature_config.dict_feat:
             features.append(
                 DictFeatureField(
                     DatasetFieldName.DICT_FIELD,
-                    export_input_names=feature_config.dict_feat.export_input_names,
+                    export_names=feature_config.dict_feat.export_input_names,
                 )
             )
         if feature_config.cap_feat:
@@ -174,23 +174,16 @@ class JointModelDataHandler(DataHandler):
         return df
 
     def _input_from_batch(self, batch):
-        # batch.text[1] is the length of each word
-        return (batch.text[0], batch.text[1]) + tuple(
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
+        # text_input[1] is the length of each word
+        return (text_input[0], text_input[1]) + tuple(
             getattr(batch, name, None)
             for name in self.FULL_FEATURES
             if name != DatasetFieldName.TEXT_FIELD
         )
 
     def _context_from_batch(self, batch):
-        # batch.text[1] is the length of each word
-        res = {SEQ_LENS: batch.text[1]}
+        # text_input[1] is the length of each word
+        res = {SEQ_LENS: getattr(batch, DatasetFieldName.TEXT_FIELD)[1]}
         res.update(super()._context_from_batch(batch))
         return res
-
-    def _gen_extra_metadata(self) -> Dict[str, Any]:
-        return {
-            "class_names": [label.vocab.itos for label in self.labels],
-            "feature_itos_map": {
-                k: v.itos for k, v in self.metadata["feature_vocabs"].items()
-            },
-        }

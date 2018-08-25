@@ -32,7 +32,7 @@ class LanguageModelTrainer(Trainer):
         model,
         optimizers: List[torch.optim.Optimizer],
         loss_fn: Loss,
-        class_names,
+        labels,
         metrics_reporter=None,
     ):
         if cuda_utils.CUDA_ENABLED:
@@ -145,7 +145,7 @@ class LanguageModelTrainer(Trainer):
 
     def test(self, model, test_iter, metadata):
         model.eval()
-        [vocab] = metadata["class_names"]
+        token_meta = metadata.features[DatasetFieldName.TEXT_FIELD]
 
         # Write header lines
         preds_table = []
@@ -160,9 +160,9 @@ class LanguageModelTrainer(Trainer):
 
             # While calculating loss/perplexity, we would like to mask out the
             # loss from the padding token
-            weight = torch.ones(len(vocab))
+            weight = torch.ones(token_meta.vocab_size)
             # Mask the loss from padding token
-            weight[metadata["pad_idx"]] = 0
+            weight[token_meta.pad_token_idx] = 0
 
             # Set correct device for the weight tesnor
             if next(model.parameters()).is_cuda:

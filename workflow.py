@@ -47,7 +47,7 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     if config.load_snapshot_path is None or not os.path.isfile(
         config.load_snapshot_path
     ):
-        model = create_model(jobspec.model, jobspec.features, **metadata)
+        model = create_model(jobspec.model, jobspec.features, metadata)
     else:
         print("\nLoading model from [%s]..." % config.load_snapshot_path)
         model = load(config.load_snapshot_path)["model"]
@@ -55,16 +55,16 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     if cuda_utils.CUDA_ENABLED:
         model = model.cuda()
 
-    loss = create_loss(jobspec.loss, **metadata)
+    loss = create_loss(jobspec.loss, metadata)
     optimizer = create_optimizer(model, jobspec.optimizer)
-    trainer = create_trainer(jobspec.trainer, **metadata)
+    trainer = create_trainer(jobspec.trainer, metadata)
     trained_model = trainer.train(
         train_iter,
         eval_iter,
         model,
         optimizer,
         loss,
-        metadata["class_names"],
+        metadata.labels,
         metrics_reporter,
     )
 
@@ -77,7 +77,7 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     if config.jobspec.exporter:
         print("Saving caffe2 model to: " + config.export_caffe2_path)
         exporter = create_exporter(
-            jobspec.exporter, jobspec.features, jobspec.labels, **metadata
+            jobspec.exporter, jobspec.features, jobspec.labels, data_handler.metadata
         )
         exporter.export_to_caffe2(trained_model, config.export_caffe2_path)
 
@@ -97,7 +97,7 @@ def test_model(config):
         model = model.cuda()
 
     # TODO T31914569 should move test out of trainer?
-    trainer = create_trainer(config.jobspec.trainer, **data_handler.metadata)
+    trainer = create_trainer(config.jobspec.trainer, data_handler.metadata)
     test_iter = data_handler.get_test_batch(
         config.test_file_path, config.test_batch_size
     )

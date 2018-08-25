@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import copy
 from collections import Counter
-from typing import Any, Dict, List
+from typing import List
 
 import torch
 from pytext.common.constants import VocabMeta
@@ -15,14 +15,14 @@ class CharFeatureField(Field):
     def __init__(
         self,
         name,
-        export_input_names=None,
+        export_names=None,
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
     ):
         super().__init__(
             name,
-            export_input_names=export_input_names,
+            export_names=export_names,
             sequential=True,  # Otherwise pad is set to None in textdata.Field
             batch_first=batch_first,
             tokenize=no_tokenize,
@@ -30,9 +30,6 @@ class CharFeatureField(Field):
             pad_token=pad_token,
             unk_token=unk_token,
         )
-
-    def get_meta(self) -> Dict[str, Any]:
-        return {"char_embed_num": len(self.vocab)}
 
     def build_vocab(self, *args, **kwargs):
         sources = []

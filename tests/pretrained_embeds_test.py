@@ -10,8 +10,9 @@ from pytext.config.field_config import (
     LabelConfig,
     WordFeatConfig,
 )
-from pytext.data.data_handler import COMMON_META
-from pytext.data.joint_data_handler import JointModelDataHandler
+from pytext.data.joint_data_handler import (
+    JointModelDataHandler
+)
 from pytext.utils.embeddings_utils import PretrainedEmbedding
 
 
@@ -153,7 +154,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
 
         data_handler.init_metadata_from_file(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 
-        pretrained_embeds = data_handler.metadata[COMMON_META.PRETRAINED_EMBEDS_WEIGHT]
+        pretrained_embeds = data_handler.metadata.pretrained_embeds_weight
         # test random initialization (values should be non-0)
         np.testing.assert_array_less(
             [0, 0, 0, 0, 0], np.absolute(pretrained_embeds[11].numpy())
@@ -172,6 +173,6 @@ class PretrainedEmbedsTest(unittest.TestCase):
         )
         data_handler.init_metadata_from_file(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 
-        pretrained_embeds = data_handler.metadata[COMMON_META.PRETRAINED_EMBEDS_WEIGHT]
+        pretrained_embeds = data_handler.metadata.pretrained_embeds_weight
         # test zero initialization (values should all be 0)
         np.testing.assert_array_equal([0, 0, 0, 0, 0], pretrained_embeds[11].numpy())

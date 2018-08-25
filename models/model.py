@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from typing import List, Tuple
+
 import torch
 import torch.nn as nn
-from typing import Tuple, List
-from pytext.config.component import Component, ComponentType
-from pytext.models.configs import gen_embedding_config
+from pytext.config.component import Component, ComponentType, create_module
+from pytext.data import CommonMetadata
 from pytext.utils import cuda_utils
 
 
@@ -13,19 +14,27 @@ class Model(nn.Module, Component):
     Generic model class that depends on input
     embedding, representation and projection to produce predicitons.
     """
+
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     @classmethod
-    def from_config(cls, model_config, feat_config, **metadata):
-        return cls(
-            model_config,
-            gen_embedding_config(feat_config, **metadata),
-            **metadata,
+    def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
+        embedding = create_module(feat_config, metadata=metadata)
+        representation = create_module(
+            model_config.repr_config, embed_dim=embedding.embedding_dim
         )
+        projection = create_module(
+            model_config.proj_config,
+            from_dim=representation.representation_dim,
+            to_dim=next(iter(metadata.labels.values())).vocab_size,
+        )
+        return cls(embedding, representation, projection)
 
-    def __init__(self, model_config) -> None:
+    def __init__(self, embedding, representation, projection) -> None:
         nn.Module.__init__(self)
-        Component.__init__(self, model_config)
+        self.embedding = embedding
+        self.representation = representation
+        self.projection = projection
 
     def forward(
         self,
@@ -36,7 +45,7 @@ class Model(nn.Module, Component):
         chars: torch.Tensor = None,
     ) -> List[torch.Tensor]:
         # tokens dim: (bsz, max_seq_len) -> token_emb dim: (bsz, max_seq_len, dim)
-        token_emb = self.embedding(tokens, dict_feat, cap_feat, chars)
+        token_emb = self.embedding(tokens, tokens_lens, dict_feat, cap_feat, chars)
         return cuda_utils.parallelize(
             DataParallelModel(self.projection, self.representation),
             (token_emb, tokens_lens),

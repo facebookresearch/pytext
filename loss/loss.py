@@ -7,7 +7,7 @@ class Loss(Component):
     """Base class for loss functions"""
     __COMPONENT_TYPE__ = ComponentType.LOSS
 
-    def __init__(self, config=None, **metadata):
+    def __init__(self, config=None, *args, **kwargs):
         super().__init__(config)
 
     def loss(self, m_out, targets, model=None, context=None, reduce: bool=True):

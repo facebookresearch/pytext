@@ -29,12 +29,12 @@ class ClassifierTrainer(Trainer):
 
     def test(self, model, test_iter, metadata):
         model.eval()
-        [class_names] = metadata["class_names"]
-
+        [label_meta] = metadata.labels.values()
+        label_names = label_meta.vocab.itos
         # Write header lines
         preds_table = []
         label_pairs: List[LabelPredictionPair] = []
-        preds_table.append("#{0}".format(json.dumps(class_names)))
+        preds_table.append("#{0}".format(json.dumps(label_names)))
         preds_table.append(("#predictions", "label", "doc_index", "scores", "text"))
         all_targets, all_preds = None, None
 
@@ -47,7 +47,7 @@ class ClassifierTrainer(Trainer):
                 preds,
                 targets.data,
                 m_out,
-                class_names,
+                label_names,
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
                 context[DatasetFieldName.INDEX_FIELD],
                 context[DatasetFieldName.UTTERANCE_FIELD],
@@ -70,7 +70,7 @@ class ClassifierTrainer(Trainer):
         preds,
         labels_idx,
         m_out,
-        class_names,
+        label_names,
         token_range_pair,
         orig_indices,
         utterances,
@@ -89,6 +89,6 @@ class ClassifierTrainer(Trainer):
                 )
             )
 
-            predicted_label = class_names[preds[i].item()]
-            expected_label = class_names[labels_idx[i].item()]
+            predicted_label = label_names[preds[i].item()]
+            expected_label = label_names[labels_idx[i].item()]
             label_pairs.append(LabelPredictionPair(predicted_label, expected_label))

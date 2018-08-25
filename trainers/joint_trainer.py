@@ -8,7 +8,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName, Padding
-from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
 from pytext.utils.data_utils import parse_slot_string
@@ -38,11 +37,7 @@ class JointTrainer(Trainer):
             )
         )
         frame_accuracy = JointTrainer.frame_accuracy(
-            d_target.cpu(),
-            w_target.cpu(),
-            d_preds.cpu(),
-            w_preds.cpu(),
-            seq_lens.cpu(),
+            d_target.cpu(), w_target.cpu(), d_preds.cpu(), w_preds.cpu(), seq_lens.cpu()
         )
         sys.stdout.write("\nFrame accuracy : {:.3f} \n\n".format(frame_accuracy))
         return frame_accuracy
@@ -52,11 +47,16 @@ class JointTrainer(Trainer):
 
         preds_table = []
         frame_pairs: List[FramePredictionPair] = []
-        [doc_class_names, word_class_names] = metadata["class_names"]
-        word_class_names, mapping = TaggerTrainer.filter_word_labels(word_class_names)
 
-        preds_table.append("#{0}".format(json.dumps(doc_class_names)))
-        preds_table.append("#{0}".format(json.dumps(word_class_names)))
+        [doc_labe_meta, word_label_meta] = metadata.labels.values()
+        [doc_label_names, word_label_names] = [
+            doc_labe_meta.vocab.itos,
+            word_label_meta.vocab.itos,
+        ]
+        word_label_names, mapping = TaggerTrainer.filter_word_labels(word_label_names)
+
+        preds_table.append("#{0}".format(json.dumps(doc_label_names)))
+        preds_table.append("#{0}".format(json.dumps(word_label_names)))
         preds_table.append(
             (
                 "doc_index",
@@ -98,8 +98,8 @@ class JointTrainer(Trainer):
                 w_targets,
                 d_preds,
                 d_targets.data,
-                doc_class_names,
-                word_class_names,
+                doc_label_names,
+                word_label_names,
                 context[SEQ_LENS],
                 context[DatasetFieldName.RAW_WORD_LABEL],
                 context[DatasetFieldName.TOKEN_RANGE_PAIR],
@@ -132,8 +132,8 @@ class JointTrainer(Trainer):
         w_targets,
         d_preds,
         d_targets,
-        doc_class_names,
-        word_class_names,
+        doc_label_names,
+        word_label_names,
         seq_lens,
         raw_word_labels,
         token_range_pair,
@@ -146,7 +146,7 @@ class JointTrainer(Trainer):
             w_preds_idx = w_preds[offset : offset + seq_lens[i]]
             w_target_idx = w_targets[offset : offset + seq_lens[i]]
             offset += seq_lens[i]
-            w_preds_names = [word_class_names[p] for p in w_preds_idx]
+            w_preds_names = [word_label_names[p] for p in w_preds_idx]
             w_label_names = raw_word_labels[i]
             w_preds_names = summarize(seq_lens[i], token_range_pair[i], w_preds_names)
             tokens = [t for t, _ in token_range_pair[i]]
@@ -171,17 +171,17 @@ class JointTrainer(Trainer):
             )
 
             predicted_frame = JointTrainer.create_frame(
-                doc_class_names, d_preds, i, w_preds_names, utterances
+                doc_label_names, d_preds, i, w_preds_names, utterances
             )
             expected_frame = JointTrainer.create_frame(
-                doc_class_names, d_targets, i, w_label_names, utterances
+                doc_label_names, d_targets, i, w_label_names, utterances
             )
             frame_pairs.append((predicted_frame, expected_frame))
 
     @staticmethod
-    def create_frame(doc_class_names, doc_class_indices, i, word_names, utterances):
+    def create_frame(doc_label_names, doc_class_indices, i, word_names, utterances):
         frame = Node(
-            label=doc_class_names[doc_class_indices[i].item()],
+            label=doc_label_names[doc_class_indices[i].item()],
             span=Span(0, len(utterances[i])),
             children={
                 Node(label=slot.label, span=Span(slot.start, slot.end))

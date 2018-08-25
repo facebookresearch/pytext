@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.models.configs.embedding_config import CharacterEmbeddingConfig
+from typing import List
 
 
 class CharacterEmbedding(nn.Module):
@@ -13,15 +13,17 @@ class CharacterEmbedding(nn.Module):
     does not implement the Highway Network illustrated in the paper.
     """
 
-    def __init__(self, config: CharacterEmbeddingConfig) -> None:
+    def __init__(
+        self, embed_num: int, embed_dim: int, out_channels: int, kernel_sizes: List[int]
+    ) -> None:
         super().__init__()
-        self.char_embed = nn.Embedding(config.vocab_size, config.embedding_dim)
+        self.char_embed = nn.Embedding(embed_num, embed_dim)
         self.convs = nn.ModuleList(
             [
                 # in_channels = embed_dim because input is treated as sequence
                 # of dim [max_word_length] with embed_dim channels
-                nn.Conv1d(config.embedding_dim, config.out_channels, K)
-                for K in config.kernel_sizes
+                nn.Conv1d(embed_dim, out_channels, K)
+                for K in kernel_sizes
             ]
         )
         # TODO: Revisit this if ONNX can't handle it; use nn.max instead

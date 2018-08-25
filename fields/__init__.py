@@ -2,6 +2,7 @@
 from .char_field import CharFeatureField
 from .dict_field import DictFeatureField
 from .field import (
+    FieldMeta,
     CapFeatureField,
     DocLabelField,
     Field,
@@ -22,4 +23,5 @@ __all__ = [
     "FloatField",
     "TextFeatureField",
     "WordLabelField",
+    "FieldMeta",
 ]

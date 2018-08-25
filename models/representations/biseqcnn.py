@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List
+from pytext.config import ConfigBase
+from pytext.config.module_config import CNNParams
 from pytext.utils import cuda_utils
+
 from .representation_base import RepresentationBase
 
 
@@ -18,28 +19,26 @@ class BSeqCNNRepresentation(RepresentationBase):
     TODO: Current implementation has a single layer conv-maxpool operation.
     """
 
-    def __init__(
-        self,
-        fwd_bwd_ctxt_len: int,
-        surr_ctxt_len: int,
-        ctxt_pad_len: int,
-        pad_idx: int,
-        embed_dim: int,
-        in_channels: int,
-        out_channels: int,
-        kernel_sizes: List[int],
-    ) -> None:
-        super().__init__()
+    class Config(ConfigBase):
+        cnn = CNNParams()
+        fwd_bwd_context_len: int = 5
+        surrounding_context_len: int = 2
 
-        self.fwd_bwd_ctxt_len = fwd_bwd_ctxt_len
-        self.surr_ctxt_len = surr_ctxt_len
-        self.ctxt_pad_len = ctxt_pad_len
+    def __init__(self, config: Config, embed_dim: int) -> None:
+        super().__init__(config)
+
+        self.fwd_bwd_ctxt_len = config.fwd_bwd_context_len
+        self.surr_ctxt_len = config.surrounding_context_len
+        self.ctxt_pad_len = max(self.fwd_bwd_ctxt_len, self.surr_ctxt_len)
         self.padding_tensor = cuda_utils.Variable(
-            torch.Tensor(1, fwd_bwd_ctxt_len, embed_dim), requires_grad=False
+            torch.Tensor(1, self.fwd_bwd_ctxt_len, embed_dim), requires_grad=False
         )
-        self.padding_tensor.fill_(pad_idx)
+        self.padding_tensor.fill_(0)
 
         bwd_convs, fwd_convs, surr_convs = [], [], []
+        in_channels = 1
+        out_channels = config.cnn.kernel_num
+        kernel_sizes = config.cnn.kernel_sizes
         for k in kernel_sizes:
             bwd_convs.append(nn.Conv2d(in_channels, out_channels, (k, embed_dim)))
             fwd_convs.append(nn.Conv2d(in_channels, out_channels, (k, embed_dim)))
@@ -54,7 +53,7 @@ class BSeqCNNRepresentation(RepresentationBase):
         self.fwd_fc = nn.Linear(token_rep_len, token_rep_len)
         self.surr_fc = nn.Linear(token_rep_len, token_rep_len)
 
-        self.ctxt_pad = nn.ConstantPad1d((ctxt_pad_len, ctxt_pad_len), pad_idx)
+        self.ctxt_pad = nn.ConstantPad1d((self.ctxt_pad_len, self.ctxt_pad_len), 0)
 
         self.representation_dim = 3 * len(kernel_sizes) * out_channels
 

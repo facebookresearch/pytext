@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-from pytext.models.configs.embedding_config import (
-    CharacterEmbeddingConfig,
-    DictEmbeddingConfig,
-    WordEmbeddingConfig,
-)
+from pytext.common.constants import DatasetFieldName
+from pytext.config.field_config import FeatureConfig
+from pytext.data import CommonMetadata
+from pytext.models.module import Module
 
 from .char_embedding import CharacterEmbedding
 from .dict_embedding import DictEmbedding
 
 
-class TokenEmbedding(nn.Module):
+class TokenEmbedding(Module):
     """
     Single point of entry for embedding a token in all possible ways.
     It encapsulates all things that should be used for token representation.
@@ -29,39 +28,68 @@ class TokenEmbedding(nn.Module):
     Please DO NOT add independent embeddings in your model.
     """
 
-    def __init__(
-        self,
-        word_emb_config: WordEmbeddingConfig,
-        dict_emb_config: DictEmbeddingConfig,
-        char_emb_config: CharacterEmbeddingConfig,
-    ) -> None:
-        super().__init__()
-        self.embedding_dim = 0
+    Config = FeatureConfig
 
-        if word_emb_config:
-            self.word_embed = nn.Embedding(
-                word_emb_config.vocab_size,
-                word_emb_config.embedding_dim,
-                _weight=word_emb_config.pretrained_embeds_weight,
-                sparse=word_emb_config.sparse_grad,
+    # TODO @kushall @zsc we need to think more about the design here.
+    # 1 how to support more embedding types
+    # 2 are embeddings mapping to features 1:1?
+    # 3 shall each embedding class also register themself and do it's own from_config?
+    # 4 shall we get metedata in a non-flattened way?
+    @classmethod
+    def from_config(cls, config: FeatureConfig, metadata: CommonMetadata):
+        word_embed = None
+        dict_embed = None
+        char_embed = None
+
+        if config.word_feat.embed_dim:
+            word_feat_meta = metadata.features[DatasetFieldName.TEXT_FIELD]
+            word_embed = nn.Embedding(
+                word_feat_meta.vocab_size,
+                config.word_feat.embed_dim,
+                _weight=metadata.pretrained_embeds_weight,
+                sparse=config.word_feat.sparse,
             )
             # Initialize unk embedding with zeros
             # to guard the model against randomized decisions based on unknown words
-            self.word_embed.weight.data[word_emb_config.unk_idx].fill_(0.0)
-            self.embedding_dim += word_emb_config.embedding_dim
-            self.token_vocab_size = word_emb_config.vocab_size
-            self.word_embed.weight.requires_grad = not word_emb_config.freeze_embeds
+            word_embed.weight.data[word_feat_meta.unk_token_idx].fill_(0.0)
+            word_embed.weight.requires_grad = not config.word_feat.freeze
 
-        if dict_emb_config:
-            self.dict_embed = DictEmbedding(dict_emb_config)
-            self.embedding_dim += dict_emb_config.embedding_dim
-            self.dict_vocab_size = dict_emb_config.vocab_size
-
-        if char_emb_config:
-            self.char_embed = CharacterEmbedding(char_emb_config)
-            self.embedding_dim += char_emb_config.out_channels * len(
-                char_emb_config.kernel_sizes
+        if config.dict_feat:
+            dict_feat_meta = metadata.features[DatasetFieldName.DICT_FIELD]
+            dict_embed = DictEmbedding(
+                dict_feat_meta.vocab_size,
+                config.dict_feat.embed_dim,
+                config.dict_feat.pooling,
             )
+        if config.char_feat:
+            char_feat_meta = metadata.features[DatasetFieldName.CHAR_FIELD]
+            char_embed = CharacterEmbedding(
+                char_feat_meta.vocab_size,
+                config.char_feat.embed_dim,
+                config.char_feat.cnn.kernel_num,
+                config.char_feat.cnn.kernel_sizes,
+            )
+        return cls(word_embed, dict_embed, char_embed)
+
+    def __init__(
+        self,
+        word_embed: Optional[nn.Embedding],
+        dict_embed: Optional[DictEmbedding],
+        char_embed: Optional[CharacterEmbedding],
+    ) -> None:
+        super().__init__()
+        self.embedding_dim = 0
+        self.word_embed = word_embed
+        self.dict_embed = dict_embed
+        self.char_embed = char_embed
+        if word_embed:
+            self.embedding_dim += word_embed.embedding_dim
+
+        if dict_embed:
+            self.embedding_dim += dict_embed.embedding_dim
+
+        if char_embed:
+            self.embedding_dim += char_embed.out_channels * len(char_embed.kernel_sizes)
 
         if self.embedding_dim == 0:
             raise ValueError("At least one embedding config must be provided.")
@@ -69,6 +97,7 @@ class TokenEmbedding(nn.Module):
     def forward(
         self,
         tokens: torch.Tensor,
+        seq_lens: torch.Tensor = None,
         dict_feat: Tuple[torch.Tensor, ...] = None,
         cap_feat: Tuple[torch.Tensor, ...] = None,
         chars: torch.Tensor = None,
@@ -76,18 +105,18 @@ class TokenEmbedding(nn.Module):
         # tokens dim: (bsz, max_seq_len) -> (bsz, max_seq_len, dim)
         embeddings = []
 
-        if hasattr(self, "word_embed"):
+        if self.word_embed:
             word_emb = self.word_embed(tokens)
             embeddings.append(word_emb)
 
-        if hasattr(self, "dict_embed"):
+        if self.dict_embed:
             if not dict_feat:
                 raise ValueError("dict_feat argument is None.")
             dict_ids, dict_weights, dict_lengths = dict_feat
             dict_emb = self.dict_embed(tokens, dict_ids, dict_weights, dict_lengths)
             embeddings.append(dict_emb)
 
-        if hasattr(self, "char_embed"):
+        if self.char_embed:
             if chars is None:
                 raise ValueError("char_feat argument is None")
             char_emb = self.char_embed(chars)

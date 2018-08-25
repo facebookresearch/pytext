@@ -18,10 +18,6 @@ class CNNParams(ConfigBase):
     # Kernel sizes to use in convolution
     kernel_sizes: List[int] = [3, 4]
 
-class MLPParams(ConfigBase):
-    # Intermediate hidden dimensions
-    hidden_dims: List[int] = []
-
 
 class PoolingType(Enum):
     MEAN = "mean"

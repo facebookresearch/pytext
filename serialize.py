@@ -35,6 +35,6 @@ def load(load_path: str) -> Tuple[PyTextConfig, nn.Module, DataHandler]:
         jobspec.data_handler, jobspec.features, jobspec.labels
     )
     data_handler.load_metadata(metadata)
-    model = create_model(jobspec.model, jobspec.features, **data_handler.metadata)
+    model = create_model(jobspec.model, jobspec.features, data_handler.metadata)
     model.load_state_dict(model_state_dict)
     return config, model, data_handler

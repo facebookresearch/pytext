@@ -14,7 +14,6 @@ class CrossEntropyLoss(Loss):
 
 
 class BinaryCrossEntropyLoss(Loss):
-
     class Config(ConfigBase):
         reweight_negative: bool = True
 
