@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-import json
-from collections import defaultdict
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-from pytext.utils import data_utils
-from typing import Tuple
 
 
 class ResultRow:
@@ -27,27 +22,6 @@ class ResultTable:
             metrics_dict["recall"] = metrics[1][i]
             metrics_dict["f1"] = metrics[2][i]
             self.rows.append(ResultRow(class_n, metrics_dict))
-
-
-def get_all_metrics(preds, labels_idx, class_names) -> Tuple[ResultTable, ResultRow]:
-    metrics = precision_recall_fscore_support(
-        labels_idx, preds, labels=range(0, len(class_names))
-    )
-    weighted_metrics = precision_recall_fscore_support(
-        labels_idx, preds, labels=range(0, len(class_names)), average="weighted"
-    )
-    accuracy = accuracy_score(preds, labels_idx)
-    result_table = ResultTable(metrics, class_names, labels_idx, preds)
-    aggregate_metrics = ResultRow(
-        "total",
-        {
-            "weighted_precision": weighted_metrics[0],
-            "weighted_recall": weighted_metrics[1],
-            "weighted_f1": weighted_metrics[2],
-            "accuracy": accuracy,
-        },
-    )
-    return result_table, aggregate_metrics
 
 
 def summarize(tokens_length, tokenized_text, labels):
@@ -101,27 +75,3 @@ def summarize(tokens_length, tokenized_text, labels):
     if labels[-1] != "NoLabel":
         summary_list.append(":".join([str(begin), str(end), labels[-1]]))
     return ",".join(summary_list)
-
-
-def count_chunk_match(predictions, labels):
-    """
-    for each prediction and label pair, count matched chunks
-    return a json format string
-    """
-    chunk_match_dict = defaultdict(float)
-    if predictions == "" or labels == "":
-        return json.dumps(chunk_match_dict)
-
-    label_list = data_utils.parse_slot_string(labels)
-    predictions_list = data_utils.parse_slot_string(predictions)
-
-    for prediction in predictions_list:
-        for gold_label in label_list:
-            if (
-                (abs(gold_label.start - prediction.start) <= 2)
-                and (abs(gold_label.end - prediction.end) <= 2)
-                and prediction.label == gold_label.label
-            ):
-                chunk_match_dict[prediction.label] += 1
-                break
-    return json.dumps(chunk_match_dict)

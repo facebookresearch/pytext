@@ -14,9 +14,9 @@ from pytext.metrics import (
     Span,
     compute_classification_metrics_from_nodes_pairs,
 )
-from pytext.utils import test_utils
 from pytext.utils.cuda_utils import Variable
 from pytext.utils.data_utils import Slot, parse_slot_string
+from pytext.utils.test_utils import summarize
 from sklearn.metrics import classification_report, f1_score
 
 from .trainer import Trainer
@@ -47,15 +47,7 @@ class TaggerTrainer(Trainer):
 
         preds_table.append("#{0}".format(json.dumps(word_class_names)))
         preds_table.append(
-            (
-                "#predictions",
-                "label",
-                "doc_index",
-                "[pred:lab]",
-                "tok",
-                "text",
-                "chunk_match",
-            )
+            ("#predictions", "label", "doc_index", "[pred:lab]", "tok", "text")
         )
         all_targets = None
         all_preds = None
@@ -114,9 +106,7 @@ class TaggerTrainer(Trainer):
             offset += seq_lens[i]
             preds_names = [class_names[p] for p in preds_idx]
             label_names = raw_labels[i]
-            preds_names = test_utils.summarize(
-                seq_lens[i], tokenized_examples[i], preds_names
-            )
+            preds_names = summarize(seq_lens[i], tokenized_examples[i], preds_names)
             pred_lab = ":".join(
                 [str(list(map(int, preds_idx))), str(list(map(int, target_idx)))]
             )
@@ -129,7 +119,6 @@ class TaggerTrainer(Trainer):
                     pred_lab,
                     tokens,
                     " ".join(tokens),
-                    test_utils.count_chunk_match(preds_names, label_names),
                 )
             )
 

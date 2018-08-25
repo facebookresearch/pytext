@@ -11,7 +11,8 @@ from pytext.common.constants import DatasetFieldName, Padding
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
-from pytext.utils import data_utils, test_utils
+from pytext.utils.data_utils import parse_slot_string
+from pytext.utils.test_utils import summarize
 from sklearn.metrics import classification_report
 
 from .tagger_trainer import TaggerTrainer
@@ -67,8 +68,6 @@ class JointTrainer(Trainer):
                 "[word_pred:word_lab]",
                 "tokens",
                 "text",
-                # TODO: maybe stop reporting word_chunk_match
-                "word_chunk_match",
             )
         )
         all_doc_targets, all_doc_preds, all_word_targets, all_word_preds = (
@@ -149,9 +148,7 @@ class JointTrainer(Trainer):
             offset += seq_lens[i]
             w_preds_names = [word_class_names[p] for p in w_preds_idx]
             w_label_names = raw_word_labels[i]
-            w_preds_names = test_utils.summarize(
-                seq_lens[i], token_range_pair[i], w_preds_names
-            )
+            w_preds_names = summarize(seq_lens[i], token_range_pair[i], w_preds_names)
             tokens = [t for t, _ in token_range_pair[i]]
 
             w_pred_lab = ":".join(
@@ -170,7 +167,6 @@ class JointTrainer(Trainer):
                     w_pred_lab,
                     tokens,
                     utterances[i],
-                    test_utils.count_chunk_match(w_preds_names, w_label_names),
                 )
             )
 
@@ -189,7 +185,7 @@ class JointTrainer(Trainer):
             span=Span(0, len(utterances[i])),
             children={
                 Node(label=slot.label, span=Span(slot.start, slot.end))
-                for slot in data_utils.parse_slot_string(word_names)
+                for slot in parse_slot_string(word_names)
             },
         )
         return frame
