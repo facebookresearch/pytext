@@ -6,10 +6,9 @@ import pandas as pd
 from pytext.common.constants import VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import EmbedInitStrategy
+from pytext.fields import Field
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
-
-from pytext.fields import Field
 
 
 class COMMON_META:
@@ -84,7 +83,7 @@ class DataHandler(Component):
         extra_fields: List[Field] = None,
         pretrained_embeds_file: str = None,
         embed_dim: int = 0,
-        embed_init_strategy: EmbedInitStrategy=EmbedInitStrategy.RANDOM,
+        embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
         self.labels: List[Field] = labels or []
@@ -117,9 +116,7 @@ class DataHandler(Component):
                 f.use_vocab
                 and f.export_input_names[0] in metadata[COMMON_META.FEATURE_VOCABS]
             ):
-                f.vocab = metadata[COMMON_META.FEATURE_VOCABS][
-                    f.export_input_names[0]
-                ]
+                f.vocab = metadata[COMMON_META.FEATURE_VOCABS][f.export_input_names[0]]
         for f in self.labels:
             if f.use_vocab and f.name in metadata[COMMON_META.LABEL_VOCABS]:
                 f.vocab = metadata[COMMON_META.LABEL_VOCABS][f.name]
@@ -207,9 +204,7 @@ class DataHandler(Component):
 
         # feature vocabs
         self.metadata[COMMON_META.FEATURE_VOCABS] = {
-            f.export_input_names[0]: f.vocab
-            for f in self.features
-            if f.use_vocab
+            f.export_input_names[0]: f.vocab for f in self.features if f.use_vocab
         }
         # label vocabs
         self.metadata[COMMON_META.LABEL_VOCABS] = {
@@ -304,18 +299,22 @@ class DataHandler(Component):
             Input file format is required to be tab-separated columns
         """
         print("reading data from {}".format(file_name))
-        return pd.read_csv(
-            file_name,
-            header=None,
-            sep="\t",
-            delim_whitespace=False,
-            na_values="\\n",
-            keep_default_na=False,
-            dtype=str,
-            quoting=csv.QUOTE_NONE,
-            names=columns,
-            index_col=False,
-        )
+        # Replace characters with encoding errors
+        # Doing replace instead of ignore to not cause alignment issues
+        with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
+            return pd.read_csv(
+                f_handle,
+                header=None,
+                encoding="utf-8",
+                sep="\t",
+                delim_whitespace=False,
+                na_values="\\n",
+                keep_default_na=False,
+                dtype=str,
+                quoting=csv.QUOTE_NONE,
+                names=columns,
+                index_col=False,
+            )
 
     def _postprocess_batch(
         self, batch, include_input=True, include_target=True, include_context=True
