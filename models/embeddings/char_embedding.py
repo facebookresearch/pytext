@@ -28,6 +28,7 @@ class CharacterEmbedding(nn.Module):
         )
         # TODO: Revisit this if ONNX can't handle it; use nn.max instead
         self.pool = nn.AdaptiveMaxPool1d(1)
+        self.embedding_dim = out_channels * len(kernel_sizes)
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
         # chars: (bsize, max_sent_length, max_word_length)

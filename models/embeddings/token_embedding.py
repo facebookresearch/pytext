@@ -89,7 +89,7 @@ class TokenEmbedding(Module):
             self.embedding_dim += dict_embed.embedding_dim
 
         if char_embed:
-            self.embedding_dim += char_embed.out_channels * len(char_embed.kernel_sizes)
+            self.embedding_dim += char_embed.embedding_dim
 
         if self.embedding_dim == 0:
             raise ValueError("At least one embedding config must be provided.")
