@@ -36,6 +36,7 @@ class EnsembleTrainer(Trainer):
         loss_fn,
         class_names,
         metrics_reporter=None,
+        scheduler=None,
     ):
         for i in range(len(model.models)):
             print(f"start training the {i} model")
@@ -47,6 +48,7 @@ class EnsembleTrainer(Trainer):
                 loss_fn,
                 class_names,
                 metrics_reporter,
+                scheduler,
             )
             model.models[i] = trained_model
             # unsqueeze so that we can concat later

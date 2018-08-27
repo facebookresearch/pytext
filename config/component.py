@@ -12,6 +12,7 @@ class ComponentType(enum.Enum):
     TRAINER = "trainer"
     LOSS = "loss"
     OPTIMIZER = "optimizer"
+    SCHEDULER = "scheduler"
     MODEL = "model"
     MODULE = "module"
     PREDICTOR = "predictor"

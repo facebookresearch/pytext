@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
 from pytext.loss.loss import Loss
-from pytext.optimizer import optimizer_step, optimizer_zero_grad
+from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
 from pytext.utils import cuda_utils
 
 from .trainer import Trainer
@@ -34,6 +34,7 @@ class LanguageModelTrainer(Trainer):
         loss_fn: Loss,
         labels,
         metrics_reporter=None,
+        scheduler=None,
     ):
         if cuda_utils.CUDA_ENABLED:
             model.cuda()
@@ -48,6 +49,8 @@ class LanguageModelTrainer(Trainer):
 
         for _epoch in range(1, self.config.epochs + 1):
             print("Starting epoch# {}".format(_epoch))
+            if scheduler:
+                scheduler_step(scheduler)
             for m_input, targets, context in train_iter:
                 optimizer_zero_grad(optimizers)
                 m_out = model(*m_input)

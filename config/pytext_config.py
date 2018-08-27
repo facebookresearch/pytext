@@ -52,3 +52,18 @@ class OptimizerParams(ConfigBase):
     lr: float = 0.001
     weight_decay: float = 0.00001
     momentum: float = 0.0
+
+
+class SchedulerType(Enum):
+    NONE = "none"
+    STEP_LR = "step_lr"
+    EXPONENTIAL_LR = "exponential_lr"
+    COSINE_ANNEALING_LR = "cosine_annealing_lr"
+
+
+class SchedulerParams(ConfigBase):
+    type: SchedulerType = SchedulerType.NONE
+    step_size: int = 1000
+    gamma: float = 0.1
+    T_max: int = 1000
+    eta_min: float = 0

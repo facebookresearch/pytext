@@ -4,7 +4,7 @@ from typing import Optional, Union
 from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
-from pytext.config.pytext_config import OptimizerParams
+from pytext.config.pytext_config import OptimizerParams, SchedulerParams
 from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
@@ -33,6 +33,7 @@ class JobSpecBase(ConfigBase):
     features: FeatureConfig = FeatureConfig()
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporter.Config] = None
+    scheduler: Optional[SchedulerParams] = SchedulerParams()
 
 
 class EnsembleJobSpec(JobSpecBase, ConfigBase):

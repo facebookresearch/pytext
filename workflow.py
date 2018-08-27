@@ -11,7 +11,7 @@ from pytext.config.component import (
     create_model,
     create_trainer,
 )
-from pytext.optimizer import create_optimizer
+from pytext.optimizer import create_optimizer, create_scheduler
 from pytext.config import PyTextConfig
 
 from .serialize import load, save
@@ -57,7 +57,9 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
 
     loss = create_loss(jobspec.loss, metadata)
     optimizer = create_optimizer(model, jobspec.optimizer)
+    scheduler = create_scheduler(optimizer, jobspec.scheduler)
     trainer = create_trainer(jobspec.trainer, metadata)
+
     trained_model = trainer.train(
         train_iter,
         eval_iter,
@@ -66,6 +68,7 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
         loss,
         metadata.labels,
         metrics_reporter,
+        scheduler
     )
 
     print("Saving pytorch model to: " + config.save_snapshot_path)

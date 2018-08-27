@@ -8,7 +8,7 @@ from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.loss.loss import Loss
-from pytext.optimizer import optimizer_step, optimizer_zero_grad
+from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
 from pytext.utils import cuda_utils
 from pytext.utils.data_utils import Slot
 
@@ -48,6 +48,7 @@ class Trainer(Component):
         loss_fn: Loss,
         labels,
         metrics_reporter=None,
+        scheduler=None,
     ):
         # TODO this var will be part of MetricReporter T33077795
         label_names = [label.vocab.itos for label in labels.values()]
@@ -69,6 +70,8 @@ class Trainer(Component):
 
         for _epoch in range(1, self.config.epochs + 1):
             print("Starting epoch# {}".format(_epoch))
+            if scheduler:
+                scheduler_step(scheduler)
             for m_input, targets, context in train_iter:
                 optimizer_zero_grad(optimizers)
 
