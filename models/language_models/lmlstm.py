@@ -11,7 +11,7 @@ class LMLSTM(Model):
     A word-level language model that uses LSTM to represent the document
     """
     class Config(ConfigBase):
-        repr_config: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
+        representation: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
             self_attn_dim=0, bidirectional=False
         )
         proj_config: MLPProjection.Config = MLPProjection.Config()

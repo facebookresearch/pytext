@@ -21,7 +21,7 @@ class Model(nn.Module, Component):
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
         embedding = create_module(feat_config, metadata=metadata)
         representation = create_module(
-            model_config.repr_config, embed_dim=embedding.embedding_dim
+            model_config.representation, embed_dim=embedding.embedding_dim
         )
         projection = create_module(
             model_config.proj_config,

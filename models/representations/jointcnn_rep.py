@@ -12,13 +12,13 @@ from .representation_base import RepresentationBase
 
 class JointCNNRepresentation(RepresentationBase):
     class Config(ConfigBase):
-        doc_repr_config: DocNNRepresentation.Config = DocNNRepresentation.Config()
-        word_repr_config: BSeqCNNRepresentation.Config = BSeqCNNRepresentation.Config()
+        doc_representation: DocNNRepresentation.Config = DocNNRepresentation.Config()
+        word_representation: BSeqCNNRepresentation.Config = BSeqCNNRepresentation.Config()
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
-        self.doc_rep = DocNNRepresentation(config.doc_repr_config, embed_dim)
-        self.word_rep = BSeqCNNRepresentation(config.word_repr_config, embed_dim)
+        self.doc_rep = DocNNRepresentation(config.doc_representation, embed_dim)
+        self.word_rep = BSeqCNNRepresentation(config.word_representation, embed_dim)
         self.doc_representation_dim = self.doc_rep.representation_dim
         self.word_representation_dim = self.word_rep.representation_dim
 

@@ -28,7 +28,7 @@ from torchtext.vocab import Vocab
 JOINT_CONFIG = """
 {
     "model": {
-        "repr_config": {
+        "representation": {
             "JointBLSTMRepresentation": {
                 "lstm": {
                   "lstm_dim": 30,
@@ -64,7 +64,7 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-    "repr_config": {
+    "representation": {
         "BiLSTMSelfAttention": {}
     }
   },
@@ -87,7 +87,7 @@ DOC_CONFIGS = [
     """
 {
   "model": {
-      "repr_config": {
+      "representation": {
         "DocNNRepresentation": {}
       }
   },
@@ -113,7 +113,7 @@ DOC_CONFIGS = [
 WORD_CONFIGS = [
     """{
     "model": {
-        "repr_config": {
+        "representation": {
             "BiLSTMSlotAttention": {
                 "lstm": {
                   "lstm_dim": 30,
@@ -135,7 +135,7 @@ WORD_CONFIGS = [
 """,
     """{
     "model": {
-        "repr_config": {
+        "representation": {
             "BiLSTMSlotAttention": {
                 "lstm": {
                   "lstm_dim": 30,

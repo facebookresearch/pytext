@@ -14,5 +14,5 @@ class DocModel(Model):
     An n-ary document classification model.
     """
     class Config(ConfigBase):
-        repr_config: Union[BiLSTMSelfAttention.Config, DocNNRepresentation.Config]
+        representation: Union[BiLSTMSelfAttention.Config, DocNNRepresentation.Config]
         proj_config: MLPProjection.Config = MLPProjection.Config()

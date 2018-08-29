@@ -15,7 +15,7 @@ from .representations.jointcnn_rep import JointCNNRepresentation
 
 class JointModel(Model):
     class Config(ConfigBase):
-        repr_config: Union[
+        representation: Union[
             JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
         ]
         proj_config: JointModelProjection.Config = JointModelProjection.Config()
@@ -27,7 +27,7 @@ class JointModel(Model):
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
         embedding = create_module(feat_config, metadata=metadata)
         representation = create_module(
-            model_config.repr_config, embed_dim=embedding.embedding_dim
+            model_config.representation, embed_dim=embedding.embedding_dim
         )
         doc_class_num = metadata.labels[DatasetFieldName.DOC_LABEL_FIELD].vocab_size
         word_label_num = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD].vocab_size

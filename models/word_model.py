@@ -18,7 +18,7 @@ class WordTaggingModel(Model):
     Word tagging model.
     """
     class Config(ConfigBase):
-        repr_config: Union[BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config]
+        representation: Union[BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config]
         proj_config: MLPProjection.Config = MLPProjection.Config()
         use_crf: bool = False
 
