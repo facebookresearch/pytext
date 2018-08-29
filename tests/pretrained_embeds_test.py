@@ -152,7 +152,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
             LabelConfig(),
         )
 
-        data_handler.init_metadata_from_file(TRAIN_FILE, EVAL_FILE, TEST_FILE)
+        data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 
         pretrained_embeds = data_handler.metadata.pretrained_embeds_weight
         # test random initialization (values should be non-0)
@@ -171,7 +171,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
             ),
             LabelConfig(),
         )
-        data_handler.init_metadata_from_file(TRAIN_FILE, EVAL_FILE, TEST_FILE)
+        data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 
         pretrained_embeds = data_handler.metadata.pretrained_embeds_weight
         # test zero initialization (values should all be 0)

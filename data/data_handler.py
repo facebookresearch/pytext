@@ -5,12 +5,16 @@ from typing import Any, Dict, Generator, List, Tuple, Type
 
 import pandas as pd
 import torch
+import torch.hiveio as hiveio
 from pytext.common.constants import VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.fields import Field, FieldMeta
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
+
+# Special prefix to distnguish the hive data source
+HIVE_PREFIX = "hive://"
 
 
 class CommonMetadata:
@@ -59,8 +63,8 @@ class DataHandler(Component):
           directly into model.
 
     Attributes:
-        raw_columns: columns to read from file and put into pandas dataframe, the order
-            should be the same as how data stored in tsv file
+        raw_columns: columns to read from data source and put into pandas dataframe,
+            in case of files; the order should match the data stored in that file
         labels:
         features:
         df_to_feat_func_map: a map defines how to convert a pandas dataframe column
@@ -120,15 +124,18 @@ class DataHandler(Component):
             if f.use_vocab and f.name in metadata.labels:
                 f.vocab = metadata.labels[f.name].vocab
 
-    def gen_dataset_from_file(
-        self, file_name: str, include_label_fields: bool = True, use_cache: bool = True
+    def gen_dataset_from_path(
+        self, path: str, include_label_fields: bool = True, use_cache: bool = True
     ) -> textdata.Dataset:
-        if use_cache and file_name in self._data_cache:
-            return self._data_cache[file_name]
+        if use_cache and path in self._data_cache:
+            return self._data_cache[path]
         res = self.gen_dataset(
-            self.read_from_file(file_name, self.raw_columns), include_label_fields
+            self.read_from_hive(path, self.raw_columns)
+            if path.startswith(HIVE_PREFIX)
+            else self.read_from_file(path, self.raw_columns),
+            include_label_fields,
         )
-        self._data_cache[file_name] = res
+        self._data_cache[path] = res
         return res
 
     def gen_dataset(
@@ -158,12 +165,12 @@ class DataHandler(Component):
     def _gen_dataset_context(self, df: pd.DataFrame) -> Dict[str, Any]:
         return {}
 
-    def init_metadata_from_file(self, train_file_path, eval_file_path, test_file_path):
+    def init_metadata_from_path(self, train_path, eval_path, test_path):
         # get data sets
         self._init_metadata(
             *[
-                self.gen_dataset_from_file(file_path)
-                for file_path in [train_file_path, eval_file_path, test_file_path]
+                self.gen_dataset_from_path(path)
+                for path in [train_path, eval_path, test_path]
             ]
         )
 
@@ -218,11 +225,11 @@ class DataHandler(Component):
         """
         pass
 
-    def get_train_batch_from_file(
-        self, file_names: Tuple[str, ...], batch_size: Tuple[int, ...]
+    def get_train_batch_from_path(
+        self, data_paths: Tuple[str, ...], batch_size: Tuple[int, ...]
     ) -> Tuple[BatchIterator, ...]:
         return self._get_train_batch(
-            tuple(self.gen_dataset_from_file(f) for f in file_names), batch_size
+            tuple(self.gen_dataset_from_path(p) for p in data_paths), batch_size
         )
 
     def get_train_batch_from_df(
@@ -247,8 +254,8 @@ class DataHandler(Component):
             )
         )
 
-    def get_test_batch(self, file_path: str, batch_size: int) -> BatchIterator:
-        test_data = self.gen_dataset_from_file(file_path)
+    def get_test_batch(self, path: str, batch_size: int) -> BatchIterator:
+        test_data = self.gen_dataset_from_path(path)
         return BatchIterator(
             textdata.Iterator(
                 test_data,
@@ -284,7 +291,7 @@ class DataHandler(Component):
 
     @staticmethod
     def read_from_file(file_name: str, columns: List[str]) -> pd.DataFrame:
-        """ Read data from file and generate a dataframe to host intermediate dataself.
+        """ Read data from file and generate a dataframe to host intermediate data.
             Input file format is required to be tab-separated columns
         """
         print("reading data from {}".format(file_name))
@@ -304,6 +311,21 @@ class DataHandler(Component):
                 names=columns,
                 index_col=False,
             )
+
+    @staticmethod
+    def read_from_hive(hive_path: str, columns: List[str]) -> pd.DataFrame:
+        """ Read data from hive path in this format:
+            hive://[namespace]/[table_name]/[partition_list]
+            and generate a dataframe to host intermediate data.
+        """
+        print("reading data from hive path: {}".format(hive_path))
+        assert hive_path.startswith(HIVE_PREFIX), "Invalid hive path: {}".format(
+            hive_path
+        )
+        namespace, table, partitions = hive_path[len(HIVE_PREFIX) :].split("/", 3)
+        partitions_list = partitions.split("/")
+        col_list = hiveio.read(namespace, table, partitions_list, columns)
+        return pd.DataFrame.from_dict(dict(zip(columns, col_list)))
 
     def _postprocess_batch(
         self, batch, include_input=True, include_target=True, include_context=True
@@ -325,7 +347,7 @@ class DataHandler(Component):
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-            preprocess the dataframe read from file, generate some intermediate data
+            preprocess the dataframe read from path, generate some intermediate data
             do nothing by default
         """
         pass

@@ -44,7 +44,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
 
     def test_data_handler(self):
         data_handler = self.create_language_model_data_handler()
-        data_handler.init_metadata_from_file(FILE_NAME, FILE_NAME, FILE_NAME)
+        data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)
         text_feat_meta = data_handler.metadata.features[DatasetFieldName.TEXT_FIELD]
         self.assertEqual(text_feat_meta.vocab_size, 25)
         self.assertEqual(text_feat_meta.pad_token_idx, 1)
@@ -52,7 +52,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(text_feat_meta.init_token_idx, 2)
         self.assertEqual(text_feat_meta.eos_token_idx, 3)
 
-        train_iter = data_handler.get_train_batch_from_file(
+        train_iter = data_handler.get_train_batch_from_path(
             (FILE_NAME,), (BATCH_SIZE,)
         )[0]
 

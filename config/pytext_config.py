@@ -18,9 +18,9 @@ class PyTextConfig(ConfigBase):
     jobspec: Union[Any, JobSpecPlaceHolder]
     use_cuda_if_available: bool = True
 
-    train_file_path: str = "train.tsv"
-    eval_file_path: str = "eval.tsv"
-    test_file_path: str = "test.tsv"
+    train_path: str = "train.tsv"
+    eval_path: str = "eval.tsv"
+    test_path: str = "test.tsv"
     # Training batch_size
     train_batch_size: int = 128
     # Eval batch_size

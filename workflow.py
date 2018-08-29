@@ -34,12 +34,12 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     )
 
     print("\nLoading data...")
-    data_handler.init_metadata_from_file(
-        config.train_file_path, config.eval_file_path, config.test_file_path
+    data_handler.init_metadata_from_path(
+        config.train_path, config.eval_path, config.test_path
     )
 
-    train_iter, eval_iter = data_handler.get_train_batch_from_file(
-        (config.train_file_path, config.eval_file_path),
+    train_iter, eval_iter = data_handler.get_train_batch_from_path(
+        (config.train_path, config.eval_path),
         (config.train_batch_size, config.eval_batch_size),
     )
     # load or create model
@@ -102,7 +102,7 @@ def test_model(config):
     # TODO T31914569 should move test out of trainer?
     trainer = create_trainer(config.jobspec.trainer, data_handler.metadata)
     test_iter = data_handler.get_test_batch(
-        config.test_file_path, config.test_batch_size
+        config.test_path, config.test_batch_size
     )
     results, metrics = trainer.test(model, test_iter, data_handler.metadata)
 
