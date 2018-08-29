@@ -3,6 +3,7 @@
 from typing import List
 
 import pandas as pd
+import multiprocessing
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
@@ -21,15 +22,13 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 class LanguageModelDataHandler(DataHandler):
     class Config(ConfigBase):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
-        preprocess_workers: int = 32
         pretrained_embeds_file: str = ""
 
     def __init__(
-        self, featurizer: SharedFeaturizer, num_workers: int, *args, **kwargs
+        self, featurizer: SharedFeaturizer, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
-        self.num_workers = num_workers
 
         self.df_to_feat_func_map = {
             # features
@@ -50,7 +49,6 @@ class LanguageModelDataHandler(DataHandler):
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
         columns = config.columns_to_read
-        num_workers = config.preprocess_workers
         features: List[Field] = [
             TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
@@ -63,7 +61,6 @@ class LanguageModelDataHandler(DataHandler):
         extra_fields: List[Field] = [RawField(DatasetFieldName.TOKEN_RANGE_PAIR)]
         return cls(
             featurizer=SharedFeaturizer(),
-            num_workers=num_workers,
             raw_columns=columns,
             features=features,
             labels=labels,
@@ -82,9 +79,11 @@ class LanguageModelDataHandler(DataHandler):
         df[DFColumn.RAW_FEATS] = df.apply(
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
+
+        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+                df[DFColumn.RAW_FEATS].tolist(), num_workers
             )
         )
         df[DFColumn.TOKEN_RANGE_PAIR] = [

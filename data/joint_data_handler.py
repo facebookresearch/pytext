@@ -3,6 +3,7 @@
 from typing import List
 
 import pandas as pd
+import multiprocessing
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -19,7 +20,6 @@ from pytext.fields import (
     WordLabelField,
 )
 from pytext.utils import data_utils
-
 from .data_handler import DataHandler
 
 
@@ -36,7 +36,6 @@ class JointModelDataHandler(DataHandler):
             DFColumn.DOC_WEIGHT,
             DFColumn.WORD_WEIGHT,
         ]
-        preprocess_workers: int = 32
         pretrained_embeds_file: str = ""
 
     FULL_FEATURES = [
@@ -97,20 +96,18 @@ class JointModelDataHandler(DataHandler):
             features=features,
             extra_fields=extra_fields,
             featurizer=SharedFeaturizer(),
-            num_workers=config.preprocess_workers,
             pretrained_embeds_file=config.pretrained_embeds_file,
             embed_dim=feature_config.word_feat.embed_dim,
             embed_init_strategy=feature_config.word_feat.embed_init_strategy,
         )
 
     def __init__(
-        self, featurizer: SharedFeaturizer, num_workers: int, **kwargs
+        self, featurizer: SharedFeaturizer, **kwargs
     ) -> None:
 
         super().__init__(**kwargs)
         # configs
         self.featurizer = featurizer
-        self.num_workers = num_workers
 
         self.df_to_feat_func_map = {
             # features
@@ -158,9 +155,10 @@ class JointModelDataHandler(DataHandler):
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
 
+        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+                df[DFColumn.RAW_FEATS].tolist(), num_workers
             )
         )
 

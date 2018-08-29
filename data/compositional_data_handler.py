@@ -3,6 +3,7 @@
 from typing import List
 
 import pandas as pd
+import multiprocessing
 from eit.llama.common.thriftutils import dict_to_thrift
 from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
@@ -46,11 +47,10 @@ class CompositionalDataHandler(DataHandler):
             DFColumn.UTTERANCE,
             DFColumn.DICT_FEAT,
         ]
-        preprocess_workers: int = 32
         pretrained_embeds_file: str = ""
         shuffle: bool = True
 
-    def __init__(self, num_workers=1, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(
             features=[
                 # TODO assuming replacing numbers with NUM and unkify be done in featurizer
@@ -62,7 +62,6 @@ class CompositionalDataHandler(DataHandler):
             **kwargs
         )
         self.featurizer = SharedFeaturizer()
-        self.num_workers = num_workers
 
         self.df_to_feat_func_map = {
             # TODO set_tokens_indices, should implement another field
@@ -86,9 +85,11 @@ class CompositionalDataHandler(DataHandler):
         df[DFColumn.RAW_FEATS] = df.apply(
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
+
+        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+                df[DFColumn.RAW_FEATS].tolist(), num_workers
             )
         )
 

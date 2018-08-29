@@ -26,7 +26,6 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         # Thrift. After that directly use Data Handler's from config method
         # with synthetic configs
         columns = [DFColumn.UTTERANCE]
-        num_workers = 16
         features: List[Field] = [
             TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
@@ -38,7 +37,6 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         labels: List[Field] = []
         return LanguageModelDataHandler(
             featurizer=SharedFeaturizer(),
-            num_workers=num_workers,
             raw_columns=columns,
             features=features,
             labels=labels,
