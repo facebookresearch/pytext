@@ -60,6 +60,7 @@ class TokenEmbedding(Module):
                 dict_feat_meta.vocab_size,
                 config.dict_feat.embed_dim,
                 config.dict_feat.pooling,
+                sparse=config.dict_feat.sparse,
             )
         if config.char_feat:
             char_feat_meta = metadata.features[DatasetFieldName.CHAR_FIELD]
@@ -68,6 +69,7 @@ class TokenEmbedding(Module):
                 config.char_feat.embed_dim,
                 config.char_feat.cnn.kernel_num,
                 config.char_feat.cnn.kernel_sizes,
+                sparse=config.char_feat.sparse,
             )
         return cls(word_embed, dict_embed, char_embed)
 

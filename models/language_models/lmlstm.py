@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+from typing import Dict, Tuple
+
+import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
@@ -7,9 +10,8 @@ from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 
 
 class LMLSTM(Model):
-    """
-    A word-level language model that uses LSTM to represent the document
-    """
+    """A word-level language model that uses LSTM to represent the document."""
+
     class Config(ConfigBase):
         representation: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
             self_attn_dim=0, bidirectional=False
@@ -20,7 +22,6 @@ class LMLSTM(Model):
     @classmethod
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
         model = super().from_config(model_config, feat_config, metadata)
-        print(model_config)
         if model_config.tied_weights:
             if not feat_config.word_feat:
                 raise ValueError(
@@ -39,4 +40,14 @@ class LMLSTM(Model):
             model.projection.get_projection()[
                 0
             ].weight = model.embedding.word_embed.weight
+
+        # Setting an attribute on model object outside the class.
+        model.tied_weights = model_config.tied_weights
         return model
+
+    def get_model_params_for_optimizer(
+        self
+    ) -> Tuple[Dict[str, nn.Parameter], Dict[str, nn.Parameter]]:
+        if self.tied_weights:
+            return {}, {}  # Don't use SparseAdam when tying weights.
+        return super().get_model_params_for_optimizer()

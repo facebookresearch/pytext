@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-#TODO: convert these to ConfigBase types
+# TODO: convert these to ConfigBase types
 
 
 class WordEmbeddingConfig:
@@ -9,7 +9,7 @@ class WordEmbeddingConfig:
         "embedding_dim",
         "pretrained_embeds_weight",
         "unk_idx",
-        "sparse_grad",
+        "sparse",
         "freeze_embeds",
     ]
 
@@ -19,31 +19,39 @@ class WordEmbeddingConfig:
         embedding_dim,
         pretrained_embeds_weight,
         unk_idx,
-        sparse_grad,
+        sparse,
         freeze_embeds,
     ):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.pretrained_embeds_weight = pretrained_embeds_weight
         self.unk_idx = unk_idx
-        self.sparse_grad = sparse_grad
+        self.sparse = sparse
         self.freeze_embeds = freeze_embeds
 
 
 class DictEmbeddingConfig:
-    __slots__ = ["vocab_size", "embedding_dim", "pooling_type"]
+    __slots__ = ["vocab_size", "embedding_dim", "pooling_type", "sparse"]
 
-    def __init__(self, vocab_size=0, embedding_dim=0, pooling_type=None):
+    def __init__(self, vocab_size=0, embedding_dim=0, pooling_type=None, sparse=False):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.pooling_type = pooling_type
+        self.sparse = sparse
 
 
 class CharacterEmbeddingConfig:
-    __slots__ = ["vocab_size", "embedding_dim", "out_channels", "kernel_sizes"]
+    __slots__ = [
+        "vocab_size",
+        "embedding_dim",
+        "out_channels",
+        "kernel_sizes",
+        "sparse",
+    ]
 
-    def __init__(self, vocab_size, embedding_dim, out_channels, kernel_sizes):
+    def __init__(self, vocab_size, embedding_dim, out_channels, kernel_sizes, sparse):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
         self.out_channels = out_channels
         self.kernel_sizes = kernel_sizes
+        self.sparse = sparse

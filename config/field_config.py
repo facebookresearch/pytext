@@ -13,7 +13,7 @@ class EmbedInitStrategy(Enum):
 
 class WordFeatConfig(ConfigBase):
     embed_dim: int = 100
-    sparse: bool = False
+    sparse: bool = True
     freeze: bool = False
     embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
     export_input_names: List[str] = ["tokens_vals", "tokens_lens"]
@@ -21,12 +21,14 @@ class WordFeatConfig(ConfigBase):
 
 class DictFeatConfig(ConfigBase):
     embed_dim: int = 100
+    sparse: bool = False
     pooling: PoolingType = PoolingType.MEAN
     export_input_names: List[str] = ["dict_vals", "dict_weights", "dict_lens"]
 
 
 class CharFeatConfig(ConfigBase):
     embed_dim: int = 100
+    sparse: bool = False
     cnn: CNNParams = CNNParams()
 
 

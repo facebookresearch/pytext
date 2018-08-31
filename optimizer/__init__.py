@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Dict, Iterator, List, Tuple, Union, ValuesView
+from typing import Dict, Iterator, List, Union, ValuesView
 
 import torch
 from pytext.config.pytext_config import (
@@ -9,9 +9,6 @@ from pytext.config.pytext_config import (
     SchedulerParams,
     SchedulerType,
 )
-
-# TODO remove it after migrating nnlg to new config
-from pytext.config.ttypes import OptimizerType as OptimizerTypeThrift
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR,
     ExponentialLR,
@@ -23,19 +20,29 @@ from torch.optim.lr_scheduler import (
 def create_optimizer(
     model: torch.nn.Module, optimizer_params: OptimizerParams
 ) -> List[torch.optim.Optimizer]:
-    if optimizer_params.type in [OptimizerType.ADAM, OptimizerTypeThrift.ADAM]:
-        # TODO hack workaround, should remove optimizer_params.type == OptimizerType.ADAM
-        # after migrating nnlg config
-        if (
-            optimizer_params.type == OptimizerType.ADAM
-            and hasattr(model, "embedding")
-            and model.embedding.word_embed.sparse
-        ):
-            embeddings_params, other_params = split_model_params(model)
+    if optimizer_params.type == OptimizerType.ADAM:
+        sparse_grads_params: Dict[str, torch.nn.Parameter] = {}
+        if hasattr(model, "get_model_params_for_optimizer"):
+            sparse_grads_params, dense_grads_params = (
+                model.get_model_params_for_optimizer()
+            )
+        if sparse_grads_params:
+            print(
+                "Using sparse gradients for the following parameters: {}.".format(
+                    list(sparse_grads_params.keys())
+                )
+            )
+            print(
+                "Using dense gradients for the following parameters: {}.".format(
+                    list(dense_grads_params.keys())
+                )
+            )
             return [
-                torch.optim.SparseAdam(embeddings_params, lr=optimizer_params.lr),
+                torch.optim.SparseAdam(
+                    sparse_grads_params.values(), lr=optimizer_params.lr
+                ),
                 torch.optim.Adam(
-                    other_params,
+                    dense_grads_params.values(),
                     lr=optimizer_params.lr,
                     weight_decay=optimizer_params.weight_decay,
                 ),
@@ -48,7 +55,7 @@ def create_optimizer(
                     weight_decay=optimizer_params.weight_decay,
                 )
             ]
-    elif optimizer_params.type in [OptimizerType.SGD, OptimizerTypeThrift.SGD]:
+    elif optimizer_params.type == OptimizerType.SGD:
         return [
             torch.optim.SGD(
                 get_params(model.parameters()),
@@ -87,25 +94,6 @@ def create_scheduler(
         ]
 
     raise ValueError("Unknown optimizer scheduler type")
-
-
-def split_model_params(
-    model: torch.nn.Module
-) -> Tuple[List[torch.nn.Parameter], List[torch.nn.Parameter]]:
-    """
-    Current implementation makes a distinction between embedding params append
-    rest of the model params because we're only supporting sparse gradients
-    for embeddings. This is not generic enough that allows the flexibility of
-    using sparse optimizer for any subset of parameters in the model.
-    """
-    embedding_params_name = {
-        n for n, _ in model.embedding.word_embed.named_parameters()
-    }
-    other_params = []
-    for name, param in model.named_parameters():
-        if name not in embedding_params_name:
-            other_params.append(param)
-    return model.embedding.word_embed.parameters(), other_params
 
 
 def get_params(

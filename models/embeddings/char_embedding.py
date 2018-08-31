@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+from typing import List
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import List
 
 
 class CharacterEmbedding(nn.Module):
@@ -14,10 +15,15 @@ class CharacterEmbedding(nn.Module):
     """
 
     def __init__(
-        self, embed_num: int, embed_dim: int, out_channels: int, kernel_sizes: List[int]
+        self,
+        embed_num: int,
+        embed_dim: int,
+        out_channels: int,
+        kernel_sizes: List[int],
+        sparse=False,
     ) -> None:
         super().__init__()
-        self.char_embed = nn.Embedding(embed_num, embed_dim)
+        self.char_embed = nn.Embedding(embed_num, embed_dim, sparse=sparse)
         self.convs = nn.ModuleList(
             [
                 # in_channels = embed_dim because input is treated as sequence
@@ -29,6 +35,7 @@ class CharacterEmbedding(nn.Module):
         # TODO: Revisit this if ONNX can't handle it; use nn.max instead
         self.pool = nn.AdaptiveMaxPool1d(1)
         self.embedding_dim = out_channels * len(kernel_sizes)
+        self.sparse = sparse
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
         # chars: (bsize, max_sent_length, max_word_length)
