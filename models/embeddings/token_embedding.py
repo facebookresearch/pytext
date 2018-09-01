@@ -49,6 +49,11 @@ class TokenEmbedding(Module):
                 _weight=metadata.pretrained_embeds_weight,
                 sparse=config.word_feat.sparse,
             )
+            embed_init_range = config.word_feat.embed_init_range
+            if metadata.pretrained_embeds_weight is None and \
+                    embed_init_range is not None:
+                word_embed.weight.data.uniform_(
+                    embed_init_range[0], embed_init_range[1])
             # Initialize unk embedding with zeros
             # to guard the model against randomized decisions based on unknown words
             word_embed.weight.data[word_feat_meta.unk_token_idx].fill_(0.0)

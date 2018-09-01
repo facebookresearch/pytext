@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import copy
-from typing import List
+from typing import List, Optional
 
 import torch
 from pytext.config.component import Component, ComponentType
@@ -27,6 +27,8 @@ class Trainer(Component):
         log_interval: int = 1
         # Evaluate the model every eval_interval epochs
         eval_interval: int = 1
+        # Clip gradient norm if set
+        max_clip_norm: Optional[float] = None
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(config)

@@ -5,6 +5,7 @@ from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
 from pytext.config.pytext_config import OptimizerParams, SchedulerParams
+from pytext.data.bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
@@ -29,7 +30,6 @@ from pytext.trainers.tagger_trainer import TaggerTrainer
 
 
 class JobSpecBase(ConfigBase):
-    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
     features: FeatureConfig = FeatureConfig()
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporter.Config] = None
@@ -43,6 +43,7 @@ class EnsembleJobSpec(JobSpecBase, ConfigBase):
     ]
     trainer: EnsembleTrainer.Config
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class DocClassificationJobSpec(JobSpecBase, ConfigBase):
@@ -50,6 +51,7 @@ class DocClassificationJobSpec(JobSpecBase, ConfigBase):
     loss: Union[CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config]
     trainer: ClassifierTrainer.Config = ClassifierTrainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class WordTaggingJobSpec(JobSpecBase, ConfigBase):
@@ -57,6 +59,7 @@ class WordTaggingJobSpec(JobSpecBase, ConfigBase):
     loss: Union[CRFLoss.Config, TaggerCrossEntropyLoss.Config]
     trainer: TaggerTrainer.Config = TaggerTrainer.Config()
     labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
+    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class JointTextJobSpec(JobSpecBase, ConfigBase):
@@ -66,15 +69,17 @@ class JointTextJobSpec(JobSpecBase, ConfigBase):
     labels: LabelConfig = LabelConfig(
         doc_label=DocLabelConfig(), word_label=WordLabelConfig()
     )
+    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class LMJobSpec(JobSpecBase, ConfigBase):
+    data_handler: Union[LanguageModelDataHandler.Config,
+        BPTTLanguageModelDataHandler.Config]
     model: LMLSTM.Config
     loss: LanguageModelCrossEntropyLoss.Config = (
         LanguageModelCrossEntropyLoss.Config()
     )
     trainer: LanguageModelTrainer.Config = LanguageModelTrainer.Config()
-    data_handler: LanguageModelDataHandler.Config = (LanguageModelDataHandler.Config())
     labels: Optional[LabelConfig] = None
 
 

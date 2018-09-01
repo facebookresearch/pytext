@@ -11,6 +11,7 @@ class WordEmbeddingConfig:
         "unk_idx",
         "sparse",
         "freeze_embeds",
+        "embed_init_range",
     ]
 
     def __init__(
@@ -21,6 +22,7 @@ class WordEmbeddingConfig:
         unk_idx,
         sparse,
         freeze_embeds,
+        embed_init_range,
     ):
         self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
@@ -28,6 +30,7 @@ class WordEmbeddingConfig:
         self.unk_idx = unk_idx
         self.sparse = sparse
         self.freeze_embeds = freeze_embeds
+        self.embed_init_range = embed_init_range
 
 
 class DictEmbeddingConfig:

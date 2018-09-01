@@ -89,5 +89,8 @@ class DataParallelModel(nn.Module):
         rep = self.representation(token_emb, tokens_lens)
         if not isinstance(rep, (list, tuple)):
             rep = [rep]
+        elif isinstance(rep[-1], tuple):
+            # since some lstm based representations return states as (h0, c0)
+            rep = rep[:-1]
 
         return self.projection(*rep)

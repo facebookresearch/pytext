@@ -48,17 +48,25 @@ class BiLSTMSelfAttention(RepresentationBase):
         else:
             self.representation_dim = seq_in_size
 
-    def forward(self, tokens: torch.Tensor, tokens_lens: torch.Tensor) -> torch.Tensor:
+    def forward(self, tokens: torch.Tensor, tokens_lens: torch.Tensor,
+                states: torch.Tensor = None) -> torch.Tensor:
         rep = self.dropout(tokens)
+        if states is not None:
+            # convert (h0, c0) from (bsz x seq_len x nhid) to (seq_len x bsz x nhid)
+            states = (states[0].transpose(0, 1).contiguous(),
+                     states[1].transpose(0, 1).contiguous())
         tokens_lens = tokens_lens.int()
         rnn_input = pack_padded_sequence(rep, tokens_lens, batch_first=True)
-        rep, _ = self.lstm(rnn_input)
+        rep, new_state = self.lstm(rnn_input, states)
         rep, _ = pad_packed_sequence(
             rep, padding_value=0.0, batch_first=True, total_length=tokens.size(1)
         )
+        # convert states back to (bsz x seq_len x nhid) to be used in
+        # data parallel model
+        new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
         if self.attention:
             rep = self.attention(rep)
         if self.projection:
-            return self.dense(rep)
+            return self.dense(rep), new_state
         else:
-            return rep
+            return rep, new_state

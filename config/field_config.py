@@ -16,6 +16,7 @@ class WordFeatConfig(ConfigBase):
     sparse: bool = True
     freeze: bool = False
     embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
+    embed_init_range: Optional[List[float]] = None
     export_input_names: List[str] = ["tokens_vals", "tokens_lens"]
 
 

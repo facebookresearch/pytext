@@ -65,6 +65,9 @@ class LanguageModelTrainer(Trainer):
                 n_words += num_words_in_batch
 
                 loss.backward()
+                if self.config.max_clip_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), self.config.max_clip_norm)
                 optimizer_step(optimizers)
 
             # The metric here is perplexity
@@ -182,9 +185,11 @@ class LanguageModelTrainer(Trainer):
             # sequence_loss is the loss per word for each sequence in the batch
             # sequence_loss dim: (bsize,)
             sequence_loss = loss.sum(1) / m_input[1].float()
-            self.update_test_results(
-                preds_table, sequence_loss, context[DatasetFieldName.TOKEN_RANGE_PAIR]
-            )
+            if DatasetFieldName.TOKEN_RANGE_PAIR in context:
+                self.update_test_results(
+                    preds_table, sequence_loss,
+                    context[DatasetFieldName.TOKEN_RANGE_PAIR]
+                )
 
         # Return  perplexity for every utterance and average perplexity
         # for all utterances, for now. There are no Frame metrics here
