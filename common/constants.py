@@ -59,6 +59,7 @@ class VocabMeta:
     EOS_TOKEN = "</s>"
     INIT_TOKEN = "<s>"
 
+
 class PredictorInputNames:
     TOKENS_IDS = "tokens_vals"
     TOKENS_LENS = "tokens_lens"

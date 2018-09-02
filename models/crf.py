@@ -12,6 +12,7 @@ from caffe2.python.fb.text.crf_predict import apply_crf
 from pytext.common.constants import Padding
 from pytext.utils.cuda_utils import Variable as Var
 from torch.autograd import Variable
+from torch.nn.utils.rnn import pad_sequence
 
 
 class CRF(nn.Module):
@@ -119,57 +120,19 @@ class CRF(nn.Module):
             )
         return mask.contiguous()
 
-    def decode_crf(self, w_out, w_target):
-        mask = self.make_mask_from_targets(torch.transpose(w_target, 0, 1))
-        w_preds = self._decode(torch.transpose(w_out, 0, 1).contiguous(), mask=mask)
-        w_out = self._rearrange_output(w_out, w_preds)
-        return w_out
-
-    def decode_crf_lengths(self, w_out, w_lengths):
-        mask = self.make_mask_from_lengths(w_out.size()[:-1], w_lengths)
-        w_preds = self._decode(torch.transpose(w_out, 0, 1).contiguous(), mask=mask)
-        w_out = self._rearrange_output(w_out, w_preds)
-        return w_out
-
-    def make_mask_from_lengths(self, w_size, lengths):
-        max_len = max(lengths).item()
-        mask = Var(torch.ByteTensor(w_size))
-        for i, length in enumerate(lengths):
-            tmp_mask = [1] * int(length)
-            tmp_mask.extend([0] * (max_len - int(length)))
-            mask[i, :] = torch.from_numpy(np.asarray(tmp_mask))
-        return torch.transpose(mask, 0, 1).contiguous()
-
-    def _rearrange_output(self, w_out, w_preds):
-        """
-        rearrange the word logits so that the decoded word has the highest logits
-        so that the rest of the flow would be seamless
-        """
-        for batch_idx, v_path in enumerate(w_preds):
-            for w_idx, word in enumerate(v_path):
-                w_logits = w_out[batch_idx][w_idx]
-                v_label = word.item()
-                # make the word on the optimal path the greatest
-                _, maxIndex = torch.max(w_logits, 0)
-                w_logits[v_label], w_logits[maxIndex] = (
-                    w_logits[maxIndex].item(),
-                    w_logits[v_label].item(),
-                )
-                w_out[batch_idx][w_idx] = w_logits
-        return w_out
-
-    def _decode(
+    def decode(
         self,
         emissions: Union[Variable, torch.FloatTensor],
-        mask: Union[Variable, torch.ByteTensor],
+        seq_lens: Union[Variable, torch.LongTensor],
     ) -> List[List[int]]:
         """Find the most likely tag sequence using Viterbi algorithm.
         Arguments
         ---------
         emissions: `~torch.autograd.Variable` or :class:`~torch.FloatTensor`
-            Emission score tensor of size (seq_length, batch_size, num_tags).
-        mask : `~torch.autograd.Variable` or `torch.ByteTensor`
-            Mask tensor of size ``(seq_length, batch_size)``.
+            Emission score tensor of size (batch_size, seq_length, num_tags).
+        seq_lens : `~torch.autograd.Variable` or `torch.LongTensor`
+            Actual seq length (without padding) tensor of size ``(batch_size,
+            seq_length)``.
         Returns
         -------
         List of list containing the best tag sequence for each batch.
@@ -183,26 +146,25 @@ class CRF(nn.Module):
                 f"expected last dimension of emissions is {self.num_tags}, "
                 f"got {emissions.size(2)}"
             )
-        if emissions.size()[:2] != mask.size():
+        if emissions.size()[:1] != seq_lens.size():
             raise ValueError(
-                "the first two dimensions of emissions and mask must match, "
-                f"got {tuple(emissions.size()[:2])} and {tuple(mask.size())}"
+                "batch size of emissions and seq lens must match, "
+                f"got {tuple(emissions.size()[:1])} and {tuple(seq_lens.size())}"
             )
 
         if isinstance(emissions, Variable):
             emissions = emissions.data
-        elif isinstance(mask, Variable):
-            mask = mask.data
-
-        # Transpose batch_size and seq_length
-        emissions = emissions.transpose(0, 1)
-        mask = mask.transpose(0, 1)
+        elif isinstance(seq_lens, Variable):
+            seq_lens = seq_lens.data
 
         best_tags = []
-        for emission, mask_ in zip(emissions, mask):
-            seq_length = mask_.sum()
-            best_tags.append(self._viterbi_decode(emission[:seq_length]))
-        return best_tags
+        for emission, seq_len in zip(emissions, seq_lens):
+            best_tags.append(self._viterbi_decode(emission[:seq_len]))
+        # TODO read padding token idx from metadata
+        res = pad_sequence(
+            best_tags, padding_value=Padding.WORD_LABEL_PAD_IDX, batch_first=True
+        )
+        return res
 
     def _compute_joint_llh(
         self, emissions: Variable, tags: Variable, mask: Variable
@@ -331,17 +293,17 @@ class CRF(nn.Module):
 
         # Find the tag which maximizes the score at the last timestep
         _, best_last_tag = viterbi_score.max(0)
-        best_tags = [best_last_tag[0]]
+        best_tags = [best_last_tag[0].item()]
 
         # We trace back where the best last tag comes from, append that to our
         # best tag sequence, and trace it back again, and so on
         for path in reversed(viterbi_path):
             best_last_tag = path[best_tags[-1]]
-            best_tags.append(best_last_tag)
+            best_tags.append(best_last_tag.item())
 
         # Reverse the order because we start from the last timestep
         best_tags.reverse()
-        return best_tags
+        return torch.LongTensor(best_tags)
 
     """Exports the crf layer to caffe2 by manually adding the necessary operators
         to the init_net and predict net.

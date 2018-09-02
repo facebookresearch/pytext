@@ -5,9 +5,9 @@ from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import create_module
 from pytext.data import CommonMetadata
-from pytext.models.crf import CRF
 from pytext.models.model import Model
 
+from .output_layer.intent_slot_output_layer import IntentSlotOutputLayer
 from .projections.joint_model_projection import JointModelProjection
 from .representations.jointblstm_rep import JointBLSTMRepresentation
 from .representations.jointcnn_rep import JointCNNRepresentation
@@ -18,10 +18,10 @@ class JointModel(Model):
         representation: Union[
             JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
         ]
+        output_config: IntentSlotOutputLayer.Config
         proj_config: JointModelProjection.Config = JointModelProjection.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5
-        use_crf: bool = False
 
     @classmethod
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
@@ -38,6 +38,5 @@ class JointModel(Model):
             to_dim_doc=doc_class_num,
             to_dim_word=word_label_num,
         )
-        model = cls(embedding, representation, projection)
-        model.crf = CRF(word_label_num) if model_config.use_crf else None
-        return model
+        output_layer = create_module(model_config.output_config, metadata)
+        return cls(embedding, representation, projection, output_layer)

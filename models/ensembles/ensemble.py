@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from copy import deepcopy
 from typing import Any, Dict, List, Tuple
 
 import torch.nn as nn
@@ -12,6 +13,17 @@ class Ensemble(Model):
         models: List[Any]
         sample_rate: float = 1.0
 
+    def __init__(self, config, models, *arg, **kwargs):
+        nn.Module.__init__(self)
+        self.models = nn.ModuleList(models)
+        self.output_layer = deepcopy(models[0].output_layer)
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def merge_sub_models(self):
+        pass
+
     @classmethod
     def from_config(cls, model_config, feat_config, *arg, **kwargs):
         sub_models = [
@@ -19,13 +31,6 @@ class Ensemble(Model):
             for sub_model_config in model_config.models
         ]
         return cls(model_config, sub_models, *arg, **kwargs)
-
-    def __init__(self, config, models, *arg, **kwargs):
-        nn.Module.__init__(self)
-        self.models = nn.ModuleList(models)
-
-    def forward(self, *args, **kwargs):
-        raise NotImplementedError()
 
     def get_model_params_for_optimizer(
         self

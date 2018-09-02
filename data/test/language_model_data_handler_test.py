@@ -80,7 +80,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
 
         # target -> tensor of same dim as input_sequences (bsize, max_seq_length)
         np.testing.assert_array_equal(
-            batch[1][0],
+            batch[1],
             [
                 [16, 20, 13, 17, 15, 18, 12, 5, 4, 14, 22, 3],
                 [9, 4, 6, 19, 7, 21, 8, 3, 1, 1, 1, 1],

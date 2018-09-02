@@ -8,7 +8,6 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.loss.loss import Loss
 from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
 from pytext.utils import cuda_utils
 
@@ -31,7 +30,6 @@ class LanguageModelTrainer(Trainer):
         eval_iter,
         model,
         optimizers: List[torch.optim.Optimizer],
-        loss_fn: Loss,
         labels,
         metrics_reporter=None,
         scheduler=None,
@@ -53,13 +51,9 @@ class LanguageModelTrainer(Trainer):
                 scheduler_step(scheduler)
             for m_input, targets, context in train_iter:
                 optimizer_zero_grad(optimizers)
-                m_out = model(*m_input)
-                # Flatten the logits tensor from (N, L, D) to a 2D tensor
-                # of size (N*L, D)˜
-                m_out = [self._flatten_2d(logits) for logits in m_out]
-                targets = [target.view(-1) for target in targets]
 
-                loss = loss_fn.loss(m_out, targets, model, context)
+                logit = model(*m_input)
+                loss = model.get_loss(logit, targets, context)
                 num_words_in_batch = torch.sum(m_input[1]).item()
                 train_loss_sum += loss.item() * num_words_in_batch
                 n_words += num_words_in_batch
@@ -89,7 +83,7 @@ class LanguageModelTrainer(Trainer):
                 n_words = 0
 
             if _epoch % self.config.eval_interval == 0:
-                eval_perplexity, eval_loss = self.evaluate(eval_iter, model, loss_fn)
+                eval_perplexity, eval_loss = self.evaluate(eval_iter, model)
 
                 # Lower perplexity implies a better model
                 if eval_perplexity < best_perplexity:
@@ -121,26 +115,16 @@ class LanguageModelTrainer(Trainer):
 
         return best_model
 
-    def evaluate(self, eval_iter, model, loss_fn):
+    def evaluate(self, eval_iter, model):
         model.eval()
-        all_targets = None
         total_loss, n_words = 0, 0
         for m_input, targets, context in eval_iter:
-            m_out = model(*m_input)
+            logit = model(*m_input)
+            loss = model.get_loss(logit, targets, context)
+
             num_words_in_batch = torch.sum(m_input[1]).item()
             n_words += num_words_in_batch
-
-            m_out = [self._flatten_2d(logits) for logits in m_out]
-            targets = [target.view(-1) for target in targets]
-            total_loss += (
-                loss_fn.loss(m_out, targets, model, context).item() * num_words_in_batch
-            )
-
-            if all_targets is None:
-                all_targets = targets
-            else:
-                for i, target in enumerate(targets):
-                    all_targets[i] = torch.cat((all_targets[i], target), 0)
+            total_loss += loss.item() * num_words_in_batch
 
         model.train()
         loss_per_word = total_loss / float(n_words)
@@ -159,10 +143,10 @@ class LanguageModelTrainer(Trainer):
         total_loss = 0.0
         n_words = 0
         for m_input, targets, context in test_iter:
-            m_out = model(*m_input)
+            logits = model(*m_input)
             # m_out dim: (bsize x seq_len x vocab)
             # Reshape m_out to (bsize x vocab x seq_len) for cross_entropy_loss
-            m_out = [logits.transpose(1, 2) for logits in m_out]
+            logits = logits.transpose(1, 2)
 
             # While calculating loss/perplexity, we would like to mask out the
             # loss from the padding token
@@ -175,7 +159,7 @@ class LanguageModelTrainer(Trainer):
                 weight = weight.cuda()
 
             # loss dim: (bsize x seq_len)
-            loss = F.cross_entropy(m_out[0], targets[0], reduce=False, weight=weight)
+            loss = F.cross_entropy(logits, targets, reduce=False, weight=weight)
 
             num_words_in_batch = torch.sum(m_input[1]).item()
             n_words += num_words_in_batch

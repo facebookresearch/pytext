@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import List, Union, Dict
+from typing import Dict, List, Union
 
 
 class ConfigParseError(Exception):
@@ -24,23 +24,22 @@ class IncorrectTypeError(Exception):
 
 
 def _canonical_typename(cls):
-    if cls.__name__.endswith('.Config'):
-        return cls.__name__[:-len('.Config')]
+    if cls.__name__.endswith(".Config"):
+        return cls.__name__[: -len(".Config")]
     return cls.__name__
 
 
 def _union_from_json(union_cls, json_obj):
     if type(json_obj) is not dict:
-        raise IncorrectTypeError(
-            f"incorrect Union value {json_obj} for {union_cls}")
+        raise IncorrectTypeError(f"incorrect Union value {json_obj} for {union_cls}")
     type_name = list(json_obj)[0]
 
     for subclass in union_cls.__args__:
         if type(None) != subclass and (
-                type_name.lower() == _canonical_typename(subclass).lower()):
+            type_name.lower() == _canonical_typename(subclass).lower()
+        ):
             return _value_from_json(subclass, json_obj[type_name])
-    raise UnionTypeError(
-        f"no suitable type found for {type_name} in union {union_cls}")
+    raise UnionTypeError(f"no suitable type found for {type_name} in union {union_cls}")
 
 
 def _is_optional(cls):
@@ -61,10 +60,7 @@ def _value_from_json(cls, value):
     # support __subclasscheck__.
     # optional with more than 2 classes is treated as Union
     elif _is_optional(cls) and len(cls.__args__) == 2:
-        sub_cls = (
-            cls.__args__[0] if type(None) != cls.__args__[0]
-            else cls.__args__[1]
-        )
+        sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
         return _value_from_json(sub_cls, value)
     # nested config
     elif hasattr(cls, "_fields"):
@@ -107,7 +103,10 @@ def config_from_json(cls, json_obj):
                 ) from e
         # validate value
         if value is None and not is_optional:
-            raise MissingValueError(f"missing value for {field} in class {cls}")
+            cls_name = getattr(cls, "__name__", cls)
+            raise MissingValueError(
+                f"missing value for {field} in class {cls_name} with json {json_obj}"
+            )
         parsed_dict[field] = value
 
     return cls(**parsed_dict)

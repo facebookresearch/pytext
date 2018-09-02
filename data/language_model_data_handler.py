@@ -111,7 +111,7 @@ class LanguageModelDataHandler(DataHandler):
         )
 
     def _target_from_batch(self, batch):
-        return (batch.text[0][:, 1:].contiguous(),)
+        return batch.text[0][:, 1:].contiguous()
 
     def _context_from_batch(self, batch):
         # batch.text[1] is the length of each sequence

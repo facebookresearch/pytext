@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
+from pytext.models.output_layer.lm_output_layer import LMOutputLayer
 from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 from pytext.utils import cuda_utils
@@ -26,6 +27,7 @@ class LMLSTM(Model):
         representation: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
             self_attn_dim=0, bidirectional=False
         )
+        output_config: LMOutputLayer.Config = LMOutputLayer.Config()
         proj_config: MLPProjection.Config = MLPProjection.Config()
         tied_weights: bool = False
         stateful: bool = False
@@ -94,8 +96,10 @@ class LMLSTM(Model):
         weight = next(self.parameters())
         num_layers = self.representation.lstm.num_layers
         rnn_hidden_dim = self.representation.representation_dim
-        return (weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
-                weight.new_zeros(bsz, num_layers, rnn_hidden_dim))
+        return (
+            weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
+            weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
+        )
 
 
 class StatefulDataParallelModel(nn.Module):
@@ -104,8 +108,12 @@ class StatefulDataParallelModel(nn.Module):
         self.projection = projection
         self.representation = representation
 
-    def forward(self, token_emb: torch.Tensor, tokens_lens: torch.Tensor,
-                prev_state: torch.Tensor = None):
+    def forward(
+        self,
+        token_emb: torch.Tensor,
+        tokens_lens: torch.Tensor,
+        prev_state: torch.Tensor = None,
+    ):
         rep, state = self.representation(token_emb, tokens_lens, prev_state)
         if not isinstance(rep, (list, tuple)):
             rep = [rep]

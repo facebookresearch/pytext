@@ -7,7 +7,6 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.config.pytext_config import ConfigBase
 from pytext.metrics import LabelPredictionPair, compute_classification_metrics
 from sklearn.metrics import classification_report, f1_score
 
@@ -15,17 +14,17 @@ from .trainer import Trainer
 
 
 class ClassifierTrainer(Trainer):
-    def report(self, stage, loss, preds, seq_lens, target, target_names):
-        [target], [preds] = target, preds
+    def report(self, stage, loss, preds, seq_lens, targets, target_names):
         [target_names] = target_names
-
+        pred = torch.cat([p for p in preds], 0)
+        target = torch.cat([t for t in targets], 0)
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
         sys.stdout.write(
             classification_report(
-                target.cpu(), preds.cpu(), target_names=target_names
+                target.cpu(), pred.cpu(), target_names=target_names
             )
         )
-        return f1_score(target.cpu(), preds.cpu(), average="weighted")
+        return f1_score(target.cpu(), pred.cpu(), average="weighted")
 
     def test(self, model, test_iter, metadata):
         model.eval()
@@ -40,7 +39,7 @@ class ClassifierTrainer(Trainer):
 
         for m_input, [targets], context in test_iter:
 
-            [m_out] = model(*m_input)
+            m_out = model(*m_input)
             preds = torch.max(m_out, 1)[1].data
             self.update_test_results(
                 preds_table,
@@ -82,6 +81,7 @@ class ClassifierTrainer(Trainer):
                     preds[i].item(),
                     labels_idx[i].item(),
                     orig_indices[i],
+                    # TODO scores can be get from model now, will refactor in next diff
                     ",".join(
                         ["{0:.2f}".format(_s) for _s in F.softmax(m_out[i], 0).data]
                     ),

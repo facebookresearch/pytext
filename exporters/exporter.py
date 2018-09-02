@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple
 
 import torch
 from pytext.config.component import Component, ComponentType
+from pytext.models.output_layer import CRFOutputLayer
+from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -204,13 +206,17 @@ class TextModelExporter(ModelExporter):
         for class_names, output_score, axis in zip(
             self.label_names_list, output_names, self.score_axis_list
         ):
-            if hasattr(py_model, "crf") and py_model.crf and axis == 2:
-                tmp_out_score = py_model.crf.export_to_caffe2(
+            # TODO Hacky way to check for crf, will refactor T33443796
+            output_layer = py_model.output_layer
+            if isinstance(output_layer, IntentSlotOutputLayer):
+                output_layer = output_layer.word_output
+
+            if isinstance(output_layer, CRFOutputLayer) and axis == 2:
+                output_score = output_layer.crf.export_to_caffe2(
                     workspace, init_net, predict_net, output_score
                 )
-            else:
-                softmax_out = predict_net.Softmax(output_score, axis=axis)
-                tmp_out_score = predict_net.Log(softmax_out)
+            softmax_out = predict_net.Softmax(output_score, axis=axis)
+            tmp_out_score = predict_net.Log(softmax_out)
             label_scores = predict_net.Split(tmp_out_score, class_names, axis=axis)
 
             # Make sure label_scores is iterable

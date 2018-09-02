@@ -2,10 +2,9 @@
 from typing import List
 
 import torch
-from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
-from pytext.models.crf import CRF
 from pytext.models.joint_model import JointModel
+from pytext.models.output_layer import CRFOutputLayer
 
 from .ensemble import Ensemble
 
@@ -17,10 +16,24 @@ class BaggingJointEnsemble(Ensemble):
 
     def __init__(self, config, models, metadata):
         super().__init__(config, models)
-        word_label_num = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD].vocab_size
-        if config.use_crf:
-            self.crf_transition_matrices = []
-            self.crf = CRF(word_label_num)
+        self.use_crf = isinstance(self.output_layer.word_output, CRFOutputLayer)
+
+    def merge_sub_models(self):
+        # to get the transition_matrix for the ensemble model, we average the
+        # transition matrices of the children model
+        if not self.use_crf:
+            return
+        transition_matrix = torch.mean(
+            torch.cat(
+                tuple(
+                    model.output_layer.word_output.crf.get_transitions().unsqueeze(0)
+                    for model in self.models
+                ),
+                dim=0,
+            ),
+            dim=0,
+        )
+        self.output_layer.word_output.crf.set_transitions(transition_matrix)
 
     def forward(self, *args, **kwargs):
         logit_d_list, logit_w_list = None, None

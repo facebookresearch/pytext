@@ -55,7 +55,6 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
     if cuda_utils.CUDA_ENABLED:
         model = model.cuda()
 
-    loss = create_loss(jobspec.loss, metadata)
     optimizers = create_optimizer(model, jobspec.optimizer)
     scheduler = create_scheduler(optimizers, jobspec.scheduler)
     trainer = create_trainer(jobspec.trainer, metadata)
@@ -65,7 +64,6 @@ def train_model(config: PyTextConfig, metrics_reporter=None):
         eval_iter,
         model,
         optimizers,
-        loss,
         metadata.labels,
         metrics_reporter,
         scheduler

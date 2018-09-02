@@ -33,7 +33,6 @@ class EnsembleTrainer(Trainer):
         eval_iter,
         model,
         optimizers,
-        loss_fn,
         class_names,
         metrics_reporter=None,
         scheduler=None,
@@ -45,22 +44,10 @@ class EnsembleTrainer(Trainer):
                 eval_iter,
                 model.models[i],
                 optimizers,
-                loss_fn,
                 class_names,
                 metrics_reporter,
                 scheduler,
             )
             model.models[i] = trained_model
-            # unsqueeze so that we can concat later
-            if hasattr(trained_model, "crf") and getattr(trained_model, "crf"):
-                model.crf_transition_matrices.append(
-                    trained_model.crf.get_transitions().unsqueeze(0)
-                )
-        # to get the transition_matrix for the ensemble model, we average the
-        # transition matrices of the children model
-        if hasattr(model, "crf_transition_matrices"):
-            transition_matrix = torch.mean(
-                torch.cat(model.crf_transition_matrices, dim=0), dim=0
-            )
-            model.crf.set_transitions(transition_matrix)
+        model.merge_sub_models()
         return model

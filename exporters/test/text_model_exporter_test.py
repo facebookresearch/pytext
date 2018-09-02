@@ -16,6 +16,7 @@ from pytext.common.constants import DatasetFieldName, PredictorInputNames
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
+from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.fields import FieldMeta
 from pytext.jobspec import (
     DocClassificationJobSpec,
@@ -34,25 +35,26 @@ JOINT_CONFIG = """
                   "lstm_dim": 30,
                   "num_layers": 1
                 },
-                "use_crf": true,
                 "use_doc_probs_in_word": true
             }
         },
         "proj_config": {
             "use_doc_probs_in_word": true
+        },
+        "output_config": {
+            "doc_output": {
+              "loss": {
+                "CrossEntropyLoss": {}
+              }
+            },
+            "word_output": {
+              "CRFOutputLayer": {}
+            }
         }
     },
     "features": {
       "word_feat": {},
       "dict_feat": {}
-    },
-    "loss": {
-      "doc_loss": {
-        "CrossEntropyLoss": {}
-      },
-      "word_loss": {
-        "TaggerCrossEntropyLoss": {}
-      }
     },
     "exporter": {
 
@@ -66,10 +68,12 @@ DOC_CONFIGS = [
   "model": {
     "representation": {
         "BiLSTMSelfAttention": {}
+    },
+    "output_config": {
+        "loss": {
+        "CrossEntropyLoss": {}
+        }
     }
-  },
-  "loss": {
-    "CrossEntropyLoss": {}
   },
   "features": {
     "dict_feat": {
@@ -89,10 +93,12 @@ DOC_CONFIGS = [
   "model": {
       "representation": {
         "DocNNRepresentation": {}
+      },
+      "output_config": {
+        "loss": {
+            "CrossEntropyLoss": {}
+            }
       }
-  },
-  "loss": {
-    "CrossEntropyLoss": {}
   },
   "features": {
     "word_feat": {},
@@ -120,10 +126,10 @@ WORD_CONFIGS = [
                   "num_layers": 2
                 }
             }
+        },
+        "output_config": {
+            "WordTaggingOutputLayer": {}
         }
-    },
-    "loss": {
-      "TaggerCrossEntropyLoss": {}
     },
     "features": {
         "dict_feat": {
@@ -140,13 +146,12 @@ WORD_CONFIGS = [
                 "lstm": {
                   "lstm_dim": 30,
                   "num_layers": 2
-                },
-                "use_crf": true
+                }
             }
+        },
+        "output_config": {
+            "CRFOutputLayer": {}
         }
-    },
-    "loss": {
-      "TaggerCrossEntropyLoss": {}
     },
     "labels": {
       "word_label": {}
@@ -229,7 +234,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
 
                 py_model.eval()
-                [py_outs] = py_model(*test_inputs)
+                py_outs = py_model(*test_inputs)
                 # Do log_softmax since we do that before exporting predictor nets
                 py_outs = F.log_softmax(py_outs, 1)
                 np.testing.assert_array_almost_equal(
@@ -278,18 +283,12 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 workspace.RunNetOnce(pred_net)
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
                 py_model.eval()
-                [py_outs] = py_model(*test_inputs)
-                if hasattr(py_model, "crf") and py_model.crf:
-                    py_outs = py_model.crf.decode_crf_lengths(py_outs, test_inputs[1])
-                else:
-                    # Do log_softmax since we do that before exporting predictor nets
-                    py_outs = F.log_softmax(py_outs, 2)
+                py_outs = py_model(*test_inputs)
+                context = {SEQ_LENS: test_inputs[1]}
+                pred, score = py_model.get_pred(py_outs, context)
+
                 np.testing.assert_array_almost_equal(
-                    torch.transpose(py_outs, 1, 2)
-                    .contiguous()
-                    .view(-1)
-                    .detach()
-                    .numpy(),
+                    torch.transpose(score, 1, 2).contiguous().view(-1).detach().numpy(),
                     np.array(c2_out).flatten(),
                 )
 
@@ -346,34 +345,23 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             ]
 
             py_model.eval()
-            [py_doc_out, py_word_out] = py_model(*test_inputs)
-            py_doc_out = F.log_softmax(py_doc_out, 1)
-            if hasattr(py_model, "crf") and py_model.crf:
-                py_word_out = py_model.crf.decode_crf_lengths(
-                    py_word_out, test_inputs[1]
-                )
-            else:
-                # Do log_softmax since we do that before exporting predictor nets
-                py_word_out = F.log_softmax(py_word_out, 2)
+            logits = py_model(*test_inputs)
+            context = {SEQ_LENS: test_inputs[1]}
+            (d_pred, w_pred), (d_score, w_score) = py_model.get_pred(logits, context)
 
             c2_doc_out = []
             for o_name in doc_output_names:
                 c2_doc_out.extend(list(workspace.FetchBlob(o_name)))
+            np.testing.assert_array_almost_equal(
+                d_score.view(-1).detach().numpy(), np.array(c2_doc_out).flatten()
+            )
 
             c2_word_out = []
             for o_name in word_output_names:
                 c2_word_out.extend(list(workspace.FetchBlob(o_name)))
 
             np.testing.assert_array_almost_equal(
-                py_doc_out.view(-1).detach().numpy(), np.array(c2_doc_out).flatten()
-            )
-
-            np.testing.assert_array_almost_equal(
-                torch.transpose(py_word_out, 1, 2)
-                .contiguous()
-                .view(-1)
-                .detach()
-                .numpy(),
+                torch.transpose(w_score, 1, 2).contiguous().view(-1).detach().numpy(),
                 np.array(c2_word_out).flatten(),
             )
 
@@ -393,6 +381,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             label_meta = FieldMeta()
             label_meta.vocab_size = num_word_classes
             label_meta.vocab = vocab
+            label_meta.pad_token_idx = 0
             labels[DatasetFieldName.WORD_LABEL_FIELD] = label_meta
 
         w_vocab = Vocab(Counter())

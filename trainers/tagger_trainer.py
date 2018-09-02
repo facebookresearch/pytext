@@ -23,19 +23,20 @@ from .trainer import Trainer
 
 
 class TaggerTrainer(Trainer):
-    def report(self, stage, loss, preds, seq_lens, target, target_names):
-        [target], [preds] = target, preds
+    def report(self, stage, loss, preds, seq_lens, targets, target_names):
         [target_names] = target_names
-        preds, target = TaggerTrainer.remove_padding(preds, target)
+        pred = torch.cat([p.view(-1) for p in preds], 0)
+        target = torch.cat([t.view(-1) for t in targets], 0)
+        pred, target = TaggerTrainer.remove_padding(pred, target)
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
         sys.stdout.write(
             classification_report(
                 target.cpu(),
-                preds.cpu(),
+                pred.cpu(),
                 target_names=target_names[Padding.WORD_LABEL_PAD_IDX + 1 :],
             )
         )
-        return f1_score(target.data.cpu(), preds.cpu(), average="weighted")
+        return f1_score(target.data.cpu(), pred.cpu(), average="weighted")
 
     def test(self, model, test_iter, metadata):
         model.eval()
@@ -53,14 +54,11 @@ class TaggerTrainer(Trainer):
         all_targets = None
         all_preds = None
         for m_input, [targets], context in test_iter:
-            [m_out] = model(*m_input)
-            if hasattr(model, "crf") and model.crf:
-                m_out = model.crf.decode_crf(m_out, targets)
-
-            m_out = self._flatten_2d(m_out)
-            targets = targets.view(-1)
-            preds = torch.max(m_out, 1)[1].data
-            preds, targets = TaggerTrainer.remove_padding(preds, targets)
+            logit = model(*m_input)
+            preds, scores = model.get_pred(logit, context)
+            preds, targets = TaggerTrainer.remove_padding(
+                preds.view(-1), targets.view(-1)
+            )
             preds = TaggerTrainer.map_to_filtered_ids(preds, mapping)
             targets = TaggerTrainer.map_to_filtered_ids(targets, mapping)
 

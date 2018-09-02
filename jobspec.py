@@ -10,10 +10,6 @@ from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.exporters.exporter import TextModelExporter
-from pytext.loss.classifier_loss import BinaryCrossEntropyLoss, CrossEntropyLoss
-from pytext.loss.joint_loss import JointLoss
-from pytext.loss.language_model_loss import LanguageModelCrossEntropyLoss
-from pytext.loss.tagger_loss import CRFLoss, TaggerCrossEntropyLoss
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
@@ -38,9 +34,6 @@ class JobSpecBase(ConfigBase):
 
 class EnsembleJobSpec(JobSpecBase, ConfigBase):
     model: Union[BaggingDocEnsemble.Config, BaggingJointEnsemble.Config]
-    loss: Union[
-        CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config, JointLoss.Config
-    ]
     trainer: EnsembleTrainer.Config
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
@@ -48,7 +41,6 @@ class EnsembleJobSpec(JobSpecBase, ConfigBase):
 
 class DocClassificationJobSpec(JobSpecBase, ConfigBase):
     model: DocModel.Config
-    loss: Union[CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config]
     trainer: ClassifierTrainer.Config = ClassifierTrainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
@@ -56,7 +48,6 @@ class DocClassificationJobSpec(JobSpecBase, ConfigBase):
 
 class WordTaggingJobSpec(JobSpecBase, ConfigBase):
     model: WordTaggingModel.Config
-    loss: Union[CRFLoss.Config, TaggerCrossEntropyLoss.Config]
     trainer: TaggerTrainer.Config = TaggerTrainer.Config()
     labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
@@ -64,7 +55,6 @@ class WordTaggingJobSpec(JobSpecBase, ConfigBase):
 
 class JointTextJobSpec(JobSpecBase, ConfigBase):
     model: JointModel.Config
-    loss: JointLoss.Config
     trainer: JointTrainer.Config = JointTrainer.Config()
     labels: LabelConfig = LabelConfig(
         doc_label=DocLabelConfig(), word_label=WordLabelConfig()
@@ -76,9 +66,6 @@ class LMJobSpec(JobSpecBase, ConfigBase):
     data_handler: Union[LanguageModelDataHandler.Config,
         BPTTLanguageModelDataHandler.Config]
     model: LMLSTM.Config
-    loss: LanguageModelCrossEntropyLoss.Config = (
-        LanguageModelCrossEntropyLoss.Config()
-    )
     trainer: LanguageModelTrainer.Config = LanguageModelTrainer.Config()
     labels: Optional[LabelConfig] = None
 

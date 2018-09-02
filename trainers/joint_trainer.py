@@ -21,23 +21,37 @@ from .trainer import Trainer
 class JointTrainer(Trainer):
     # TODO: (wenfangxu) T32687556 define unified interfaces for report() and test()
     def report(self, stage, loss, preds, seq_lens, targets, target_names):
-        d_target, w_target = targets
-        d_preds, w_preds = preds
-        w_preds, w_target = TaggerTrainer.remove_padding(w_preds, w_target)
+        d_targets = []
+        w_targets = []
+        for [d, w] in targets:
+            d_targets.append(d)
+            w_targets.append(w.view(-1))
+        d_target = torch.cat(d_targets, 0)
+        w_target = torch.cat(w_targets, 0)
+
+        d_preds = []
+        w_preds = []
+        for [d, w] in preds:
+            d_preds.append(d)
+            w_preds.append(w.view(-1))
+        d_pred = torch.cat(d_preds, 0)
+        w_pred = torch.cat(w_preds, 0)
+
+        w_pred, w_target = TaggerTrainer.remove_padding(w_pred, w_target)
         sys.stdout.write(
             classification_report(
-                d_target.data.cpu(), d_preds.cpu(), target_names=target_names[0]
+                d_target.data.cpu(), d_pred.cpu(), target_names=target_names[0]
             )
         )
         sys.stdout.write(
             classification_report(
                 w_target.cpu(),
-                w_preds.cpu(),
+                w_pred.cpu(),
                 target_names=target_names[1][Padding.WORD_LABEL_PAD_IDX + 1 :],
             )
         )
         frame_accuracy = JointTrainer.frame_accuracy(
-            d_target.cpu(), w_target.cpu(), d_preds.cpu(), w_preds.cpu(), seq_lens.cpu()
+            d_target.cpu(), w_target.cpu(), d_pred.cpu(), w_pred.cpu(), seq_lens.cpu()
         )
         sys.stdout.write("\nFrame accuracy : {:.3f} \n\n".format(frame_accuracy))
         return frame_accuracy
@@ -78,16 +92,15 @@ class JointTrainer(Trainer):
         )
         for m_input, [d_targets, w_targets], context in test_iter:
             [d_out, w_out] = model(*m_input)
+            preds, scores = model.get_pred(
+                [d_out, w_out], context
+            )
 
-            if hasattr(model, "crf") and model.crf:
-                w_out = model.crf.decode_crf(w_out, w_targets)
-            d_preds = torch.max(d_out, 1)[1].data
+            [d_preds, w_preds] = preds
 
-            w_out = self._flatten_2d(w_out)
-            w_targets = w_targets.view(-1)
-            w_preds = torch.max(w_out, 1)[1].data
-
-            w_preds, w_targets = TaggerTrainer.remove_padding(w_preds, w_targets)
+            w_preds, w_targets = TaggerTrainer.remove_padding(
+                w_preds.view(-1), w_targets.view(-1)
+            )
             w_preds = TaggerTrainer.map_to_filtered_ids(w_preds, mapping)
             w_targets = TaggerTrainer.map_to_filtered_ids(w_targets, mapping)
 

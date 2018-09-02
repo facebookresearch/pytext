@@ -24,7 +24,7 @@ class MLPProjection(ProjectionBase):
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
-        return [self.mlp(x)]
+        return self.mlp(x)
 
     def get_projection(self) -> List[nn.Module]:
-        return [self.mlp]
+        return self.mlp

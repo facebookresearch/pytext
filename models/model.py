@@ -28,13 +28,21 @@ class Model(nn.Module, Component):
             from_dim=representation.representation_dim,
             to_dim=next(iter(metadata.labels.values())).vocab_size,
         )
-        return cls(embedding, representation, projection)
+        output_layer = create_module(model_config.output_config, metadata)
+        return cls(embedding, representation, projection, output_layer)
 
-    def __init__(self, embedding, representation, projection) -> None:
+    def __init__(self, embedding, representation, projection, output_layer) -> None:
         nn.Module.__init__(self)
         self.embedding = embedding
         self.representation = representation
         self.projection = projection
+        self.output_layer = output_layer
+
+    def get_loss(self, logit, target, context):
+        return self.output_layer.get_loss(logit, target, context)
+
+    def get_pred(self, logit, context):
+        return self.output_layer.get_pred(logit, context)
 
     def forward(
         self,
