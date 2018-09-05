@@ -189,7 +189,7 @@ class JointTrainer(Trainer):
             expected_frame = JointTrainer.create_frame(
                 doc_label_names, d_targets, i, w_label_names, utterances
             )
-            frame_pairs.append((predicted_frame, expected_frame))
+            frame_pairs.append(FramePredictionPair(predicted_frame, expected_frame))
 
     @staticmethod
     def create_frame(doc_label_names, doc_class_indices, i, word_names, utterances):

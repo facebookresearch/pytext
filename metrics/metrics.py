@@ -51,6 +51,9 @@ class Node:
             and self.children == other.children
         )
 
+    def get_depth(self) -> int:
+        return 1 + max((child.get_depth() for child in self.children), default=0)
+
 
 class LabelPredictionPair(NamedTuple):
     predicted_label: str
@@ -70,6 +73,14 @@ class NodesPredictionPair(NamedTuple):
 class IntentsAndSlots(NamedTuple):
     intents: Counter[Node]
     slots: Counter[Node]
+
+
+class FrameAccuracy(NamedTuple):
+    num_samples: int
+    frame_accuracy: float
+
+
+FrameAccuraciesByDepth = Dict[int, FrameAccuracy]
 
 
 class ClassificationMetrics(NamedTuple):
@@ -178,15 +189,22 @@ class IntentSlotMetrics:
 
 
 class AllMetrics:
-    __slots__ = "frame_accuracy", "bracket_metrics", "tree_metrics"
+    __slots__ = (
+        "frame_accuracy",
+        "frame_accuracies_by_depth",
+        "bracket_metrics",
+        "tree_metrics",
+    )
 
     def __init__(
         self,
         frame_accuracy: Optional[float],
+        frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth],
         bracket_metrics: Optional[IntentSlotMetrics],
         tree_metrics: Optional[IntentSlotMetrics],
     ) -> None:
         self.frame_accuracy = frame_accuracy
+        self.frame_accuracies_by_depth = frame_accuracies_by_depth
         self.bracket_metrics = bracket_metrics
         self.tree_metrics = tree_metrics
 
@@ -447,18 +465,44 @@ def compute_frame_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
     return _safe_division(num_correct, num_samples)
 
 
+def compute_frame_accuracies_by_depth(
+    frame_pairs: List[FramePredictionPair]
+) -> FrameAccuraciesByDepth:
+    """
+    Given a list of (predicted_frame, expected_frame) pairs of Node type, split the
+    prediction pairs into buckets according to the tree depth of the expected frame, and
+    compute frame accuracies for each bucket.
+    """
+    frame_pairs_by_depth: Dict[int, List[FramePredictionPair]] = defaultdict(list)
+    for frame_pair in frame_pairs:
+        depth = frame_pair.expected_frame.get_depth()
+        frame_pairs_by_depth[depth].append(frame_pair)
+    frame_accuracies_by_depth: FrameAccuraciesByDepth = {}
+    for depth, pairs in frame_pairs_by_depth.items():
+        frame_accuracies_by_depth[depth] = FrameAccuracy(
+            len(pairs), compute_frame_accuracy(pairs)
+        )
+    return frame_accuracies_by_depth
+
+
 def compute_all_metrics(
     frame_pairs: List[FramePredictionPair],
+    frame_accuracies_by_depth: bool = True,
     bracket_metrics: bool = True,
     tree_metrics: bool = True,
     frame_accuracy: bool = False,
     overall_metrics: bool = False,
 ) -> AllMetrics:
     """
-    Given a list of (predicted_frame, expected_frame) tuples in Node type,
-    return both bracket and tree metrics.
+    Given a list of (predicted_frame, expected_frame) pairs of Node type, return both
+    bracket and tree metrics.
     """
     accuracy = compute_frame_accuracy(frame_pairs) if frame_accuracy else None
+    accuracies = (
+        compute_frame_accuracies_by_depth(frame_pairs)
+        if frame_accuracies_by_depth
+        else None
+    )
     bracket = (
         compute_intent_slot_metrics(
             frame_pairs, tree_based=False, overall_metrics=overall_metrics
@@ -474,7 +518,7 @@ def compute_all_metrics(
         else None
     )
 
-    return AllMetrics(accuracy, bracket, tree)
+    return AllMetrics(accuracy, accuracies, bracket, tree)
 
 
 def compute_classification_metrics(

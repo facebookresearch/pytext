@@ -6,6 +6,8 @@ from pytext.metrics import (
     AllClassificationMetrics,
     ClassificationMetrics,
     Confusions,
+    FrameAccuracy,
+    FramePredictionPair,
     IntentSlotConfusions,
     IntentSlotMetrics,
     MacroClassificationMetrics,
@@ -13,6 +15,7 @@ from pytext.metrics import (
     Span,
     compare_frames,
     compute_all_metrics,
+    compute_frame_accuracies_by_depth,
     compute_frame_accuracy,
     compute_intent_slot_metrics,
 )
@@ -336,6 +339,11 @@ TEST_EXAMPLES: List[Dict[str, Any]] = [
     },
 ]
 
+FRAME_PAIRS = [
+    FramePredictionPair(example["predicted"], example["expected"])
+    for example in TEST_EXAMPLES
+]
+
 
 class MetricsTest(MetricsTestBase):
     def test_compare_frames(self) -> None:
@@ -373,10 +381,7 @@ class MetricsTest(MetricsTestBase):
     def test_compute_intent_slot_metrics(self) -> None:
         # Test single pair
         self.assertMetricsAlmostEqual(
-            compute_intent_slot_metrics(
-                [(TEST_EXAMPLES[1]["predicted"], TEST_EXAMPLES[1]["expected"])],
-                tree_based=False,
-            ),
+            compute_intent_slot_metrics(FRAME_PAIRS[1:2], tree_based=False),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -396,10 +401,7 @@ class MetricsTest(MetricsTestBase):
             ),
         )
         self.assertMetricsAlmostEqual(
-            compute_intent_slot_metrics(
-                [(TEST_EXAMPLES[1]["predicted"], TEST_EXAMPLES[1]["expected"])],
-                tree_based=True,
-            ),
+            compute_intent_slot_metrics(FRAME_PAIRS[1:2], tree_based=True),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -420,12 +422,8 @@ class MetricsTest(MetricsTestBase):
         )
 
         # Test multiple pairs consisting of the 8th through the 11th examples
-        pairs = []
-        for i in range(7, 11):
-            pairs.append((TEST_EXAMPLES[i]["predicted"], TEST_EXAMPLES[i]["expected"]))
-
         self.assertMetricsAlmostEqual(
-            compute_intent_slot_metrics(pairs, tree_based=False),
+            compute_intent_slot_metrics(FRAME_PAIRS[7:11], tree_based=False),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -467,7 +465,7 @@ class MetricsTest(MetricsTestBase):
         )
 
         self.assertMetricsAlmostEqual(
-            compute_intent_slot_metrics(pairs, tree_based=True),
+            compute_intent_slot_metrics(FRAME_PAIRS[7:11], tree_based=True),
             IntentSlotMetrics(
                 intent_metrics=AllClassificationMetrics(
                     per_label_scores={
@@ -507,14 +505,14 @@ class MetricsTest(MetricsTestBase):
         )
 
     def test_compute_frame_accuracy(self) -> None:
-        frame_pairs = [
-            (example["predicted"], example["expected"]) for example in TEST_EXAMPLES
-        ]
-        self.assertAlmostEqual(compute_frame_accuracy(frame_pairs), 2.0 / 11)
+        self.assertAlmostEqual(compute_frame_accuracy(FRAME_PAIRS), 2.0 / 11)
+
+    def test_compute_frame_accuracies_by_depth(self) -> None:
+        self.assertMetricsAlmostEqual(
+            compute_frame_accuracies_by_depth(FRAME_PAIRS),
+            {2: FrameAccuracy(9, 1.0 / 9), 4: FrameAccuracy(2, 0.5)},
+        )
 
     # Just to test the metrics print without errors
     def test_print_compute_all_metrics(self) -> None:
-        frame_pairs = [
-            (example["predicted"], example["expected"]) for example in TEST_EXAMPLES
-        ]
-        compute_all_metrics(frame_pairs, overall_metrics=True).print_metrics()
+        compute_all_metrics(FRAME_PAIRS, overall_metrics=True).print_metrics()
