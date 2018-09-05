@@ -13,7 +13,7 @@ class EmbedInitStrategy(Enum):
 
 class WordFeatConfig(ConfigBase):
     embed_dim: int = 100
-    sparse: bool = True
+    sparse: bool = False
     freeze: bool = False
     embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
     embed_init_range: Optional[List[float]] = None
