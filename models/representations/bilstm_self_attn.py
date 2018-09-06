@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -48,18 +49,31 @@ class BiLSTMSelfAttention(RepresentationBase):
         else:
             self.representation_dim = seq_in_size
 
-    def forward(self, tokens: torch.Tensor, tokens_lens: torch.Tensor,
-                states: torch.Tensor = None) -> torch.Tensor:
-        rep = self.dropout(tokens)
+    def forward(
+        self,
+        embedded_tokens: torch.Tensor,
+        seq_lengths: torch.Tensor,
+        dict_feat: Tuple[torch.Tensor, ...] = None,
+        cap_feat: Tuple[torch.Tensor, ...] = None,
+        chars: torch.Tensor = None,
+        states: torch.Tensor = None,
+    ) -> torch.Tensor:
+        embedded_tokens = self.dropout(embedded_tokens)
         if states is not None:
             # convert (h0, c0) from (bsz x seq_len x nhid) to (seq_len x bsz x nhid)
-            states = (states[0].transpose(0, 1).contiguous(),
-                     states[1].transpose(0, 1).contiguous())
-        tokens_lens = tokens_lens.int()
-        rnn_input = pack_padded_sequence(rep, tokens_lens, batch_first=True)
+            states = (
+                states[0].transpose(0, 1).contiguous(),
+                states[1].transpose(0, 1).contiguous(),
+            )
+        rnn_input = pack_padded_sequence(
+            embedded_tokens, seq_lengths.int(), batch_first=True
+        )
         rep, new_state = self.lstm(rnn_input, states)
         rep, _ = pad_packed_sequence(
-            rep, padding_value=0.0, batch_first=True, total_length=tokens.size(1)
+            rep,
+            padding_value=0.0,
+            batch_first=True,
+            total_length=embedded_tokens.size(1),
         )
         # convert states back to (bsz x seq_len x nhid) to be used in
         # data parallel model

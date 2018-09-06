@@ -28,11 +28,10 @@ class DocNNRepresentation(RepresentationBase):
         self.dropout = nn.Dropout(config.dropout)
         self.representation_dim = len(config.cnn.kernel_sizes) * config.cnn.kernel_num
 
-    def forward(self, tokens: torch.Tensor, *args) -> torch.Tensor:
-        # tokens of size (N,W,D)
-        rep = tokens
-        # Turn (batch_size * seq_len x input_size) into
-        # (batch_size x input_size x seq_len) for CNN
+    def forward(self, embedded_tokens: torch.Tensor, *args) -> torch.Tensor:
+        # embedded_tokens of size (N,W,D)
+        rep = embedded_tokens
+        # nn.Conv1d expects a tensor of dim (batch_size x embed_dim x seq_len)
         rep = rep.transpose(1, 2)
         rep = [self.conv_and_pool(rep, conv) for conv in self.convs]
         rep = self.dropout(torch.cat(rep, 1))  # (N,len(Ks)*Co)

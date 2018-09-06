@@ -22,5 +22,5 @@ class JointCNNRepresentation(RepresentationBase):
         self.doc_representation_dim = self.doc_rep.representation_dim
         self.word_representation_dim = self.word_rep.representation_dim
 
-    def forward(self, tokens: torch.Tensor, *args) -> List[torch.Tensor]:
-        return [self.doc_rep(tokens), self.word_rep(tokens)]
+    def forward(self, embedded_tokens: torch.Tensor, *args) -> List[torch.Tensor]:
+        return [self.doc_rep(embedded_tokens), self.word_rep(embedded_tokens)]

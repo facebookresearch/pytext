@@ -74,17 +74,20 @@ class JointBLSTMRepresentation(RepresentationBase):
         self.doc_representation_dim = self.word_representation_dim = seq_in_size
 
     def forward(
-        self, tokens: torch.Tensor, tokens_lens: torch.Tensor
+        self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor, *args
     ) -> List[torch.Tensor]:
-        # tokens dim: (bsz, max_seq_len)
+        # embedded_tokens dim: (batch_size, max_seq_len, embedding_dim)
         # Shared layers
-        max_seq_len = tokens.size()[1]
-        tokens = self.dropout(tokens)
-        tokens_lens = tokens_lens.int()
-        lstm_input = pack_padded_sequence(tokens, tokens_lens, batch_first=True)
+        embedded_tokens = self.dropout(embedded_tokens)
+        lstm_input = pack_padded_sequence(
+            embedded_tokens, seq_lengths.int(), batch_first=True
+        )
         lstm_out, _ = self.lstm(lstm_input)
         lstm_out, _ = pad_packed_sequence(
-            lstm_out, padding_value=0.0, batch_first=True, total_length=max_seq_len
+            lstm_out,
+            padding_value=0.0,
+            batch_first=True,
+            total_length=embedded_tokens.size()[1],
         )  # Make sure the output from LSTM is padded to input's sequence length.
 
         # Doc self attention + output layer

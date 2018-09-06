@@ -61,13 +61,17 @@ class BiLSTMSlotAttention(RepresentationBase):
 
         self.representation_dim = seq_in_size
 
-    def forward(self, tokens: torch.Tensor, tokens_lens: torch.Tensor) -> torch.Tensor:
-        rep = self.dropout(tokens)
-        tokens_lens = tokens_lens.int()
-        rnn_input = pack_padded_sequence(rep, tokens_lens, batch_first=True)
+    def forward(
+        self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor, *args
+    ) -> torch.Tensor:
+        rep = self.dropout(embedded_tokens)
+        rnn_input = pack_padded_sequence(rep, seq_lengths.int(), batch_first=True)
         rep, _ = self.lstm(rnn_input)
         rep, _ = pad_packed_sequence(
-            rep, padding_value=0.0, batch_first=True, total_length=tokens.size(1)
+            rep,
+            padding_value=0.0,
+            batch_first=True,
+            total_length=embedded_tokens.size(1),
         )
         if self.attention:
             rep = self.attention(rep)

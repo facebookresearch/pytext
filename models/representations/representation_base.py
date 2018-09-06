@@ -8,7 +8,7 @@ class RepresentationBase(Module):
         super().__init__(config)
         self.representation_dim = None
 
-    def forward(self, *input):
+    def forward(self, *inputs):
         raise NotImplementedError()
 
     def get_representation_dim(self):

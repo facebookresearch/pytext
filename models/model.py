@@ -44,20 +44,12 @@ class Model(nn.Module, Component):
     def get_pred(self, logit, context):
         return self.output_layer.get_pred(logit, context)
 
-    def forward(
-        self,
-        tokens: torch.Tensor,
-        tokens_lens: torch.Tensor,
-        dict_feat: Tuple[torch.Tensor, ...] = None,
-        cap_feat: Tuple[torch.Tensor, ...] = None,
-        chars: torch.Tensor = None,
-    ) -> List[torch.Tensor]:
-        # tokens dim: (bsz, max_seq_len) -> token_emb dim: (bsz, max_seq_len, dim)
-        token_emb = self.embedding(tokens, tokens_lens, dict_feat, cap_feat, chars)
+    def forward(self, *inputs) -> List[torch.Tensor]:
+        token_emb = self.embedding(*inputs)
         return cuda_utils.parallelize(
             DataParallelModel(self.projection, self.representation),
-            (token_emb, tokens_lens),
-        )  # (bsz, nclasses)
+            (token_emb, *inputs[1:]),  # Assumption: inputs[0] = tokens
+        )  # returned Tensor's dim = (batch_size, num_classes)
 
     def get_model_params_for_optimizer(
         self
@@ -93,12 +85,12 @@ class DataParallelModel(nn.Module):
         self.projection = projection
         self.representation = representation
 
-    def forward(self, token_emb: torch.Tensor, tokens_lens: torch.Tensor):
-        rep = self.representation(token_emb, tokens_lens)
-        if not isinstance(rep, (list, tuple)):
-            rep = [rep]
-        elif isinstance(rep[-1], tuple):
+    def forward(self, *inputs):
+        input_representation = self.representation(*inputs)
+        if not isinstance(input_representation, (list, tuple)):
+            input_representation = [input_representation]
+        elif isinstance(input_representation[-1], tuple):
             # since some lstm based representations return states as (h0, c0)
-            rep = rep[:-1]
+            input_representation = input_representation[:-1]
 
-        return self.projection(*rep)
+        return self.projection(*input_representation)
