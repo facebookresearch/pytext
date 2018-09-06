@@ -3,15 +3,14 @@
 from typing import Dict, List, Tuple
 
 import torch
-from pytext.config.component import Component, ComponentType
-from pytext.models.output_layer import CRFOutputLayer
-from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
-from pytext.config import ConfigBase
-from pytext.data import CommonMetadata
-from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.utils import onnx_utils
 from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
+from pytext.config.component import Component, ComponentType
+from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.data import CommonMetadata
+from pytext.models.output_layer import CRFOutputLayer
+from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
+from pytext.utils import onnx_utils
 
 
 class ModelExporter(Component):
@@ -176,7 +175,7 @@ class TextModelExporter(ModelExporter):
         feature_itos_map = {
             f_meta.vocab_export_name: f_meta.vocab.itos
             for f_meta in meta.features.values()
-            if hasattr(f_meta, 'vocab')
+            if hasattr(f_meta, "vocab")
         }
         return cls(
             label_names,

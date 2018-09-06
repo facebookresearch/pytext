@@ -3,7 +3,7 @@
 from pytext.models.module import Module
 
 
-class ProjectionBase(Module):
+class DecoderBase(Module):
     def __init__(self, config):
         super().__init__(config)
         self.in_dim = 0
@@ -12,7 +12,7 @@ class ProjectionBase(Module):
     def forward(self, *input):
         raise NotImplementedError()
 
-    def get_projection(self):
+    def get_decoder(self):
         raise NotImplementedError()
 
     def get_in_dim(self):

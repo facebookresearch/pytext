@@ -5,10 +5,10 @@ from typing import List
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from .projection_base import ProjectionBase
+from .decoder_base import DecoderBase
 
 
-class MLPProjection(ProjectionBase):
+class MLPDecoder(DecoderBase):
     class Config(ConfigBase):
         # Intermediate hidden dimensions
         hidden_dims: List[int] = []
@@ -26,5 +26,5 @@ class MLPProjection(ProjectionBase):
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         return self.mlp(x)
 
-    def get_projection(self) -> List[nn.Module]:
+    def get_decoder(self) -> List[nn.Module]:
         return self.mlp

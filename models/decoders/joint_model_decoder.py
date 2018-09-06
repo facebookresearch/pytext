@@ -7,10 +7,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 
-from .projection_base import ProjectionBase
+from .decoder_base import DecoderBase
 
 
-class JointModelProjection(ProjectionBase):
+class JointModelDecoder(DecoderBase):
     class Config(ConfigBase):
         use_doc_probs_in_word: bool = False
 
@@ -38,5 +38,5 @@ class JointModelProjection(ProjectionBase):
 
         return [logit_d, self.out_w(x_w)]
 
-    def get_projection(self) -> List[nn.Module]:
+    def get_decoder(self) -> List[nn.Module]:
         return [self.out_d, self.out_w]

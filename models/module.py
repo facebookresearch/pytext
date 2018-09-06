@@ -6,7 +6,7 @@ from pytext.config.component import Component, ComponentType
 class Module(nn.Module, Component):
     """
     Generic model class that depends on input
-    embedding, representation and projection to produce predicitons.
+    embedding, representation and decoder to produce predicitons.
     """
 
     __COMPONENT_TYPE__ = ComponentType.MODULE

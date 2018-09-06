@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
+from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
 from pytext.models.output_layer.lm_output_layer import LMOutputLayer
-from pytext.models.projections.mlp_projection import MLPProjection
 from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
 from pytext.utils import cuda_utils
 
@@ -27,8 +27,8 @@ class LMLSTM(Model):
         representation: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
             self_attn_dim=0, bidirectional=False
         )
+        decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_config: LMOutputLayer.Config = LMOutputLayer.Config()
-        proj_config: MLPProjection.Config = MLPProjection.Config()
         tied_weights: bool = False
         stateful: bool = False
 
@@ -50,9 +50,7 @@ class LMLSTM(Model):
                     "Embedding dimension must be same as representation "
                     "dimesnions when using tied weights"
                 )
-            model.projection.get_projection()[
-                0
-            ].weight = model.embedding.word_embed.weight
+            model.decoder.get_decoder()[0].weight = model.embedding.word_embed.weight
 
         # Setting an attribute on model object outside the class.
         model.tied_weights = model_config.tied_weights
@@ -70,22 +68,15 @@ class LMLSTM(Model):
             return {}, {}  # Don't use SparseAdam when tying weights.
         return super().get_model_params_for_optimizer()
 
-    def forward(
-        self,
-        tokens: torch.Tensor,
-        tokens_lens: torch.Tensor,
-        dict_feat: Tuple[torch.Tensor, ...] = None,
-        cap_feat: Tuple[torch.Tensor, ...] = None,
-        chars: torch.Tensor = None,
-    ) -> List[torch.Tensor]:
+    def forward(self, *inputs) -> List[torch.Tensor]:
         # tokens dim: (bsz, max_seq_len) -> token_emb dim: (bsz, max_seq_len, dim)
-        token_emb = self.embedding(tokens, dict_feat, cap_feat, chars)
+        token_emb = self.embedding(*inputs)
         if self.stateful and self._states is None:
-            self._states = self.init_hidden(tokens.size(0))
+            self._states = self.init_hidden(inputs[0].size(0))
 
         output, states = cuda_utils.parallelize(
-            StatefulDataParallelModel(self.projection, self.representation),
-            (token_emb, tokens_lens, self._states),
+            StatefulDataParallelModel(self.representation, self.decoder),
+            (token_emb, *inputs[1:], self._states),  # Assumption: inputs[0] = tokens
         )
         if self.stateful:
             self._states = repackage_hidden(states)
@@ -103,10 +94,10 @@ class LMLSTM(Model):
 
 
 class StatefulDataParallelModel(nn.Module):
-    def __init__(self, projection, representation):
+    def __init__(self, representation, decoder):
         super().__init__()
-        self.projection = projection
         self.representation = representation
+        self.decoder = decoder
 
     def forward(
         self,
@@ -118,4 +109,4 @@ class StatefulDataParallelModel(nn.Module):
         if not isinstance(rep, (list, tuple)):
             rep = [rep]
 
-        return self.projection(*rep), state
+        return self.decoder(*rep), state

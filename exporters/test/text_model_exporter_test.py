@@ -38,7 +38,7 @@ JOINT_CONFIG = """
                 "use_doc_probs_in_word": true
             }
         },
-        "proj_config": {
+        "decoder": {
             "use_doc_probs_in_word": true
         },
         "output_config": {

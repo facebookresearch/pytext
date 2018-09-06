@@ -12,7 +12,7 @@ from pytext.utils import cuda_utils
 class Model(nn.Module, Component):
     """
     Generic model class that depends on input
-    embedding, representation and projection to produce predicitons.
+    embedding, representation and decoder to produce predicitons.
     """
 
     __COMPONENT_TYPE__ = ComponentType.MODEL
@@ -23,19 +23,19 @@ class Model(nn.Module, Component):
         representation = create_module(
             model_config.representation, embed_dim=embedding.embedding_dim
         )
-        projection = create_module(
-            model_config.proj_config,
+        decoder = create_module(
+            model_config.decoder,
             from_dim=representation.representation_dim,
             to_dim=next(iter(metadata.labels.values())).vocab_size,
         )
         output_layer = create_module(model_config.output_config, metadata)
-        return cls(embedding, representation, projection, output_layer)
+        return cls(embedding, representation, decoder, output_layer)
 
-    def __init__(self, embedding, representation, projection, output_layer) -> None:
+    def __init__(self, embedding, representation, decoder, output_layer) -> None:
         nn.Module.__init__(self)
         self.embedding = embedding
         self.representation = representation
-        self.projection = projection
+        self.decoder = decoder
         self.output_layer = output_layer
 
     def get_loss(self, logit, target, context):
@@ -47,7 +47,7 @@ class Model(nn.Module, Component):
     def forward(self, *inputs) -> List[torch.Tensor]:
         token_emb = self.embedding(*inputs)
         return cuda_utils.parallelize(
-            DataParallelModel(self.projection, self.representation),
+            DataParallelModel(self.representation, self.decoder),
             (token_emb, *inputs[1:]),  # Assumption: inputs[0] = tokens
         )  # returned Tensor's dim = (batch_size, num_classes)
 
@@ -80,10 +80,10 @@ class Model(nn.Module, Component):
 
 
 class DataParallelModel(nn.Module):
-    def __init__(self, projection, representation):
+    def __init__(self, representation, decoder):
         super().__init__()
-        self.projection = projection
         self.representation = representation
+        self.decoder = decoder
 
     def forward(self, *inputs):
         input_representation = self.representation(*inputs)
@@ -93,4 +93,4 @@ class DataParallelModel(nn.Module):
             # since some lstm based representations return states as (h0, c0)
             input_representation = input_representation[:-1]
 
-        return self.projection(*input_representation)
+        return self.decoder(*input_representation)

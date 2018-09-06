@@ -22,7 +22,7 @@ class BiLSTMSelfAttention(RepresentationBase):
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
-        self.projection = config.lstm.projection_dim is not None
+        self.decoder = config.lstm.projection_dim is not None
         self.dropout = nn.Dropout(config.dropout)
         seq_in_size = (
             config.lstm.lstm_dim * 2
@@ -40,7 +40,7 @@ class BiLSTMSelfAttention(RepresentationBase):
             if config.self_attn_dim > 0
             else None
         )
-        if self.projection:
+        if self.decoder:
             self.relu = nn.ReLU()
             self.dense = nn.Sequential(
                 nn.Linear(seq_in_size, config.lstm.projection_dim), self.relu
@@ -80,7 +80,7 @@ class BiLSTMSelfAttention(RepresentationBase):
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
         if self.attention:
             rep = self.attention(rep)
-        if self.projection:
+        if self.decoder:
             return self.dense(rep), new_state
         else:
             return rep, new_state

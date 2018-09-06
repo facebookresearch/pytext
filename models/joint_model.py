@@ -7,8 +7,8 @@ from pytext.config.component import create_module
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
 
+from .decoders.joint_model_decoder import JointModelDecoder
 from .output_layer.intent_slot_output_layer import IntentSlotOutputLayer
-from .projections.joint_model_projection import JointModelProjection
 from .representations.jointblstm_rep import JointBLSTMRepresentation
 from .representations.jointcnn_rep import JointCNNRepresentation
 
@@ -19,7 +19,7 @@ class JointModel(Model):
             JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
         ]
         output_config: IntentSlotOutputLayer.Config
-        proj_config: JointModelProjection.Config = JointModelProjection.Config()
+        decoder: JointModelDecoder.Config = JointModelDecoder.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5
 
@@ -31,12 +31,12 @@ class JointModel(Model):
         )
         doc_class_num = metadata.labels[DatasetFieldName.DOC_LABEL_FIELD].vocab_size
         word_label_num = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD].vocab_size
-        projection = create_module(
-            model_config.proj_config,
+        decoder = create_module(
+            model_config.decoder,
             from_dim_doc=representation.doc_representation_dim,
             from_dim_word=representation.word_representation_dim,
             to_dim_doc=doc_class_num,
             to_dim_word=word_label_num,
         )
         output_layer = create_module(model_config.output_config, metadata)
-        return cls(embedding, representation, projection, output_layer)
+        return cls(embedding, representation, decoder, output_layer)
