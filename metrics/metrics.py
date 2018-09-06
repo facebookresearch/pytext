@@ -487,10 +487,10 @@ def compute_frame_accuracies_by_depth(
 
 def compute_all_metrics(
     frame_pairs: List[FramePredictionPair],
+    frame_accuracy: bool = True,
     frame_accuracies_by_depth: bool = True,
     bracket_metrics: bool = True,
     tree_metrics: bool = True,
-    frame_accuracy: bool = False,
     overall_metrics: bool = False,
 ) -> AllMetrics:
     """
