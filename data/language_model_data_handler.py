@@ -65,6 +65,9 @@ class LanguageModelDataHandler(DataHandler):
             features=features,
             labels=labels,
             extra_fields=extra_fields,
+            pretrained_embeds_file=config.pretrained_embeds_file,
+            embed_dim=feature_config.word_feat.embed_dim,
+            embed_init_strategy=feature_config.word_feat.embed_init_strategy,
         )
 
     def _gen_extra_metadata(self):
