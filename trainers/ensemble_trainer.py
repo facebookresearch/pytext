@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from typing import Union
 
-import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
 
@@ -38,8 +37,7 @@ class EnsembleTrainer(Trainer):
         scheduler=None,
     ):
         for i in range(len(model.models)):
-            print(f"start training the {i} model")
-            trained_model = self.real_trainer.train(
+            model.models[i] = self.train_single_model(
                 train_iter,
                 eval_iter,
                 model.models[i],
@@ -48,6 +46,27 @@ class EnsembleTrainer(Trainer):
                 metrics_reporter,
                 scheduler,
             )
-            model.models[i] = trained_model
         model.merge_sub_models()
         return model
+
+    def train_single_model(
+        self,
+        train_iter,
+        eval_iter,
+        model,
+        optimizers,
+        class_names,
+        metrics_reporter=None,
+        scheduler=None,
+    ):
+        print(f"start training the model")
+        trained_model = self.real_trainer.train(
+            train_iter,
+            eval_iter,
+            model,
+            optimizers,
+            class_names,
+            metrics_reporter,
+            scheduler,
+        )
+        return trained_model
