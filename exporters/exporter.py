@@ -8,7 +8,8 @@ from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import CommonMetadata
-from pytext.models.output_layer import CRFOutputLayer
+from pytext.loss import BinaryCrossEntropyLoss
+from pytext.models.output_layer import ClassificationOutputLayer, CRFOutputLayer
 from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
 from pytext.utils import onnx_utils
 
@@ -214,8 +215,14 @@ class TextModelExporter(ModelExporter):
                 output_score = output_layer.crf.export_to_caffe2(
                     workspace, init_net, predict_net, output_score
                 )
-            softmax_out = predict_net.Softmax(output_score, axis=axis)
-            tmp_out_score = predict_net.Log(softmax_out)
+
+            if isinstance(output_layer, ClassificationOutputLayer) and isinstance(
+                output_layer.loss_fn, BinaryCrossEntropyLoss
+            ):
+                probability_out = predict_net.Sigmoid(output_score)
+            else:
+                probability_out = predict_net.Softmax(output_score, axis=axis)
+            tmp_out_score = predict_net.Log(probability_out)
             label_scores = predict_net.Split(tmp_out_score, class_names, axis=axis)
 
             # Make sure label_scores is iterable

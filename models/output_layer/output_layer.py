@@ -38,7 +38,11 @@ class ClassificationOutputLayer(OutputLayerBase):
 
     def get_pred(self, logit, context):
         preds = torch.max(logit, 1)[1]
-        scores = F.log_softmax(logit, 1)
+        # Hacky way to check loss type
+        if isinstance(self.loss_fn, BinaryCrossEntropyLoss):
+            scores = F.logsigmoid(logit)
+        else:
+            scores = F.log_softmax(logit, 1)
         return preds, scores
 
 
