@@ -33,9 +33,11 @@ class SharedFeaturizer(object):
         with ConfigeratorThriftClient() as ctc:
             for name, config_path in tokenizer_config_path_dict.items():
                 tokenizer_config_dict[name] = ctc.getConfigContents(config_path)
+        self.add_sentence_markers = False
         if sentence_markers_dict is None:
             self.featurizer = FeaturizationWrapper(tokenizer_config_dict)
         else:
+            self.add_sentence_markers = True
             self.featurizer = FeaturizationWrapper(
                 tokenizer_config_dict, sentence_markers_dict
             )
@@ -46,7 +48,9 @@ class SharedFeaturizer(object):
         self, raw_text: str, raw_dict: str, locale: str = ""
     ) -> ModelFeatures:
         """Featurize one instance/example only."""
-        features_bin = self.featurizer.featurize_raw_text(raw_text, raw_dict, locale)
+        features_bin = self.featurizer.featurize_raw_text(
+            raw_text, raw_dict, locale, self.add_sentence_markers
+        )
         # Get ModelFeatures object
         features_obj = Serializer.deserialize(
             BIN_FACTORY, features_bin, ModelFeatures()
@@ -62,7 +66,7 @@ class SharedFeaturizer(object):
             # Set locale to empty string so that default locale is used.
             raw_feats = list(map(lambda tup: (tup[0], tup[1], ""), raw_feats))
         features_bin_list = self.featurizer.featurize_batch_parallel(
-            raw_feats, num_threads
+            raw_feats, num_threads, self.add_sentence_markers
         )
         # Deserialize ModelFeatures objects
         features_obj_list = Parallel(n_jobs=num_threads)(
