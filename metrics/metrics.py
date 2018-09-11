@@ -190,6 +190,7 @@ class IntentSlotMetrics:
 
 class AllMetrics:
     __slots__ = (
+        "top_intent_accuracy",
         "frame_accuracy",
         "frame_accuracies_by_depth",
         "bracket_metrics",
@@ -198,11 +199,13 @@ class AllMetrics:
 
     def __init__(
         self,
+        top_intent_accuracy: Optional[float],
         frame_accuracy: Optional[float],
         frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth],
         bracket_metrics: Optional[IntentSlotMetrics],
         tree_metrics: Optional[IntentSlotMetrics],
     ) -> None:
+        self.top_intent_accuracy = top_intent_accuracy
         self.frame_accuracy = frame_accuracy
         self.frame_accuracies_by_depth = frame_accuracies_by_depth
         self.bracket_metrics = bracket_metrics
@@ -457,6 +460,14 @@ def compute_intent_slot_metrics(
     )
 
 
+def compute_top_intent_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
+    num_correct = 0
+    num_samples = len(frame_pairs)
+    for (predicted_frame, expected_frame) in frame_pairs:
+        num_correct += int(predicted_frame.label == expected_frame.label)
+    return _safe_division(num_correct, num_samples)
+
+
 def compute_frame_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
     num_correct = 0
     num_samples = len(frame_pairs)
@@ -487,6 +498,7 @@ def compute_frame_accuracies_by_depth(
 
 def compute_all_metrics(
     frame_pairs: List[FramePredictionPair],
+    top_intent_accuracy: bool = True,
     frame_accuracy: bool = True,
     frame_accuracies_by_depth: bool = True,
     bracket_metrics: bool = True,
@@ -497,6 +509,9 @@ def compute_all_metrics(
     Given a list of (predicted_frame, expected_frame) pairs of Node type, return both
     bracket and tree metrics.
     """
+    top_intent = (
+        compute_top_intent_accuracy(frame_pairs) if top_intent_accuracy else None
+    )
     accuracy = compute_frame_accuracy(frame_pairs) if frame_accuracy else None
     accuracies = (
         compute_frame_accuracies_by_depth(frame_pairs)
@@ -518,7 +533,7 @@ def compute_all_metrics(
         else None
     )
 
-    return AllMetrics(accuracy, accuracies, bracket, tree)
+    return AllMetrics(top_intent, accuracy, accuracies, bracket, tree)
 
 
 def compute_classification_metrics(

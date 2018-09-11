@@ -18,6 +18,7 @@ from pytext.metrics import (
     compute_frame_accuracies_by_depth,
     compute_frame_accuracy,
     compute_intent_slot_metrics,
+    compute_top_intent_accuracy,
 )
 
 from .metrics_test_base import MetricsTestBase
@@ -503,6 +504,9 @@ class MetricsTest(MetricsTestBase):
                 ),
             ),
         )
+
+    def test_compute_top_intent_accuracy(self) -> None:
+        self.assertAlmostEqual(compute_top_intent_accuracy(FRAME_PAIRS), 10.0 / 11)
 
     def test_compute_frame_accuracy(self) -> None:
         self.assertAlmostEqual(compute_frame_accuracy(FRAME_PAIRS), 2.0 / 11)
