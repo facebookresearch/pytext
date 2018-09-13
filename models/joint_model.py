@@ -17,8 +17,10 @@ class JointModel(Model):
     class Config(ConfigBase):
         representation: Union[
             JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
-        ]
-        output_config: IntentSlotOutputLayer.Config
+        ] = JointBLSTMRepresentation.Config()
+        output_config: IntentSlotOutputLayer.Config = (
+            IntentSlotOutputLayer.Config()
+        )
         decoder: JointModelDecoder.Config = JointModelDecoder.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5

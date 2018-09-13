@@ -16,6 +16,11 @@ class DocModel(Model):
     """
 
     class Config(ConfigBase):
-        representation: Union[BiLSTMSelfAttention.Config, DocNNRepresentation.Config]
-        output_config: ClassificationOutputLayer.Config
+        representation: Union[
+            BiLSTMSelfAttention.Config,
+            DocNNRepresentation.Config,
+        ] = BiLSTMSelfAttention.Config()
+        output_config: ClassificationOutputLayer.Config = (
+            ClassificationOutputLayer.Config()
+        )
         decoder: MLPDecoder.Config = MLPDecoder.Config()

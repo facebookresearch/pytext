@@ -13,8 +13,13 @@ from .word_tagging_output_layer import WordTaggingOutputLayer
 
 class IntentSlotOutputLayer(OutputLayerBase):
     class Config(ConfigBase):
-        doc_output: ClassificationOutputLayer.Config
-        word_output: Union[WordTaggingOutputLayer.Config, CRFOutputLayer.Config]
+        doc_output: ClassificationOutputLayer.Config = (
+            ClassificationOutputLayer.Config()
+        )
+        word_output: Union[
+            WordTaggingOutputLayer.Config,
+            CRFOutputLayer.Config,
+        ] = WordTaggingOutputLayer.Config()
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):

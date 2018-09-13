@@ -16,6 +16,12 @@ class WordTaggingModel(Model):
     """
 
     class Config(ConfigBase):
-        representation: Union[BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config]
-        output_config: Union[WordTaggingOutputLayer.Config, CRFOutputLayer.Config]
+        representation: Union[
+            BiLSTMSlotAttention.Config,
+            BSeqCNNRepresentation.Config,
+        ] = BiLSTMSlotAttention.Config()
+        output_config: Union[
+            WordTaggingOutputLayer.Config,
+            CRFOutputLayer.Config,
+        ] = WordTaggingOutputLayer.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()

@@ -82,6 +82,15 @@ class ConfigBaseTest(unittest.TestCase):
         obj = Model2Sub1Sub1(m2s1s1='test')
         self.assertEqual(obj.m2s1, 5)
 
+    def test_subclassing_valid_ordering(self):
+        class SubclassDefaultOrdering(Model1, ConfigBase):
+            foo: int
+            bar: int
+
+        class SubclassDefaultOrdering2(
+                SubclassDefaultOrdering, Model1, ConfigBase):
+            pass
+
 
 class PytextConfigTest(unittest.TestCase):
     def test_use_default_value(self):

@@ -33,28 +33,31 @@ class JobSpecBase(ConfigBase):
 
 
 class EnsembleJobSpec(JobSpecBase, ConfigBase):
-    model: Union[BaggingDocEnsemble.Config, BaggingJointEnsemble.Config]
     trainer: EnsembleTrainer.Config
+    model: Union[
+        BaggingDocEnsemble.Config,
+        BaggingJointEnsemble.Config,
+    ]
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class DocClassificationJobSpec(JobSpecBase, ConfigBase):
-    model: DocModel.Config
+    model: DocModel.Config = DocModel.Config()
     trainer: ClassifierTrainer.Config = ClassifierTrainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class WordTaggingJobSpec(JobSpecBase, ConfigBase):
-    model: WordTaggingModel.Config
+    model: WordTaggingModel.Config = WordTaggingModel.Config()
     trainer: TaggerTrainer.Config = TaggerTrainer.Config()
     labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
 
 class JointTextJobSpec(JobSpecBase, ConfigBase):
-    model: JointModel.Config
+    model: JointModel.Config = JointModel.Config()
     trainer: JointTrainer.Config = JointTrainer.Config()
     labels: LabelConfig = LabelConfig(
         doc_label=DocLabelConfig(), word_label=WordLabelConfig()

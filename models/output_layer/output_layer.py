@@ -34,7 +34,10 @@ class OutputLayerBase(Module):
 
 class ClassificationOutputLayer(OutputLayerBase):
     class Config(ConfigBase):
-        loss: Union[CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config]
+        loss: Union[
+            CrossEntropyLoss.Config,
+            BinaryCrossEntropyLoss.Config,
+        ] = CrossEntropyLoss.Config()
 
     def get_pred(self, logit, context):
         preds = torch.max(logit, 1)[1]
