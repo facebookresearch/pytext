@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
+from pytext.config.component import create_module
 from pytext.config.module_config import LSTMParams
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
+from .pooling import MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
-from .self_attention import SelfAttention
 
 
-class BiLSTMSelfAttention(RepresentationBase):
-    """Bidirectional LSTM based representation with self attention."""
+class BiLSTMPooling(RepresentationBase):
+    """Bidirectional LSTM based representation with pooling
+       (e.g. max pooling or self attention)."""
 
     class Config(ConfigBase):
+        pooling: Union[
+            SelfAttention.Config, MaxPool.Config, MeanPool.Config, NoPool.Config
+        ] = SelfAttention.Config()
         bidirectional: bool = True
         dropout: float = 0.4
-        self_attn_dim: int = 64
         lstm: LSTMParams = LSTMParams()
 
     def __init__(self, config: Config, embed_dim: int) -> None:
@@ -36,8 +40,8 @@ class BiLSTMSelfAttention(RepresentationBase):
             bidirectional=config.bidirectional,
         )
         self.attention = (
-            SelfAttention(seq_in_size, config.self_attn_dim, config.dropout)
-            if config.self_attn_dim > 0
+            create_module(config.pooling, n_input=seq_in_size)
+            if config.pooling is not None
             else None
         )
         if self.decoder:

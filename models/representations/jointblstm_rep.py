@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
+from pytext.config.component import create_module
 from pytext.config.module_config import LSTMParams, SlotAttentionType
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .representation_base import RepresentationBase
-from .self_attention import SelfAttention
+from .pooling import SelfAttention
 from .slot_attention import SlotAttention
 
 
 class JointBLSTMRepresentation(RepresentationBase):
     class Config(ConfigBase):
+        pooling: Optional[SelfAttention.Config] = SelfAttention.Config()
         dropout: float = 0.4
-        attn_dim: int = 64
         lstm: LSTMParams = LSTMParams()
         slot_attention_type: SlotAttentionType = SlotAttentionType.NO_ATTENTION
         bidirectional: bool = True
@@ -43,21 +44,17 @@ class JointBLSTMRepresentation(RepresentationBase):
             self.relu,
             self.dropout,
         )
-        self.doc_attention = (
-            SelfAttention(seq_in_size, config.attn_dim, config.dropout)
-            if config.attn_dim > 0
-            else None
-        )
+        self.doc_attention = create_module(config.pooling, n_input=seq_in_size)
 
         self.word_attention = None
         word_input = seq_in_size
         if (
-            config.attn_dim > 0
+            config.pooling is not None
             and config.slot_attention_type != SlotAttentionType.NO_ATTENTION
         ):
             self.word_attention = SlotAttention(
                 config.slot_attention_type,
-                config.attn_dim,
+                0 if config.pooling is None else config.pooling.attn_dimension,
                 seq_in_size,
                 batch_first=True,
             )

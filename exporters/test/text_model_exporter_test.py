@@ -67,7 +67,11 @@ DOC_CONFIGS = [
 {
   "model": {
     "representation": {
-        "BiLSTMSelfAttention": {}
+        "BiLSTMPooling": {
+        "pooling": {
+          "MaxPool": {}
+        }
+      }
     },
     "output_config": {
         "loss": {

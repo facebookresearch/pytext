@@ -8,7 +8,8 @@ from pytext.data import CommonMetadata
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
 from pytext.models.output_layer.lm_output_layer import LMOutputLayer
-from pytext.models.representations.bilstm_self_attn import BiLSTMSelfAttention
+from pytext.models.representations.bilstm_pooling import BiLSTMPooling
+from pytext.models.representations.pooling import SelfAttention
 from pytext.utils import cuda_utils
 
 
@@ -24,8 +25,9 @@ class LMLSTM(Model):
     """A word-level language model that uses LSTM to represent the document."""
 
     class Config(ConfigBase):
-        representation: BiLSTMSelfAttention.Config = BiLSTMSelfAttention.Config(
-            self_attn_dim=0, bidirectional=False
+        representation: BiLSTMPooling.Config = BiLSTMPooling.Config(
+            bidirectional=False,
+            pooling=SelfAttention.Config(),
         )
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_config: LMOutputLayer.Config = LMOutputLayer.Config()

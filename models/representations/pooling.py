@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 
+from pytext.config import ConfigBase
+from pytext.models.module import Module
+
 import torch
 import torch.nn as nn
 import torch.onnx.operators
 
 
-class SelfAttention(nn.Module):
-    def __init__(self, n_input: int, n_attn: int, dropout_conf: float) -> None:
-        super().__init__()
+class SelfAttention(Module):
+    class Config(ConfigBase):
+        attn_dimension: int = 64
+        dropout: float = 0.4
 
-        self.dropout = nn.Dropout(dropout_conf)
+    def __init__(self, config: Config, n_input: int) -> None:
+        super().__init__(config)
+
+        self.dropout = nn.Dropout(config.dropout)
         self.n_input = n_input
-        self.n_attn = n_attn
-        self.ws1 = nn.Linear(n_input, n_attn, bias=False)
-        self.ws2 = nn.Linear(n_attn, 1, bias=False)
+        self.n_attn = config.attn_dimension
+        self.ws1 = nn.Linear(n_input, self.n_attn, bias=False)
+        self.ws2 = nn.Linear(self.n_attn, 1, bias=False)
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax()
         self.init_weights()
@@ -41,3 +48,27 @@ class SelfAttention(nn.Module):
 
         # (bsz, rep_dim)
         return torch.bmm(alphas.unsqueeze(1), inputs).squeeze(1)
+
+
+class MaxPool(Module):
+    def __init__(self, config: Module.Config, n_input: int) -> None:
+        super().__init__(config)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return torch.max(inputs, 1)[0]
+
+
+class MeanPool(Module):
+    def __init__(self, config: Module.Config, n_input: int) -> None:
+        super().__init__(config)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return torch.mean(inputs, 1)
+
+
+class NoPool(Module):
+    def __init__(self, config: Module.Config, n_input: int) -> None:
+        super().__init__(config)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return inputs
