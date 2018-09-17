@@ -2,6 +2,8 @@
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
+from pytext.config.field_config import EmbedInitStrategy
+from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
@@ -47,6 +49,29 @@ class RawField(textdata.RawField):
         self.export_names = export_names or [name]
 
 
+class VocabUsingField(Field):
+    """Base class for all fields that need to build a vocabulary."""
+
+    def __init__(
+        self,
+        *args,
+        pretrained_embeddings_path="",
+        embed_dim=0,
+        embedding_init_strategy=EmbedInitStrategy.RANDOM,
+        vocab_file="",
+        vocab_size="",
+        vocab_from_train_data=True,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.pretrained_embeddings_path = pretrained_embeddings_path
+        self.vocab_file = vocab_file
+        self.vocab_size = vocab_size
+        self.vocab_from_train_data = vocab_from_train_data
+        self.embed_dim = embed_dim
+        self.embedding_init_strategy = embedding_init_strategy
+
+
 class DocLabelField(Field):
     def __init__(self, name):
         super().__init__(
@@ -71,11 +96,17 @@ class WordLabelField(Field):
         self.use_bio_labels = use_bio_labels
 
 
-class TextFeatureField(Field):
+class TextFeatureField(VocabUsingField):
     def __init__(
         self,
         name,
         export_names=None,
+        pretrained_embeddings_path="",
+        embed_dim=0,
+        embedding_init_strategy=EmbedInitStrategy.RANDOM,
+        vocab_file="",
+        vocab_size="",
+        vocab_from_train_data=True,
         postprocessing=None,
         use_vocab=True,
         include_lengths=True,
@@ -87,10 +118,16 @@ class TextFeatureField(Field):
         eos_token=None,
         lower=True,
         tokenize=data_utils.no_tokenize,
-    ):
+    ) -> None:
         super().__init__(
             name,
             export_names,
+            pretrained_embeddings_path=pretrained_embeddings_path,
+            embed_dim=embed_dim,
+            embedding_init_strategy=embedding_init_strategy,
+            vocab_file=vocab_file,
+            vocab_size=vocab_size,
+            vocab_from_train_data=vocab_from_train_data,
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,
@@ -127,4 +164,18 @@ class FloatField(Field):
             tokenize=data_utils.no_tokenize,
             dtype=torch.float,
             unk_token=None,
+        )
+
+
+class ActionField(VocabUsingField):
+    def __init__(self, name):
+        super().__init__(
+            name,
+            use_vocab=True,
+            sequential=True,
+            batch_first=True,
+            tokenize=data_utils.no_tokenize,
+            unk_token=None,  # Don't include unk in the list of labels
+            # reverse the tensor
+            postprocessing=reverse_tensor,
         )

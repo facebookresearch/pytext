@@ -2,26 +2,30 @@
 from .char_field import CharFeatureField
 from .dict_field import DictFeatureField
 from .field import (
-    FieldMeta,
+    ActionField,
     CapFeatureField,
     DocLabelField,
     Field,
+    FieldMeta,
     FloatField,
     RawField,
     TextFeatureField,
+    VocabUsingField,
     WordLabelField,
 )
 
 
 __all__ = [
-    "Field",
-    "RawField",
+    "ActionField",
+    "CapFeatureField",
     "CharFeatureField",
     "DictFeatureField",
-    "CapFeatureField",
     "DocLabelField",
-    "FloatField",
-    "TextFeatureField",
-    "WordLabelField",
+    "Field",
     "FieldMeta",
+    "FloatField",
+    "RawField",
+    "TextFeatureField",
+    "VocabUsingField",
+    "WordLabelField",
 ]

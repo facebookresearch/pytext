@@ -18,18 +18,26 @@ class PretrainedEmbedding(object):
 
     def __init__(self, embeddings_path: str = None) -> None:
         if embeddings_path:
-            serialized_embed_path = os.path.join(
-                embeddings_path, PackageFileName.SERIALIZED_EMBED
-            )
-            raw_embeddings_path = os.path.join(
-                embeddings_path, PackageFileName.RAW_EMBED
-            )
+            if os.path.isdir(embeddings_path):
+                serialized_embed_path = os.path.join(
+                    embeddings_path, PackageFileName.SERIALIZED_EMBED
+                )
+                raw_embeddings_path = os.path.join(
+                    embeddings_path, PackageFileName.RAW_EMBED
+                )
+            elif os.path.isfile(embeddings_path):
+                serialized_embed_path = ""
+                raw_embeddings_path = embeddings_path
+            else:
+                raise FileNotFoundError(
+                    "f{embeddings_path} not found. Can't load pretrained embeddings."
+                )
 
             if os.path.isfile(serialized_embed_path):
                 try:
                     self.load_cached_embeddings(serialized_embed_path)
                 except Exception:
-                    print("Failed to load cached embeddings, loading the raw file")
+                    print("Failed to load cached embeddings, loading the raw file.")
                     self.load_pretrained_embeddings(raw_embeddings_path)
             else:
                 self.load_pretrained_embeddings(raw_embeddings_path)
@@ -39,7 +47,7 @@ class PretrainedEmbedding(object):
             self.embedding_vectors = None  # type: torch.Tensor
 
     def load_pretrained_embeddings(
-        self, emebeds_raw_file: str, append: bool = False, dialect: str = None
+        self, raw_embeddings_path: str, append: bool = False, dialect: str = None
     ) -> None:
         """
         Loading raw embeddings vectors from file in the format:
@@ -54,7 +62,7 @@ class PretrainedEmbedding(object):
         filetype = {i: np.float32 for i in range(1, 10000)}
         filetype[0] = np.str
         embed_df = pandas.read_csv(
-            emebeds_raw_file,
+            raw_embeddings_path,
             chunksize=500000,
             skiprows=1,  # Assuming the file has a header in the first row
             delim_whitespace=True,
@@ -130,9 +138,7 @@ class PretrainedEmbedding(object):
             pretrained_embeds_weight.fill_(0.0)
         else:
             raise ValueError(
-                "Unknown embedding initialization strategy '{}'".format(
-                    init_strategy
-                )
+                "Unknown embedding initialization strategy '{}'".format(init_strategy)
             )
 
         assert self.embedding_vectors is not None and self.embed_vocab is not None
@@ -148,14 +154,14 @@ def init_pretrained_embeddings(
     embeddings_path: str,
     embed_dim: int,
     unk: str,
-    init_strategy: EmbedInitStrategy,
+    embedding_init_strategy: EmbedInitStrategy,
 ) -> torch.Tensor:
     return PretrainedEmbedding(embeddings_path).initialize_embeddings_weights(
         vocab_to_id,
         vocab_to_id[unk],
         len(vocab_to_id),
         embed_dim,
-        init_strategy,
+        embedding_init_strategy,
     )
 
 

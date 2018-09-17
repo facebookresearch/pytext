@@ -15,9 +15,13 @@ class WordFeatConfig(ConfigBase):
     embed_dim: int = 100
     sparse: bool = False
     freeze: bool = False
-    embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
-    embed_init_range: Optional[List[float]] = None
+    embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
+    embedding_init_range: Optional[List[float]] = None
     export_input_names: List[str] = ["tokens_vals", "tokens_lens"]
+    pretrained_embeddings_path: str = ""
+    vocab_file: str = ""
+    vocab_size: int = 0
+    vocab_from_train_data: bool = True
 
 
 class DictFeatConfig(ConfigBase):
@@ -25,12 +29,14 @@ class DictFeatConfig(ConfigBase):
     sparse: bool = False
     pooling: PoolingType = PoolingType.MEAN
     export_input_names: List[str] = ["dict_vals", "dict_weights", "dict_lens"]
+    vocab_from_train_data: bool = True
 
 
 class CharFeatConfig(ConfigBase):
     embed_dim: int = 100
     sparse: bool = False
     cnn: CNNParams = CNNParams()
+    vocab_from_train_data: bool = True
 
 
 class CapFeatConfig(ConfigBase):

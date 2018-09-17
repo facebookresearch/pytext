@@ -3,7 +3,6 @@
 from typing import List
 
 import pandas as pd
-import multiprocessing
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
@@ -20,9 +19,8 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 
 
 class LanguageModelDataHandler(DataHandler):
-    class Config(ConfigBase):
+    class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
-        pretrained_embeds_file: str = ""
 
     def __init__(
         self, featurizer: SharedFeaturizer, *args, **kwargs
@@ -48,26 +46,29 @@ class LanguageModelDataHandler(DataHandler):
         # For language modeling the only input is a collection of utterances.
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
-        columns = config.columns_to_read
+        word_feat_config = feature_config.word_feat
         features: List[Field] = [
             TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,
-                export_names=feature_config.word_feat.export_input_names,
+                export_names=word_feat_config.export_input_names,
+                pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
+                embed_dim=word_feat_config.embed_dim,
+                embedding_init_strategy=word_feat_config.embedding_init_strategy,
+                vocab_file=word_feat_config.vocab_file,
+                vocab_size=word_feat_config.vocab_size,
+                vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
         ]
         labels: List[Field] = []
         extra_fields: List[Field] = [RawField(DatasetFieldName.TOKEN_RANGE_PAIR)]
         return cls(
             featurizer=SharedFeaturizer(),
-            raw_columns=columns,
+            raw_columns=config.columns_to_read,
             features=features,
             labels=labels,
             extra_fields=extra_fields,
-            pretrained_embeds_file=config.pretrained_embeds_file,
-            embed_dim=feature_config.word_feat.embed_dim,
-            embed_init_strategy=feature_config.word_feat.embed_init_strategy,
         )
 
     def _gen_extra_metadata(self):
@@ -83,10 +84,9 @@ class LanguageModelDataHandler(DataHandler):
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
 
-        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), num_workers
+                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
             )
         )
         df[DFColumn.TOKEN_RANGE_PAIR] = [

@@ -10,9 +10,7 @@ from pytext.config.field_config import (
     LabelConfig,
     WordFeatConfig,
 )
-from pytext.data.joint_data_handler import (
-    JointModelDataHandler
-)
+from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.utils.embeddings_utils import PretrainedEmbedding
 
 
@@ -20,7 +18,7 @@ TRAIN_FILE = "pytext/tests/data/music_train_tiny.tsv"
 EVAL_FILE = "pytext/tests/data/music_test_tiny.tsv"
 TEST_FILE = "pytext/tests/data/music_test_tiny.tsv"
 
-PRETRAINED_EMBED_PATH = "pytext/tests/data"
+PRETRAINED_EMBEDDINGS_PATH = "pytext/tests/data"
 
 EMBED_RAW_PATH = "pytext/tests/data/pretrained_embed_raw"
 EMBED_CACHED_PATH = "pytext/tests/data/test_embed.cached"
@@ -141,12 +139,12 @@ class PretrainedEmbedsTest(unittest.TestCase):
 
     def test_intializing_embeds_from_config(self):
         data_handler = JointModelDataHandler.from_config(
-            JointModelDataHandler.Config(
-                pretrained_embeds_file=PRETRAINED_EMBED_PATH
-            ),
+            JointModelDataHandler.Config(),
             FeatureConfig(
                 word_feat=WordFeatConfig(
-                    embed_init_strategy=EmbedInitStrategy.RANDOM, embed_dim=5
+                    embedding_init_strategy=EmbedInitStrategy.RANDOM,
+                    embed_dim=5,
+                    pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
                 )
             ),
             LabelConfig(),
@@ -161,12 +159,12 @@ class PretrainedEmbedsTest(unittest.TestCase):
         )
 
         data_handler = JointModelDataHandler.from_config(
-            JointModelDataHandler.Config(
-                pretrained_embeds_file=PRETRAINED_EMBED_PATH
-            ),
+            JointModelDataHandler.Config(),
             FeatureConfig(
                 word_feat=WordFeatConfig(
-                    embed_init_strategy=EmbedInitStrategy.ZERO, embed_dim=5
+                    embedding_init_strategy=EmbedInitStrategy.ZERO,
+                    embed_dim=5,
+                    pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
                 )
             ),
             LabelConfig(),

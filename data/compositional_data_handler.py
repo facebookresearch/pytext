@@ -10,51 +10,32 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.data.shared_featurizer import SharedFeaturizer
 from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
-from pytext.fields import DictFeatureField, Field, TextFeatureField
+from pytext.fields import ActionField, DictFeatureField, TextFeatureField
+from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 
 from .data_handler import DataHandler
-
-
-# TODO move it to field folder
-def _reverse(arr, vocab):
-    return [ex[::-1] for ex in arr]
-
-
-# TODO move it to field folder
-class ActionField(Field):
-    def __init__(self, name):
-        super().__init__(
-            name,
-            use_vocab=True,
-            sequential=True,
-            batch_first=True,
-            tokenize=data_utils.no_tokenize,
-            unk_token=None,  # Don't include unk in the list of labels
-            # reverse the tensor
-            postprocessing=_reverse,
-        )
 
 
 TREE_COLUMN = "tree"
 
 
 class CompositionalDataHandler(DataHandler):
-    class Config(ConfigBase):
+    class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [
             DFColumn.DOC_LABEL,
             DFColumn.WORD_LABEL,
             DFColumn.UTTERANCE,
             DFColumn.DICT_FEAT,
         ]
-        pretrained_embeds_file: str = ""
-        shuffle: bool = True
 
     def __init__(self, **kwargs) -> None:
         super().__init__(
             features=[
                 # TODO assuming replacing numbers with NUM and unkify be done in featurizer
-                TextFeatureField(DatasetFieldName.TEXT_FIELD, postprocessing=_reverse),
+                TextFeatureField(
+                    DatasetFieldName.TEXT_FIELD, postprocessing=reverse_tensor
+                ),
                 DictFeatureField(DatasetFieldName.DICT_FIELD),
                 ActionField("action_idx_feature"),
             ],
@@ -86,10 +67,9 @@ class CompositionalDataHandler(DataHandler):
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
 
-        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), num_workers
+                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
             )
         )
 

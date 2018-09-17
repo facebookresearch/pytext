@@ -3,7 +3,6 @@
 from typing import List
 
 import pandas as pd
-import multiprocessing
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -27,7 +26,7 @@ SEQ_LENS = "seq_lens"
 
 
 class JointModelDataHandler(DataHandler):
-    class Config(ConfigBase):
+    class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [
             DFColumn.DOC_LABEL,
             DFColumn.WORD_LABEL,
@@ -36,7 +35,6 @@ class JointModelDataHandler(DataHandler):
             DFColumn.DOC_WEIGHT,
             DFColumn.WORD_WEIGHT,
         ]
-        pretrained_embeds_file: str = ""
 
     FULL_FEATURES = [
         DatasetFieldName.TEXT_FIELD,
@@ -53,10 +51,17 @@ class JointModelDataHandler(DataHandler):
         label_config: LabelConfig,
         **kwargs
     ):
+        word_feat_config = feature_config.word_feat
         features: List[Field] = [
             TextFeatureField(
                 DatasetFieldName.TEXT_FIELD,
-                export_names=feature_config.word_feat.export_input_names,
+                export_names=word_feat_config.export_input_names,
+                pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
+                embed_dim=word_feat_config.embed_dim,
+                embedding_init_strategy=word_feat_config.embedding_init_strategy,
+                vocab_file=word_feat_config.vocab_file,
+                vocab_size=word_feat_config.vocab_size,
+                vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
         ]
         if feature_config.dict_feat:
@@ -96,9 +101,7 @@ class JointModelDataHandler(DataHandler):
             features=features,
             extra_fields=extra_fields,
             featurizer=SharedFeaturizer(),
-            pretrained_embeds_file=config.pretrained_embeds_file,
-            embed_dim=feature_config.word_feat.embed_dim,
-            embed_init_strategy=feature_config.word_feat.embed_init_strategy,
+            shuffle=config.shuffle,
         )
 
     def __init__(
@@ -155,10 +158,9 @@ class JointModelDataHandler(DataHandler):
             lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
         )
 
-        num_workers = multiprocessing.cpu_count()
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), num_workers
+                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
             )
         )
 

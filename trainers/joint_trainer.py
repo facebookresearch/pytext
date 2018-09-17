@@ -40,7 +40,7 @@ class JointTrainer(Trainer):
         w_pred, w_target = TaggerTrainer.remove_padding(w_pred, w_target)
         sys.stdout.write(
             classification_report(
-                d_target.data.cpu(), d_pred.cpu(), target_names=target_names[0]
+                d_target.cpu(), d_pred.cpu(), target_names=target_names[0]
             )
         )
         sys.stdout.write(

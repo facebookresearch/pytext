@@ -7,10 +7,10 @@ from pytext.common.constants import VocabMeta
 from pytext.utils.data_utils import no_tokenize
 from torchtext import data as textdata, vocab
 
-from .field import Field
+from .field import VocabUsingField
 
 
-class DictFeatureField(Field):
+class DictFeatureField(VocabUsingField):
     def __init__(
         self,
         name,
@@ -45,7 +45,8 @@ class DictFeatureField(Field):
         counter = Counter()
         for data in sources:
             for x in data:
-                counter.update(x[0])
+                if len(x) > 0:
+                    counter.update(x[0])
         specials = [self.unk_token, self.pad_token]
         self.vocab = vocab.Vocab(counter, specials=specials, **kwargs)
 

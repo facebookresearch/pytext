@@ -8,10 +8,10 @@ from pytext.common.constants import VocabMeta
 from pytext.utils.data_utils import no_tokenize
 from torchtext import data as textdata, vocab
 
-from .field import Field
+from .field import VocabUsingField
 
 
-class CharFeatureField(Field):
+class CharFeatureField(VocabUsingField):
     def __init__(
         self,
         name,

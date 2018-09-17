@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 import csv
+import multiprocessing
+import os
 from copy import copy
-from typing import Any, Dict, Generator, List, Tuple, Type
+from typing import Any, Dict, Generator, List, Tuple, Type, Set
 
 import pandas as pd
 import torch
 import torch.hiveio as hiveio
 from pytext.common.constants import VocabMeta
 from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import EmbedInitStrategy
-from pytext.fields import Field, FieldMeta
+from pytext.config.pytext_config import ConfigBase
+from pytext.fields import Field, FieldMeta, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
@@ -26,9 +28,9 @@ class CommonMetadata:
 class BatchIterator:
     """
     Each iteration will return a tuple of (input, target, context)
-        input can be feeded directly into model forward function
-        target is the numaricalized label(s)
-        context is any extra info to be used in downstream steps
+    input can be feeded directly into model forward function
+    target is the numaricalized label(s)
+    context is any extra info to be used in downstream steps
     """
 
     def __init__(
@@ -74,6 +76,11 @@ class DataHandler(Component):
             3 feat_name -> function, take one row as input and output the feature
     """
 
+    class Config(ConfigBase):
+        columns_to_read: List[str] = []
+        shuffle: bool = True
+        pretrained_embeddings_path = ""
+
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
     # special df index field to record initial position of examples
@@ -87,9 +94,7 @@ class DataHandler(Component):
         labels: List[Field],
         features: List[Field],
         extra_fields: List[Field] = None,
-        pretrained_embeds_file: str = None,
-        embed_dim: int = 0,
-        embed_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM,
+        shuffle: bool = True,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
         self.labels: List[Field] = labels or []
@@ -97,13 +102,33 @@ class DataHandler(Component):
         self.extra_fields: List[Field] = extra_fields or []
         # Presume the first feature should be the text feature
         self.text_field = self.features[0]
-        self.pretrained_embeds_file = pretrained_embeds_file
-        self.embed_dim = embed_dim
-        self.embed_init_strategy = embed_init_strategy
         self.df_to_feat_func_map: Dict = {}
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: Dict = {}
+        self.shuffle = (shuffle,)
+        self.num_workers = multiprocessing.cpu_count()
+
+    def load_vocab(self, vocab_file, vocab_size):
+        """
+        Loads items into a set from a file containing one item per line.
+        Items are added to the set from top of the file to bottom.
+        So, the items in the file should be ordered by a preference (if any), e.g.,
+        it makes sense to order tokens in descending order of frequency in corpus.
+        """
+        vocab: Set[str] = set()
+        if os.path.isfile(vocab_file):
+            with open(vocab_file, "r") as f:
+                for i, line in enumerate(f):
+                    if len(vocab) == vocab_size:
+                        print(f"Read {i+1} items from {vocab_file}"
+                              f"to load vocab of size {vocab_size}."
+                              f"Skipping rest of the file")
+                        break
+                    vocab.add(line.strip())
+        else:
+            print(f"{vocab_file} doesn't exist. Cannot load vocabulary from it")
+        return vocab
 
     def sort_key(self, ex: textdata.Example) -> Any:
         return len(getattr(ex, self.text_field.name))
@@ -196,33 +221,65 @@ class DataHandler(Component):
             if label.use_vocab:
                 print("building vocab for label {}".format(label.name))
                 label.build_vocab(train_data, eval_data, test_data)
+                print(
+                    "{} field's vocabulary size is {}".format(
+                        label.name, len(label.vocab.itos)
+                    )
+                )
 
         # build vocabs for features
         for feat in self.features:
             if feat.use_vocab:
                 print("building vocab for feature {}".format(feat.name))
-                feat.build_vocab(train_data)
+                feat.build_vocab(*self._get_data_to_build_vocab(feat, train_data))
+                print(
+                    "{} field's vocabulary size is {}".format(
+                        feat.name, len(feat.vocab.itos)
+                    )
+                )
+
+                # Initialize pretrained embedding weights.
+                if (
+                    hasattr(feat, "pretrained_embeddings_path")
+                    and feat.pretrained_embeddings_path
+                ):
+                    weights = embeddings_utils.init_pretrained_embeddings(
+                        feat.vocab.stoi,
+                        feat.pretrained_embeddings_path,
+                        feat.embed_dim,
+                        VocabMeta.UNK_TOKEN,
+                        embedding_init_strategy=feat.embedding_init_strategy,
+                    )
+                    self.metadata.pretrained_embeds_weight = weights
 
         # field metadata
         self.metadata.features = {f.name: f.get_meta() for f in self.features}
         self.metadata.labels = {f.name: f.get_meta() for f in self.labels}
 
-        # pretrained embedding weight
-        if self.pretrained_embeds_file:
-            weight = embeddings_utils.init_pretrained_embeddings(
-                self.text_field.vocab.stoi,
-                self.pretrained_embeds_file,
-                self.embed_dim,
-                VocabMeta.UNK_TOKEN,
-                init_strategy=self.embed_init_strategy,
-            )
-            self.metadata.pretrained_embeds_weight = weight
-
         self._gen_extra_metadata()
 
-    def _gen_extra_metadata(self) -> None:
-        """Subclass can overwrite to add more necessary metadata
+    def _get_data_to_build_vocab(
+        self, feat: Field, train_data: textdata.Dataset
+    ) -> List[Any]:
         """
+        This method prepares the list of data sources that
+        Field.build_vocab() accepts to build vocab from.
+
+        If vocab building from training data is configured then that Dataset
+        object is appended to build vocabulary from.
+
+        If a vocab file is provided an additional data source built from the file
+        is appended to the list which, is a list of items read from the vocab file.
+        """
+        data = []
+        if isinstance(feat, VocabUsingField) and feat.vocab_from_train_data:
+            data.append(train_data)
+        if hasattr(feat, "vocab_file"):
+            data.append([self.load_vocab(feat.vocab_file, feat.vocab_size)])
+        return data
+
+    def _gen_extra_metadata(self) -> None:
+        """Subclass can overwrite to add more necessary metadata."""
         pass
 
     def get_train_batch_from_path(
@@ -251,6 +308,7 @@ class DataHandler(Component):
                 sort_within_batch=True,
                 repeat=False,
                 sort_key=self.sort_key,
+                shuffle=self.shuffle,
             )
         )
 
@@ -347,8 +405,8 @@ class DataHandler(Component):
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-            preprocess the dataframe read from path, generate some intermediate data
-            do nothing by default
+        Preprocess the dataframe read from path, generate some intermediate data.
+        Do nothing by default.
         """
         pass
 

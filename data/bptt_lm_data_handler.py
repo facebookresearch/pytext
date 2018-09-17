@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+import itertools
 from typing import List, Tuple
 
 import pandas as pd
-import itertools
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
@@ -25,19 +25,16 @@ class BPTTLanguageModelDataHandler(DataHandler):
     and subdivides the source data into chunks of length bptt_len. It enables
     hidden state of ith batch carried over to (i+1)th batch.
     """
-    class Config(ConfigBase):
+
+    class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
-        preprocess_workers: int = 32
-        pretrained_embeds_file: str = ""
         bptt_len: int = 35
 
     def __init__(
-        self, featurizer: SharedFeaturizer, num_workers: int,
-        bptt_len: int, *args, **kwargs
+        self, featurizer: SharedFeaturizer, bptt_len: int, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
-        self.num_workers = num_workers
         self.bptt_len = bptt_len
 
     @classmethod
@@ -52,7 +49,6 @@ class BPTTLanguageModelDataHandler(DataHandler):
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
         columns = config.columns_to_read
-        num_workers = config.preprocess_workers
         bptt_len = config.bptt_len
         if bptt_len <= 0:
             raise TypeError("BPTT Sequence length cannot be 0 or less.")
@@ -68,7 +64,6 @@ class BPTTLanguageModelDataHandler(DataHandler):
         extra_fields: List[Field] = []
         return cls(
             featurizer=SharedFeaturizer(),
-            num_workers=num_workers,
             bptt_len=bptt_len,
             raw_columns=columns,
             features=features,
@@ -96,8 +91,11 @@ class BPTTLanguageModelDataHandler(DataHandler):
         )
 
         def featurize(df):
-            return list(itertools.chain.from_iterable(
-                row.tokens for row in df[DFColumn.MODEL_FEATS]))
+            return list(
+                itertools.chain.from_iterable(
+                    row.tokens for row in df[DFColumn.MODEL_FEATS]
+                )
+            )
 
         ret_df = pd.DataFrame()
         ret_df[DFColumn.UTTERANCE] = pd.Series([featurize(df)])
@@ -121,10 +119,9 @@ class BPTTLanguageModelDataHandler(DataHandler):
 
     def _input_from_batch(self, batch):
         return (
-            #(bsx x seq_len)
+            # (bsx x seq_len)
             batch.text.t().contiguous(),
-            torch.Tensor(
-                [batch.text.size(0)] * batch.text.size(1)).type_as(batch.text)
+            torch.Tensor([batch.text.size(0)] * batch.text.size(1)).type_as(batch.text),
         )
 
     def _target_from_batch(self, batch):

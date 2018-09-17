@@ -80,7 +80,7 @@ class Trainer(Component):
                 epoch - last_bestepoch == self.config.early_stop_after
             ):
                 print(
-                    "Eval metric hasn't changed for {} epochs, stopping now...".format(
+                    "Eval metric hasn't changed for {} epochs, stopping now.".format(
                         self.config.early_stop_after
                     )
                 )

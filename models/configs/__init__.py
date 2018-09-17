@@ -27,7 +27,7 @@ def gen_embedding_config(
             unk_idx,
             feat_config.word_feat.sparse,
             feat_config.word_feat.freeze,
-            feat_config.word_feat.embed_init_range,
+            feat_config.word_feat.embedding_init_range,
         )
         if embed_num
         else None
