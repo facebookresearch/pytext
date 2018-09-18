@@ -52,23 +52,18 @@ class BPTTLanguageModelDataHandler(DataHandler):
         bptt_len = config.bptt_len
         if bptt_len <= 0:
             raise TypeError("BPTT Sequence length cannot be 0 or less.")
-        features: List[Field] = [
-            TextFeatureField(
-                DatasetFieldName.TEXT_FIELD,
-                eos_token=VocabMeta.EOS_TOKEN,
-                export_names=feature_config.word_feat.export_input_names,
-                include_lengths=False,
+        features = {
+            DatasetFieldName.TEXT_FIELD: TextFeatureField(
+                eos_token=VocabMeta.EOS_TOKEN, include_lengths=False
             )
-        ]
-        labels: List[Field] = []
-        extra_fields: List[Field] = []
+        }
         return cls(
             featurizer=SharedFeaturizer(),
             bptt_len=bptt_len,
             raw_columns=columns,
             features=features,
-            labels=labels,
-            extra_fields=extra_fields,
+            labels={},
+            extra_fields={},
         )
 
     def _gen_extra_metadata(self):

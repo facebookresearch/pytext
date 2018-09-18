@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import List
+import multiprocessing
+from typing import Dict, List
 
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
@@ -19,6 +20,7 @@ from pytext.fields import (
     WordLabelField,
 )
 from pytext.utils import data_utils
+
 from .data_handler import DataHandler
 
 
@@ -52,10 +54,8 @@ class JointModelDataHandler(DataHandler):
         **kwargs
     ):
         word_feat_config = feature_config.word_feat
-        features: List[Field] = [
-            TextFeatureField(
-                DatasetFieldName.TEXT_FIELD,
-                export_names=word_feat_config.export_input_names,
+        features: Dict[str, Field] = {
+            DatasetFieldName.TEXT_FIELD: TextFeatureField(
                 pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
                 embed_dim=word_feat_config.embed_dim,
                 embedding_init_strategy=word_feat_config.embedding_init_strategy,
@@ -63,37 +63,30 @@ class JointModelDataHandler(DataHandler):
                 vocab_size=word_feat_config.vocab_size,
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
-        ]
+        }
         if feature_config.dict_feat:
-            features.append(
-                DictFeatureField(
-                    DatasetFieldName.DICT_FIELD,
-                    export_names=feature_config.dict_feat.export_input_names,
-                )
-            )
-        if feature_config.cap_feat:
-            features.append(CapFeatureField(DatasetFieldName.CAP_FIELD))
-        if feature_config.char_feat:
-            features.append(CharFeatureField(DatasetFieldName.CHAR_FIELD))
+            features[DatasetFieldName.DICT_FIELD] = DictFeatureField()
 
-        labels: List[Field] = []
+        if feature_config.cap_feat:
+            features[DatasetFieldName.CAP_FIELD] = CapFeatureField()
+        if feature_config.char_feat:
+            features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
+
+        labels: Dict[str, Field] = {}
         if label_config.doc_label:
-            labels.append(DocLabelField(DatasetFieldName.DOC_LABEL_FIELD))
+            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
         if label_config.word_label:
-            labels.append(
-                WordLabelField(
-                    DatasetFieldName.WORD_LABEL_FIELD,
-                    use_bio_labels=label_config.word_label.use_bio_labels,
-                )
+            labels[DatasetFieldName.WORD_LABEL_FIELD] = WordLabelField(
+                use_bio_labels=label_config.word_label.use_bio_labels
             )
-        extra_fields: List[Field] = [
-            FloatField(DatasetFieldName.DOC_WEIGHT_FIELD),
-            FloatField(DatasetFieldName.WORD_WEIGHT_FIELD),
-            RawField(DatasetFieldName.RAW_WORD_LABEL),
-            RawField(DatasetFieldName.TOKEN_RANGE_PAIR),
-            RawField(DatasetFieldName.INDEX_FIELD),
-            RawField(DatasetFieldName.UTTERANCE_FIELD),
-        ]
+        extra_fields: Dict[str, Field] = {
+            DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
+            DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
+            DatasetFieldName.RAW_WORD_LABEL: RawField(),
+            DatasetFieldName.TOKEN_RANGE_PAIR: RawField(),
+            DatasetFieldName.INDEX_FIELD: RawField(),
+            DatasetFieldName.UTTERANCE_FIELD: RawField(),
+        }
 
         return cls(
             raw_columns=config.columns_to_read,
@@ -104,15 +97,13 @@ class JointModelDataHandler(DataHandler):
             shuffle=config.shuffle,
         )
 
-    def __init__(
-        self, featurizer: SharedFeaturizer, **kwargs
-    ) -> None:
+    def __init__(self, featurizer: SharedFeaturizer, **kwargs) -> None:
 
         super().__init__(**kwargs)
         # configs
         self.featurizer = featurizer
 
-        self.df_to_feat_func_map = {
+        self.df_to_example_func_map = {
             # features
             DatasetFieldName.TEXT_FIELD: lambda row, field: row[
                 DFColumn.MODEL_FEATS

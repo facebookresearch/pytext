@@ -20,17 +20,11 @@ class FieldMeta:
 
 
 class Field(textdata.Field):
-    def __init__(self, name, export_names=None, **kwargs):
-        super().__init__(**kwargs)
-        self.name = name
-        self.export_names = export_names or [name]
-
     def get_meta(self) -> FieldMeta:
         meta = FieldMeta()
         if self.use_vocab:
             meta.vocab_size = len(self.vocab)
             meta.vocab = self.vocab
-            meta.vocab_export_name = self.export_names[0]
         if self.pad_token is not None:
             meta.pad_token_idx = self.vocab.stoi[self.pad_token]
         if self.unk_token is not None:
@@ -43,10 +37,8 @@ class Field(textdata.Field):
 
 
 class RawField(textdata.RawField):
-    def __init__(self, name, export_names=None, **kwargs):
-        super().__init__(**kwargs)
-        self.name = name
-        self.export_names = export_names or [name]
+    def get_meta(self) -> FieldMeta:
+        return FieldMeta()
 
 
 class VocabUsingField(Field):
@@ -54,13 +46,13 @@ class VocabUsingField(Field):
 
     def __init__(
         self,
-        *args,
         pretrained_embeddings_path="",
         embed_dim=0,
         embedding_init_strategy=EmbedInitStrategy.RANDOM,
         vocab_file="",
         vocab_size="",
         vocab_from_train_data=True,
+        *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
@@ -73,9 +65,8 @@ class VocabUsingField(Field):
 
 
 class DocLabelField(Field):
-    def __init__(self, name):
+    def __init__(self):
         super().__init__(
-            name,
             sequential=False,
             batch_first=True,
             tokenize=data_utils.no_tokenize,
@@ -84,9 +75,8 @@ class DocLabelField(Field):
 
 
 class WordLabelField(Field):
-    def __init__(self, name, use_bio_labels):
+    def __init__(self, use_bio_labels):
         super().__init__(
-            name,
             sequential=True,
             batch_first=True,
             tokenize=data_utils.simple_tokenize,
@@ -99,8 +89,6 @@ class WordLabelField(Field):
 class TextFeatureField(VocabUsingField):
     def __init__(
         self,
-        name,
-        export_names=None,
         pretrained_embeddings_path="",
         embed_dim=0,
         embedding_init_strategy=EmbedInitStrategy.RANDOM,
@@ -120,8 +108,6 @@ class TextFeatureField(VocabUsingField):
         tokenize=data_utils.no_tokenize,
     ) -> None:
         super().__init__(
-            name,
-            export_names,
             pretrained_embeddings_path=pretrained_embeddings_path,
             embed_dim=embed_dim,
             embedding_init_strategy=embedding_init_strategy,
@@ -143,10 +129,8 @@ class TextFeatureField(VocabUsingField):
 
 
 class CapFeatureField(Field):
-    def __init__(self, name, export_names=None):
+    def __init__(self):
         super().__init__(
-            name,
-            export_names,
             use_vocab=False,
             sequential=True,
             batch_first=True,
@@ -155,9 +139,8 @@ class CapFeatureField(Field):
 
 
 class FloatField(Field):
-    def __init__(self, name):
+    def __init__(self):
         super().__init__(
-            name,
             sequential=False,
             use_vocab=False,
             batch_first=True,
@@ -168,9 +151,8 @@ class FloatField(Field):
 
 
 class ActionField(VocabUsingField):
-    def __init__(self, name):
+    def __init__(self):
         super().__init__(
-            name,
             use_vocab=True,
             sequential=True,
             batch_first=True,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import List
+import multiprocessing
+from typing import Dict, List
 
 import pandas as pd
 import torch
@@ -22,13 +23,11 @@ class LanguageModelDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
 
-    def __init__(
-        self, featurizer: SharedFeaturizer, *args, **kwargs
-    ) -> None:
+    def __init__(self, featurizer: SharedFeaturizer, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
 
-        self.df_to_feat_func_map = {
+        self.df_to_example_func_map = {
             # features
             DatasetFieldName.TEXT_FIELD: lambda row, field: row[
                 DFColumn.MODEL_FEATS
@@ -47,12 +46,10 @@ class LanguageModelDataHandler(DataHandler):
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
         word_feat_config = feature_config.word_feat
-        features: List[Field] = [
-            TextFeatureField(
-                DatasetFieldName.TEXT_FIELD,
+        features: Dict[str, Field] = {
+            DatasetFieldName.TEXT_FIELD: TextFeatureField(
                 eos_token=VocabMeta.EOS_TOKEN,
                 init_token=VocabMeta.INIT_TOKEN,
-                export_names=word_feat_config.export_input_names,
                 pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
                 embed_dim=word_feat_config.embed_dim,
                 embedding_init_strategy=word_feat_config.embedding_init_strategy,
@@ -60,9 +57,9 @@ class LanguageModelDataHandler(DataHandler):
                 vocab_size=word_feat_config.vocab_size,
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
-        ]
-        labels: List[Field] = []
-        extra_fields: List[Field] = [RawField(DatasetFieldName.TOKEN_RANGE_PAIR)]
+        }
+        labels: Dict[str, Field] = {}
+        extra_fields: Dict[str, Field] = {DatasetFieldName.TOKEN_RANGE_PAIR: RawField()}
         return cls(
             featurizer=SharedFeaturizer(),
             raw_columns=config.columns_to_read,

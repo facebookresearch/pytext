@@ -13,15 +13,11 @@ from .field import VocabUsingField
 class DictFeatureField(VocabUsingField):
     def __init__(
         self,
-        name,
-        export_names=None,
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
     ):
         super().__init__(
-            name,
-            export_names,
             sequential=True,
             batch_first=batch_first,
             tokenize=no_tokenize,

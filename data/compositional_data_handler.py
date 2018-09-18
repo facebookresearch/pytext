@@ -3,7 +3,6 @@
 from typing import List
 
 import pandas as pd
-import multiprocessing
 from eit.llama.common.thriftutils import dict_to_thrift
 from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
@@ -31,20 +30,20 @@ class CompositionalDataHandler(DataHandler):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(
-            features=[
+            features={
                 # TODO assuming replacing numbers with NUM and unkify be done in featurizer
-                TextFeatureField(
-                    DatasetFieldName.TEXT_FIELD, postprocessing=reverse_tensor
+                DatasetFieldName.TEXT_FIELD: TextFeatureField(
+                    postprocessing=reverse_tensor
                 ),
-                DictFeatureField(DatasetFieldName.DICT_FIELD),
-                ActionField("action_idx_feature"),
-            ],
-            labels=[ActionField("action_idx_label")],
+                DatasetFieldName.DICT_FIELD: DictFeatureField(),
+                "action_idx_feature": ActionField(),
+            },
+            labels={"action_idx_label": ActionField()},
             **kwargs
         )
         self.featurizer = SharedFeaturizer()
 
-        self.df_to_feat_func_map = {
+        self.df_to_example_func_map = {
             # TODO set_tokens_indices, should implement another field
             # TODO is it the same with the original tokens seq?
             DatasetFieldName.TEXT_FIELD: lambda row, field: row[

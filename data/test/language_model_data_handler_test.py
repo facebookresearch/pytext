@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
 import unittest
-from typing import List
+from typing import Dict
 
 import numpy as np
 from pytext.common.constants import (
     DatasetFieldName,
     DFColumn,
-    PredictorInputNames,
     VocabMeta,
 )
-from pytext.fields import Field, TextFeatureField
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fields import Field, TextFeatureField
 
 
 FILE_NAME = "pytext/tests/data/alarm_lm_tiny.tsv"
@@ -26,20 +25,17 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         # Thrift. After that directly use Data Handler's from config method
         # with synthetic configs
         columns = [DFColumn.UTTERANCE]
-        features: List[Field] = [
-            TextFeatureField(
-                DatasetFieldName.TEXT_FIELD,
-                eos_token=VocabMeta.EOS_TOKEN,
-                init_token=VocabMeta.INIT_TOKEN,
-                export_names=[PredictorInputNames.TOKENS_IDS],
+        features: Dict[str, Field] = {
+            DatasetFieldName.TEXT_FIELD: TextFeatureField(
+                eos_token=VocabMeta.EOS_TOKEN, init_token=VocabMeta.INIT_TOKEN
             )
-        ]
-        labels: List[Field] = []
+        }
+
         return LanguageModelDataHandler(
             featurizer=SharedFeaturizer(),
             raw_columns=columns,
             features=features,
-            labels=labels,
+            labels={},
         )
 
     def test_data_handler(self):

@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import torch
 from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
+from pytext.common.constants import DatasetFieldName
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import CommonMetadata
@@ -148,8 +149,16 @@ class TextModelExporter(ModelExporter):
         meta: CommonMetadata,
     ):
         input_names = list(feature_config.word_feat.export_input_names)
+        feature_itos_map = {
+            feature_config.word_feat.export_input_names[0]: meta.features[
+                DatasetFieldName.TEXT_FIELD
+            ].vocab.itos
+        }
         if feature_config.dict_feat:
             input_names.extend(feature_config.dict_feat.export_input_names)
+            feature_itos_map[
+                feature_config.dict_feat.export_input_names[0]
+            ] = meta.features[DatasetFieldName.DICT_FIELD].vocab.itos
 
         output_names: List[str] = []
         axis: List[int] = []
@@ -173,11 +182,7 @@ class TextModelExporter(ModelExporter):
             ),
         )
         label_names = [label.vocab.itos for label in meta.labels.values()]
-        feature_itos_map = {
-            f_meta.vocab_export_name: f_meta.vocab.itos
-            for f_meta in meta.features.values()
-            if hasattr(f_meta, "vocab")
-        }
+
         return cls(
             label_names,
             feature_itos_map,

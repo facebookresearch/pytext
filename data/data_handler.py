@@ -3,17 +3,18 @@ import csv
 import multiprocessing
 import os
 from copy import copy
-from typing import Any, Dict, Generator, List, Tuple, Type, Set
+from typing import Any, Dict, Generator, List, Set, Tuple, Type
 
 import pandas as pd
 import torch
 import torch.hiveio as hiveio
-from pytext.common.constants import VocabMeta
+from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.fields import Field, FieldMeta, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
+
 
 # Special prefix to distnguish the hive data source
 HIVE_PREFIX = "hive://"
@@ -69,11 +70,12 @@ class DataHandler(Component):
             in case of files; the order should match the data stored in that file
         labels:
         features:
-        df_to_feat_func_map: a map defines how to convert a pandas dataframe column
-            to raw feature to construct torchtext Example, each item can be:
-            1 Nothing, then column name will be the same as feature name
-            2 feat_name -> column_name
-            3 feat_name -> function, take one row as input and output the feature
+        df_to_example_func_map: a map defines how to convert a pandas dataframe
+        column to a column in torchtext Example, each item can be:
+            1 Nothing, will pick the column in df with the field name
+            2 field_name -> column_name, pick the column in df with the column name
+            3 field_name -> function, take one row as input and output the processed
+              data
     """
 
     class Config(ConfigBase):
@@ -86,23 +88,22 @@ class DataHandler(Component):
     # special df index field to record initial position of examples
     DF_INDEX = "__df_index"
 
-    # TODO exposing sort_key leaks the implementation detail that torchtext Example
-    # is used, need to think about it if we want the interface decoupled with torchtext
     def __init__(
         self,
         raw_columns: List[str],
-        labels: List[Field],
-        features: List[Field],
-        extra_fields: List[Field] = None,
+        labels: Dict[str, Field],
+        features: Dict[str, Field],
+        extra_fields: Dict[str, Field] = None,
+        text_feature_name: str = DatasetFieldName.TEXT_FIELD,
         shuffle: bool = True,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
-        self.labels: List[Field] = labels or []
-        self.features: List[Field] = features or []
-        self.extra_fields: List[Field] = extra_fields or []
-        # Presume the first feature should be the text feature
-        self.text_field = self.features[0]
-        self.df_to_feat_func_map: Dict = {}
+        self.labels: Dict[str, Field] = labels or {}
+        self.features: Dict[str, Field] = features or {}
+        self.extra_fields: Dict[str, Field] = extra_fields or {}
+        self.text_feature_name: str = text_feature_name
+
+        self.df_to_example_func_map: Dict = {}
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: Dict = {}
@@ -121,9 +122,11 @@ class DataHandler(Component):
             with open(vocab_file, "r") as f:
                 for i, line in enumerate(f):
                     if len(vocab) == vocab_size:
-                        print(f"Read {i+1} items from {vocab_file}"
-                              f"to load vocab of size {vocab_size}."
-                              f"Skipping rest of the file")
+                        print(
+                            f"Read {i+1} items from {vocab_file}"
+                            f"to load vocab of size {vocab_size}."
+                            f"Skipping rest of the file"
+                        )
                         break
                     vocab.add(line.strip())
         else:
@@ -131,7 +134,7 @@ class DataHandler(Component):
         return vocab
 
     def sort_key(self, ex: textdata.Example) -> Any:
-        return len(getattr(ex, self.text_field.name))
+        return len(getattr(ex, self.text_feature_name))
 
     def metadata_to_save(self):
         # make a copy
@@ -142,12 +145,12 @@ class DataHandler(Component):
 
     def load_metadata(self, metadata: CommonMetadata):
         self.metadata = metadata
-        for f in self.features:
-            if f.use_vocab and f.name in metadata.features:
-                f.vocab = metadata.features[f.name].vocab
-        for f in self.labels:
-            if f.use_vocab and f.name in metadata.labels:
-                f.vocab = metadata.labels[f.name].vocab
+        for name, field in self.features.items():
+            if field.use_vocab and name in metadata.features:
+                field.vocab = metadata.features[name].vocab
+        for name, field in self.labels.items():
+            if field.use_vocab and name in metadata.labels:
+                field.vocab = metadata.labels[name].vocab
 
     def gen_dataset_from_path(
         self, path: str, include_label_fields: bool = True, use_cache: bool = True
@@ -171,17 +174,19 @@ class DataHandler(Component):
         # preprocess df
         df = self._preprocess_df(df)
 
-        to_process = self.features + self.extra_fields
+        to_process = {}
+        to_process.update(self.features)
+        to_process.update(self.extra_fields)
         if include_label_fields:
-            to_process = self.labels + to_process
-        # define torch text fields
-        fields = [(feat.name, feat) for feat in to_process]
+            to_process.update(self.labels)
         # generate example from dataframe
         all_examples = [
-            textdata.Example.fromlist(row, fields)
-            for row in self._df_to_field(df, to_process)
+            textdata.Example.fromlist(
+                row, [(name, field) for name, field in to_process.items()]
+            )
+            for row in self._df_to_examples(df, to_process)
         ]
-        res = textdata.Dataset(all_examples, fields)
+        res = textdata.Dataset(all_examples, to_process)
         # extra context
         for k, v in self._gen_dataset_context(df).items():
             setattr(res, k, v)
@@ -213,28 +218,29 @@ class DataHandler(Component):
         test_data: textdata.Dataset,
     ):
         # build vocabs for label fields
-        for label in self.labels:
-            # TODO shall we only use train and eval for non-bio labels?
+        for name, label in self.labels.items():
             # Need test data to make sure we cover all of the labels in it
             # It is particularly important when BIO is enabled as a B-[Label] can
             # appear in train and eval but test can have B-[Label] and I-[Label]
-            if label.use_vocab:
-                print("building vocab for label {}".format(label.name))
+
+            # if vocab is already built, skip
+            if label.use_vocab and not getattr(label, "vocab", None):
+                print("building vocab for label {}".format(name))
                 label.build_vocab(train_data, eval_data, test_data)
                 print(
                     "{} field's vocabulary size is {}".format(
-                        label.name, len(label.vocab.itos)
+                        name, len(label.vocab.itos)
                     )
                 )
 
         # build vocabs for features
-        for feat in self.features:
+        for name, feat in self.features.items():
             if feat.use_vocab:
-                print("building vocab for feature {}".format(feat.name))
+                print("building vocab for feature {}".format(name))
                 feat.build_vocab(*self._get_data_to_build_vocab(feat, train_data))
                 print(
                     "{} field's vocabulary size is {}".format(
-                        feat.name, len(feat.vocab.itos)
+                        name, len(feat.vocab.itos)
                     )
                 )
 
@@ -253,8 +259,12 @@ class DataHandler(Component):
                     self.metadata.pretrained_embeds_weight = weights
 
         # field metadata
-        self.metadata.features = {f.name: f.get_meta() for f in self.features}
-        self.metadata.labels = {f.name: f.get_meta() for f in self.labels}
+        self.metadata.features = {
+            name: field.get_meta() for name, field in self.features.items()
+        }
+        self.metadata.labels = {
+            name: field.get_meta() for name, field in self.labels.items()
+        }
 
         self._gen_extra_metadata()
 
@@ -395,13 +405,13 @@ class DataHandler(Component):
         )
 
     def _target_from_batch(self, batch):
-        return tuple(getattr(batch, label.name) for label in self.labels)
+        return tuple(getattr(batch, name) for name in self.labels)
 
     def _input_from_batch(self, batch):
-        return tuple(getattr(batch, feat.name) for feat in self.features)
+        return tuple(getattr(batch, name) for name in self.features)
 
     def _context_from_batch(self, batch):
-        return {f.name: getattr(batch, f.name) for f in self.extra_fields}
+        return {name: getattr(batch, name) for name in self.extra_fields}
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -410,23 +420,26 @@ class DataHandler(Component):
         """
         pass
 
-    def _df_to_field(
-        self, df, to_process: List[Field]
+    def _df_to_examples(
+        self, df, columns_to_process: Dict[str, Field]
     ) -> Generator[List[Any], None, None]:
         for idx, row in df.iterrows():
-            yield [self._apply_map_func(field, row, idx) for field in to_process]
+            yield [
+                self._df_column_to_example_column(name, field, row, idx)
+                for name, field in columns_to_process.items()
+            ]
 
-    def _apply_map_func(self, field, row, idx):
-        name = field.name
-        row_to_field = self.df_to_feat_func_map.get(name)
+    def _df_column_to_example_column(self, field_name, field, row, idx):
+        mapping_func = self.df_to_example_func_map.get(field_name)
         # try to get the feature with same name in df if no mapping method is defined
-        if row_to_field is None:
-            return row.get(name, None)
-        # using label
-        if type(row_to_field) is str:
-            if row_to_field == self.DF_INDEX:
+        if mapping_func is None:
+            return row.get(field_name, None)
+        # using a different column name
+        if type(mapping_func) is str:
+            column_name = mapping_func
+            if column_name == self.DF_INDEX:
                 return idx
-            return row.get(row_to_field, None)
+            return row.get(column_name, None)
         # map function
         else:
-            return row_to_field(row, field)
+            return mapping_func(row, field)

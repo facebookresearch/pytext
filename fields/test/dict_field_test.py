@@ -41,7 +41,6 @@ NUMERICAL_FEATS = np.array([[1, 1, 1, 1, 3, 2], [1, 1, 4, 1, 1, 1]])
 class DictFieldTest(unittest.TestCase):
     def setUp(self):
         self.dict_field = DictFeatureField(
-            "dict_feat",
             batch_first=True,
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,

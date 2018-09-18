@@ -14,7 +14,6 @@ pad = VocabMeta.PAD_TOKEN
 class CharFieldTest(unittest.TestCase):
     def test_build_vocab(self):
         char_field = CharFeatureField(
-            "char_feat",
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,
@@ -56,7 +55,6 @@ class CharFieldTest(unittest.TestCase):
 
     def test_pad_and_numericalize(self):
         char_field = CharFeatureField(
-            "char_feat",
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,

@@ -14,15 +14,11 @@ from .field import VocabUsingField
 class CharFeatureField(VocabUsingField):
     def __init__(
         self,
-        name,
-        export_names=None,
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
     ):
         super().__init__(
-            name,
-            export_names=export_names,
             sequential=True,  # Otherwise pad is set to None in textdata.Field
             batch_first=batch_first,
             tokenize=no_tokenize,
