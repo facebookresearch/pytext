@@ -5,8 +5,11 @@ from typing import List, Tuple
 from pytext.metrics import (
     AllClassificationMetrics,
     ClassificationMetrics,
+    LabelScoresPair,
     MacroClassificationMetrics,
+    SoftClassificationMetrics,
     compute_classification_metrics,
+    compute_soft_metrics,
 )
 
 from .metrics_test_base import MetricsTestBase
@@ -18,6 +21,16 @@ TEST_EXAMPLES: List[Tuple[str, str]] = [
     ("label2", "label2"),
     ("label3", "label2"),
 ]
+
+TEST_SCORED_EXAMPLES: List[LabelScoresPair] = [
+    ([0.4, 0.6], "label1"),
+    ([0.3, 0.2], "label1"),
+    ([0.4, 0.8], "label2"),
+    ([0.5, 0.2], "label2"),
+    ([0.4, 0.2], "label1"),
+]
+
+LABEL_NAMES = ["label1", "label2"]
 
 
 class BasicMetricsTest(MetricsTestBase):
@@ -37,4 +50,13 @@ class BasicMetricsTest(MetricsTestBase):
                 # all labels: TP = 2, FP = 2, FN = 2
                 micro_scores=ClassificationMetrics(2, 2, 2, 0.5, 0.5, 0.5),
             ),
+        )
+
+    def test_compute_soft_classification_metrics(self) -> None:
+        self.assertMetricsAlmostEqual(
+            compute_soft_metrics(TEST_SCORED_EXAMPLES, LABEL_NAMES),
+            {
+                "label1": SoftClassificationMetrics(average_precision=0.53333333),
+                "label2": SoftClassificationMetrics(average_precision=0.69999999),
+            },
         )

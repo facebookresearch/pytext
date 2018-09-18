@@ -7,7 +7,13 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.metrics import LabelPredictionPair, compute_classification_metrics
+from pytext.metrics import (
+    ExtendedClassificationMetrics,
+    LabelPredictionPair,
+    LabelScoresPair,
+    compute_classification_metrics,
+    compute_soft_metrics,
+)
 from sklearn.metrics import classification_report, f1_score
 
 from .trainer import Trainer
@@ -20,9 +26,7 @@ class ClassifierTrainer(Trainer):
         target = torch.cat([t for t in targets], 0)
         sys.stdout.write("{} - loss: {:.6f}\n".format(stage, loss))
         sys.stdout.write(
-            classification_report(
-                target.cpu(), pred.cpu(), target_names=target_names
-            )
+            classification_report(target.cpu(), pred.cpu(), target_names=target_names)
         )
         return f1_score(target.cpu(), pred.cpu(), average="weighted")
 
@@ -33,6 +37,7 @@ class ClassifierTrainer(Trainer):
         # Write header lines
         preds_table = []
         label_pairs: List[LabelPredictionPair] = []
+        label_scores: List[LabelScoresPair] = []
         preds_table.append("#{0}".format(json.dumps(label_names)))
         preds_table.append(("#predictions", "label", "doc_index", "scores", "text"))
         all_targets, all_preds = None, None
@@ -51,6 +56,7 @@ class ClassifierTrainer(Trainer):
                 context[DatasetFieldName.INDEX_FIELD],
                 context[DatasetFieldName.UTTERANCE_FIELD],
                 label_pairs,
+                label_scores,
             )
             if all_targets is None:
                 all_preds = preds
@@ -60,7 +66,11 @@ class ClassifierTrainer(Trainer):
                 all_preds = torch.cat((all_preds, preds), 0)
 
         metrics = compute_classification_metrics(label_pairs)
-
+        if len(label_names) == 2:
+            soft_metrics = compute_soft_metrics(label_scores, label_names)
+            metrics = ExtendedClassificationMetrics(
+                all_classification_metrics=metrics, per_label_soft_scores=soft_metrics
+            )
         return preds_table, metrics
 
     def update_test_results(
@@ -74,17 +84,17 @@ class ClassifierTrainer(Trainer):
         orig_indices,
         utterances,
         label_pairs,
+        label_scores,
     ):
         for i in range(len(token_range_pair)):
+            # TODO scores can be get from model now, will refactor in next diff
+            scores = F.softmax(m_out[i], 0).data
             preds_table.append(
                 (
                     preds[i].item(),
                     labels_idx[i].item(),
                     orig_indices[i],
-                    # TODO scores can be get from model now, will refactor in next diff
-                    ",".join(
-                        ["{0:.2f}".format(_s) for _s in F.softmax(m_out[i], 0).data]
-                    ),
+                    ",".join(["{0:.2f}".format(_s) for _s in scores]),
                     utterances[i],
                 )
             )
@@ -92,3 +102,4 @@ class ClassifierTrainer(Trainer):
             predicted_label = label_names[preds[i].item()]
             expected_label = label_names[labels_idx[i].item()]
             label_pairs.append(LabelPredictionPair(predicted_label, expected_label))
+            label_scores.append(LabelPredictionPair(scores, expected_label))

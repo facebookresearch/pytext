@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import logging
 from collections import Counter as counter, defaultdict
 from copy import deepcopy
 from typing import (
@@ -14,6 +14,11 @@ from typing import (
     Tuple,
     Union,
 )
+
+import numpy as np
+
+
+logger = logging.getLogger(name=__name__)
 
 
 class Span(NamedTuple):
@@ -60,6 +65,11 @@ class LabelPredictionPair(NamedTuple):
     expected_label: str
 
 
+class LabelScoresPair(NamedTuple):
+    predicted_scores: List[float]
+    expected_label: str
+
+
 class FramePredictionPair(NamedTuple):
     predicted_frame: Node
     expected_frame: Node
@@ -98,6 +108,14 @@ class ClassificationMetrics(NamedTuple):
     precision: float
     recall: float
     f1: float
+
+
+class SoftClassificationMetrics(NamedTuple):
+    """
+    Class for non-threshold dependent classification score
+    """
+
+    average_precision: float
 
 
 class MacroClassificationMetrics(NamedTuple):
@@ -153,6 +171,23 @@ class AllClassificationMetrics(NamedTuple):
             f"R = {self.macro_scores.recall * 100:.2f}, "
             f"F1 = {self.macro_scores.f1 * 100:.2f}."
         )
+
+
+class ExtendedClassificationMetrics(NamedTuple):
+    """
+    Non threshold dependent classification metrics such as average precision.
+    """
+
+    all_classification_metrics: AllClassificationMetrics
+    per_label_soft_scores: Dict[str, SoftClassificationMetrics]
+
+    def print_metrics(self) -> None:
+        self.all_classification_metrics.print_metrics()
+        print("Per label soft scores:")
+        for label, label_metrics in self.per_label_soft_scores.items():
+            print(
+                f"  Label: {label}, AP = {label_metrics.average_precision * 100:.2f}, "
+            )
 
 
 class IntentSlotMetrics:
@@ -537,7 +572,7 @@ def compute_all_metrics(
 
 
 def compute_classification_metrics(
-    label_pairs: List[LabelPredictionPair]
+    label_pairs: List[LabelPredictionPair],
 ) -> AllClassificationMetrics:
     """
     A general function that computes classification metrics given a list of pairs of
@@ -555,3 +590,55 @@ def compute_classification_metrics(
             all_confusions.per_label_confusions.update(predicted_label, "FP", 1)
 
     return all_confusions.compute_metrics()
+
+
+def compute_soft_metrics(
+    label_scores: List[LabelScoresPair], label_names: List[str]
+) -> Dict[str, SoftClassificationMetrics]:
+    """
+    Computes classification metrics given a list of pairs of
+    scores and expected labels.
+    """
+
+    average_precisions = {}
+    for i, label_name in enumerate(label_names):
+        y_true = []
+        y_score = []
+        for (predicted_scores, expected_label) in label_scores:
+            y_true.append(expected_label == label_name)
+            y_score.append(predicted_scores[i])
+        ap = average_precision_score(y_true, y_score)
+        average_precisions[label_name] = SoftClassificationMetrics(average_precision=ap)
+    logger.info("computed soft metrics")
+    return average_precisions
+
+
+def average_precision_score(
+    y_true_list: List[bool], y_score_list: List[float]
+) -> float:
+    """
+    summarizes the precision-recall curve, as the precisions achieved at each
+    threshold, weighted by the increase in recall since previous threshold
+    """
+    y_true = np.array(y_true_list)
+    y_score = np.array(y_score_list)
+    sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
+    y_true = y_true[sort_indices]
+    y_score = y_score[sort_indices]
+    ap = 0.0
+    tp = 0
+    threshold = y_score[0]
+    y_score = np.append(y_score[1:], np.NAN)
+    total_positive = np.sum(y_true)
+    added_positives = 0
+
+    for k, (label, score) in enumerate(zip(y_true, y_score)):
+        added_positives += label
+        if score != threshold:
+            threshold = score
+            recall_diff = added_positives / total_positive
+            tp += added_positives
+            added_positives = 0
+            p_at_tresh = tp / (k + 1)
+            ap += p_at_tresh * recall_diff
+    return float(ap)
