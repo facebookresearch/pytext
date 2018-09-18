@@ -30,4 +30,4 @@ class ModelUtilsTest(unittest.TestCase):
         for (i, row) in enumerate(onehot):
             for (j, feat) in enumerate(row):
                 for (k, val) in enumerate(feat):
-                    self.assertEqual(expected[i][j][k], val.data[0])
+                    self.assertEqual(expected[i][j][k], val.item())

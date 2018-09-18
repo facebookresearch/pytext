@@ -293,7 +293,7 @@ class CRF(nn.Module):
 
         # Find the tag which maximizes the score at the last timestep
         _, best_last_tag = viterbi_score.max(0)
-        best_tags = [best_last_tag[0].item()]
+        best_tags = [best_last_tag.item()]
 
         # We trace back where the best last tag comes from, append that to our
         # best tag sequence, and trace it back again, and so on
