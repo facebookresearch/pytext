@@ -8,11 +8,9 @@ import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
 from pytext.metrics import (
-    ExtendedClassificationMetrics,
     LabelPredictionPair,
     LabelScoresPair,
     compute_classification_metrics,
-    compute_soft_metrics,
 )
 from sklearn.metrics import classification_report, f1_score
 
@@ -65,12 +63,7 @@ class ClassifierTrainer(Trainer):
                 all_targets = torch.cat((all_targets, targets), 0)
                 all_preds = torch.cat((all_preds, preds), 0)
 
-        metrics = compute_classification_metrics(label_pairs)
-        if len(label_names) == 2:
-            soft_metrics = compute_soft_metrics(label_scores, label_names)
-            metrics = ExtendedClassificationMetrics(
-                all_classification_metrics=metrics, per_label_soft_scores=soft_metrics
-            )
+        metrics = compute_classification_metrics(label_pairs, label_names, label_scores)
         return preds_table, metrics
 
     def update_test_results(

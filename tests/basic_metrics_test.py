@@ -13,13 +13,21 @@ from pytext.metrics import (
 )
 
 from .metrics_test_base import MetricsTestBase
-
+LABEL_NAMES: List[str] = ["label1", "label2"]
 
 TEST_EXAMPLES: List[Tuple[str, str]] = [
     ("label1", "label1"),
     ("label2", "label1"),
     ("label2", "label2"),
     ("label3", "label2"),
+]
+
+BIANRY_TEST_EXAMPLES: List[Tuple[str, str]] = [
+    ("label1", "label1"),
+    ("label2", "label1"),
+    ("label1", "label2"),
+    ("label1", "label2"),
+    ("label1", "label1"),
 ]
 
 TEST_SCORED_EXAMPLES: List[LabelScoresPair] = [
@@ -30,13 +38,11 @@ TEST_SCORED_EXAMPLES: List[LabelScoresPair] = [
     ([0.4, 0.2], "label1"),
 ]
 
-LABEL_NAMES = ["label1", "label2"]
-
 
 class BasicMetricsTest(MetricsTestBase):
     def test_compute_classification_metrics(self) -> None:
         self.assertMetricsAlmostEqual(
-            compute_classification_metrics(TEST_EXAMPLES),
+            compute_classification_metrics(TEST_EXAMPLES, LABEL_NAMES),
             AllClassificationMetrics(
                 per_label_scores={
                     # label1: TP = 1, FP = 0, FN = 1
@@ -59,4 +65,14 @@ class BasicMetricsTest(MetricsTestBase):
                 "label1": SoftClassificationMetrics(average_precision=0.53333333),
                 "label2": SoftClassificationMetrics(average_precision=0.69999999),
             },
+        )
+
+    def test_compute_mcc(self) -> None:
+        self.assertMetricsAlmostEqual(
+            float(
+                compute_classification_metrics(
+                    BIANRY_TEST_EXAMPLES, LABEL_NAMES, TEST_SCORED_EXAMPLES
+                ).mcc
+            ),
+            -0.408248290,
         )

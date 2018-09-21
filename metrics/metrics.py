@@ -173,13 +173,14 @@ class AllClassificationMetrics(NamedTuple):
         )
 
 
-class ExtendedClassificationMetrics(NamedTuple):
+class BinaryClassificationMetrics(NamedTuple):
     """
-    Non threshold dependent classification metrics such as average precision.
+    Binary classification metrics such as MCC and average precision.
     """
 
     all_classification_metrics: AllClassificationMetrics
     per_label_soft_scores: Dict[str, SoftClassificationMetrics]
+    mcc: float
 
     def print_metrics(self) -> None:
         self.all_classification_metrics.print_metrics()
@@ -188,6 +189,7 @@ class ExtendedClassificationMetrics(NamedTuple):
             print(
                 f"  Label: {label}, AP = {label_metrics.average_precision * 100:.2f}, "
             )
+        print(f" MCC = {self.mcc :.2f}")
 
 
 class IntentSlotMetrics:
@@ -573,7 +575,9 @@ def compute_all_metrics(
 
 def compute_classification_metrics(
     label_pairs: List[LabelPredictionPair],
-) -> AllClassificationMetrics:
+    label_names: List[str],
+    label_scores: Optional[List[LabelScoresPair]] = None,
+) -> Union[AllClassificationMetrics, BinaryClassificationMetrics]:
     """
     A general function that computes classification metrics given a list of pairs of
     predicted and expected labels.
@@ -588,8 +592,23 @@ def compute_classification_metrics(
             all_confusions.confusions.FN += 1
             all_confusions.per_label_confusions.update(expected_label, "FN", 1)
             all_confusions.per_label_confusions.update(predicted_label, "FP", 1)
-
-    return all_confusions.compute_metrics()
+    metrics = all_confusions.compute_metrics()
+    if label_scores is not None and len(label_names) == 2:
+        soft_metrics = compute_soft_metrics(label_scores, label_names)
+        confusion_dict = all_confusions.per_label_confusions.dictionary
+        # since MCC is symmetric, it doesn't matter which label is 0 and which is 1
+        TP = confusion_dict[label_names[0]].TP
+        FP = confusion_dict[label_names[0]].FP
+        FN = confusion_dict[label_names[0]].FN
+        TN = confusion_dict[label_names[1]].TP
+        mcc = compute_matthews_correlation_coefficients(TP=TP, FP=FP, FN=FN, TN=TN)
+        binary_metrics = BinaryClassificationMetrics(
+            all_classification_metrics=metrics,
+            per_label_soft_scores=soft_metrics,
+            mcc=mcc,
+        )
+        return binary_metrics
+    return metrics
 
 
 def compute_soft_metrics(
@@ -600,7 +619,7 @@ def compute_soft_metrics(
     scores and expected labels.
     """
 
-    average_precisions = {}
+    soft_metrics = {}
     for i, label_name in enumerate(label_names):
         y_true = []
         y_score = []
@@ -608,9 +627,21 @@ def compute_soft_metrics(
             y_true.append(expected_label == label_name)
             y_score.append(predicted_scores[i])
         ap = average_precision_score(y_true, y_score)
-        average_precisions[label_name] = SoftClassificationMetrics(average_precision=ap)
-    logger.info("computed soft metrics")
-    return average_precisions
+        soft_metrics[label_name] = SoftClassificationMetrics(average_precision=ap)
+    return soft_metrics
+
+
+def compute_matthews_correlation_coefficients(
+    TP: int, FP: int, TN: int, FN: int
+) -> float:
+    """
+    Matthews correlation coefficient is a way to summarize all four values of
+    the confusin matrix for binary classification.
+    """
+    mcc = _safe_division(
+        (TP * TN) - (FP * FN), np.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+    )
+    return mcc
 
 
 def average_precision_score(
