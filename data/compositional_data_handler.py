@@ -7,7 +7,7 @@ from eit.llama.common.thriftutils import dict_to_thrift
 from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
-from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
 from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
 from pytext.fields import ActionField, DictFeatureField, TextFeatureField
 from pytext.fields.utils import reverse_tensor
@@ -63,12 +63,16 @@ class CompositionalDataHandler(DataHandler):
             df[DFColumn.DICT_FEAT] = ""
 
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
+            lambda row: parse_assistant_raw_record(
+                row[DFColumn.UTTERANCE],
+                row[DFColumn.DICT_FEAT]
+            ),
+            axis=1
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+            self.featurizer.featurize_batch(
+                df[DFColumn.RAW_FEATS].tolist()
             )
         )
 

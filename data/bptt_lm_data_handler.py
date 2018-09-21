@@ -8,7 +8,7 @@ import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
 from pytext.fields import Field, TextFeatureField
 from pytext.utils import cuda_utils
 from torchtext import data as textdata
@@ -76,12 +76,17 @@ class BPTTLanguageModelDataHandler(DataHandler):
         if DFColumn.DICT_FEAT not in df:
             df[DFColumn.DICT_FEAT] = ""
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
+            lambda row: parse_assistant_raw_record(
+                row[DFColumn.UTTERANCE],
+                row[DFColumn.DICT_FEAT],
+            ),
+            axis=1,
         )
+
         # NOTE that currently featurizer will lower case all tokens
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+            self.featurizer.featurize_batch(
+                df[DFColumn.RAW_FEATS].tolist(),
             )
         )
 

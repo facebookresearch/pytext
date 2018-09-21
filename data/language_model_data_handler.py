@@ -9,7 +9,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -78,12 +78,16 @@ class LanguageModelDataHandler(DataHandler):
         if DFColumn.DICT_FEAT not in df:
             df[DFColumn.DICT_FEAT] = ""
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: (row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]), axis=1
+            lambda row: parse_assistant_raw_record(
+                row[DFColumn.UTTERANCE],
+                row[DFColumn.DICT_FEAT]
+            ),
+            axis=1,
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_parallel(
-                df[DFColumn.RAW_FEATS].tolist(), self.num_workers
+            self.featurizer.featurize_batch(
+                df[DFColumn.RAW_FEATS].tolist()
             )
         )
         df[DFColumn.TOKEN_RANGE_PAIR] = [
