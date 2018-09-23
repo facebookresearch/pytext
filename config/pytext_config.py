@@ -36,7 +36,7 @@ class PyTextConfig(ConfigBase):
     # A file to store model debug information
     debug_path: str = "/tmp/model.debug"
     # Exported caffe model will be stored here
-    export_caffe2_path: str = "/tmp/model.fbl.predictor"
+    export_caffe2_path: str = "/tmp/model.caffe2.predictor"
     # if test only TODO, better to use explicit "train" "test" cmd
     test_given_snapshot: bool = False
 

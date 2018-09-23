@@ -23,6 +23,7 @@ from pytext.jobspec import (
     JointTextJobSpec,
     WordTaggingJobSpec,
 )
+from pytext.utils.onnx_utils import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
 
@@ -222,10 +223,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 print(pred_file.name)
                 output_names = exporter.export_to_caffe2(py_model, pred_file.name)
                 workspace.ResetWorkspace()
-            pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
+            pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
 
             for _i in range(num_predictions):
-                pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
+                pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
                 test_inputs = self._get_rand_input(
                     BATCH_SIZE,
                     W_VOCAB_SIZE,
@@ -274,7 +275,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             ) as pred_file:
                 output_names = exporter.export_to_caffe2(py_model, pred_file.name)
                 workspace.ResetWorkspace()
-            pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
+            pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
             for _i in range(num_predictions):
                 test_inputs = self._get_rand_input(
                     BATCH_SIZE,
@@ -327,7 +328,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             exporter.export_to_caffe2(py_model, pred_file.name)
             workspace.ResetWorkspace()
 
-        pred_net = pe.prepare_prediction_net(pred_file.name, "log_file_db")
+        pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
 
         for _i in range(num_predictions):
             test_inputs = self._get_rand_input(

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-from caffe2.python.onnx import backend as caffe2_backend
-# TODO @shicong figure out why open source version is not working
-import caffe2.caffe2.fb.predictor.predictor_exporter as pe
-# import caffe2.python.predictor.predictor_exporter as pe
-from caffe2.python import workspace, core
-
+import caffe2.python.predictor.predictor_exporter as pe
+import numpy as np
 import onnx
 import torch
-import numpy as np
+from caffe2.python import core, workspace
+from caffe2.python.onnx import backend as caffe2_backend
+
+
+CAFFE2_DB_TYPE = "minidb"
 
 
 def pytorch_to_caffe2(
@@ -125,7 +125,7 @@ def export_nets_to_predictor_file(
             net_type="simple",
         )
         pe.save_to_db(
-            db_type="log_file_db",
+            db_type=CAFFE2_DB_TYPE,
             db_destination=predictor_path,
             predictor_export_meta=predictor_export_meta,
         )
