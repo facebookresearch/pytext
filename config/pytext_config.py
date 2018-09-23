@@ -40,12 +40,6 @@ class PyTextConfig(ConfigBase):
     # if test only TODO, better to use explicit "train" "test" cmd
     test_given_snapshot: bool = False
 
-    # Temporary config entry required for fixing stack overflow bug in autograd.
-    # The value is the maximum number of recursive calls to make for
-    # deallocating resources after backprop.
-    # DO NOT change unless you have good reason to do so.
-    unsafe_set_delete_function_max_recursion_depth: int = 1000
-
 
 class OptimizerType(Enum):
     ADAM = "adam"

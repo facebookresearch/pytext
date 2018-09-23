@@ -73,9 +73,6 @@ def train_model(config: PyTextConfig, metrics_reporter=None) -> None:
 
 def prepare_job(config: PyTextConfig) -> Job:
     print("\nParameters:\n{}".format(config))
-    torch.autograd._unsafe_set_delete_function_max_recursion_depth(
-        config.unsafe_set_delete_function_max_recursion_depth
-    )
     _set_cuda(config.use_cuda_if_available)
     jobspec = config.jobspec
     # load data
