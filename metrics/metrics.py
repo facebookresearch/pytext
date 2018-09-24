@@ -152,25 +152,37 @@ class AllClassificationMetrics(NamedTuple):
     micro_scores: ClassificationMetrics
 
     def print_metrics(self) -> None:
-        print("Per label scores:")
+        res = (
+            f"\t{'Per label scores':<40}"
+            f"\t{'Precision':<10}"
+            f"\t{'Recall':<10}"
+            f"\t{'F1':<10}"
+            f"\t{'Support':<10}\n\n"
+        )
         for label, label_metrics in self.per_label_scores.items():
-            print(
-                f"  Label: {label}, P = {label_metrics.precision * 100:.2f}, "
-                f"R = {label_metrics.recall * 100:.2f}, "
-                f"F1 = {label_metrics.f1 * 100:.2f};"
+            support = label_metrics.true_positives + label_metrics.false_negatives
+            res += (
+                f"\t{label:<40}"
+                f"\t{label_metrics.precision * 100:<10.2f}"
+                f"\t{label_metrics.recall * 100:<10.2f}"
+                f"\t{label_metrics.f1 * 100:<10.2f}"
+                f"\t{support:<10}\n"
             )
-        print("Overall micro scores:")
-        print(
-            f"  P = {self.micro_scores.precision * 100:.2f} "
-            f"R = {self.micro_scores.recall * 100:.2f}, "
-            f"F1 = {self.micro_scores.f1 * 100:.2f}."
+        support = self.micro_scores.true_positives + self.micro_scores.false_negatives
+        res += (
+            f"\n\t{'Overall micro scores':<40}"
+            f"\t{self.micro_scores.precision * 100:<10.2f}"
+            f"\t{self.micro_scores.recall * 100:<10.2f}"
+            f"\t{self.micro_scores.f1 * 100:<10.2f}"
+            f"\t{support:<10}\n"
         )
-        print("Overall macro scores:")
-        print(
-            f"  P = {self.macro_scores.precision * 100:.2f} "
-            f"R = {self.macro_scores.recall * 100:.2f}, "
-            f"F1 = {self.macro_scores.f1 * 100:.2f}."
+        res += (
+            f"\t{'Overall macro scores':<40}"
+            f"\t{self.macro_scores.precision * 100:<10.2f}"
+            f"\t{self.macro_scores.recall * 100:<10.2f}"
+            f"\t{self.macro_scores.f1 * 100:<10.2f}\n"
         )
+        print(res)
 
 
 class BinaryClassificationMetrics(NamedTuple):

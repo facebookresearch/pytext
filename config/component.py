@@ -17,6 +17,7 @@ class ComponentType(enum.Enum):
     MODULE = "module"
     PREDICTOR = "predictor"
     EXPORTER = "exporter"
+    METRIC_REPORTER = "metric_reporter"
 
 
 class RegistryError(Exception):
@@ -85,7 +86,7 @@ class ComponentMeta(type):
                 for base in bases
                 if hasattr(base, "__COMPONENT_TYPE__")
             ),
-            None,
+            namespace.get("__COMPONENT_TYPE__"),
         )
         if component_type:
             Registry.add(component_type, new_cls, new_cls.Config)
@@ -148,3 +149,9 @@ def create_loss(loss_config, *args, **kwargs):
 
 def create_module(module_config, *args, **kwargs):
     return create_component(ComponentType.MODULE, module_config, *args, **kwargs)
+
+
+def create_metric_reporter(module_config, *args, **kwargs):
+    return create_component(
+        ComponentType.METRIC_REPORTER, module_config, *args, **kwargs
+    )

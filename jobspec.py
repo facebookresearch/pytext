@@ -10,6 +10,19 @@ from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.exporters.exporter import TextModelExporter
+from pytext.fb.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
+from pytext.metric_reporters.classification_metric_reporter import (
+    ClassificationMetricReporter
+)
+from pytext.metric_reporters.intent_slot_detection_metric_reporter import (
+    IntentSlotMetricReporter
+)
+from pytext.metric_reporters.language_model_metric_reporter import (
+    LanguageModelMetricReporter
+)
+from pytext.metric_reporters.word_tagging_metric_reporter import (
+    WordTaggingMetricReporter
+)
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
@@ -17,12 +30,8 @@ from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.word_model import WordTaggingModel
-from pytext.fb.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
-from pytext.trainers.classifier_trainer import ClassifierTrainer
+from pytext.trainers import Trainer
 from pytext.trainers.ensemble_trainer import EnsembleTrainer
-from pytext.trainers.joint_trainer import JointTrainer
-from pytext.trainers.language_model_trainer import LanguageModelTrainer
-from pytext.trainers.tagger_trainer import TaggerTrainer
 
 
 class JobSpecBase(ConfigBase):
@@ -32,45 +41,51 @@ class JobSpecBase(ConfigBase):
     scheduler: Optional[SchedulerParams] = SchedulerParams()
 
 
+# TODO better to have separate jobspec for different ensemble model
 class EnsembleJobSpec(JobSpecBase, ConfigBase):
-    trainer: EnsembleTrainer.Config
-    model: Union[
-        BaggingDocEnsemble.Config,
-        BaggingJointEnsemble.Config,
-    ]
+    model: Union[BaggingDocEnsemble.Config, BaggingJointEnsemble.Config]
+    trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
+    metric_reporter: Union[
+        ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
+    ]
 
 
 class DocClassificationJobSpec(JobSpecBase, ConfigBase):
     model: DocModel.Config = DocModel.Config()
-    trainer: ClassifierTrainer.Config = ClassifierTrainer.Config()
+    trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
+    metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
 class WordTaggingJobSpec(JobSpecBase, ConfigBase):
     model: WordTaggingModel.Config = WordTaggingModel.Config()
-    trainer: TaggerTrainer.Config = TaggerTrainer.Config()
+    trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
+    metric_reporter: WordTaggingMetricReporter.Config = WordTaggingMetricReporter.Config()
 
 
 class JointTextJobSpec(JobSpecBase, ConfigBase):
     model: JointModel.Config = JointModel.Config()
-    trainer: JointTrainer.Config = JointTrainer.Config()
+    trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(
         doc_label=DocLabelConfig(), word_label=WordLabelConfig()
     )
     data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
+    metric_reporter: IntentSlotMetricReporter.Config = IntentSlotMetricReporter.Config()
 
 
 class LMJobSpec(JobSpecBase, ConfigBase):
-    data_handler: Union[LanguageModelDataHandler.Config,
-        BPTTLanguageModelDataHandler.Config]
+    data_handler: Union[
+        LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
+    ]
     model: LMLSTM.Config
-    trainer: LanguageModelTrainer.Config = LanguageModelTrainer.Config()
+    trainer: Trainer.Config = Trainer.Config()
     labels: Optional[LabelConfig] = None
+    metric_reporter: LanguageModelMetricReporter.Config = LanguageModelMetricReporter.Config()
 
 
 class SemanticParsingJobSpec(JobSpecBase, ConfigBase):

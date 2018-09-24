@@ -405,7 +405,10 @@ class DataHandler(Component):
         )
 
     def _target_from_batch(self, batch):
-        return tuple(getattr(batch, name) for name in self.labels)
+        targets = tuple(getattr(batch, name) for name in self.labels)
+        if len(targets) == 1:
+            return targets[0]
+        return targets
 
     def _input_from_batch(self, batch):
         return tuple(getattr(batch, name) for name in self.features)

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-
-import csv
 import os
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import torch
 from pytext.config import PyTextConfig
 from pytext.config.component import (
     create_data_handler,
     create_exporter,
+    create_metric_reporter,
     create_model,
     create_trainer,
 )
 from pytext.data.data_handler import BatchIterator, DataHandler
+from pytext.metric_reporters import MetricReporter
+from pytext.metric_reporters.channel import Channel, ConsoleChannel
 from pytext.optimizer import create_optimizer, create_scheduler
 from pytext.trainers.trainer import Trainer
 
@@ -27,6 +28,7 @@ class Job:
         "train_iter",
         "eval_iter",
         "model",
+        "metric_reporter",
         "optimizers",
         "metadata",
         "lr_scheduler",
@@ -39,6 +41,7 @@ class Job:
         train_iter: BatchIterator,
         eval_iter: BatchIterator,
         model: torch.nn.Module,
+        metric_reporter: MetricReporter,
         optimizers: List[torch.optim.Optimizer],
         lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler],
     ) -> None:
@@ -47,6 +50,7 @@ class Job:
         self.train_iter: BatchIterator = train_iter
         self.eval_iter: BatchIterator = eval_iter
         self.model: torch.nn.Module = model
+        self.metric_reporter: MetricReporter = metric_reporter
         self.optimizers: List[torch.optim.Optimizer] = optimizers
         self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
 
@@ -57,18 +61,18 @@ def _set_cuda(use_cuda_if_available: bool) -> None:
         print("Cuda is not available, running on CPU...")
 
 
-def train_model(config: PyTextConfig, metrics_reporter=None) -> None:
+def train_model(config: PyTextConfig) -> Tuple:
     job = prepare_job(config)
-    trained_model = job.trainer.train(
+    trained_model, best_metric = job.trainer.train(
         job.train_iter,
         job.eval_iter,
         job.model,
+        job.metric_reporter,
         job.optimizers,
-        job.data_handler.metadata.labels,
-        metrics_reporter,
         job.lr_scheduler,
     )
     finalize_job(config, trained_model, job.data_handler)
+    return trained_model, best_metric
 
 
 def prepare_job(config: PyTextConfig) -> Job:
@@ -104,9 +108,17 @@ def prepare_job(config: PyTextConfig) -> Job:
 
     optimizers = create_optimizer(model, jobspec.optimizer)
     lr_scheduler = create_scheduler(optimizers, jobspec.scheduler)
-    trainer = create_trainer(jobspec.trainer, metadata)
+    metric_reporter = create_metric_reporter(config.jobspec.metric_reporter, metadata)
+    trainer = create_trainer(jobspec.trainer)
     return Job(
-        trainer, data_handler, train_iter, eval_iter, model, optimizers, lr_scheduler
+        trainer,
+        data_handler,
+        train_iter,
+        eval_iter,
+        model,
+        metric_reporter,
+        optimizers,
+        lr_scheduler,
     )
 
 
@@ -142,25 +154,9 @@ def test_model(config: PyTextConfig) -> Any:
     if cuda_utils.CUDA_ENABLED:
         model = model.cuda()
 
-    # TODO T31914569 should move test out of trainer?
-    trainer = create_trainer(config.jobspec.trainer, data_handler.metadata)
+    trainer = create_trainer(config.jobspec.trainer)
+    metric_reporter = create_metric_reporter(
+        config.jobspec.metric_reporter, data_handler.metadata
+    )
     test_iter = data_handler.get_test_batch(config.test_path, config.test_batch_size)
-    results, metrics = trainer.test(model, test_iter, data_handler.metadata)
-
-    with open(config.test_out_path, "w+", encoding="utf-8") as of:
-        tsv_writer = csv.writer(
-            of,
-            delimiter="\t",
-            quotechar='"',
-            doublequote=True,
-            lineterminator="\n",
-            quoting=csv.QUOTE_MINIMAL,
-        )
-        for l in results:
-            if l[0] == "#":
-                of.write(l)
-                of.write("\n")
-            else:
-                tsv_writer.writerow([f for f in l])
-
-    return metrics
+    return trainer.test(test_iter, model, metric_reporter)

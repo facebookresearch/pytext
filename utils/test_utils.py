@@ -24,7 +24,7 @@ class ResultTable:
             self.rows.append(ResultRow(class_n, metrics_dict))
 
 
-def summarize(tokens_length, tokenized_text, labels):
+def merge_token_labels_to_slot(tokenized_text, labels):
     # ToDo: Utilize the BIO information when going from token labels to span
     # labels instead of the greedy approach performed below
     tokens = []
@@ -32,14 +32,12 @@ def summarize(tokens_length, tokenized_text, labels):
     for t, t_range in tokenized_text:
         tokens.append(t)
         token_ranges.append(t_range)
-    assert len(tokens) == tokens_length
-    assert len(token_ranges) == tokens_length
-    assert len(labels) == tokens_length
+    assert len(tokens) == len(labels)
     summary_list = []
     begin = token_ranges[0][0]
     end = token_ranges[0][1]
 
-    for i in range(1, tokens_length):
+    for i in range(1, len(labels)):
         # Extend
         if labels[i] == labels[i - 1] and labels[i] != "NoLabel":
             end = token_ranges[i][1]

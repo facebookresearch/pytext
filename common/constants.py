@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from enum import Enum
+
 
 class DatasetFieldName:
     DOC_LABEL_FIELD = "doc_label"
@@ -16,6 +18,7 @@ class DatasetFieldName:
     TOKEN_RANGE_PAIR = "token_range_pair"
     INDEX_FIELD = "index_field"
     LANGUAGE_ID_FIELD = "lang"
+    SEQ_LENS = "seq_lens"
 
 
 class PackageFileName:
@@ -68,3 +71,9 @@ class PredictorInputNames:
     DICT_FEAT_LENS = "dict_lens"
     TOKENS_STR = "tokens_vals_str"
     DICT_FEAT_STR = "dict_vals_str"
+
+
+class Stage(Enum):
+    TRAIN = "Training"
+    EVAL = "Evaluation"
+    TEST = "Test"

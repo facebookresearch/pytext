@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
-from typing import Union
-
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
-
-from .classifier_trainer import ClassifierTrainer
-from .joint_trainer import JointTrainer
-from .tagger_trainer import TaggerTrainer
 from .trainer import Trainer
 
 
 class EnsembleTrainer(Trainer):
     class Config(ConfigBase):
-        real_trainer: Union[
-            ClassifierTrainer.Config, TaggerTrainer.Config, JointTrainer.Config
-        ]
+        real_trainer: Trainer.Config = Trainer.Config()
 
     @classmethod
     def from_config(cls, config: Config, *args, **kwargs):
@@ -31,19 +23,17 @@ class EnsembleTrainer(Trainer):
         train_iter,
         eval_iter,
         model,
+        metrics_reporter,
         optimizers,
-        class_names,
-        metrics_reporter=None,
         scheduler=None,
     ):
         for i in range(len(model.models)):
-            model.models[i] = self.train_single_model(
+            model.models[i], _ = self.train_single_model(
                 train_iter,
                 eval_iter,
                 model.models[i],
-                optimizers,
-                class_names,
                 metrics_reporter,
+                optimizers,
                 scheduler,
             )
         model.merge_sub_models()
@@ -54,19 +44,16 @@ class EnsembleTrainer(Trainer):
         train_iter,
         eval_iter,
         model,
+        metrics_reporter,
         optimizers,
-        class_names,
-        metrics_reporter=None,
         scheduler=None,
     ):
         print(f"start training the model")
-        trained_model = self.real_trainer.train(
+        return self.real_trainer.train(
             train_iter,
             eval_iter,
             model,
-            optimizers,
-            class_names,
             metrics_reporter,
+            optimizers,
             scheduler,
         )
-        return trained_model

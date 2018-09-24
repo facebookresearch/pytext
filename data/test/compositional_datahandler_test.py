@@ -124,5 +124,5 @@ class CompositionalDataHandlerTest(unittest.TestCase):
                 input[2].numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
             )
             np.testing.assert_array_almost_equal(
-                target[0].numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
+                target.numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
             )
