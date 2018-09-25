@@ -70,6 +70,13 @@ class ModelExporter(Component):
         """
         return [], output_names
 
+    def get_extra_params(self) -> List[str]:
+        """
+        returns:
+        list of blobs to be added as extra params to the caffe2 model
+        """
+        return []
+
     def export_to_caffe2(self, model, export_path: str) -> List[str]:
         c2_prepared = onnx_utils.pytorch_to_caffe2(
             model,
@@ -97,7 +104,11 @@ class ModelExporter(Component):
 
         # Save predictor net to file
         onnx_utils.export_nets_to_predictor_file(
-            c2_prepared, final_input_names, final_out_names, export_path
+            c2_prepared,
+            final_input_names,
+            final_out_names,
+            export_path,
+            self.get_extra_params(),
         )
         return final_out_names
 

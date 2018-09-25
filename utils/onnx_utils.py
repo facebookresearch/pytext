@@ -94,7 +94,7 @@ def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
 
 
 def export_nets_to_predictor_file(
-    c2_prepared, input_names, output_names, predictor_path
+    c2_prepared, input_names, output_names, predictor_path, extra_params=None
 ):
     # netdef external_input includes internally produced blobs
     actual_external_inputs = set()
@@ -108,7 +108,10 @@ def export_nets_to_predictor_file(
     for blob in output_names:
         if blob not in produced:
             actual_external_inputs.add(blob)
+
     param_names = [blob for blob in actual_external_inputs if blob not in input_names]
+    if extra_params is not None:
+        param_names += extra_params
 
     init_net = core.Net(c2_prepared.init_net)
     predict_net = core.Net(c2_prepared.predict_net)
