@@ -68,6 +68,7 @@ class SharedFeaturizer(Featurizer):
         tokenizer_config_path_dict: Dict[str, str] = DEFAULT_TOKENIZER_CONFIG,
         sentence_markers_dict: Dict[str, Tuple[str, str]] = None,
         num_threads: int = 0,
+        pre_trained_models_dict: Dict[str, str] = None,
     ) -> None:
         tokenizer_config_dict: dict = {}
         with ConfigeratorThriftClient() as ctc:
@@ -75,12 +76,24 @@ class SharedFeaturizer(Featurizer):
                 tokenizer_config_dict[name] = ctc.getConfigContents(config_path)
         self.add_sentence_markers = False
         if sentence_markers_dict is None:
-            self.featurizer = FeaturizationWrapper(tokenizer_config_dict)
+            if pre_trained_models_dict is None:
+                self.featurizer = FeaturizationWrapper(tokenizer_config_dict)
+            else:
+                self.featurizer = FeaturizationWrapper(
+                    tokenizer_config_dict, pre_trained_models_dict
+                )
         else:
             self.add_sentence_markers = True
-            self.featurizer = FeaturizationWrapper(
-                tokenizer_config_dict, sentence_markers_dict
-            )
+            if pre_trained_models_dict is None:
+                self.featurizer = FeaturizationWrapper(
+                    tokenizer_config_dict, sentence_markers_dict
+                )
+            else:
+                self.featurizer = FeaturizationWrapper(
+                    tokenizer_config_dict,
+                    sentence_markers_dict,
+                    pre_trained_models_dict,
+                )
         self.num_threads = num_threads or multiprocessing.cpu_count()
 
     def featurize(self, input_record: InputRecord) -> ModelFeatures:

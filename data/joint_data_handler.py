@@ -15,6 +15,7 @@ from pytext.fields import (
     DocLabelField,
     Field,
     FloatField,
+    PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
     WordLabelField,
@@ -43,6 +44,7 @@ class JointModelDataHandler(DataHandler):
         DatasetFieldName.DICT_FIELD,
         DatasetFieldName.CAP_FIELD,
         DatasetFieldName.CHAR_FIELD,
+        DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
     ]
 
     @classmethod
@@ -73,6 +75,15 @@ class JointModelDataHandler(DataHandler):
             features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
 
         labels: Dict[str, Field] = {}
+        model_file_paths = None
+        if feature_config.pretrained_model_embedding:
+            features[
+                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
+            ] = PretrainedModelEmbeddingField()
+            model_file_paths = (
+                feature_config.pretrained_model_embedding.model_file_paths
+            )
+
         if label_config.doc_label:
             labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
         if label_config.word_label:
@@ -93,7 +104,7 @@ class JointModelDataHandler(DataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=SharedFeaturizer(),
+            featurizer=SharedFeaturizer(pre_trained_models_dict=model_file_paths),
             shuffle=config.shuffle,
         )
 
@@ -116,6 +127,9 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.CHAR_FIELD: lambda row, field: row[
                 DFColumn.MODEL_FEATS
             ].chars,
+            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: lambda row, field: row[
+                DFColumn.MODEL_FEATS
+            ].pretrainedTokenEmbedding,
             DatasetFieldName.CAP_FIELD: lambda row, field: [
                 data_utils.capitalization_feature(t)
                 for (t, (_, __)) in row[DFColumn.TOKEN_RANGE_PAIR]

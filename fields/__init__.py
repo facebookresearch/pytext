@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from .char_field import CharFeatureField
 from .dict_field import DictFeatureField
+from .pretrained_model_embedding_field import PretrainedModelEmbeddingField
 from .field import (
     ActionField,
     CapFeatureField,
@@ -28,4 +29,5 @@ __all__ = [
     "TextFeatureField",
     "VocabUsingField",
     "WordLabelField",
+    "PretrainedModelEmbeddingField"
 ]

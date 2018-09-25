@@ -60,6 +60,7 @@ class BiLSTMPooling(RepresentationBase):
         dict_feat: Tuple[torch.Tensor, ...] = None,
         cap_feat: Tuple[torch.Tensor, ...] = None,
         chars: torch.Tensor = None,
+        pre_trained_rep_feat: torch.Tensor = None,
         states: torch.Tensor = None,
     ) -> torch.Tensor:
         embedded_tokens = self.dropout(embedded_tokens)

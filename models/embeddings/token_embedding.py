@@ -11,6 +11,7 @@ from pytext.models.module import Module
 
 from .char_embedding import CharacterEmbedding
 from .dict_embedding import DictEmbedding
+from .pretrained_model_embedding import PretrainedModelEmbedding
 
 
 class TokenEmbedding(Module):
@@ -40,6 +41,7 @@ class TokenEmbedding(Module):
         word_embed = None
         dict_embed = None
         char_embed = None
+        pretrained_model_embed = None
 
         if config.word_feat.embed_dim:
             word_feat_meta = metadata.features[DatasetFieldName.TEXT_FIELD]
@@ -79,19 +81,25 @@ class TokenEmbedding(Module):
                 config.char_feat.cnn.kernel_sizes,
                 sparse=config.char_feat.sparse,
             )
-        return cls(word_embed, dict_embed, char_embed)
+        if config.pretrained_model_embedding:
+            pretrained_model_embed = PretrainedModelEmbedding(
+                config.pretrained_model_embedding.embed_dim
+            )
+        return cls(word_embed, dict_embed, char_embed, pretrained_model_embed)
 
     def __init__(
         self,
         word_embed: Optional[nn.Embedding],
         dict_embed: Optional[DictEmbedding],
         char_embed: Optional[CharacterEmbedding],
+        pretrained_model_embed: Optional[PretrainedModelEmbedding],
     ) -> None:
         super().__init__()
         self.embedding_dim = 0
         self.word_embed = word_embed
         self.dict_embed = dict_embed
         self.char_embed = char_embed
+        self.pretrained_model_embed = pretrained_model_embed
         if word_embed:
             self.embedding_dim += word_embed.embedding_dim
 
@@ -100,6 +108,9 @@ class TokenEmbedding(Module):
 
         if char_embed:
             self.embedding_dim += char_embed.embedding_dim
+
+        if pretrained_model_embed:
+            self.embedding_dim += pretrained_model_embed.embedding_dim
 
         if self.embedding_dim == 0:
             raise ValueError("At least one embedding config must be provided.")
@@ -111,6 +122,7 @@ class TokenEmbedding(Module):
         dict_feat: Tuple[torch.Tensor, ...] = None,
         cap_feat: Tuple[torch.Tensor, ...] = None,
         chars: torch.Tensor = None,
+        pretrained_model_embedding: torch.Tensor = None,
     ) -> torch.Tensor:
         # tokens dim: (bsz, max_seq_len) -> (bsz, max_seq_len, dim)
         embeddings = []
@@ -132,4 +144,18 @@ class TokenEmbedding(Module):
             char_emb = self.char_embed(chars)
             embeddings.append(char_emb)
 
+        if self.pretrained_model_embed:
+            if pretrained_model_embedding is None:
+                raise ValueError("pretrained_model_embedding argument is None")
+            if (
+                pretrained_model_embedding.shape[2]
+                != self.pretrained_model_embed.embedding_dim
+            ):
+                raise ValueError(
+                    "Expected {} as dimension for pretrained_model_embedding but {} received".format(
+                        self.pretrained_model_embed.embedding_dim,
+                        pretrained_model_embedding.shape[2],
+                    )
+                )
+            embeddings.append(pretrained_model_embedding)
         return torch.cat(embeddings, 2)
