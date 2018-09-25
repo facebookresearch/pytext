@@ -10,7 +10,7 @@ class TokenFeatures(NamedTuple):
 
 class InputRecord(NamedTuple):
     raw_text: str
-    token_features: List[TokenFeatures]
+    token_features: List[TokenFeatures] = []
     locale: str = ""
 
 
