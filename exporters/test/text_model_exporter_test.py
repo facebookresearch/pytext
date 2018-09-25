@@ -35,8 +35,7 @@ JOINT_CONFIG = """
                 "lstm": {
                   "lstm_dim": 30,
                   "num_layers": 1
-                },
-                "use_doc_probs_in_word": true
+                }
             }
         },
         "decoder": {

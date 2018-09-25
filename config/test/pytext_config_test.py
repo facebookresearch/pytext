@@ -174,6 +174,14 @@ class PytextConfigTest(unittest.TestCase):
         )
         self.assertRaises(MissingValueError, config_from_json, Model2, config_json)
 
+    def test_unknown_fields(self):
+        config_json = json.loads(
+            """{
+            "FAKE_FIELD": 7
+        }"""
+        )
+        self.assertRaises(ConfigParseError, config_from_json, Model2, config_json)
+
     def test_incorrect_union(self):
         config_json = json.loads(
             """
