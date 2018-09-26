@@ -10,7 +10,7 @@ from pytext.common.constants import (
     VocabMeta,
 )
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
-from pytext.data.shared_featurizer import SharedFeaturizer
+from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 from pytext.fields import Field, TextFeatureField
 
 
@@ -32,7 +32,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         }
 
         return LanguageModelDataHandler(
-            featurizer=SharedFeaturizer(),
+            featurizer=AssistantFeaturizer(),
             raw_columns=columns,
             features=features,
             labels={},

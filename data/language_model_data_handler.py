@@ -9,7 +9,11 @@ from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
+from pytext.fb.data.assistant_featurizer import (
+    AssistantFeaturizer,
+    parse_assistant_raw_record,
+)
+from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -23,7 +27,7 @@ class LanguageModelDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
 
-    def __init__(self, featurizer: SharedFeaturizer, *args, **kwargs) -> None:
+    def __init__(self, featurizer: Featurizer, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
 
@@ -61,7 +65,7 @@ class LanguageModelDataHandler(DataHandler):
         labels: Dict[str, Field] = {}
         extra_fields: Dict[str, Field] = {DatasetFieldName.TOKEN_RANGE_PAIR: RawField()}
         return cls(
-            featurizer=SharedFeaturizer(),
+            featurizer=AssistantFeaturizer(),
             raw_columns=config.columns_to_read,
             features=features,
             labels=labels,

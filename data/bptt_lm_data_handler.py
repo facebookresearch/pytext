@@ -8,7 +8,11 @@ import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
+from pytext.data.featurizer import Featurizer
+from pytext.fb.data.assistant_featurizer import (
+    AssistantFeaturizer,
+    parse_assistant_raw_record,
+)
 from pytext.fields import Field, TextFeatureField
 from pytext.utils import cuda_utils
 from torchtext import data as textdata
@@ -31,7 +35,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
         bptt_len: int = 35
 
     def __init__(
-        self, featurizer: SharedFeaturizer, bptt_len: int, *args, **kwargs
+        self, featurizer: Featurizer, bptt_len: int, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
@@ -58,7 +62,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
             )
         }
         return cls(
-            featurizer=SharedFeaturizer(),
+            featurizer=AssistantFeaturizer(),
             bptt_len=bptt_len,
             raw_columns=columns,
             features=features,

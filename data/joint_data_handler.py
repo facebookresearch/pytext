@@ -7,7 +7,11 @@ import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.shared_featurizer import SharedFeaturizer, parse_assistant_raw_record
+from pytext.data.featurizer import Featurizer
+from pytext.fb.data.assistant_featurizer import (
+    AssistantFeaturizer,
+    parse_assistant_raw_record,
+)
 from pytext.fields import (
     CapFeatureField,
     CharFeatureField,
@@ -104,11 +108,11 @@ class JointModelDataHandler(DataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=SharedFeaturizer(pre_trained_models_dict=model_file_paths),
+            featurizer=AssistantFeaturizer(pre_trained_models_dict=model_file_paths),
             shuffle=config.shuffle,
         )
 
-    def __init__(self, featurizer: SharedFeaturizer, **kwargs) -> None:
+    def __init__(self, featurizer: Featurizer, **kwargs) -> None:
 
         super().__init__(**kwargs)
         # configs
