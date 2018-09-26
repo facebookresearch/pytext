@@ -6,19 +6,20 @@ import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import LabelConfig
-from pytext.fields import DocLabelField, Field, TextFeatureField
+from pytext.fields import DocLabelField, Field, RawField, TextFeatureField
 from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
 from pytext.utils import data_utils
 
 from .data_handler import DataHandler
 
 
-SEQ_LENS = "seq_lens"
+TEXT_2 = "text_2"
+UTTERANCE_PAIR = "utterance"
 
 
 class PairClassificationDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE, "text_2"]
+        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE, TEXT_2]
 
     @classmethod
     def from_config(
@@ -42,8 +43,9 @@ class PairClassificationDataHandler(DataHandler):
         )
         features: Dict[str, Field] = {
             DatasetFieldName.TEXT_FIELD: text_field,
-            "text_2": text_field,
+            TEXT_2: text_field,
         }
+        extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
 
         labels: Dict[str, Field] = {}
         if label_config.doc_label:
@@ -54,16 +56,14 @@ class PairClassificationDataHandler(DataHandler):
             labels=labels,
             features=features,
             shuffle=config.shuffle,
+            extra_fields=extra_fields,
         )
 
     def _input_from_batch(self, batch):
         return tuple(zip(*(getattr(batch, name) for name in self.features)))
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        df[UTTERANCE_PAIR] = [
+            f"{row[DFColumn.UTTERANCE]} | {row[TEXT_2]}" for _, row in df.iterrows()
+        ]
         return df
-
-    def _context_from_batch(self, batch):
-        # add together the lengths of the two sequences
-        res = {SEQ_LENS: batch.text[1] + batch.text_2[1]}
-        res.update(super()._context_from_batch(batch))
-        return res
