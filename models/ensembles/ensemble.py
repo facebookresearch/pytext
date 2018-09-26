@@ -43,6 +43,10 @@ class Ensemble(Model):
             dense_grads_params.update(d)
         return sparse_grads_params, dense_grads_params
 
+    def save_modules(self):
+        for model in self.models:
+            model.save_modules()
+
     def _get_single_model_params_for_optimizer(
         self, model: nn.Module, model_id: int
     ) -> Tuple[Dict[str, nn.Parameter], Dict[str, nn.Parameter]]:

@@ -13,7 +13,7 @@ from .slot_attention import SlotAttention
 class BiLSTMSlotAttention(RepresentationBase):
     """Bidirectional LSTM based representation with slot attention."""
 
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         bidirectional: bool = True
         dropout: float = 0.4
         lstm: LSTMParams = LSTMParams()

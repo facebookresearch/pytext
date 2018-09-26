@@ -9,13 +9,13 @@ from pytext.config.component import create_module
 from pytext.config.module_config import LSTMParams, SlotAttentionType
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from .representation_base import RepresentationBase
 from .pooling import SelfAttention
+from .representation_base import RepresentationBase
 from .slot_attention import SlotAttention
 
 
 class JointBLSTMRepresentation(RepresentationBase):
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         pooling: Optional[SelfAttention.Config] = SelfAttention.Config()
         dropout: float = 0.4
         lstm: LSTMParams = LSTMParams()

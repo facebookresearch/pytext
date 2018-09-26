@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-from pytext.config import ConfigBase
-from pytext.loss import CrossEntropyLoss
-from pytext.config.component import create_loss
 from pytext.common.constants import DatasetFieldName
+from pytext.config import ConfigBase
+from pytext.config.component import create_loss
 from pytext.data import CommonMetadata
+from pytext.loss import CrossEntropyLoss
+
 from .output_layer import OutputLayerBase
 
 
 class LMOutputLayer(OutputLayerBase):
-    class Config(ConfigBase):
+    class Config(OutputLayerBase.Config, ConfigBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
         return cls(
             create_loss(
-                config.loss,
-                meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx,
+                config.loss, meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx
             )
         )
 

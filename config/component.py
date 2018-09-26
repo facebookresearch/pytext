@@ -3,6 +3,8 @@ import collections
 import enum
 from typing import Any, Dict, Iterable, List, Type, Union
 
+import torch
+
 from .pytext_config import ConfigBase, PyTextConfig
 
 
@@ -148,7 +150,14 @@ def create_loss(loss_config, *args, **kwargs):
 
 
 def create_module(module_config, *args, **kwargs):
-    return create_component(ComponentType.MODULE, module_config, *args, **kwargs)
+    module = create_component(ComponentType.MODULE, module_config, *args, **kwargs)
+    if getattr(module_config, "load_path", None):
+        print(
+            f"Loading state of module {type(module).__name__} "
+            f"from {module_config.load_path} ..."
+        )
+        module.load_state_dict(torch.load(module_config.load_path))
+    return module
 
 
 def create_metric_reporter(module_config, *args, **kwargs):

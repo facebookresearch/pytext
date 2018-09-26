@@ -16,7 +16,7 @@ class BiLSTMPooling(RepresentationBase):
     """Bidirectional LSTM based representation with pooling
        (e.g. max pooling or self attention)."""
 
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         pooling: Union[
             SelfAttention.Config, MaxPool.Config, MeanPool.Config, NoPool.Config
         ] = SelfAttention.Config()

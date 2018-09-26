@@ -13,6 +13,8 @@ from .docnn import DocNNRepresentation
 from .representation_base import RepresentationBase
 
 
+# NOTE: the edge case of loading two distinct untied subrepresentations via the
+# `load_path` config option is not currently supported.
 class TupleRepresentation(RepresentationBase):
     """Wrapper representation for a tuple of inputs.
 
@@ -26,7 +28,7 @@ class TupleRepresentation(RepresentationBase):
         * `num_subrepresentations`: the arity. Default: 2.
     """
 
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         subrepresentation: Union[
             BiLSTMPooling.Config, DocNNRepresentation.Config
         ] = BiLSTMPooling.Config()

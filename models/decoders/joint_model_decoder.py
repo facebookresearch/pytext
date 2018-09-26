@@ -11,7 +11,7 @@ from .decoder_base import DecoderBase
 
 
 class JointModelDecoder(DecoderBase):
-    class Config(ConfigBase):
+    class Config(DecoderBase.Config, ConfigBase):
         use_doc_probs_in_word: bool = False
 
     def __init__(

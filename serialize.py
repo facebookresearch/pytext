@@ -5,14 +5,15 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from pytext.config.component import create_data_handler, create_model
 from pytext.config import PyTextConfig, config_from_json, config_to_json
+from pytext.config.component import create_data_handler, create_model
 from pytext.data.data_handler import DataHandler
 
 
 def save(
     save_path: str, config: PyTextConfig, model: nn.Module, data_handler: DataHandler
 ) -> None:
+    model.save_modules()
     predictor_state = OrderedDict(
         [
             ("data_state", data_handler.metadata_to_save()),

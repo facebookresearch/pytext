@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import torch
 from pytext.config import ConfigBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
@@ -25,3 +26,15 @@ class PairClassificationModel(Model):
         output_config: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
+
+    def save_modules(self):
+        super().save_modules()
+
+        # Special case to also save the sub-representations separately, if needed.
+        for i, subrep in enumerate(self.representation.subrepresentations):
+            if getattr(subrep.config, "save_path", None):
+                path = subrep.config.save_path + "-" + str(i)
+                print(
+                    f"Saving state of module {type(subrep).__name__} " f"to {path} ..."
+                )
+                torch.save(subrep.state_dict(), path)

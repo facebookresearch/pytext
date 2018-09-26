@@ -31,6 +31,15 @@ class Model(nn.Module, Component):
         output_layer = create_module(model_config.output_config, metadata)
         return cls(embedding, representation, decoder, output_layer)
 
+    def save_modules(self):
+        for module in [self.representation, self.decoder]:
+            if getattr(module.config, "save_path", None):
+                print(
+                    f"Saving state of module {type(module).__name__} "
+                    f"to {module.config.save_path} ..."
+                )
+                torch.save(module.state_dict(), module.config.save_path)
+
     def __init__(self, embedding, representation, decoder, output_layer) -> None:
         nn.Module.__init__(self)
         self.embedding = embedding

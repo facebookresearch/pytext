@@ -5,11 +5,12 @@ from typing import List
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
+
 from .decoder_base import DecoderBase
 
 
 class MLPDecoder(DecoderBase):
-    class Config(ConfigBase):
+    class Config(DecoderBase.Config, ConfigBase):
         # Intermediate hidden dimensions
         hidden_dims: List[int] = []
 

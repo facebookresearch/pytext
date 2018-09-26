@@ -11,7 +11,7 @@ from .representation_base import RepresentationBase
 
 
 class JointCNNRepresentation(RepresentationBase):
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         doc_representation: DocNNRepresentation.Config = DocNNRepresentation.Config()
         word_representation: BSeqCNNRepresentation.Config = BSeqCNNRepresentation.Config()
 

@@ -33,10 +33,9 @@ class OutputLayerBase(Module):
 
 
 class ClassificationOutputLayer(OutputLayerBase):
-    class Config(ConfigBase):
+    class Config(OutputLayerBase.Config, ConfigBase):
         loss: Union[
-            CrossEntropyLoss.Config,
-            BinaryCrossEntropyLoss.Config,
+            CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config
         ] = CrossEntropyLoss.Config()
 
     def get_pred(self, logit, context):
