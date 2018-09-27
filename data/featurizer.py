@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-from typing import Dict, List, NamedTuple
-from assistant.lib.feat.ttypes import ModelFeatures
-
-
-class TokenFeatures(NamedTuple):
-    token_index: int
-    features: Dict[str, float]
-
-
-class InputRecord(NamedTuple):
-    raw_text: str
-    token_features: List[TokenFeatures] = []
-    locale: str = ""
+from joblib import Parallel, delayed
+from typing import Any, Dict, Sequence
 
 
 class Featurizer(object):
-    def featurize(self, inputRecord: InputRecord) -> ModelFeatures:
-        pass
 
-    def featurize_batch(self, inputRecords: List[InputRecord]) -> List[ModelFeatures]:
-        return [self.featurize(input) for input in inputRecords]
+    def featurize(self, input_record: Dict[str, Any]) -> Dict[str, Any]:
+        raise NotImplementedError(
+            "Featurizer.featurize() method must be implemented.")
+
+    def featurize_batch(
+        self,
+        input_record_list: Sequence[Dict[str, Any]],
+    ) -> Sequence[Dict[str, Any]]:
+        """Featurize a batch of instances/examples in parallel.
+        This is a default implementation using joblib.Parallel,
+        feel free to re-implement it as needed.
+        """
+        features_list = Parallel(n_jobs=-1)(
+            delayed(self.featurize)(record)
+            for record in input_record_list
+        )
+        return features_list

@@ -74,7 +74,8 @@ class CompositionalDataHandler(DataHandler):
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_batch(
+            output["features_obj"]
+            for output in self.featurizer.featurize_batch(
                 df[DFColumn.RAW_FEATS].tolist()
             )
         )
