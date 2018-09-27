@@ -11,7 +11,7 @@ from .representation_base import RepresentationBase
 
 class BSeqCNNRepresentation(RepresentationBase):
     """
-    This class is an implementation of the paper https://fburl.com/wuhy2mcz.
+    This class is an implementation of the paper https://arxiv.org/pdf/1606.07783.
     It is a bidirectional CNN model that captures context like RNNs do.
 
     The module expects that input mini-batch is already padded.
