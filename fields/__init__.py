@@ -13,6 +13,9 @@ from .field import (
     TextFeatureField,
     VocabUsingField,
     WordLabelField,
+    NestedField,
+    VocabUsingNestedField,
+    SeqFeatureField,
 )
 
 
@@ -30,4 +33,7 @@ __all__ = [
     "VocabUsingField",
     "WordLabelField",
     "PretrainedModelEmbeddingField"
+    "NestedField",
+    "VocabUsingNestedField",
+    "SeqFeatureField",
 ]

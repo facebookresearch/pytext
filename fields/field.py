@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from typing import Any, Union
+
 import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
@@ -17,9 +19,13 @@ class FieldMeta:
     unk_token_idx: int
     init_token_idx: int
     eos_token_idx: int
+    nesting_meta: Any
 
 
 class Field(textdata.Field):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def get_meta(self) -> FieldMeta:
         meta = FieldMeta()
         if self.use_vocab:
@@ -34,6 +40,26 @@ class Field(textdata.Field):
         if self.eos_token is not None:
             meta.eos_token_idx = self.vocab.stoi[self.eos_token]
         return meta
+
+    def load_meta(
+        self,
+        metadata: FieldMeta,
+    ):
+        self.vocab = metadata.vocab
+
+
+class NestedField(Field, textdata.NestedField):
+    def get_meta(self):
+        meta = super().get_meta()
+        meta.nesting_meta = self.nesting_field.get_meta()
+        return meta
+
+    def load_meta(
+        self,
+        metadata: FieldMeta,
+    ):
+        super().load_meta(metadata)
+        self.nesting_field.vocab = metadata.nesting_meta.vocab
 
 
 class RawField(textdata.RawField):
@@ -62,6 +88,11 @@ class VocabUsingField(Field):
         self.vocab_from_train_data = vocab_from_train_data
         self.embed_dim = embed_dim
         self.embedding_init_strategy = embedding_init_strategy
+
+
+class VocabUsingNestedField(VocabUsingField, NestedField):
+    """Base class for all nested fields that need to build a vocabulary."""
+    pass
 
 
 class DocLabelField(Field):
@@ -125,6 +156,47 @@ class TextFeatureField(VocabUsingField):
             eos_token=eos_token,
             lower=lower,
             tokenize=tokenize,
+        )
+
+
+class SeqFeatureField(VocabUsingNestedField):
+    def __init__(
+        self,
+        pretrained_embeddings_path="",
+        embed_dim=0,
+        embedding_init_strategy=EmbedInitStrategy.RANDOM,
+        vocab_file="",
+        vocab_size="",
+        vocab_from_train_data=True,
+        postprocessing=None,
+        use_vocab=True,
+        include_lengths=True,
+        pad_token=VocabMeta.PAD_SEQ,
+        init_token=None,
+        eos_token=None,
+        tokenize=data_utils.no_tokenize,
+        nesting_field=None,
+    ):
+        super().__init__(
+            pretrained_embeddings_path=pretrained_embeddings_path,
+            embed_dim=embed_dim,
+            embedding_init_strategy=embedding_init_strategy,
+            vocab_file=vocab_file,
+            vocab_size=vocab_size,
+            vocab_from_train_data=vocab_from_train_data,
+            postprocessing=postprocessing,
+            use_vocab=use_vocab,
+            include_lengths=include_lengths,
+            pad_token=pad_token,
+            init_token=init_token,
+            eos_token=eos_token,
+            tokenize=tokenize,
+            nesting_field=nesting_field
+            if nesting_field is not None
+            else TextFeatureField(
+                include_lengths=False,
+                lower=False,
+            ),
         )
 
 

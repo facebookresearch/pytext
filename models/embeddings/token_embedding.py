@@ -125,6 +125,8 @@ class TokenEmbedding(Module):
         pretrained_model_embedding: torch.Tensor = None,
     ) -> torch.Tensor:
         # tokens dim: (bsz, max_seq_len) -> (bsz, max_seq_len, dim)
+        # or (bsz, max_num_sen, max_seq_len) -> (bsz, max_num_sen, max_seq_len, dim)
+        # for seqnn
         embeddings = []
 
         if self.word_embed:

@@ -11,7 +11,9 @@ import torch.hiveio as hiveio
 from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.fields import Field, FieldMeta, VocabUsingField
+from pytext.fields import (
+    Field, FieldMeta, VocabUsingField
+)
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
@@ -147,10 +149,10 @@ class DataHandler(Component):
         self.metadata = metadata
         for name, field in self.features.items():
             if field.use_vocab and name in metadata.features:
-                field.vocab = metadata.features[name].vocab
+                field.load_meta(metadata.features[name])
         for name, field in self.labels.items():
             if field.use_vocab and name in metadata.labels:
-                field.vocab = metadata.labels[name].vocab
+                field.load_meta(metadata.labels[name])
 
     def gen_dataset_from_path(
         self, path: str, include_label_fields: bool = True, use_cache: bool = True

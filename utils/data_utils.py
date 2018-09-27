@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from enum import Enum
 from typing import List, Any, Tuple
+import json
 
 
 def simple_tokenize(s: str) -> List[str]:
@@ -100,6 +101,12 @@ def parse_token(
         (token_range[i], token_range[i + 1]) for i in range(0, len(token_range) - 1, 2)
     ]
     return [(utterance[s:e], (s, e)) for (s, e) in range_bounds]
+
+
+def parse_json_array(
+    json_text: str
+) -> List[str]:
+    return json.loads(json_text)
 
 
 # In order to process each field independently, we need to align slot labels

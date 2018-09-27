@@ -62,6 +62,9 @@ class VocabMeta:
     PAD_TOKEN = "<pad>"
     EOS_TOKEN = "</s>"
     INIT_TOKEN = "<s>"
+    PAD_SEQ = "<pad_seq>"
+    EOS_SEQ = "</s_seq>"
+    INIT_SEQ = "<s_seq>"
 
 
 class PredictorInputNames:

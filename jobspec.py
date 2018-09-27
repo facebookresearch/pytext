@@ -8,6 +8,7 @@ from pytext.config.pytext_config import OptimizerParams, SchedulerParams
 from pytext.data.bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
+from pytext.data.seq_data_handler import SeqModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.data.pair_classification_data_handler import PairClassificationDataHandler
 from pytext.exporters.exporter import TextModelExporter
@@ -26,6 +27,7 @@ from pytext.metric_reporters.word_tagging_metric_reporter import (
 )
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
+from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
 from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
@@ -108,6 +110,14 @@ class PairClassificationJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
+class SeqNNJobSpec(JobSpecBase, ConfigBase):
+    model: SeqNNModel.Config = SeqNNModel.Config()
+    trainer: Trainer.Config = Trainer.Config()
+    labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+    data_handler: SeqModelDataHandler.Config = SeqModelDataHandler.Config()
+    metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
+
+
 def register_builtin_jobspecs():
     register_jobspec(
         (
@@ -118,5 +128,6 @@ def register_builtin_jobspecs():
             SemanticParsingJobSpec,
             EnsembleJobSpec,
             PairClassificationJobSpec,
+            SeqNNJobSpec,
         )
     )
