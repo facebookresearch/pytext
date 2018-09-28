@@ -7,7 +7,9 @@ from unittest import TestCase
 class MetricsTestBase(TestCase):
     def assertMetricsAlmostEqual(self, first: Any, second: Any) -> None:
         self.assertEqual(type(first), type(second))
-        if isinstance(first, int):
+        if first is None:
+            return
+        elif isinstance(first, int):
             self.assertEqual(first, second)
         elif isinstance(first, float):
             self.assertAlmostEqual(first, second)
@@ -15,10 +17,10 @@ class MetricsTestBase(TestCase):
             self.assertEqual(first.keys(), second.keys())
             for key in first.keys():
                 self.assertMetricsAlmostEqual(first[key], second[key])
-        # Then "first" and "second" should either be of type NamedTuple which has
-        # a _fields field or they should have __slots__ field.
+        # Then "first" and "second" should be of type NamedTuple.
         else:
-            for attr in getattr(first, "_fields", None) or first.__slots__:
+            self.assertEqual(first._fields, second._fields)
+            for attr in first._fields:
                 self.assertMetricsAlmostEqual(
                     getattr(first, attr), getattr(second, attr)
                 )

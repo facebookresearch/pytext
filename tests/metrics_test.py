@@ -3,15 +3,15 @@
 from typing import Any, Dict, List
 
 from pytext.metrics import (
-    AllClassificationMetrics,
-    ClassificationMetrics,
     Confusions,
     FrameAccuracy,
     FramePredictionPair,
     IntentSlotConfusions,
     IntentSlotMetrics,
-    MacroClassificationMetrics,
+    MacroPRF1Scores,
     Node,
+    PRF1Metrics,
+    PRF1Scores,
     Span,
     compare_frames,
     compute_all_metrics,
@@ -384,41 +384,33 @@ class MetricsTest(MetricsTestBase):
         self.assertMetricsAlmostEqual(
             compute_intent_slot_metrics(FRAME_PAIRS[1:2], tree_based=False),
             IntentSlotMetrics(
-                intent_metrics=AllClassificationMetrics(
-                    per_label_scores={
-                        "intent1": ClassificationMetrics(1, 0, 0, 1.0, 1.0, 1.0)
-                    },
-                    macro_scores=MacroClassificationMetrics(1, 1.0, 1.0, 1.0),
-                    micro_scores=ClassificationMetrics(1, 0, 0, 1.0, 1.0, 1.0),
+                intent_metrics=PRF1Metrics(
+                    per_label_scores={"intent1": PRF1Scores(1, 0, 0, 1.0, 1.0, 1.0)},
+                    macro_scores=MacroPRF1Scores(1, 1.0, 1.0, 1.0),
+                    micro_scores=PRF1Scores(1, 0, 0, 1.0, 1.0, 1.0),
                 ),
-                slot_metrics=AllClassificationMetrics(
-                    per_label_scores={
-                        "slot1": ClassificationMetrics(0, 0, 1, 0.0, 0.0, 0.0)
-                    },
-                    macro_scores=MacroClassificationMetrics(1, 0.0, 0.0, 0.0),
-                    micro_scores=ClassificationMetrics(0, 0, 1, 0.0, 0.0, 0.0),
+                slot_metrics=PRF1Metrics(
+                    per_label_scores={"slot1": PRF1Scores(0, 0, 1, 0.0, 0.0, 0.0)},
+                    macro_scores=MacroPRF1Scores(1, 0.0, 0.0, 0.0),
+                    micro_scores=PRF1Scores(0, 0, 1, 0.0, 0.0, 0.0),
                 ),
-                overall_metrics=ClassificationMetrics(1, 0, 1, 1.0, 0.5, 2.0 / 3),
+                overall_metrics=PRF1Scores(1, 0, 1, 1.0, 0.5, 2.0 / 3),
             ),
         )
         self.assertMetricsAlmostEqual(
             compute_intent_slot_metrics(FRAME_PAIRS[1:2], tree_based=True),
             IntentSlotMetrics(
-                intent_metrics=AllClassificationMetrics(
-                    per_label_scores={
-                        "intent1": ClassificationMetrics(0, 1, 1, 0.0, 0.0, 0.0)
-                    },
-                    macro_scores=MacroClassificationMetrics(1, 0.0, 0.0, 0.0),
-                    micro_scores=ClassificationMetrics(0, 1, 1, 0.0, 0.0, 0.0),
+                intent_metrics=PRF1Metrics(
+                    per_label_scores={"intent1": PRF1Scores(0, 1, 1, 0.0, 0.0, 0.0)},
+                    macro_scores=MacroPRF1Scores(1, 0.0, 0.0, 0.0),
+                    micro_scores=PRF1Scores(0, 1, 1, 0.0, 0.0, 0.0),
                 ),
-                slot_metrics=AllClassificationMetrics(
-                    per_label_scores={
-                        "slot1": ClassificationMetrics(0, 0, 1, 0.0, 0.0, 0.0)
-                    },
-                    macro_scores=MacroClassificationMetrics(1, 0.0, 0.0, 0.0),
-                    micro_scores=ClassificationMetrics(0, 0, 1, 0.0, 0.0, 0.0),
+                slot_metrics=PRF1Metrics(
+                    per_label_scores={"slot1": PRF1Scores(0, 0, 1, 0.0, 0.0, 0.0)},
+                    macro_scores=MacroPRF1Scores(1, 0.0, 0.0, 0.0),
+                    micro_scores=PRF1Scores(0, 0, 1, 0.0, 0.0, 0.0),
                 ),
-                overall_metrics=ClassificationMetrics(0, 1, 2, 0.0, 0.0, 0.0),
+                overall_metrics=PRF1Scores(0, 1, 2, 0.0, 0.0, 0.0),
             ),
         )
 
@@ -426,82 +418,68 @@ class MetricsTest(MetricsTestBase):
         self.assertMetricsAlmostEqual(
             compute_intent_slot_metrics(FRAME_PAIRS[7:11], tree_based=False),
             IntentSlotMetrics(
-                intent_metrics=AllClassificationMetrics(
+                intent_metrics=PRF1Metrics(
                     per_label_scores={
                         # intent1: TP = 4, FP = 0, FN = 0
-                        "intent1": ClassificationMetrics(4, 0, 0, 1.0, 1.0, 1.0),
+                        "intent1": PRF1Scores(4, 0, 0, 1.0, 1.0, 1.0),
                         # intent2: TP = 1, FP = 2, FN = 1
-                        "intent2": ClassificationMetrics(1, 2, 1, 1.0 / 3, 0.5, 0.4),
+                        "intent2": PRF1Scores(1, 2, 1, 1.0 / 3, 0.5, 0.4),
                     },
-                    macro_scores=MacroClassificationMetrics(2, 2.0 / 3, 0.75, 0.7),
+                    macro_scores=MacroPRF1Scores(2, 2.0 / 3, 0.75, 0.7),
                     # all intents: TP = 5, FP = 2, FN = 1
-                    micro_scores=ClassificationMetrics(
-                        5, 2, 1, 5.0 / 7, 5.0 / 6, 10.0 / 13
-                    ),
+                    micro_scores=PRF1Scores(5, 2, 1, 5.0 / 7, 5.0 / 6, 10.0 / 13),
                 ),
-                slot_metrics=AllClassificationMetrics(
+                slot_metrics=PRF1Metrics(
                     per_label_scores={
                         # slot1: TP = 3, FP = 1, FN = 1
-                        "slot1": ClassificationMetrics(3, 1, 1, 0.75, 0.75, 0.75),
+                        "slot1": PRF1Scores(3, 1, 1, 0.75, 0.75, 0.75),
                         # slot2: TP = 2, FP = 2, FN = 0
-                        "slot2": ClassificationMetrics(2, 2, 0, 0.5, 1.0, 4.0 / 6),
+                        "slot2": PRF1Scores(2, 2, 0, 0.5, 1.0, 4.0 / 6),
                         # slot3: TP = 1, FP = 1, FN = 0
-                        "slot3": ClassificationMetrics(1, 1, 0, 0.5, 1.0, 2.0 / 3),
+                        "slot3": PRF1Scores(1, 1, 0, 0.5, 1.0, 2.0 / 3),
                         # slot4: TP = 0, FP = 1, FN = 1
-                        "slot4": ClassificationMetrics(0, 1, 1, 0.0, 0.0, 0.0),
+                        "slot4": PRF1Scores(0, 1, 1, 0.0, 0.0, 0.0),
                     },
-                    macro_scores=MacroClassificationMetrics(
-                        4, 0.4375, 0.6875, 25.0 / 48
-                    ),
+                    macro_scores=MacroPRF1Scores(4, 0.4375, 0.6875, 25.0 / 48),
                     # all slots: TP = 6, FP = 5, FN = 2
-                    micro_scores=ClassificationMetrics(
-                        6, 5, 2, 6.0 / 11, 6.0 / 8, 12.0 / 19
-                    ),
+                    micro_scores=PRF1Scores(6, 5, 2, 6.0 / 11, 6.0 / 8, 12.0 / 19),
                 ),
                 # overall: TP = 11, FP = 7, FN = 3
-                overall_metrics=ClassificationMetrics(
-                    11, 7, 3, 11.0 / 18, 11.0 / 14, 22.0 / 32
-                ),
+                overall_metrics=PRF1Scores(11, 7, 3, 11.0 / 18, 11.0 / 14, 22.0 / 32),
             ),
         )
 
         self.assertMetricsAlmostEqual(
             compute_intent_slot_metrics(FRAME_PAIRS[7:11], tree_based=True),
             IntentSlotMetrics(
-                intent_metrics=AllClassificationMetrics(
+                intent_metrics=PRF1Metrics(
                     per_label_scores={
                         # intent1: TP = 1, FP = 3, FN = 3
-                        "intent1": ClassificationMetrics(1, 3, 3, 0.25, 0.25, 0.25),
+                        "intent1": PRF1Scores(1, 3, 3, 0.25, 0.25, 0.25),
                         # intent2: TP = 1, FP = 2, FN = 1
-                        "intent2": ClassificationMetrics(1, 2, 1, 1.0 / 3, 0.5, 0.4),
+                        "intent2": PRF1Scores(1, 2, 1, 1.0 / 3, 0.5, 0.4),
                     },
-                    macro_scores=MacroClassificationMetrics(2, 7.0 / 24, 0.375, 0.325),
+                    macro_scores=MacroPRF1Scores(2, 7.0 / 24, 0.375, 0.325),
                     # all intents: TP = 2, FP = 5, FN = 4
-                    micro_scores=ClassificationMetrics(
-                        2, 5, 4, 2.0 / 7, 2.0 / 6, 4.0 / 13
-                    ),
+                    micro_scores=PRF1Scores(2, 5, 4, 2.0 / 7, 2.0 / 6, 4.0 / 13),
                 ),
-                slot_metrics=AllClassificationMetrics(
+                slot_metrics=PRF1Metrics(
                     per_label_scores={
                         # slot1: TP = 2, FP = 2, FN = 2
-                        "slot1": ClassificationMetrics(2, 2, 2, 0.5, 0.5, 0.5),
+                        "slot1": PRF1Scores(2, 2, 2, 0.5, 0.5, 0.5),
                         # slot2: TP = 2, FP = 2, FN = 0
-                        "slot2": ClassificationMetrics(2, 2, 0, 0.5, 1.0, 4.0 / 6),
+                        "slot2": PRF1Scores(2, 2, 0, 0.5, 1.0, 4.0 / 6),
                         # slot3: TP = 1, FP = 1, FN = 0
-                        "slot3": ClassificationMetrics(1, 1, 0, 0.5, 1.0, 2.0 / 3),
+                        "slot3": PRF1Scores(1, 1, 0, 0.5, 1.0, 2.0 / 3),
                         # slot4: TP = 0, FP = 1, FN = 1
-                        "slot4": ClassificationMetrics(0, 1, 1, 0.0, 0.0, 0.0),
+                        "slot4": PRF1Scores(0, 1, 1, 0.0, 0.0, 0.0),
                     },
-                    macro_scores=MacroClassificationMetrics(4, 0.375, 0.625, 11.0 / 24),
+                    macro_scores=MacroPRF1Scores(4, 0.375, 0.625, 11.0 / 24),
                     # all slots: TP = 5, FP = 6, FN = 3
-                    micro_scores=ClassificationMetrics(
-                        5, 6, 3, 5.0 / 11, 5.0 / 8, 10.0 / 19
-                    ),
+                    micro_scores=PRF1Scores(5, 6, 3, 5.0 / 11, 5.0 / 8, 10.0 / 19),
                 ),
                 # overall: TP = 7, FP = 11, FN = 7
-                overall_metrics=ClassificationMetrics(
-                    7, 11, 7, 7.0 / 18, 7.0 / 14, 14.0 / 32
-                ),
+                overall_metrics=PRF1Scores(7, 11, 7, 7.0 / 18, 7.0 / 14, 14.0 / 32),
             ),
         )
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import logging
+
 from collections import Counter as counter, defaultdict
 from copy import deepcopy
 from typing import (
@@ -16,9 +16,6 @@ from typing import (
 )
 
 import numpy as np
-
-
-logger = logging.getLogger(name=__name__)
 
 
 class Span(NamedTuple):
@@ -60,14 +57,10 @@ class Node:
         return 1 + max((child.get_depth() for child in self.children), default=0)
 
 
-class LabelPredictionPair(NamedTuple):
-    predicted_label: str
-    expected_label: str
-
-
-class LabelScoresPair(NamedTuple):
-    predicted_scores: List[float]
-    expected_label: str
+class LabelPrediction(NamedTuple):
+    label_scores: List[float]
+    predicted_label: int
+    expected_label: int
 
 
 class FramePredictionPair(NamedTuple):
@@ -93,7 +86,7 @@ class FrameAccuracy(NamedTuple):
 FrameAccuraciesByDepth = Dict[int, FrameAccuracy]
 
 
-class ClassificationMetrics(NamedTuple):
+class PRF1Scores(NamedTuple):
     """
     Class for the typical precision/recall/F1 scores where
       precision = TP / (TP + FP)
@@ -118,7 +111,7 @@ class SoftClassificationMetrics(NamedTuple):
     average_precision: float
 
 
-class MacroClassificationMetrics(NamedTuple):
+class MacroPRF1Scores(NamedTuple):
     """
     The macro precision/recall/F1 scores which are averages across the per label
     scores.
@@ -131,25 +124,50 @@ class MacroClassificationMetrics(NamedTuple):
     f1: float
 
 
-class PerLabelMetrics(NamedTuple):
+class MacroPRF1Metrics(NamedTuple):
     """
-    Return type of compute_metrics() in class PerLabelMetrics. It contains both
+    Return type of PerLabelConfusions.compute_metrics(). It contains both
     per_label_scores and macro_scores because they are both computed on per label
     basis.
     """
 
-    per_label_scores: Dict[str, ClassificationMetrics]
-    macro_scores: MacroClassificationMetrics
+    per_label_scores: Dict[str, PRF1Scores]
+    macro_scores: MacroPRF1Scores
+
+    def print_metrics(self) -> None:
+        res = (
+            f"\t{'Label':<20}"
+            f"\t{'Precision':<10}"
+            f"\t{'Recall':<10}"
+            f"\t{'F1':<10}"
+            f"\t{'Support':<10}\n\n"
+        )
+        for label, label_metrics in self.per_label_scores.items():
+            support = label_metrics.true_positives + label_metrics.false_negatives
+            res += (
+                f"\t{label:<20}"
+                f"\t{label_metrics.precision * 100:<10.2f}"
+                f"\t{label_metrics.recall * 100:<10.2f}"
+                f"\t{label_metrics.f1 * 100:<10.2f}"
+                f"\t{support:<10}\n"
+            )
+        res += (
+            f"\t{'Overall macro scores':<20}"
+            f"\t{self.macro_scores.precision * 100:<10.2f}"
+            f"\t{self.macro_scores.recall * 100:<10.2f}"
+            f"\t{self.macro_scores.f1 * 100:<10.2f}"
+        )
+        print(res)
 
 
-class AllClassificationMetrics(NamedTuple):
+class PRF1Metrics(NamedTuple):
     """
     All kinds of precision/recall/F1 scores that we want to report.
     """
 
-    per_label_scores: Dict[str, ClassificationMetrics]
-    macro_scores: MacroClassificationMetrics
-    micro_scores: ClassificationMetrics
+    per_label_scores: Dict[str, PRF1Scores]
+    macro_scores: MacroPRF1Scores
+    micro_scores: PRF1Scores
 
     def print_metrics(self) -> None:
         res = (
@@ -185,41 +203,38 @@ class AllClassificationMetrics(NamedTuple):
         print(res)
 
 
-class BinaryClassificationMetrics(NamedTuple):
+class ClassificationMetrics(NamedTuple):
     """
-    Binary classification metrics such as MCC and average precision.
+    Class of various classification metrics, including precision/recall/F1 scores,
+    Matthews correlation coefficient and average precision.
     """
 
-    all_classification_metrics: AllClassificationMetrics
-    per_label_soft_scores: Dict[str, SoftClassificationMetrics]
-    mcc: float
+    accuracy: float
+    macro_prf1_metrics: MacroPRF1Metrics
+    per_label_soft_scores: Optional[Dict[str, SoftClassificationMetrics]]
+    mcc: Optional[float]
 
     def print_metrics(self) -> None:
-        self.all_classification_metrics.print_metrics()
-        print("Per label soft scores:")
-        for label, label_metrics in self.per_label_soft_scores.items():
-            print(
-                f"  Label: {label}, AP = {label_metrics.average_precision * 100:.2f}, "
-            )
-        print(f" MCC = {self.mcc :.2f}")
+        print(f"Accuracy: {self.accuracy * 100:.2f}\n")
+        print("Macro P/R/F1 Scores:")
+        self.macro_prf1_metrics.print_metrics()
+        print("\nSoft Metrics:")
+        if self.per_label_soft_scores:
+            print(f"\t{'Label':<10}{'Average precision':<10}")
+            for label, label_metrics in self.per_label_soft_scores.items():
+                print(f"\t{label:<10}{label_metrics.average_precision * 100:<10.2f}")
+        if self.mcc:
+            print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
 
 
-class IntentSlotMetrics:
+class IntentSlotMetrics(NamedTuple):
     """
     Intent and slot metrics.
     """
 
-    __slots__ = "intent_metrics", "slot_metrics", "overall_metrics"
-
-    def __init__(
-        self,
-        intent_metrics: Optional[AllClassificationMetrics],
-        slot_metrics: Optional[AllClassificationMetrics],
-        overall_metrics: Optional[ClassificationMetrics],
-    ) -> None:
-        self.intent_metrics = intent_metrics
-        self.slot_metrics = slot_metrics
-        self.overall_metrics = overall_metrics
+    intent_metrics: Optional[PRF1Metrics]
+    slot_metrics: Optional[PRF1Metrics]
+    overall_metrics: Optional[PRF1Scores]
 
     def print_metrics(self) -> None:
         if self.intent_metrics:
@@ -237,28 +252,12 @@ class IntentSlotMetrics:
             )
 
 
-class AllMetrics:
-    __slots__ = (
-        "top_intent_accuracy",
-        "frame_accuracy",
-        "frame_accuracies_by_depth",
-        "bracket_metrics",
-        "tree_metrics",
-    )
-
-    def __init__(
-        self,
-        top_intent_accuracy: Optional[float],
-        frame_accuracy: Optional[float],
-        frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth],
-        bracket_metrics: Optional[IntentSlotMetrics],
-        tree_metrics: Optional[IntentSlotMetrics],
-    ) -> None:
-        self.top_intent_accuracy = top_intent_accuracy
-        self.frame_accuracy = frame_accuracy
-        self.frame_accuracies_by_depth = frame_accuracies_by_depth
-        self.bracket_metrics = bracket_metrics
-        self.tree_metrics = tree_metrics
+class AllMetrics(NamedTuple):
+    top_intent_accuracy: Optional[float]
+    frame_accuracy: Optional[float]
+    frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
+    bracket_metrics: Optional[IntentSlotMetrics]
+    tree_metrics: Optional[IntentSlotMetrics]
 
     def print_metrics(self) -> None:
         if self.frame_accuracy:
@@ -300,9 +299,9 @@ class Confusions:
     def _asdict(self) -> Dict:
         return {"TP": self.TP, "FP": self.FP, "FN": self.FN}
 
-    def compute_metrics(self) -> ClassificationMetrics:
+    def compute_metrics(self) -> PRF1Scores:
         precision, recall, f1 = compute_prf1(self.TP, self.FP, self.FN)
-        return ClassificationMetrics(
+        return PRF1Scores(
             true_positives=self.TP,
             false_positives=self.FP,
             false_negatives=self.FN,
@@ -318,29 +317,31 @@ class IntentSlotConfusions(NamedTuple):
 
 
 class PerLabelConfusions:
-    __slots__ = "dictionary"
+    __slots__ = "label_confusions_map"
 
     def __init__(self) -> None:
-        self.dictionary: DefaultDict[str, Confusions] = defaultdict(Confusions)
+        self.label_confusions_map: DefaultDict[str, Confusions] = defaultdict(
+            Confusions
+        )
 
     def update(self, label: str, item: str, count: int) -> None:
-        confusions = self.dictionary[label]
+        confusions = self.label_confusions_map[label]
         setattr(confusions, item, getattr(confusions, item) + count)
 
-    def compute_metrics(self) -> PerLabelMetrics:
-        per_label_scores: Dict[str, ClassificationMetrics] = {}
+    def compute_metrics(self) -> MacroPRF1Metrics:
+        per_label_scores: Dict[str, PRF1Scores] = {}
         precision_sum, recall_sum, f1_sum = 0.0, 0.0, 0.0
-        for label, confusions in self.dictionary.items():
+        for label, confusions in self.label_confusions_map.items():
             scores = confusions.compute_metrics()
             per_label_scores[label] = scores
             if confusions.TP + confusions.FN > 0:
                 precision_sum += scores.precision
                 recall_sum += scores.recall
                 f1_sum += scores.f1
-        num_labels = len(self.dictionary)
-        return PerLabelMetrics(
+        num_labels = len(self.label_confusions_map)
+        return MacroPRF1Metrics(
             per_label_scores=per_label_scores,
-            macro_scores=MacroClassificationMetrics(
+            macro_scores=MacroPRF1Scores(
                 num_labels=num_labels,
                 precision=_safe_division(precision_sum, num_labels),
                 recall=_safe_division(recall_sum, num_labels),
@@ -360,9 +361,9 @@ class AllConfusions:
         self.per_label_confusions = PerLabelConfusions()
         self.confusions = Confusions()
 
-    def compute_metrics(self) -> AllClassificationMetrics:
+    def compute_metrics(self) -> PRF1Metrics:
         per_label_metrics = self.per_label_confusions.compute_metrics()
-        return AllClassificationMetrics(
+        return PRF1Metrics(
             per_label_scores=per_label_metrics.per_label_scores,
             macro_scores=per_label_metrics.macro_scores,
             micro_scores=self.confusions.compute_metrics(),
@@ -458,11 +459,12 @@ def compare_frames(
 #   file, and rename this function to compute_classification_metrics().
 def compute_classification_metrics_from_nodes_pairs(
     nodes_pairs: List[NodesPredictionPair]
-) -> Tuple[AllConfusions, AllClassificationMetrics]:
+) -> Tuple[AllConfusions, PRF1Metrics]:
     """
     Compute classification metrics given a list of pairs of predicted and expected
     node sets.
     """
+
     all_confusions = AllConfusions()
     for (predicted_nodes, expected_nodes) in nodes_pairs:
         all_confusions.confusions += _compare_nodes(
@@ -484,6 +486,7 @@ def compute_intent_slot_metrics(
     The input parameter tree_based determines whether bracket (tree_based=False) or
     tree (tree_based=True) scores are computed.
     """
+
     intents_pairs: List[NodesPredictionPair] = []
     slots_pairs: List[NodesPredictionPair] = []
     for (predicted_frame, expected_frame) in frame_pairs:
@@ -533,6 +536,7 @@ def compute_frame_accuracies_by_depth(
     prediction pairs into buckets according to the tree depth of the expected frame, and
     compute frame accuracies for each bucket.
     """
+
     frame_pairs_by_depth: Dict[int, List[FramePredictionPair]] = defaultdict(list)
     for frame_pair in frame_pairs:
         depth = frame_pair.expected_frame.get_depth()
@@ -558,6 +562,7 @@ def compute_all_metrics(
     Given a list of (predicted_frame, expected_frame) pairs of Node type, return both
     bracket and tree metrics.
     """
+
     top_intent = (
         compute_top_intent_accuracy(frame_pairs) if top_intent_accuracy else None
     )
@@ -586,85 +591,93 @@ def compute_all_metrics(
 
 
 def compute_classification_metrics(
-    label_pairs: List[LabelPredictionPair],
+    predictions: List[LabelPrediction],
     label_names: List[str],
-    label_scores: Optional[List[LabelScoresPair]] = None,
-) -> Union[AllClassificationMetrics, BinaryClassificationMetrics]:
+    average_precisions: bool = True,
+) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of pairs of
     predicted and expected labels.
     """
-    all_confusions = AllConfusions()
-    for (predicted_label, expected_label) in label_pairs:
+
+    num_correct = 0
+    per_label_confusions = PerLabelConfusions()
+    for _, predicted, expected in predictions:
+        predicted_label = label_names[predicted]
+        expected_label = label_names[expected]
         if predicted_label == expected_label:
-            all_confusions.confusions.TP += 1
-            all_confusions.per_label_confusions.update(expected_label, "TP", 1)
+            num_correct += 1
+            per_label_confusions.update(expected_label, "TP", 1)
         else:
-            all_confusions.confusions.FP += 1
-            all_confusions.confusions.FN += 1
-            all_confusions.per_label_confusions.update(expected_label, "FN", 1)
-            all_confusions.per_label_confusions.update(predicted_label, "FP", 1)
-    metrics = all_confusions.compute_metrics()
-    if label_scores is not None and len(label_names) == 2:
-        soft_metrics = compute_soft_metrics(label_scores, label_names)
-        confusion_dict = all_confusions.per_label_confusions.dictionary
-        # since MCC is symmetric, it doesn't matter which label is 0 and which is 1
+            per_label_confusions.update(expected_label, "FN", 1)
+            per_label_confusions.update(predicted_label, "FP", 1)
+    accuracy = _safe_division(num_correct, len(predictions))
+    macro_prf1_metrics = per_label_confusions.compute_metrics()
+
+    soft_metrics = (
+        compute_soft_metrics(predictions, label_names) if average_precisions else None
+    )
+
+    if len(label_names) == 2:
+        confusion_dict = per_label_confusions.label_confusions_map
+        # Since MCC is symmetric, it doesn't matter which label is 0 and which is 1
         TP = confusion_dict[label_names[0]].TP
         FP = confusion_dict[label_names[0]].FP
         FN = confusion_dict[label_names[0]].FN
         TN = confusion_dict[label_names[1]].TP
-        mcc = compute_matthews_correlation_coefficients(TP=TP, FP=FP, FN=FN, TN=TN)
-        binary_metrics = BinaryClassificationMetrics(
-            all_classification_metrics=metrics,
-            per_label_soft_scores=soft_metrics,
-            mcc=mcc,
-        )
-        return binary_metrics
-    return metrics
+        mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
+    else:
+        mcc = None
+
+    return ClassificationMetrics(
+        accuracy=accuracy,
+        macro_prf1_metrics=macro_prf1_metrics,
+        per_label_soft_scores=soft_metrics,
+        mcc=mcc,
+    )
 
 
 def compute_soft_metrics(
-    label_scores: List[LabelScoresPair], label_names: List[str]
+    predictions: List[LabelPrediction], label_names: List[str]
 ) -> Dict[str, SoftClassificationMetrics]:
     """
-    Computes classification metrics given a list of pairs of
-    scores and expected labels.
+    Computes classification metrics given a list of pairs of scores and expected labels.
     """
 
     soft_metrics = {}
     for i, label_name in enumerate(label_names):
         y_true = []
         y_score = []
-        for (predicted_scores, expected_label) in label_scores:
-            y_true.append(expected_label == label_name)
-            y_score.append(predicted_scores[i])
+        for label_scores, _, expected in predictions:
+            y_true.append(expected == i)
+            y_score.append(label_scores[i])
         ap = average_precision_score(y_true, y_score)
         soft_metrics[label_name] = SoftClassificationMetrics(average_precision=ap)
     return soft_metrics
 
 
 def compute_matthews_correlation_coefficients(
-    TP: int, FP: int, TN: int, FN: int
+    TP: int, FP: int, FN: int, TN: int
 ) -> float:
     """
     Matthews correlation coefficient is a way to summarize all four values of
     the confusin matrix for binary classification.
     """
+
     mcc = _safe_division(
         (TP * TN) - (FP * FN), np.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
     )
     return mcc
 
 
-def average_precision_score(
-    y_true_list: List[bool], y_score_list: List[float]
-) -> float:
+def average_precision_score(y_true: List[bool], y_score: List[float]) -> float:
     """
     summarizes the precision-recall curve, as the precisions achieved at each
     threshold, weighted by the increase in recall since previous threshold
     """
-    y_true = np.array(y_true_list)
-    y_score = np.array(y_score_list)
+
+    y_true = np.array(y_true)
+    y_score = np.array(y_score)
     sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
     y_true = y_true[sort_indices]
     y_score = y_score[sort_indices]

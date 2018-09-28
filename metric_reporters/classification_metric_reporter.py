@@ -4,7 +4,7 @@ from typing import List
 
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import LabelPredictionPair, compute_classification_metrics
+from pytext.metrics import LabelPrediction, compute_classification_metrics
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -42,10 +42,12 @@ class ClassificationMetricReporter(MetricReporter):
     def calculate_metric(self):
         return compute_classification_metrics(
             [
-                LabelPredictionPair(self.label_names[p], self.label_names[t])
-                for p, t in zip(self.all_preds, self.all_targets)
+                LabelPrediction(scores, pred, expect)
+                for scores, pred, expect in zip(
+                    self.all_scores, self.all_preds, self.all_targets
+                )
             ],
-            self.label_names
+            self.label_names,
         )
 
     def get_meta(self):
@@ -53,4 +55,4 @@ class ClassificationMetricReporter(MetricReporter):
 
     @staticmethod
     def get_model_select_metric(metrics):
-        return metrics.micro_scores.f1
+        return metrics.accuracy
