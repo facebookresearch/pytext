@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from pytext.utils.data_utils import Slot
 
 
 class ResultRow:
@@ -24,29 +25,58 @@ class ResultTable:
             self.rows.append(ResultRow(class_n, metrics_dict))
 
 
-def merge_token_labels_to_slot(tokenized_text, labels):
-    # ToDo: Utilize the BIO information when going from token labels to span
-    # labels instead of the greedy approach performed below
-    tokens = []
-    token_ranges = []
-    for t, t_range in tokenized_text:
-        tokens.append(t)
-        token_ranges.append(t_range)
-    assert len(tokens) == len(labels)
+def strip_bio_prefix(label):
+    if label.startswith(Slot.B_LABEL_PREFIX) or label.startswith(Slot.I_LABEL_PREFIX):
+        label = label[len(Slot.B_LABEL_PREFIX) :]
+    return label
+
+
+def merge_token_labels_by_bio(token_ranges, labels):
     summary_list = []
+    previous_B = None
+    for i, label in enumerate(labels):
+        # Take action only if the prefix is not i
+        if not label.startswith(Slot.I_LABEL_PREFIX):
+            # Label the previous chunk
+            if previous_B is not None:
+                begin = token_ranges[previous_B][0]
+                end = token_ranges[i - 1][1]
+                summary_list.append(
+                    ":".join([str(begin), str(end), strip_bio_prefix(labels[i - 1])])
+                )
+            # Assign the begin location of new chunk
+            if label.startswith(Slot.B_LABEL_PREFIX):
+                previous_B = i
+            else:  # label == Slot.NO_LABEL_SLOT
+                previous_B = None
+
+    # Take last token into account
+    if previous_B is not None:
+        begin = token_ranges[previous_B][0]
+        end = token_ranges[-1][1]
+        summary_list.append(
+            ":".join([str(begin), str(end), strip_bio_prefix(labels[-1])])
+        )
+
+    return summary_list
+
+
+def merge_token_labels_by_label(token_ranges, labels):
+    # no bio prefix in labels
     begin = token_ranges[0][0]
     end = token_ranges[0][1]
 
+    summary_list = []
     for i in range(1, len(labels)):
         # Extend
-        if labels[i] == labels[i - 1] and labels[i] != "NoLabel":
+        if labels[i] == labels[i - 1] and labels[i] != Slot.NO_LABEL_SLOT:
             end = token_ranges[i][1]
 
         # Update and start new
         elif (
             (labels[i] != labels[i - 1])
-            and (labels[i] != "NoLabel")
-            and (labels[i - 1] != "NoLabel")
+            and (labels[i] != Slot.NO_LABEL_SLOT)
+            and (labels[i - 1] != Slot.NO_LABEL_SLOT)
         ):
             summary_list.append(":".join([str(begin), str(end), labels[i - 1]]))
             begin = token_ranges[i][0]
@@ -55,21 +85,38 @@ def merge_token_labels_to_slot(tokenized_text, labels):
         # Update and skip
         elif (
             (labels[i] != labels[i - 1])
-            and (labels[i] == "NoLabel")
-            and (labels[i - 1] != "NoLabel")
+            and (labels[i] == Slot.NO_LABEL_SLOT)
+            and (labels[i - 1] != Slot.NO_LABEL_SLOT)
         ):
             summary_list.append(":".join([str(begin), str(end), labels[i - 1]]))
 
         # Skip
         elif (
             (labels[i] != labels[i - 1])
-            and (labels[i] != "NoLabel")
-            and (labels[i - 1] == "NoLabel")
+            and (labels[i] != Slot.NO_LABEL_SLOT)
+            and (labels[i - 1] == Slot.NO_LABEL_SLOT)
         ):
             begin = token_ranges[i][0]
             end = token_ranges[i][1]
 
     # Take last token into account
-    if labels[-1] != "NoLabel":
+    if labels[-1] != Slot.NO_LABEL_SLOT:
         summary_list.append(":".join([str(begin), str(end), labels[-1]]))
+
+    return summary_list
+
+
+def merge_token_labels_to_slot(tokenized_text, labels, use_bio_label=True):
+    tokens = []
+    token_ranges = []
+    for t, t_range in tokenized_text:
+        tokens.append(t)
+        token_ranges.append(t_range)
+    assert len(tokens) == len(labels)
+    summary_list = (
+        merge_token_labels_by_bio(token_ranges, labels)
+        if use_bio_label
+        else merge_token_labels_by_label(token_ranges, labels)
+    )
+
     return ",".join(summary_list)

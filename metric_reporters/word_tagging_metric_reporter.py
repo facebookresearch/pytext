@@ -10,17 +10,11 @@ from pytext.metrics import (
     Span,
     compute_classification_metrics_from_nodes_pairs,
 )
-from pytext.utils.data_utils import Slot, parse_slot_string
+from pytext.utils.data_utils import parse_slot_string
 from pytext.utils.test_utils import merge_token_labels_to_slot
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
-
-
-def strip_bio_prefix(label):
-    if label.startswith(Slot.B_LABEL_PREFIX) or label.startswith(Slot.I_LABEL_PREFIX):
-        label = label[len(Slot.B_LABEL_PREFIX) :]
-    return label
 
 
 def get_slots(word_names):
@@ -60,7 +54,7 @@ class WordTaggingMetricReporter(MetricReporter):
     def process_pred(self, pred: List[int]) -> List[str]:
         """pred is a list of token label index
         """
-        return [strip_bio_prefix(self.label_names[p]) for p in pred]
+        return [self.label_names[p] for p in pred]
 
     def calculate_metric(self):
         return compute_classification_metrics_from_nodes_pairs(

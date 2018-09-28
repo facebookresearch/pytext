@@ -15,7 +15,6 @@ from pytext.utils.test_utils import merge_token_labels_to_slot
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
-from .word_tagging_metric_reporter import strip_bio_prefix
 
 
 class IntentSlotChannel(FileChannel):
@@ -111,7 +110,7 @@ class IntentSlotMetricReporter(MetricReporter):
     def process_pred(self, pred: List[int]) -> List[str]:
         """pred is a list of token label index
         """
-        return [strip_bio_prefix(self.word_label_names[p]) for p in pred]
+        return [self.word_label_names[p] for p in pred]
 
     def gen_extra_context(self):
         self.all_context["slots_prediction"] = [
