@@ -19,7 +19,9 @@ class WordTaggingOutputLayer(OutputLayerBase):
         return cls(
             create_loss(
                 config.loss,
-                meta.labels[DatasetFieldName.WORD_LABEL_FIELD].pad_token_idx,
+                ignore_index=meta.labels[
+                    DatasetFieldName.WORD_LABEL_FIELD
+                ].pad_token_idx,
             )
         )
 

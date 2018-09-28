@@ -20,12 +20,17 @@ class Loss(Component):
 
 
 class CrossEntropyLoss(Loss):
-    def __init__(self, config, pad_idx=-100, *args, **kwargs):
-        self.ignore_index = pad_idx
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
 
     def __call__(self, logits, targets, reduce=True):
         return F.cross_entropy(
-            logits, targets, ignore_index=self.ignore_index, reduce=reduce
+            logits,
+            targets,
+            ignore_index=self.ignore_index,
+            reduce=reduce,
+            weight=self.weight,
         )
 
 

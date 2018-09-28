@@ -8,6 +8,7 @@ from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data import CommonMetadata
+from pytext.utils.cuda_utils import FloatTensor
 
 # TODO move to constant
 from pytext.data.joint_data_handler import SEQ_LENS
@@ -33,6 +34,15 @@ class OutputLayerBase(Module):
 
 
 class ClassificationOutputLayer(OutputLayerBase):
+    @classmethod
+    def from_config(cls, config, meta: CommonMetadata):
+        label_weights = getattr(
+            meta.labels[DatasetFieldName.DOC_LABEL_FIELD], "label_weights", None
+        )
+        if label_weights is not None:
+            label_weights = FloatTensor(label_weights)
+        return cls(create_loss(config.loss, weight=label_weights), config)
+
     class Config(OutputLayerBase.Config, ConfigBase):
         loss: Union[
             CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config

@@ -9,6 +9,7 @@ from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
+from typing import Mapping
 
 
 class FieldMeta:
@@ -96,13 +97,35 @@ class VocabUsingNestedField(VocabUsingField, NestedField):
 
 
 class DocLabelField(Field):
-    def __init__(self):
+    def __init__(self, label_weights: Mapping[str, float] = None) -> None:
         super().__init__(
             sequential=False,
             batch_first=True,
             tokenize=data_utils.no_tokenize,
             unk_token=None,  # Don't include unk in the list of labels
         )
+        self.label_weights = label_weights or {}
+
+    # TODO: Create LabelFieldMeta class
+    def get_meta(self):
+        meta = super().get_meta()
+        # Now that the vocabulary has been built, prune the label_weights to
+        # remove the labels that do not exist in the dataset
+        pruned_label_weights = {
+            meta.vocab.stoi[k]: v
+            for (k, v) in self.label_weights.items()
+            if k in meta.vocab.stoi
+        }
+        if len(pruned_label_weights) == 0:
+            return meta
+
+        # All unspecified classes will get a weight of 1
+        meta.label_weights = torch.ones(meta.vocab_size)
+        for k, v in pruned_label_weights.items():
+            meta.label_weights[k] = v
+        # Create the weight tensor on the right device
+        meta.label_weights = meta.label_weights.numpy()
+        return meta
 
 
 class WordLabelField(Field):

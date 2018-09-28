@@ -64,6 +64,7 @@ class WordLabelConfig(ConfigBase):
 
 class DocLabelConfig(ConfigBase):
     export_output_names: List[str] = ["doc_scores"]
+    label_weights: Dict[str, float] = {}
 
 
 class LabelConfig(ConfigBase):

@@ -16,7 +16,8 @@ class LMOutputLayer(OutputLayerBase):
     def from_config(cls, config, meta: CommonMetadata):
         return cls(
             create_loss(
-                config.loss, meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx
+                config.loss,
+                ignore_index=meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx,
             )
         )
 
