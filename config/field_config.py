@@ -22,6 +22,7 @@ class WordFeatConfig(ConfigBase):
     vocab_file: str = ""
     vocab_size: int = 0
     vocab_from_train_data: bool = True
+    lowercase_tokens: bool = True
 
 
 class DictFeatConfig(ConfigBase):

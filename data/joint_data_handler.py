@@ -67,6 +67,7 @@ class JointModelDataHandler(DataHandler):
                 vocab_file=word_feat_config.vocab_file,
                 vocab_size=word_feat_config.vocab_size,
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
+                lower=word_feat_config.lowercase_tokens,
             )
         }
         if feature_config.dict_feat:
@@ -166,10 +167,9 @@ class JointModelDataHandler(DataHandler):
 
         df[DFColumn.RAW_FEATS] = df.apply(
             lambda row: parse_assistant_raw_record(
-                row[DFColumn.UTTERANCE],
-                row[DFColumn.DICT_FEAT]
+                row[DFColumn.UTTERANCE], row[DFColumn.DICT_FEAT]
             ),
-            axis=1
+            axis=1,
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(

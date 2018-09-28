@@ -16,7 +16,9 @@ class PretrainedEmbedding(object):
     Utility class for loading/caching/initializing word embeddings
     """
 
-    def __init__(self, embeddings_path: str = None) -> None:
+    def __init__(
+        self, embeddings_path: str = None, lowercase_tokens: bool = True
+    ) -> None:
         if embeddings_path:
             if os.path.isdir(embeddings_path):
                 serialized_embed_path = os.path.join(
@@ -38,16 +40,24 @@ class PretrainedEmbedding(object):
                     self.load_cached_embeddings(serialized_embed_path)
                 except Exception:
                     print("Failed to load cached embeddings, loading the raw file.")
-                    self.load_pretrained_embeddings(raw_embeddings_path)
+                    self.load_pretrained_embeddings(
+                        raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                    )
             else:
-                self.load_pretrained_embeddings(raw_embeddings_path)
+                self.load_pretrained_embeddings(
+                    raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                )
         else:
             self.embed_vocab = []  # type: List[str]
             self.stoi = {}  # type: Dict[str, int]
             self.embedding_vectors = None  # type: torch.Tensor
 
     def load_pretrained_embeddings(
-        self, raw_embeddings_path: str, append: bool = False, dialect: str = None
+        self,
+        raw_embeddings_path: str,
+        append: bool = False,
+        dialect: str = None,
+        lowercase_tokens: bool = True,
     ) -> None:
         """
         Loading raw embeddings vectors from file in the format:
@@ -80,6 +90,8 @@ class PretrainedEmbedding(object):
         size = 0
         for chunk in embed_df:
             chunk_vocab = chunk.as_matrix([0]).flatten()
+            if lowercase_tokens:
+                chunk_vocab = map(lambda s: s.lower(), chunk_vocab)
             if dialect is not None:
                 chunk_vocab = [append_dialect(word, dialect) for word in chunk_vocab]
             self.embed_vocab.extend(chunk_vocab)
@@ -155,8 +167,11 @@ def init_pretrained_embeddings(
     embed_dim: int,
     unk: str,
     embedding_init_strategy: EmbedInitStrategy,
+    lowercase_tokens: bool,
 ) -> torch.Tensor:
-    return PretrainedEmbedding(embeddings_path).initialize_embeddings_weights(
+    return PretrainedEmbedding(
+        embeddings_path, lowercase_tokens
+    ).initialize_embeddings_weights(
         vocab_to_id,
         vocab_to_id[unk],
         len(vocab_to_id),

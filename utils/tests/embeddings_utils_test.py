@@ -50,7 +50,8 @@ class PretrainedEmbeddingTest(unittest.TestCase):
             RAW_EMBEDDING_PATH,
             EMB_SIZE,
             VocabMeta.UNK_TOKEN,
-            embedding_init_strategy=EmbedInitStrategy.ZERO,
+            EmbedInitStrategy.ZERO,
+            text_field.lower,
         )
 
         self.assertEqual(pretrained_emb_tensor.size()[0], 4)

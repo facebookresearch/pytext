@@ -112,7 +112,7 @@ class DataHandler(Component):
         self.shuffle = (shuffle,)
         self.num_workers = multiprocessing.cpu_count()
 
-    def load_vocab(self, vocab_file, vocab_size):
+    def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
         Loads items into a set from a file containing one item per line.
         Items are added to the set from top of the file to bottom.
@@ -130,7 +130,8 @@ class DataHandler(Component):
                             f"Skipping rest of the file"
                         )
                         break
-                    vocab.add(line.strip())
+                    line = line.strip()
+                    vocab.add(line.lower() if lowercase_tokens else line)
         else:
             print(f"{vocab_file} doesn't exist. Cannot load vocabulary from it")
         return vocab
@@ -256,7 +257,8 @@ class DataHandler(Component):
                         feat.pretrained_embeddings_path,
                         feat.embed_dim,
                         VocabMeta.UNK_TOKEN,
-                        embedding_init_strategy=feat.embedding_init_strategy,
+                        feat.embedding_init_strategy,
+                        feat.lower,
                     )
                     self.metadata.pretrained_embeds_weight = weights
 
@@ -287,7 +289,10 @@ class DataHandler(Component):
         if isinstance(feat, VocabUsingField) and feat.vocab_from_train_data:
             data.append(train_data)
         if hasattr(feat, "vocab_file"):
-            data.append([self.load_vocab(feat.vocab_file, feat.vocab_size)])
+            lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
+            data.append(
+                [self.load_vocab(feat.vocab_file, feat.vocab_size, lowercase_tokens)]
+            )
         return data
 
     def _gen_extra_metadata(self) -> None:
