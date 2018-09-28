@@ -108,7 +108,7 @@ class SeqModelDataHandler(JointModelDataHandler):
                 [
                     self.featurizer.featurize(
                         parse_assistant_raw_record(utterence, raw_dict)
-                    )
+                    )["features_obj"]
                     for (utterence, raw_dict) in sequence
                 ]
                 for sequence in sequences
