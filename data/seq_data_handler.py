@@ -11,13 +11,9 @@ from pytext.fb.data.assistant_featurizer import (
     AssistantFeaturizer,
     parse_assistant_raw_record,
 )
-from pytext.fields import (
-    DocLabelField,
-    Field,
-    RawField,
-    SeqFeatureField,
-)
+from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
 from pytext.utils import data_utils
+
 from .data_handler import DataHandler
 from .joint_data_handler import JointModelDataHandler
 
@@ -27,15 +23,10 @@ SEQ_LENS = "seq_lens"
 
 class SeqModelDataHandler(JointModelDataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [
-            DFColumn.DOC_LABEL,
-            DFColumn.UTTERANCE,
-        ]
+        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE]
         pretrained_embeds_file: str = ""
 
-    FULL_FEATURES = [
-        DatasetFieldName.TEXT_FIELD,
-    ]
+    FULL_FEATURES = [DatasetFieldName.TEXT_FIELD]
 
     @classmethod
     def from_config(
@@ -75,9 +66,7 @@ class SeqModelDataHandler(JointModelDataHandler):
             shuffle=config.shuffle,
         )
 
-    def __init__(
-        self, featurizer: Featurizer, **kwargs
-    ) -> None:
+    def __init__(self, featurizer: Featurizer, **kwargs) -> None:
 
         super().__init__(featurizer=featurizer, **kwargs)
         # configs
@@ -117,11 +106,10 @@ class SeqModelDataHandler(JointModelDataHandler):
 
         df[DFColumn.TOKEN_RANGE_PAIR] = [
             [
-                data_utils.parse_token(
-                    utterence, model_feat.tokenRanges
+                data_utils.parse_token(utterence, model_feat.tokenRanges)
+                for (utterence, model_feat) in zip(
+                    row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS]
                 )
-                for (utterence, model_feat)
-                in zip(row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS])
             ]
             for _, row in df.iterrows()
         ]
