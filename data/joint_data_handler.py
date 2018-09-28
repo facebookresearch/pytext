@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import multiprocessing
 from typing import Dict, List
 
 import pandas as pd
@@ -201,3 +200,8 @@ class JointModelDataHandler(DataHandler):
         res = {SEQ_LENS: getattr(batch, DatasetFieldName.TEXT_FIELD)[1]}
         res.update(super()._context_from_batch(batch))
         return res
+
+    def _gen_extra_metadata(self):
+        self.metadata.tokenizer_config_path_dict = (
+            self.featurizer.tokenizer_config_path_dict
+        )

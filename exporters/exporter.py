@@ -136,13 +136,15 @@ class TextModelExporter(ModelExporter):
         label_names: List[List[str]],
         feature_itos_map: Dict[str, List[str]],
         score_axis_list: List[int],
+        meta: CommonMetadata,
         *args,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.label_names_list = label_names
-        self.score_axis_list = score_axis_list
         self.vocab_map = feature_itos_map
+        self.score_axis_list = score_axis_list
+        self.meta = meta
         # validate vocab_map
         for vocab_name in self.vocab_map:
             if vocab_name not in self.input_names:
@@ -198,6 +200,7 @@ class TextModelExporter(ModelExporter):
             label_names,
             feature_itos_map,
             axis,
+            meta,
             input_names,
             output_names,
             dummy_model_input,
