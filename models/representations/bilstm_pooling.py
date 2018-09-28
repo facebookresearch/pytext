@@ -44,6 +44,10 @@ class BiLSTMPooling(RepresentationBase):
             if config.pooling is not None
             else None
         )
+        self.padding_value = (
+            float("-inf") if isinstance(config.pooling, MaxPool.Config)
+            else 0.0
+        )
         if self.decoder:
             self.relu = nn.ReLU()
             self.dense = nn.Sequential(
@@ -76,7 +80,7 @@ class BiLSTMPooling(RepresentationBase):
         rep, new_state = self.lstm(rnn_input, states)
         rep, _ = pad_packed_sequence(
             rep,
-            padding_value=0.0,
+            padding_value=self.padding_value,
             batch_first=True,
             total_length=embedded_tokens.size(1),
         )
@@ -84,7 +88,7 @@ class BiLSTMPooling(RepresentationBase):
         # data parallel model
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
         if self.attention:
-            rep = self.attention(rep)
+            rep = self.attention(rep, seq_lengths)
         if self.decoder:
             return self.dense(rep), new_state
         else:

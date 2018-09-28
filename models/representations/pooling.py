@@ -29,7 +29,11 @@ class SelfAttention(Module):
         self.ws1.weight.data.uniform_(-init_range, init_range)
         self.ws2.weight.data.uniform_(-init_range, init_range)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        inputs: torch.Tensor,
+        seq_lengths: torch.Tensor = None,
+    ) -> torch.Tensor:
         # size: (bsz, sent_len, rep_dim)
         size = torch.onnx.operators.shape_as_tensor(inputs)
 
@@ -54,7 +58,11 @@ class MaxPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        inputs: torch.Tensor,
+        seq_lengths: torch.Tensor = None,
+    ) -> torch.Tensor:
         return torch.max(inputs, 1)[0]
 
 
@@ -62,13 +70,21 @@ class MeanPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return torch.mean(inputs, 1)
+    def forward(
+        self,
+        inputs: torch.Tensor,
+        seq_lengths: torch.Tensor,
+    ) -> torch.Tensor:
+        return torch.sum(inputs, 1) / seq_lengths.unsqueeze(1).float()
 
 
 class NoPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        inputs: torch.Tensor,
+        seq_lengths: torch.Tensor = None,
+    ) -> torch.Tensor:
         return inputs
