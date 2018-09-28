@@ -30,7 +30,7 @@ class LMLSTM(Model):
             pooling=SelfAttention.Config(),
         )
         decoder: MLPDecoder.Config = MLPDecoder.Config()
-        output_config: LMOutputLayer.Config = LMOutputLayer.Config()
+        output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
 

@@ -20,7 +20,7 @@ class DocModel(Model):
             BiLSTMPooling.Config,
             DocNNRepresentation.Config,
         ] = BiLSTMPooling.Config()
-        output_config: ClassificationOutputLayer.Config = (
+        output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
         decoder: MLPDecoder.Config = MLPDecoder.Config()

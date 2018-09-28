@@ -41,7 +41,7 @@ JOINT_CONFIG = """
         "decoder": {
             "use_doc_probs_in_word": true
         },
-        "output_config": {
+        "output_layer": {
             "doc_output": {
               "loss": {
                 "CrossEntropyLoss": {}
@@ -73,7 +73,7 @@ DOC_CONFIGS = [
         }
       }
     },
-    "output_config": {
+    "output_layer": {
         "loss": {
         "CrossEntropyLoss": {}
         }
@@ -98,7 +98,7 @@ DOC_CONFIGS = [
       "representation": {
         "DocNNRepresentation": {}
       },
-      "output_config": {
+      "output_layer": {
         "loss": {
             "CrossEntropyLoss": {}
             }
@@ -131,7 +131,7 @@ WORD_CONFIGS = [
                 }
             }
         },
-        "output_config": {
+        "output_layer": {
             "WordTaggingOutputLayer": {}
         }
     },
@@ -153,7 +153,7 @@ WORD_CONFIGS = [
                 }
             }
         },
-        "output_config": {
+        "output_layer": {
             "CRFOutputLayer": {}
         }
     },

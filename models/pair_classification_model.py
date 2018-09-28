@@ -23,7 +23,7 @@ class PairClassificationModel(Model):
         representation: TupleRepresentation.Config = TupleRepresentation.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         # TODO: will need to support different output layer for contrastive loss
-        output_config: ClassificationOutputLayer.Config = (
+        output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
 

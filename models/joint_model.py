@@ -18,7 +18,7 @@ class JointModel(Model):
         representation: Union[
             JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
         ] = JointBLSTMRepresentation.Config()
-        output_config: IntentSlotOutputLayer.Config = (
+        output_layer: IntentSlotOutputLayer.Config = (
             IntentSlotOutputLayer.Config()
         )
         decoder: JointModelDecoder.Config = JointModelDecoder.Config()
@@ -40,5 +40,5 @@ class JointModel(Model):
             to_dim_doc=doc_class_num,
             to_dim_word=word_label_num,
         )
-        output_layer = create_module(model_config.output_config, metadata)
+        output_layer = create_module(model_config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)

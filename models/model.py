@@ -28,7 +28,7 @@ class Model(nn.Module, Component):
             from_dim=representation.representation_dim,
             to_dim=next(iter(metadata.labels.values())).vocab_size,
         )
-        output_layer = create_module(model_config.output_config, metadata)
+        output_layer = create_module(model_config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)
 
     def save_modules(self):

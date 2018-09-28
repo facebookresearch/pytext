@@ -20,7 +20,7 @@ class WordTaggingModel(Model):
             BiLSTMSlotAttention.Config,
             BSeqCNNRepresentation.Config,
         ] = BiLSTMSlotAttention.Config()
-        output_config: Union[
+        output_layer: Union[
             WordTaggingOutputLayer.Config,
             CRFOutputLayer.Config,
         ] = WordTaggingOutputLayer.Config()
