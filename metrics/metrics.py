@@ -665,7 +665,8 @@ def compute_matthews_correlation_coefficients(
     """
 
     mcc = _safe_division(
-        (TP * TN) - (FP * FN), np.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+        (TP * TN) - (FP * FN),
+        np.sqrt(float((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))),
     )
     return mcc
 
