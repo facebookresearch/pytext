@@ -8,7 +8,7 @@ from typing import List, Union
 import numpy as np
 import torch
 import torch.nn as nn
-from caffe2.python.fb.text.crf_predict import apply_crf
+from caffe2.python.crf_predict import apply_crf
 from pytext.common.constants import Padding
 from pytext.utils.cuda_utils import Variable as Var
 from torch.autograd import Variable
