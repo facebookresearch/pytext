@@ -104,7 +104,10 @@ class JointModelDataHandler(DataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=AssistantFeaturizer(pre_trained_models_dict=model_file_paths),
+            featurizer=AssistantFeaturizer(
+                pre_trained_models_dict=model_file_paths,
+                lowercase_tokens=word_feat_config.lowercase_tokens
+            ),
             shuffle=config.shuffle,
         )
 
