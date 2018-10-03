@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
+from enum import Enum
 from joblib import Parallel, delayed
 from typing import Any, Dict, Sequence
+
+class InputKeys(Enum):
+    RAW_TEXT = "raw_text"
+    TOKEN_FEATURES = "raw_dict"
+    LOCALE = "locale"
+
+class OutputKeys(Enum):
+    FEATURES = "features_obj"
+    TOKENIZED_TEXT = "tokenized_text"
 
 
 class Featurizer(object):
