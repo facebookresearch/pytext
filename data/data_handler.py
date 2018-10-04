@@ -3,11 +3,21 @@ import csv
 import multiprocessing
 import os
 from copy import copy
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+)
 
 import pandas as pd
 import torch
-import torch.hiveio as hiveio
 from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
@@ -15,10 +25,6 @@ from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 from pytext.fields import Field, FieldMeta, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
-
-
-# Special prefix to distnguish the hive data source
-HIVE_PREFIX = "hive://"
 
 
 class CommonMetadata:
@@ -124,7 +130,7 @@ class DataHandler(Component):
         self.df_to_example_func_map: Dict = {}
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
-        self._data_cache: Dict = {}
+        self._data_cache: MutableMapping[str, pd.DataFrame] = {}
         self.shuffle = (shuffle,)
         self.num_workers = multiprocessing.cpu_count()
 
@@ -179,14 +185,15 @@ class DataHandler(Component):
                 field.load_meta(metadata.labels[name])
 
     def gen_dataset_from_path(
-        self, path: str, include_label_fields: bool = True, use_cache: bool = True
+        self,
+        path: str,
+        include_label_fields: bool = True,
+        use_cache: bool = True,
     ) -> textdata.Dataset:
         if use_cache and path in self._data_cache:
             return self._data_cache[path]
         res = self.gen_dataset(
-            self.read_from_hive(path, self.raw_columns)
-            if path.startswith(HIVE_PREFIX)
-            else self.read_from_file(path, self.raw_columns),
+            self.read_from_file(path, self.raw_columns),
             include_label_fields,
         )
         self._data_cache[path] = res
@@ -205,12 +212,11 @@ class DataHandler(Component):
         to_process.update(self.extra_fields)
         if include_label_fields:
             to_process.update(self.labels)
+        fields = to_process.items()
         # generate example from dataframe
         all_examples = [
-            textdata.Example.fromlist(
-                row, [(name, field) for name, field in to_process.items()]
-            )
-            for row in self._df_to_examples(df, to_process)
+            textdata.Example.fromlist(row, fields)
+            for row in self._df_to_examples(df, fields)
         ]
         res = textdata.Dataset(all_examples, to_process)
         # extra context
@@ -429,21 +435,6 @@ class DataHandler(Component):
                 index_col=False,
             )
 
-    @staticmethod
-    def read_from_hive(hive_path: str, columns: List[str]) -> pd.DataFrame:
-        """ Read data from hive path in this format:
-            hive://[namespace]/[table_name]/[partition_list]
-            and generate a dataframe to host intermediate data.
-        """
-        print("reading data from hive path: {}".format(hive_path))
-        assert hive_path.startswith(HIVE_PREFIX), "Invalid hive path: {}".format(
-            hive_path
-        )
-        namespace, table, partitions = hive_path[len(HIVE_PREFIX) :].split("/", 3)
-        partitions_list = partitions.split("/")
-        col_list = hiveio.read(namespace, table, partitions_list, columns)
-        return pd.DataFrame.from_dict(dict(zip(columns, col_list)))
-
     def _postprocess_batch(
         self, batch, include_input=True, include_target=True, include_context=True
     ) -> Tuple:
@@ -470,15 +461,15 @@ class DataHandler(Component):
         Preprocess the dataframe read from path, generate some intermediate data.
         Do nothing by default.
         """
-        pass
+        return df
 
     def _df_to_examples(
-        self, df, columns_to_process: Dict[str, Field]
+        self, df, fields: Iterable[Tuple[str, Field]]
     ) -> Generator[List[Any], None, None]:
         for idx, row in df.iterrows():
             yield [
                 self._df_column_to_example_column(name, field, row, idx)
-                for name, field in columns_to_process.items()
+                for name, field in fields
             ]
 
     def _df_column_to_example_column(self, field_name, field, row, idx):
