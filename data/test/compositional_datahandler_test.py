@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 import unittest
-import pandas as pd
+
 import numpy as np
-from pytext.data.compositional_data_handler import CompositionalDataHandler
+import pandas as pd
 from pytext.common.constants import DFColumn
+from pytext.config.field_config import DictFeatConfig, FeatureConfig
+from pytext.data.compositional_data_handler import CompositionalDataHandler
 
 
 class CompositionalDataHandlerTest(unittest.TestCase):
@@ -83,14 +85,9 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             }
         )
 
-        columns = [
-            DFColumn.DOC_LABEL,
-            DFColumn.WORD_LABEL,
-            DFColumn.UTTERANCE,
-            DFColumn.DICT_FEAT,
-        ]
-
-        self.dh = CompositionalDataHandler(raw_columns=columns)
+        self.dh = CompositionalDataHandler.from_config(
+            CompositionalDataHandler.Config(), FeatureConfig(dict_feat=DictFeatConfig())
+        )
 
     def test_intermediate_result(self):
         data = self.dh.gen_dataset(self.train_data)
@@ -116,9 +113,8 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         self.dh.init_metadata_from_df(self.train_data, self.eval_data, self.test_data)
         train_iter = self.dh.get_train_batch_from_df((self.train_data,), (1,))[0]
         for input, target, _ in train_iter:
-            print(input)
             np.testing.assert_array_almost_equal(
-                input[0][0].numpy(), [[6, 4, 5, 2, 3, 7]]
+                input[0][0].numpy(), [[7, 3, 2, 5, 4, 6]]
             )
             np.testing.assert_array_almost_equal(
                 input[2].numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
