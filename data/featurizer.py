@@ -15,7 +15,7 @@ class InputRecord(NamedTuple):
 class OutputRecord(NamedTuple):
     """Output data contract between Featurizer and DataHandler."""
     tokens: List[str]
-    token_ranges: List[int]
+    token_ranges: Optional[List[int]] = None
     gazetteer_feats: Optional[List[str]] = None
     gazetteer_feat_lengths: Optional[List[int]] = None
     gazetteer_feat_weights: Optional[List[float]] = None
