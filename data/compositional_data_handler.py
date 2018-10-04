@@ -58,6 +58,12 @@ class CompositionalDataHandler(DataHandler):
             raw_columns=config.columns_to_read,
             features=features,
             labels={ACTION_LABEL_FIELD: ActionField()},
+            train_path=config.train_path,
+            eval_path=config.eval_path,
+            test_path=config.test_path,
+            train_batch_size=config.train_batch_size,
+            eval_batch_size=config.eval_batch_size,
+            test_batch_size=config.test_batch_size,
             **kwargs
         )
 
@@ -65,6 +71,9 @@ class CompositionalDataHandler(DataHandler):
         super().__init__(**kwargs)
         self.featurizer = featurizer
 
+        super().__init__(**kwargs)
+        # configs
+        self.featurizer = featurizer
         self.df_to_example_func_map = {
             # TODO set_tokens_indices, should implement another field
             # TODO is it the same with the original tokens seq?

@@ -65,6 +65,12 @@ class BPTTLanguageModelDataHandler(DataHandler):
             features=features,
             labels={},
             extra_fields={},
+            train_path=config.train_path,
+            eval_path=config.eval_path,
+            test_path=config.test_path,
+            train_batch_size=config.train_batch_size,
+            eval_batch_size=config.eval_batch_size,
+            test_batch_size=config.test_batch_size,
         )
 
     def _gen_extra_metadata(self):

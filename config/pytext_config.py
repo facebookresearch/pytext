@@ -18,15 +18,6 @@ class PyTextConfig(ConfigBase):
     jobspec: Union[Any, JobSpecPlaceHolder]
     use_cuda_if_available: bool = True
 
-    train_path: str = "train.tsv"
-    eval_path: str = "eval.tsv"
-    test_path: str = "test.tsv"
-    # Training batch_size
-    train_batch_size: int = 128
-    # Eval batch_size
-    eval_batch_size: int = 128
-    # Test batch size
-    test_batch_size: int = 128
     # A path to a snapshot of a trained model to test
     load_snapshot_path: str = ""
     # A file to store the output of the model when running on the test data

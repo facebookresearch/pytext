@@ -84,6 +84,16 @@ class DataHandler(Component):
         shuffle: bool = True
         pretrained_embeddings_path: str = ""
         featurizer: AssistantFeaturizer.Config = AssistantFeaturizer.Config()
+        pretrained_embeddings_path = ""
+        train_path: str = "train.tsv"
+        eval_path: str = "eval.tsv"
+        test_path: str = "test.tsv"
+        # Training batch_size
+        train_batch_size: int = 128
+        # Eval batch_size
+        eval_batch_size: int = 128
+        # Test batch size
+        test_batch_size: int = 128
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
@@ -98,6 +108,12 @@ class DataHandler(Component):
         extra_fields: Dict[str, Field] = None,
         text_feature_name: str = DatasetFieldName.TEXT_FIELD,
         shuffle: bool = True,
+        train_path: str = "train.tsv",
+        eval_path: str = "eval.tsv",
+        test_path: str = "test.tsv",
+        train_batch_size: int = 128,
+        eval_batch_size: int = 128,
+        test_batch_size: int = 128,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
         self.labels: Dict[str, Field] = labels or {}
@@ -111,6 +127,13 @@ class DataHandler(Component):
         self._data_cache: Dict = {}
         self.shuffle = (shuffle,)
         self.num_workers = multiprocessing.cpu_count()
+
+        self.train_path = train_path
+        self.eval_path = eval_path
+        self.test_path = test_path
+        self.train_batch_size = train_batch_size
+        self.eval_batch_size = eval_batch_size
+        self.test_batch_size = test_batch_size
 
     def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
@@ -205,6 +228,13 @@ class DataHandler(Component):
                 self.gen_dataset_from_path(path)
                 for path in [train_path, eval_path, test_path]
             ]
+        )
+
+    def init_metadata(self):
+        self.init_metadata_from_path(
+            self.train_path,
+            self.eval_path,
+            self.test_path,
         )
 
     def init_metadata_from_df(
@@ -306,6 +336,12 @@ class DataHandler(Component):
             tuple(self.gen_dataset_from_path(p) for p in data_paths), batch_size
         )
 
+    def get_train_batch(self):
+        return self.get_train_batch_from_path(
+            (self.train_path, self.eval_path),
+            (self.train_batch_size, self.eval_batch_size),
+        )
+
     def get_train_batch_from_df(
         self, data_frames: Tuple[pd.DataFrame, ...], batch_size: Tuple[int, ...]
     ) -> Tuple[BatchIterator, ...]:
@@ -329,7 +365,7 @@ class DataHandler(Component):
             )
         )
 
-    def get_test_batch(self, path: str, batch_size: int) -> BatchIterator:
+    def get_test_batch_from_path(self, path: str, batch_size: int) -> BatchIterator:
         test_data = self.gen_dataset_from_path(path)
         return BatchIterator(
             textdata.Iterator(
@@ -342,6 +378,12 @@ class DataHandler(Component):
                 sort_key=self.sort_key,
             ),
             self._postprocess_batch,
+        )
+
+    def get_test_batch(self):
+        return self.get_test_batch_from_path(
+            self.test_path,
+            self.test_batch_size,
         )
 
     def get_predict_batch(self, df: pd.DataFrame):

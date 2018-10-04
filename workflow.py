@@ -85,14 +85,9 @@ def prepare_job(config: PyTextConfig) -> Job:
     )
 
     print("\nLoading data...")
-    data_handler.init_metadata_from_path(
-        config.train_path, config.eval_path, config.test_path
-    )
+    data_handler.init_metadata()
 
-    train_iter, eval_iter = data_handler.get_train_batch_from_path(
-        (config.train_path, config.eval_path),
-        (config.train_batch_size, config.eval_batch_size),
-    )
+    train_iter, eval_iter = data_handler.get_train_batch()
     # load or create model
     metadata = data_handler.metadata
     if config.load_snapshot_path is None or not os.path.isfile(
@@ -158,5 +153,5 @@ def test_model(config: PyTextConfig) -> Any:
     metric_reporter = create_metric_reporter(
         config.jobspec.metric_reporter, data_handler.metadata
     )
-    test_iter = data_handler.get_test_batch(config.test_path, config.test_batch_size)
+    test_iter = data_handler.get_test_batch()
     return trainer.test(test_iter, model, metric_reporter)
