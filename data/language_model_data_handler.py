@@ -7,10 +7,10 @@ import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
 from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.data.featurizer import Featurizer, InputRecord
+from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -85,22 +85,19 @@ class LanguageModelDataHandler(DataHandler):
         if DFColumn.DICT_FEAT not in df:
             df[DFColumn.DICT_FEAT] = ""
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: {
-                InputKeys.RAW_TEXT: row[DFColumn.UTTERANCE],
-                InputKeys.TOKEN_FEATURES: row[DFColumn.DICT_FEAT],
-            },
+            lambda row: InputRecord(
+                raw_text=row[DFColumn.UTTERANCE],
+                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
+            ),
             axis=1,
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            output[OutputKeys.FEATURES]
-            for output in self.featurizer.featurize_batch(
-                df[DFColumn.RAW_FEATS].tolist()
-            )
+            self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
         )
         df[DFColumn.TOKEN_RANGE_PAIR] = [
             data_utils.parse_token(
-                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].tokenRanges
+                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].token_ranges
             )
             for _, row in df.iterrows()
         ]

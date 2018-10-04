@@ -7,9 +7,9 @@ import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
 from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.data.featurizer import Featurizer, InputRecord
 from pytext.fields import TextFeatureField
 from pytext.utils import cuda_utils
 from torchtext import data as textdata
@@ -31,9 +31,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
         bptt_len: int = 35
 
-    def __init__(
-        self, featurizer: Featurizer, bptt_len: int, *args, **kwargs
-    ) -> None:
+    def __init__(self, featurizer: Featurizer, bptt_len: int, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.featurizer = featurizer
         self.bptt_len = bptt_len
@@ -83,19 +81,16 @@ class BPTTLanguageModelDataHandler(DataHandler):
         if DFColumn.DICT_FEAT not in df:
             df[DFColumn.DICT_FEAT] = ""
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: {
-                InputKeys.RAW_TEXT: row[DFColumn.UTTERANCE],
-                InputKeys.TOKEN_FEATURES: row[DFColumn.DICT_FEAT],
-            },
+            lambda row: InputRecord(
+                raw_text=row[DFColumn.UTTERANCE],
+                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
+            ),
             axis=1,
         )
 
         # NOTE that currently featurizer will lower case all tokens
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            output[OutputKeys.FEATURES]
-            for output in self.featurizer.featurize_batch(
-                df[DFColumn.RAW_FEATS].tolist(),
-            )
+            self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
         )
 
         def featurize(df):

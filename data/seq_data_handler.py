@@ -5,11 +5,12 @@ from typing import Dict, List
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
 from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.data.featurizer import Featurizer, InputRecord
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
 from pytext.utils import data_utils
+
 from .data_handler import DataHandler
 from .joint_data_handler import JointModelDataHandler
 
@@ -19,15 +20,10 @@ SEQ_LENS = "seq_lens"
 
 class SeqModelDataHandler(JointModelDataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [
-            DFColumn.DOC_LABEL,
-            DFColumn.UTTERANCE,
-        ]
+        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE]
         pretrained_embeds_file: str = ""
 
-    FULL_FEATURES = [
-        DatasetFieldName.TEXT_FIELD,
-    ]
+    FULL_FEATURES = [DatasetFieldName.TEXT_FIELD]
 
     @classmethod
     def from_config(
@@ -73,9 +69,7 @@ class SeqModelDataHandler(JointModelDataHandler):
             test_batch_size=config.test_batch_size,
         )
 
-    def __init__(
-        self, featurizer: Featurizer, **kwargs
-    ) -> None:
+    def __init__(self, featurizer: Featurizer, **kwargs) -> None:
 
         super().__init__(featurizer=featurizer, **kwargs)
         # configs
@@ -104,10 +98,9 @@ class SeqModelDataHandler(JointModelDataHandler):
         df[DFColumn.MODEL_FEATS] = pd.Series(
             [
                 [
-                    self.featurizer.featurize({
-                        InputKeys.RAW_TEXT: utterence,
-                        InputKeys.TOKEN_FEATURES: raw_dict,
-                    })[OutputKeys.FEATURES]
+                    self.featurizer.featurize(
+                        InputRecord(raw_text=utterence, raw_gazetteer_feats=raw_dict)
+                    )
                     for (utterence, raw_dict) in sequence
                 ]
                 for sequence in sequences
@@ -116,11 +109,10 @@ class SeqModelDataHandler(JointModelDataHandler):
 
         df[DFColumn.TOKEN_RANGE_PAIR] = [
             [
-                data_utils.parse_token(
-                    utterence, model_feat.tokenRanges
+                data_utils.parse_token(utterence, model_feat.token_ranges)
+                for (utterence, model_feat) in zip(
+                    row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS]
                 )
-                for (utterence, model_feat)
-                in zip(row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS])
             ]
             for _, row in df.iterrows()
         ]

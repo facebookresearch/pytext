@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
-from enum import Enum
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence
+
 from joblib import Parallel, delayed
-from typing import Any, Dict, Sequence
 from pytext.config.component import Component, ComponentType
 
 
-class InputKeys(Enum):
-    RAW_TEXT = "raw_text"
-    TOKEN_FEATURES = "raw_dict"
-    LOCALE = "locale"
+class InputRecord(NamedTuple):
+    """Input data contract between Featurizer and DataHandler."""
+    raw_text: str
+    raw_gazetteer_feats: str = ""
+    locale: str = ""
 
 
-class OutputKeys(Enum):
-    FEATURES = "features_obj"
-    TOKENIZED_TEXT = "tokenized_text"
+class OutputRecord(NamedTuple):
+    """Output data contract between Featurizer and DataHandler."""
+    tokens: List[str]
+    token_ranges: List[int]
+    gazetteer_feats: Optional[List[str]] = None
+    gazetteer_feat_lengths: Optional[List[int]] = None
+    gazetteer_feat_weights: Optional[List[float]] = None
+    characters: Optional[List[List[str]]] = None
+    pretrained_token_embedding: Optional[List[List[float]]] = None
 
 
 class Featurizer(Component):
@@ -29,19 +36,16 @@ class Featurizer(Component):
     __COMPONENT_TYPE__ = ComponentType.FEATURIZER
 
     def featurize(self, input_record: Dict[str, Any]) -> Dict[str, Any]:
-        raise NotImplementedError(
-            "Featurizer.featurize() method must be implemented.")
+        raise NotImplementedError("Featurizer.featurize() method must be implemented.")
 
     def featurize_batch(
-        self,
-        input_record_list: Sequence[Dict[str, Any]],
+        self, input_record_list: Sequence[Dict[str, Any]]
     ) -> Sequence[Dict[str, Any]]:
         """Featurize a batch of instances/examples in parallel.
         This is a default implementation using joblib.Parallel,
         feel free to re-implement it as needed.
         """
         features_list = Parallel(n_jobs=-1)(
-            delayed(self.featurize)(record)
-            for record in input_record_list
+            delayed(self.featurize)(record) for record in input_record_list
         )
         return features_list

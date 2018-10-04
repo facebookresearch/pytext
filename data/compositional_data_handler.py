@@ -8,7 +8,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig
-from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
+from pytext.data.featurizer import Featurizer, InputRecord
 from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
 from pytext.fields import ActionField, DictFeatureField, Field, TextFeatureField
 from pytext.utils import data_utils
@@ -81,9 +81,9 @@ class CompositionalDataHandler(DataHandler):
                 DFColumn.MODEL_FEATS
             ].tokens,
             DatasetFieldName.DICT_FIELD: lambda row, field: (
-                row[DFColumn.MODEL_FEATS].dictFeats,
-                row[DFColumn.MODEL_FEATS].dictFeatWeights,
-                row[DFColumn.MODEL_FEATS].dictFeatLengths,
+                row[DFColumn.MODEL_FEATS].gazetteer_feats,
+                row[DFColumn.MODEL_FEATS].gazetteer_feat_weights,
+                row[DFColumn.MODEL_FEATS].gazetteer_feat_lengths,
             ),
             ACTION_FEATURE_FIELD: lambda row, field: row[TREE_COLUMN].to_actions(),
             ACTION_LABEL_FIELD: lambda row, field: row[TREE_COLUMN].to_actions(),
@@ -94,15 +94,15 @@ class CompositionalDataHandler(DataHandler):
             df[DFColumn.DICT_FEAT] = ""
 
         df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: {
-                InputKeys.RAW_TEXT: row[DFColumn.UTTERANCE],
-                InputKeys.TOKEN_FEATURES: row[DFColumn.DICT_FEAT],
-            },
+            lambda row: InputRecord(
+                raw_text=row[DFColumn.UTTERANCE],
+                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
+            ),
             axis=1,
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(
-            output[OutputKeys.FEATURES]
+            output
             for output in self.featurizer.featurize_batch(
                 df[DFColumn.RAW_FEATS].tolist()
             )
@@ -110,7 +110,7 @@ class CompositionalDataHandler(DataHandler):
 
         df[DFColumn.TOKEN_RANGE_PAIR] = [
             data_utils.parse_token(
-                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].tokenRanges
+                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].token_ranges
             )
             for _, row in df.iterrows()
         ]
