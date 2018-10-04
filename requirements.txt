@@ -1,0 +1,7 @@
+caffe2
+joblib
+numpy
+onnx
+pandas
+torch
+torchtext

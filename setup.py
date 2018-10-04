@@ -2,6 +2,10 @@
 
 from setuptools import setup
 
+
+with open("requirements.txt") as f:
+    reqs = f.read()
+
 setup(
     name="pytext",
     version="0.1",
@@ -10,10 +14,5 @@ setup(
     author="Facebook",
     license="BSD",
     packages=["pytext"],
-    install_requires=[
-        "numpy",
-        "pandas",
-        "torch",
-        "torchtext",
-    ],
+    install_requires=reqs.strip().split("\n"),
 )
