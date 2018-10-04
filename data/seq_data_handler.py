@@ -7,7 +7,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
+from pytext.config.component import create_featurizer
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
 from pytext.utils import data_utils
 from .data_handler import DataHandler
@@ -63,7 +63,7 @@ class SeqModelDataHandler(JointModelDataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=AssistantFeaturizer(),
+            featurizer=create_featurizer(config.featurizer, feature_config),
             shuffle=config.shuffle,
         )
 

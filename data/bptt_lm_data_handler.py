@@ -9,8 +9,8 @@ from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
-from pytext.fields import Field, TextFeatureField
+from pytext.config.component import create_featurizer
+from pytext.fields import TextFeatureField
 from pytext.utils import cuda_utils
 from torchtext import data as textdata
 
@@ -59,7 +59,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
             )
         }
         return cls(
-            featurizer=AssistantFeaturizer(),
+            featurizer=create_featurizer(config.featurizer, feature_config),
             bptt_len=bptt_len,
             raw_columns=columns,
             features=features,

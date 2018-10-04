@@ -40,13 +40,13 @@ class CharFeatConfig(ConfigBase):
     vocab_from_train_data: bool = True
 
 
-class PretrainedModelEmbeddingConfig(ConfigBase):
-    embed_dim: int
-    model_file_paths: Dict[str, str]
-
-
 class CapFeatConfig(ConfigBase):
     embed_dim: int = 100
+
+
+class PretrainedModelEmbeddingConfig(ConfigBase):
+    embed_dim: int = 0
+    model_paths: Optional[Dict[str, str]] = None
 
 
 class FeatureConfig(ConfigBase):

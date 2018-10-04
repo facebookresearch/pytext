@@ -7,6 +7,8 @@ from eit.llama.common.thriftutils import dict_to_thrift
 from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
+from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import InputKeys, OutputKeys
 from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
@@ -42,7 +44,8 @@ class CompositionalDataHandler(DataHandler):
             labels={"action_idx_label": ActionField()},
             **kwargs
         )
-        self.featurizer = AssistantFeaturizer()
+        # TODO: Change this to SimpleFeaturizer (for OS) after adding it.
+        self.featurizer = create_featurizer(AssistantFeaturizer.Config(), FeatureConfig())
 
         self.df_to_example_func_map = {
             # TODO set_tokens_indices, should implement another field
@@ -68,7 +71,7 @@ class CompositionalDataHandler(DataHandler):
                 InputKeys.RAW_TEXT: row[DFColumn.UTTERANCE],
                 InputKeys.TOKEN_FEATURES: row[DFColumn.DICT_FEAT],
             },
-            axis=1
+            axis=1,
         )
 
         df[DFColumn.MODEL_FEATS] = pd.Series(

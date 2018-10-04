@@ -7,7 +7,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
+from pytext.config.component import create_featurizer
 from pytext.fields import (
     CapFeatureField,
     CharFeatureField,
@@ -75,14 +75,10 @@ class JointModelDataHandler(DataHandler):
             features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
 
         labels: Dict[str, Field] = {}
-        model_file_paths = None
         if feature_config.pretrained_model_embedding:
             features[
                 DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
             ] = PretrainedModelEmbeddingField()
-            model_file_paths = (
-                feature_config.pretrained_model_embedding.model_file_paths
-            )
 
         if label_config.doc_label:
             labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
@@ -104,17 +100,12 @@ class JointModelDataHandler(DataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=AssistantFeaturizer(
-                pre_trained_models_dict=model_file_paths,
-                lowercase_tokens=word_feat_config.lowercase_tokens
-            ),
+            featurizer=create_featurizer(config.featurizer, feature_config),
             shuffle=config.shuffle,
         )
 
     def __init__(self, featurizer: Featurizer, **kwargs) -> None:
-
         super().__init__(**kwargs)
-        # configs
         self.featurizer = featurizer
 
         self.df_to_example_func_map = {

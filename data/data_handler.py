@@ -3,7 +3,7 @@ import csv
 import multiprocessing
 import os
 from copy import copy
-from typing import Any, Dict, Generator, List, Set, Tuple, Type
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Type
 
 import pandas as pd
 import torch
@@ -11,9 +11,8 @@ import torch.hiveio as hiveio
 from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.fields import (
-    Field, FieldMeta, VocabUsingField
-)
+from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
+from pytext.fields import Field, FieldMeta, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
@@ -25,7 +24,7 @@ HIVE_PREFIX = "hive://"
 class CommonMetadata:
     features: Dict[str, FieldMeta]
     labels: Dict[str, FieldMeta]
-    pretrained_embeds_weight: torch.Tensor = None
+    pretrained_embeds_weight: Optional[torch.Tensor] = None
 
 
 class BatchIterator:
@@ -83,7 +82,8 @@ class DataHandler(Component):
     class Config(ConfigBase):
         columns_to_read: List[str] = []
         shuffle: bool = True
-        pretrained_embeddings_path = ""
+        pretrained_embeddings_path: str = ""
+        featurizer: AssistantFeaturizer.Config = AssistantFeaturizer.Config()
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 

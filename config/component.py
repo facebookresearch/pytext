@@ -11,6 +11,7 @@ from .pytext_config import ConfigBase, PyTextConfig
 class ComponentType(enum.Enum):
     JOB_SPEC = "job_spec"
     DATA_HANDLER = "data_handler"
+    FEATURIZER = "featurizer"
     TRAINER = "trainer"
     LOSS = "loss"
     OPTIMIZER = "optimizer"
@@ -126,6 +127,12 @@ def create_component(component_type: ComponentType, config: Any, *args, **kwargs
 def create_data_handler(data_handler_config, *args, **kwargs):
     return create_component(
         ComponentType.DATA_HANDLER, data_handler_config, *args, **kwargs
+    )
+
+
+def create_featurizer(featurizer_config, *args, **kwargs):
+    return create_component(
+        ComponentType.FEATURIZER, featurizer_config, *args, **kwargs
     )
 
 

@@ -4,11 +4,9 @@ import unittest
 from typing import Dict
 
 import numpy as np
-from pytext.common.constants import (
-    DatasetFieldName,
-    DFColumn,
-    VocabMeta,
-)
+from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
+from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 from pytext.fields import Field, TextFeatureField
@@ -31,8 +29,9 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
             )
         }
 
+        # TODO: Change this to SimpleFeaturizer (for OS) after adding it.
         return LanguageModelDataHandler(
-            featurizer=AssistantFeaturizer(),
+            featurizer=create_featurizer(AssistantFeaturizer.Config(), FeatureConfig()),
             raw_columns=columns,
             features=features,
             labels={},

@@ -10,7 +10,7 @@ from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.data.featurizer import Featurizer, InputKeys, OutputKeys
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
+from pytext.config.component import create_featurizer
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -62,7 +62,7 @@ class LanguageModelDataHandler(DataHandler):
         labels: Dict[str, Field] = {}
         extra_fields: Dict[str, Field] = {DatasetFieldName.TOKEN_RANGE_PAIR: RawField()}
         return cls(
-            featurizer=AssistantFeaturizer(),
+            featurizer=create_featurizer(config.featurizer, feature_config),
             raw_columns=config.columns_to_read,
             features=features,
             labels=labels,
