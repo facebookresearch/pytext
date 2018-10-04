@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 
 class ConfigParseError(Exception):
@@ -27,6 +27,18 @@ def _canonical_typename(cls):
     if cls.__name__.endswith(".Config"):
         return cls.__name__[: -len(".Config")]
     return cls.__name__
+
+
+def _extend_tuple_type(cls, value):
+    sub_cls_list = list(cls.__args__)
+    if len(sub_cls_list) != len(value):
+        if len(sub_cls_list) != 2 or sub_cls_list[1] is not Ellipsis:
+            raise ConfigParseError(
+                f"{len(value)} values found which is more than number of types in tuple {cls}"
+            )
+        del sub_cls_list[1]
+        sub_cls_list.extend((cls.__args__[0],) * (len(value) - len(sub_cls_list)))
+    return sub_cls_list
 
 
 def _union_from_json(union_cls, json_obj):
@@ -72,6 +84,11 @@ def _value_from_json(cls, value):
     elif issubclass(cls, List):
         sub_cls = cls.__args__[0]
         return [_value_from_json(sub_cls, v) for v in value]
+    elif issubclass(cls, Tuple):
+        return tuple(
+            _value_from_json(c, v)
+            for c, v in zip(_extend_tuple_type(cls, value), value)
+        )
     elif issubclass(cls, Dict):
         # TODO T32764840 add type check for dict type
         return value
@@ -141,6 +158,10 @@ def _value_to_json(cls, value):
     elif issubclass(cls, List):
         sub_cls = cls.__args__[0]
         return [_value_to_json(sub_cls, v) for v in value]
+    elif issubclass(cls, Tuple):
+        return tuple(
+            _value_to_json(c, v) for c, v in zip(_extend_tuple_type(cls, value), value)
+        )
     return value
 
 
