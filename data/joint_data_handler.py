@@ -129,7 +129,7 @@ class JointModelDataHandler(DataHandler):
             ].characters,
             DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: lambda row, field: row[
                 DFColumn.MODEL_FEATS
-            ].pretrainedTokenEmbedding,
+            ].pretrained_token_embedding,
             DatasetFieldName.CAP_FIELD: lambda row, field: [
                 data_utils.capitalization_feature(t)
                 for (t, (_, __)) in row[DFColumn.TOKEN_RANGE_PAIR]
