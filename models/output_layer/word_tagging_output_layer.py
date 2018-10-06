@@ -30,7 +30,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
         # [batch_size * seq_lens, dim]
         return self.loss_fn(logit.view(-1, logit.size()[-1]), target.view(-1), reduce)
 
-    def get_pred(self, logit, context):
+    def get_pred(self, logit, target, context):
         preds = torch.max(logit, 2)[1]
         scores = F.log_softmax(logit, 2)
         return preds, scores

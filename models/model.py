@@ -50,8 +50,8 @@ class Model(nn.Module, Component):
     def get_loss(self, logit, target, context):
         return self.output_layer.get_loss(logit, target, context)
 
-    def get_pred(self, logit, context):
-        return self.output_layer.get_pred(logit, context)
+    def get_pred(self, logit, target, context):
+        return self.output_layer.get_pred(logit, target, context)
 
     def forward(self, *inputs) -> List[torch.Tensor]:
         token_emb = self.embedding(*inputs)

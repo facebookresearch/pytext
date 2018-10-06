@@ -289,7 +289,8 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 py_model.eval()
                 py_outs = py_model(*test_inputs)
                 context = {SEQ_LENS: test_inputs[1]}
-                pred, score = py_model.get_pred(py_outs, context)
+                target = None
+                pred, score = py_model.get_pred(py_outs, target, context)
 
                 np.testing.assert_array_almost_equal(
                     torch.transpose(score, 1, 2).contiguous().view(-1).detach().numpy(),
@@ -351,7 +352,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             py_model.eval()
             logits = py_model(*test_inputs)
             context = {SEQ_LENS: test_inputs[1]}
-            (d_pred, w_pred), (d_score, w_score) = py_model.get_pred(logits, context)
+            target = None
+            (d_pred, w_pred), (d_score, w_score) = py_model.get_pred(
+                logits, target, context
+            )
 
             c2_doc_out = []
             for o_name in doc_output_names:

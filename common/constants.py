@@ -20,6 +20,7 @@ class DatasetFieldName:
     INDEX_FIELD = "index_field"
     LANGUAGE_ID_FIELD = "lang"
     SEQ_LENS = "seq_lens"
+    TARGET_SEQ_LENS = "target_seq_lens"
 
 
 class PackageFileName:

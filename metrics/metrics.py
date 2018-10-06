@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import math
 from collections import Counter as counter, defaultdict
 from copy import deepcopy
 from typing import (
@@ -84,6 +84,18 @@ class FrameAccuracy(NamedTuple):
 
 
 FrameAccuraciesByDepth = Dict[int, FrameAccuracy]
+
+
+class LanguageModelMetric(NamedTuple):
+    """
+    Class for Language Modeling Metrics
+    perplexity_per_word: Average perplexity per word of the dataset
+    """
+
+    perplexity_per_word: float
+
+    def print_metrics(self):
+        print(f"Perplexity per word : {self.perplexity_per_word: 0.2f}")
 
 
 class PRF1Scores(NamedTuple):
@@ -699,3 +711,7 @@ def average_precision_score(y_true: List[bool], y_score: List[float]) -> float:
             p_at_tresh = tp / (k + 1)
             ap += p_at_tresh * recall_diff
     return float(ap)
+
+
+def compute_language_model_metric(loss_per_word: float) -> LanguageModelMetric:
+    return LanguageModelMetric(perplexity_per_word=math.exp(loss_per_word))

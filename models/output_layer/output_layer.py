@@ -29,7 +29,7 @@ class OutputLayerBase(Module):
     def get_loss(self, logit, target, context=None, reduce=True):
         return self.loss_fn(logit, target, reduce)
 
-    def get_pred(self, logit, context=None):
+    def get_pred(self, logit, targets=None, context=None):
         return logit, None
 
 
@@ -48,7 +48,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config
         ] = CrossEntropyLoss.Config()
 
-    def get_pred(self, logit, context):
+    def get_pred(self, logit, targets, context):
         preds = torch.max(logit, 1)[1]
         # Hacky way to check loss type
         if isinstance(self.loss_fn, BinaryCrossEntropyLoss):
@@ -76,7 +76,7 @@ class CRFOutputLayer(OutputLayerBase):
         )
         return loss.mean() if reduce else loss
 
-    def get_pred(self, logit, context):
+    def get_pred(self, logit, target, context):
         pred = self.crf.decode(logit, context[SEQ_LENS])
         logit = _rearrange_output(logit, pred)
         return pred, F.log_softmax(logit, 2)

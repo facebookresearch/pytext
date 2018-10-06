@@ -10,6 +10,7 @@ from .metrics import (
     IntentSlotConfusions,
     IntentSlotMetrics,
     LabelPrediction,
+    LanguageModelMetric,
     MacroPRF1Metrics,
     MacroPRF1Scores,
     Node,
@@ -22,6 +23,7 @@ from .metrics import (
     compute_all_metrics,
     compute_classification_metrics,
     compute_classification_metrics_from_nodes_pairs,
+    compute_language_model_metric,
 )
 
 
@@ -32,6 +34,7 @@ __all__ = [
     "compute_all_metrics",
     "compute_classification_metrics",
     "compute_classification_metrics_from_nodes_pairs",
+    "compute_language_model_metric",
     "Confusions",
     "FrameAccuracy",
     "FramePredictionPair",
@@ -39,6 +42,7 @@ __all__ = [
     "IntentSlotConfusions",
     "IntentSlotMetrics",
     "LabelPrediction",
+    "LanguageModelMetric",
     "MacroPRF1Metrics",
     "MacroPRF1Scores",
     "Node",

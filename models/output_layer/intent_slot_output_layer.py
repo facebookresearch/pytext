@@ -51,8 +51,12 @@ class IntentSlotOutputLayer(OutputLayerBase):
         w_weighted_loss = torch.mean(torch.mul(w_loss, w_weight))
         return d_weighted_loss + w_weighted_loss
 
-    def get_pred(self, logit, context):
+    def get_pred(self, logit, target, context):
         d_logit, w_logit = logit
-        d_pred, d_score = self.doc_output.get_pred(d_logit, context)
-        w_pred, w_score = self.word_output.get_pred(w_logit, context)
+        if target is not None:
+            d_target, w_target = target
+        else:
+            d_target, w_target = None, None
+        d_pred, d_score = self.doc_output.get_pred(d_logit, d_target, context)
+        w_pred, w_score = self.word_output.get_pred(w_logit, w_target, context)
         return (d_pred, w_pred), (d_score, w_score)

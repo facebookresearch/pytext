@@ -110,7 +110,7 @@ class Trainer(Component):
                         model.parameters(), self.config.max_clip_norm
                     )
                 optimizer_step(optimizers)
-            preds, scores = model.get_pred(logits, context)
+            preds, scores = model.get_pred(logits, targets, context)
             metric_reporter.add_batch_stats(
                 n_batches, preds, targets, scores, loss.item(), **context
             )

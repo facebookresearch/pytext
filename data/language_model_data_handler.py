@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import multiprocessing
 from typing import Dict, List
 
 import pandas as pd
@@ -10,7 +9,6 @@ from pytext.config import ConfigBase
 from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import Featurizer, InputRecord
-from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -32,7 +30,8 @@ class LanguageModelDataHandler(DataHandler):
             # features
             DatasetFieldName.TEXT_FIELD: lambda row, field: row[
                 DFColumn.MODEL_FEATS
-            ].tokens
+            ].tokens,
+            DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
         }
 
     @classmethod
@@ -60,7 +59,10 @@ class LanguageModelDataHandler(DataHandler):
             )
         }
         labels: Dict[str, Field] = {}
-        extra_fields: Dict[str, Field] = {DatasetFieldName.TOKEN_RANGE_PAIR: RawField()}
+        extra_fields: Dict[str, Field] = {
+            DatasetFieldName.TOKEN_RANGE_PAIR: RawField(),
+            DatasetFieldName.UTTERANCE_FIELD: RawField(),
+        }
         return cls(
             featurizer=create_featurizer(config.featurizer, feature_config),
             raw_columns=config.columns_to_read,
@@ -124,6 +126,11 @@ class LanguageModelDataHandler(DataHandler):
 
     def _context_from_batch(self, batch):
         # batch.text[1] is the length of each sequence
-        res = {SEQ_LENS: batch.text[1]}
+        res = {
+            DatasetFieldName.SEQ_LENS: torch.min(
+                batch.text[1], batch.text[1].max() - 1
+            ),
+            DatasetFieldName.TARGET_SEQ_LENS: batch.text[1] - 1,
+        }
         res.update(super()._context_from_batch(batch))
         return res
