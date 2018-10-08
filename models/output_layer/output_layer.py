@@ -69,11 +69,7 @@ class CRFOutputLayer(OutputLayerBase):
         self.crf = CRF(num_tags)
 
     def get_loss(self, logit, target, context, reduce=True):
-        loss = -1 * self.crf(
-            torch.transpose(logit, 0, 1).contiguous(),
-            torch.transpose(target, 0, 1).contiguous(),
-            reduce=False,
-        )
+        loss = -1 * self.crf(logit, target, reduce=False)
         return loss.mean() if reduce else loss
 
     def get_pred(self, logit, target, context):

@@ -40,3 +40,10 @@ def FloatTensor(*args):
         return torch.cuda.FloatTensor(*args)
     else:
         return torch.FloatTensor(*args)
+
+
+def GetTensor(tensor):
+    if CUDA_ENABLED:
+        return tensor.cuda()
+    else:
+        return tensor

@@ -1,49 +1,31 @@
 #!/usr/bin/env python3
-# Adopted from the open-source AllenNLP implementation of CRF on github
-# https://github.com/allenai/allennlp/blob/master/
-# allennlp/modules/conditional_random_field.py
-
-from typing import List, Union
-
-import numpy as np
 import torch
 import torch.nn as nn
 from caffe2.python.crf_predict import apply_crf
 from pytext.common.constants import Padding
-from pytext.utils.cuda_utils import Variable as Var
+from pytext.utils.cuda_utils import GetTensor
 from torch.autograd import Variable
-from torch.nn.utils.rnn import pad_sequence
 
 
 class CRF(nn.Module):
     """
-    num_tags : int
-        Number of tags passed to ``__init__``.
-    transitions : class:`~torch.Tensor` optional to initialize the crf
-        Transition score tensor of size ``(num_tags, num_tags)``.
-    ----------
-
+    CRF Layer
     """
-
     def __init__(self, num_tags: int) -> None:
         if num_tags <= 0:
             raise ValueError(f"invalid number of tags: {num_tags}")
         super().__init__()
         self.num_tags = num_tags
-        # add two states at the end to accommadate start and end states
-        # (i,j) element represents the prob of transitioning from state i to j
+        # Add two states at the end to accommodate start and end states
+        # (i,j) element represents the probability of transitioning from state i to j
         self.transitions = nn.Parameter(torch.Tensor(num_tags + 2, num_tags + 2))
         self.start_tag = num_tags
         self.end_tag = num_tags + 1
         self.reset_parameters()
+        # TODO Remove hardcoding to read from metadata
+        self.ignore_index = Padding.WORD_LABEL_PAD_IDX
 
     def reset_parameters(self) -> None:
-        """Initialize the transition parameters.
-        The parameters will be initialized randomly from a uniform distribution
-        between -0.1 and 0.1.
-        Also enforce the constraint that we never transfer
-        to the start tag not transfer from the stop tag
-        """
         nn.init.uniform_(self.transitions, -0.1, 0.1)
         self.transitions.data[:, self.start_tag] = -10000
         self.transitions.data[self.end_tag, :] = -10000
@@ -56,267 +38,225 @@ class CRF(nn.Module):
 
     def forward(
         self,
-        emissions: Variable,
-        tags: Variable,
+        emissions: torch.FloatTensor,
+        tags: torch.LongTensor,
         ignore_index=Padding.WORD_LABEL_PAD_IDX,
         reduce: bool = True,
     ) -> Variable:
-        """Compute the log likelihood of the given sequence of tags and
-        emission score.
-        ---------
-        Inputs:
-        emissions : :class:`~torch.autograd.Variable`
-            Emission score tensor of size (seq_length, batch_size, num_tags).
-        tags : :class:`~torch.autograd.Variable`
-            Sequence of tags as ``LongTensor`` of size (seq_length, batch_size).
-        reduce : bool
-            Whether to sum the log likelihood over the batch.
-        -------
-        Returns:
-        :class:`~torch.autograd.Variable`
-            The log likelihood. This will have size (1,) if ``summed=True``,
-            ``(batch_size,)`` otherwise.
         """
-        if emissions.dim() != 3:
-            raise ValueError(
-                f"emissions must have dimension of 3, got {emissions.dim()}"
-            )
-        if tags.dim() != 2:
-            raise ValueError(f"tags must have dimension of 2, got {tags.dim()}")
-        if emissions.size()[:2] != tags.size():
-            raise ValueError(
-                "the first two dimensions of emissions and tags must match, "
-                f"got {tuple(emissions.size()[:2])} and {tuple(tags.size())}"
-            )
-        if emissions.size(2) != self.num_tags:
-            raise ValueError(
-                f"expected last dimension of emissions is {self.num_tags}, "
-                f"got {emissions.size(2)}"
-            )
+        emissions : batch_size * seq_len * num_labels
+        tags : batch_size * seq_len
+        """
         self.ignore_index = ignore_index
-        mask = self.make_mask_from_targets(tags)
-
-        if tags.size() != mask.size():
-            raise ValueError(
-                f"size of tags and mask must match, {tuple(tags.size())} "
-                f"and {tuple(mask.size())}"
-            )
+        mask = self._make_mask_from_targets(tags)
 
         numerator = self._compute_joint_llh(emissions, tags, mask)
         denominator = self._compute_log_partition_function(emissions, mask)
+
         llh = numerator - denominator
         return llh if not reduce else torch.mean(llh)
 
-    def make_mask_from_targets(self, targets):
-        mask = Var(torch.ByteTensor(targets.size()))
-        for i in range(mask.size()[0]):
-            mask[i, :] = torch.from_numpy(
-                np.asarray(
-                    [
-                        0 if target.item() == Padding.WORD_LABEL_PAD_IDX else 1
-                        for target in targets[i, :]
-                    ]
-                )
-            )
-        return mask.contiguous()
-
     def decode(
-        self,
-        emissions: Union[Variable, torch.FloatTensor],
-        seq_lens: Union[Variable, torch.LongTensor],
-    ) -> List[List[int]]:
-        """Find the most likely tag sequence using Viterbi algorithm.
-        Arguments
-        ---------
-        emissions: `~torch.autograd.Variable` or :class:`~torch.FloatTensor`
-            Emission score tensor of size (batch_size, seq_length, num_tags).
-        seq_lens : `~torch.autograd.Variable` or `torch.LongTensor`
-            Actual seq length (without padding) tensor of size ``(batch_size,
-            seq_length)``.
-        Returns
-        -------
-        List of list containing the best tag sequence for each batch.
+        self, emissions: torch.FloatTensor, seq_lens: torch.LongTensor
+    ) -> torch.Tensor:
         """
-        if emissions.dim() != 3:
-            raise ValueError(
-                f"emissions must have dimension of 3, got {emissions.dim()}"
-            )
-        if emissions.size(2) != self.num_tags:
-            raise ValueError(
-                f"expected last dimension of emissions is {self.num_tags}, "
-                f"got {emissions.size(2)}"
-            )
-        if emissions.size()[:1] != seq_lens.size():
-            raise ValueError(
-                "batch size of emissions and seq lens must match, "
-                f"got {tuple(emissions.size()[:1])} and {tuple(seq_lens.size())}"
-            )
-
-        if isinstance(emissions, Variable):
-            emissions = emissions.data
-        elif isinstance(seq_lens, Variable):
-            seq_lens = seq_lens.data
-
-        best_tags = []
-        for emission, seq_len in zip(emissions, seq_lens):
-            best_tags.append(self._viterbi_decode(emission[:seq_len]))
-        # TODO read padding token idx from metadata
-        res = pad_sequence(
-            best_tags, padding_value=Padding.WORD_LABEL_PAD_IDX, batch_first=True
-        )
-        return res
+        emissions : batch_size * seq_len * num_labels
+        seq_lens : batch_size
+        """
+        mask = self._make_mask_from_seq_lens(seq_lens)
+        result = self._viterbi_decode(emissions, mask)
+        return result
 
     def _compute_joint_llh(
-        self, emissions: Variable, tags: Variable, mask: Variable
-    ) -> Variable:
-        # emissions: (seq_length, batch_size, num_tags)
-        # tags: (seq_length, batch_size)
-        # mask: (seq_length, batch_size)
-        assert emissions.dim() == 3 and tags.dim() == 2
-        assert emissions.size()[:2] == tags.size()
-        assert emissions.size(2) == self.num_tags
-        assert mask.size() == tags.size()
-        assert all(mask[0].data)
+        self,
+        emissions: torch.FloatTensor,
+        tags: torch.LongTensor,
+        mask: torch.FloatTensor,
+    ) -> torch.Tensor:
+        seq_len = emissions.shape[1]
 
-        seq_length = emissions.size(0)
-        mask = mask.float()
+        llh = self.transitions[self.start_tag, tags[:, 0]].unsqueeze(1)
+        llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * mask[
+            :, 0
+        ].unsqueeze(1)
 
-        # Start transition score
-        llh = self.transitions[self.start_tag, tags[0]]  # (batch_size,)
-        for i in range(seq_length - 1):
-            cur_tag, next_tag = tags[i], tags[i + 1]
-            # Emission score for current tag
-            llh += emissions[i].gather(1, cur_tag.view(-1, 1)).squeeze(1) * mask[i]
-            # Transition score to next tag
-            transition_score = self.transitions[cur_tag, next_tag]
-            # Only add transition score if the next tag is not masked (mask == 1)
-            llh += transition_score * mask[i + 1]
-        # Find last tag index
-        last_tag_indices = mask.long().sum(0) - 1  # (batch_size,)
-        last_tags = tags.gather(0, last_tag_indices.view(1, -1)).squeeze(0)
+        for idx in range(1, seq_len):
+            old_state, new_state = (
+                tags[:, idx - 1].view(-1, 1),
+                tags[:, idx].view(-1, 1),
+            )
+            emission_scores = emissions[:, idx, :].gather(1, new_state)
+            transition_scores = self.transitions[old_state, new_state]
+            llh += (emission_scores + transition_scores) * mask[:, idx].unsqueeze(1)
 
-        # End transition score
-        llh += self.transitions[last_tags, self.end_tag]
-        # Emission score for the last tag, if mask is valid (mask == 1)
-        llh += emissions[-1].gather(1, last_tags.view(-1, 1)).squeeze(1) * mask[-1]
+        # To get index for last element in the sequence, sort the mask tensor
+        # in ascending and the index of last "one" is the last valid timestep
+        _, last_tag_indices = mask.sort(1)
+        max_indices = last_tag_indices[:, -1]
+        last_tags = tags.gather(1, max_indices.view(-1, 1))
 
-        return llh
+        llh += self.transitions[last_tags.squeeze(1), self.end_tag].unsqueeze(1)
+
+        return llh.squeeze(1)
 
     def _compute_log_partition_function(
-        self, emissions: Variable, mask: Variable
-    ) -> Variable:
-        # emissions: (seq_length, batch_size, num_tags)
-        # mask: (seq_length, batch_size)
-        assert emissions.dim() == 3 and mask.dim() == 2
-        assert emissions.size()[:2] == mask.size()
-        assert emissions.size(2) == self.num_tags
-        assert all(mask[0].data)
+        self, emissions: torch.FloatTensor, mask: torch.FloatTensor
+    ) -> torch.Tensor:
+        seq_len = emissions.shape[1]
 
-        seq_length = emissions.size(0)
-        mask = mask.float()
+        log_prob = emissions[:, 0].clone()
+        log_prob += self.transitions[self.start_tag, : self.start_tag].unsqueeze(0)
 
-        # Start transition score and first emission
-        log_prob = (
-            self.transitions[self.start_tag, : self.start_tag].view(1, -1)
-            + emissions[0]
-        )
-        # Here, log_prob has size (batch_size, num_tags) where for each batch,
-        # j-th column is the log probability that the current timestep has tag j
-
-        for i in range(1, seq_length):
-            # Broadcast log_prob over all possible next tags
-            broadcast_log_prob = log_prob.unsqueeze(2)  # (batch_size, num_tags, 1)
-            # Broadcast transition score over all instances in the batch
+        for idx in range(1, seq_len):
+            broadcast_emissions = emissions[:, idx].unsqueeze(1)
             broadcast_transitions = self.transitions[
                 : self.start_tag, : self.start_tag
-            ].unsqueeze(
-                0
-            )  # (1, num_tags, num_tags)
-            # Broadcast emission score over all possible current tags
-            broadcast_emissions = emissions[i].unsqueeze(1)  # (batch_size, 1, num_tags)
-            # Sum current log probability, transition, and emission scores
-            score = broadcast_log_prob + broadcast_transitions + broadcast_emissions
-            # (batch_size, num_tags, num_tags)
-            # Sum over all possible current tags, but we're in log prob space,
-            # so a sum becomes a log-sum-exp
-            score = self._log_sum_exp(score, 1)  # (batch_size, num_tags)
-            # Set log_prob to the score if this timestep is valid (mask == 1),
-            # otherwise leave it alone
-            log_prob = score * mask[i].unsqueeze(1) + log_prob * (
-                1. - mask[i]
-            ).unsqueeze(1)
+            ].unsqueeze(0)
+            broadcast_logprob = log_prob.unsqueeze(2)
+            score = broadcast_logprob + broadcast_emissions + broadcast_transitions
 
-        # End transition score
-        log_prob += self.transitions[: self.start_tag, self.end_tag].view(1, -1)
-        # Sum (log-sum-exp) over all possible tags
-        return self._log_sum_exp(log_prob, 1)  # (batch_size,)
-
-    def _viterbi_decode(self, emission: torch.FloatTensor) -> List[int]:
-        # emission: (seq_length, num_tags)
-        assert emission.size(1) == self.num_tags
-
-        seq_length = emission.size(0)
-
-        # Start transition
-        viterbi_score = (
-            self.transitions[self.start_tag, : self.start_tag].data + emission[0]
-        )
-        viterbi_path = []
-        # Here, viterbi_score has shape of (num_tags,) where value at index i
-        # is the score of the best tag sequence so far that ends with tag i
-        # viterbi_path saves where the best tags candidate transitioned from;
-        # this is used when we trace back the best tag sequence
-
-        # Viterbi algorithm recursive case: we compute the score of the best
-        # tag sequence for every possible next tag
-        for i in range(1, seq_length):
-            # Broadcast viterbi score for every possible next tag
-            broadcast_score = viterbi_score.view(-1, 1)
-            # Broadcast emission score for every possible current tag
-            broadcast_emission = emission[i].view(1, -1)
-            # Compute the score matrix of shape (num_tags, num_tags) where
-            # each entry at  row i and column j stores the score of
-            # transitioning from tag i to tag j and emitting
-            score = (
-                broadcast_score
-                + self.transitions[: self.start_tag, : self.start_tag].data
-                + broadcast_emission
+            score = torch.logsumexp(score, 1)
+            log_prob = score * mask[:, idx].unsqueeze(1) + log_prob.squeeze(1) * (
+                1. - mask[:, idx].unsqueeze(1)
             )
-            # Find the maximum score over all possible current tag
-            best_score, best_path = score.max(0)  # (num_tags,)
-            # Save the score and the path
-            viterbi_score = best_score
-            viterbi_path.append(best_path)
 
-        # End transition
-        viterbi_score += self.transitions[: self.start_tag, self.end_tag].data
+        log_prob += self.transitions[: self.start_tag, self.end_tag].unsqueeze(0)
+        return torch.logsumexp(log_prob.squeeze(1), 1)
 
-        # Find the tag which maximizes the score at the last timestep
-        _, best_last_tag = viterbi_score.max(0)
-        best_tags = [best_last_tag.item()]
+    def _viterbi_decode(
+        self, emissions: torch.FloatTensor, mask: torch.FloatTensor
+    ) -> torch.Tensor:
+        seq_len = emissions.shape[1]
+        mask = mask.to(torch.uint8)
 
-        # We trace back where the best last tag comes from, append that to our
-        # best tag sequence, and trace it back again, and so on
-        for path in reversed(viterbi_path):
-            best_last_tag = path[best_tags[-1]]
-            best_tags.append(best_last_tag.item())
+        log_prob = emissions[:, 0].clone()
+        log_prob += self.transitions[self.start_tag, : self.start_tag].unsqueeze(0)
 
-        # Reverse the order because we start from the last timestep
-        best_tags.reverse()
-        return torch.LongTensor(best_tags)
+        # At each step, we need to keep track of the total score, as if this step
+        # was the last valid step.
+        end_scores = log_prob + self.transitions[
+            : self.start_tag, self.end_tag
+        ].unsqueeze(0)
 
-    """Exports the crf layer to caffe2 by manually adding the necessary operators
-        to the init_net and predict net.
-        init_net: caffe2 init net created by the current graph
-        predict_net: caffe2 net created by the current graph
-        workspace: caffe2 current workspace
-        output_names: current output names of the caffe2 net
-        py_model: original pytorch model object
-        Returns:
-        The updated predictions blob name
-    """
+        best_scores_list = []
+        # If the element has only token, empty tensor in best_paths helps
+        # torch.cat() from crashing
+        best_paths_list = [GetTensor(torch.Tensor().long())]
+        best_scores_list.append(end_scores.unsqueeze(1))
+
+        for idx in range(1, seq_len):
+            broadcast_emissions = emissions[:, idx].unsqueeze(1)
+            broadcast_transmissions = self.transitions[
+                : self.start_tag, : self.start_tag
+            ].unsqueeze(0)
+            broadcast_log_prob = log_prob.unsqueeze(2)
+
+            score = broadcast_emissions + broadcast_transmissions + broadcast_log_prob
+
+            max_scores, max_score_indices = torch.max(score, 1)
+
+            best_paths_list.append(max_score_indices.unsqueeze(1))
+
+            # Storing the scores incase this was the last step.
+            end_scores = max_scores + self.transitions[
+                : self.start_tag, self.end_tag
+            ].unsqueeze(0)
+
+            best_scores_list.append(end_scores.unsqueeze(1))
+            log_prob = max_scores
+
+        best_scores = torch.cat(best_scores_list, 1).float()
+        best_paths = torch.cat(best_paths_list, 1)
+
+        _, max_indices_from_scores = torch.max(best_scores, 2)
+
+        valid_index_tensor = GetTensor(torch.tensor(0)).long()
+        padding_tensor = GetTensor(torch.tensor(self.ignore_index)).long()
+
+        # Label for the last position is always based on the index with max score
+        # For illegal timesteps, we set as ignore_index
+        labels = max_indices_from_scores[:, seq_len - 1]
+        labels = self._mask_tensor(labels, 1. - mask[:, seq_len - 1], padding_tensor)
+
+        all_labels = labels.unsqueeze(1).long()
+
+        # For Viterbi decoding, we start at the last position and go towards first
+        for idx in range(seq_len - 2, -1, -1):
+            # There are two ways to obtain labels for tokens at a particular position.
+
+            # Option 1: Use the labels obtained from the previous position to index
+            # the path in present position. This is used for all positions except
+            # last position in the sequence.
+            # Option 2: Find the indices with maximum scores obtained during
+            # viterbi decoding. This is used for the token at the last position
+
+            # For option 1 need to convert invalid indices to 0 so that lookups
+            # dont fail.
+            indices_for_lookup = all_labels[:, -1].clone()
+            indices_for_lookup = self._mask_tensor(
+                indices_for_lookup,
+                indices_for_lookup == self.ignore_index,
+                valid_index_tensor,
+            )
+
+            # Option 1 is used here when previous timestep (idx+1) was valid.
+            indices_from_prev_pos = (
+                best_paths[:, idx, :]
+                .gather(1, indices_for_lookup.view(-1, 1).long())
+                .squeeze(1)
+            )
+            indices_from_prev_pos = self._mask_tensor(
+                indices_from_prev_pos, (1. - mask[:, idx + 1]), padding_tensor
+            )
+
+            # Option 2 is used when last timestep was not valid which means idx+1
+            # is the last position in the sequence.
+            indices_from_max_scores = max_indices_from_scores[:, idx]
+            indices_from_max_scores = self._mask_tensor(
+                indices_from_max_scores, mask[:, idx + 1], padding_tensor
+            )
+
+            # We need to combine results from 1 and 2 as rows in a batch can have
+            # sequences of varying lengths
+            labels = torch.where(
+                indices_from_max_scores == self.ignore_index,
+                indices_from_prev_pos,
+                indices_from_max_scores,
+            )
+
+            # Set to ignore_index if present state is not valid.
+            labels = self._mask_tensor(labels, (1 - mask[:, idx]), padding_tensor)
+            all_labels = torch.cat((all_labels, labels.view(-1, 1).long()), 1)
+
+        return torch.flip(all_labels, [1])
+
+    def _make_mask_from_targets(self, targets):
+        mask = targets.ne(self.ignore_index).float()
+        return mask
+
+    def _make_mask_from_seq_lens(self, seq_lens):
+        seq_lens = seq_lens.view(-1, 1)
+        max_len = torch.max(seq_lens)
+        range_tensor = GetTensor(torch.arange(max_len)).unsqueeze(0)
+        range_tensor = range_tensor.expand(seq_lens.size(0), range_tensor.size(1))
+        mask = (range_tensor < seq_lens).float()
+        return mask
+
+    def _mask_tensor(self, score_tensor, mask_condition, mask_value):
+        masked_tensor = torch.where(mask_condition, mask_value, score_tensor)
+        return masked_tensor
 
     def export_to_caffe2(self, workspace, init_net, predict_net, logits_output_name):
+        """Exports the crf layer to caffe2 by manually adding the necessary operators
+            to the init_net and predict net.
+            init_net: caffe2 init net created by the current graph
+            predict_net: caffe2 net created by the current graph
+            workspace: caffe2 current workspace
+            output_names: current output names of the caffe2 net
+            py_model: original pytorch model object
+            Returns:
+            The updated predictions blob name
+        """
         crf_transitions = init_net.AddExternalInput(init_net.NextName())
         workspace.FeedBlob(str(crf_transitions), self.get_transitions().numpy())
         logits_squeezed = predict_net.Squeeze(logits_output_name, dims=[0])
@@ -326,16 +266,3 @@ class CRF(nn.Module):
         new_logits = predict_net.ExpandDims(new_logits, dims=[0])
         predict_net.Copy(new_logits, logits_output_name)
         return logits_output_name
-
-    @staticmethod
-    def _log_sum_exp(tensor: Variable, dim: int) -> Variable:
-        # Find the max value along `dim`
-        offset, _ = tensor.max(dim)
-        # Make offset broadcastable
-        broadcast_offset = offset.unsqueeze(dim)
-        # Perform log-sum-exp safely
-        safe_log_sum_exp = torch.log(
-            torch.sum(torch.exp(tensor - broadcast_offset), dim)
-        )
-        # Add offset back
-        return offset + safe_log_sum_exp
