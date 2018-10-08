@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from typing import Optional, Union
 
 from pytext.config import ConfigBase
@@ -8,32 +9,32 @@ from pytext.config.pytext_config import OptimizerParams, SchedulerParams
 from pytext.data.bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from pytext.data.compositional_data_handler import CompositionalDataHandler
 from pytext.data.joint_data_handler import JointModelDataHandler
-from pytext.data.seq_data_handler import SeqModelDataHandler
 from pytext.data.language_model_data_handler import LanguageModelDataHandler
 from pytext.data.pair_classification_data_handler import PairClassificationDataHandler
+from pytext.data.seq_data_handler import SeqModelDataHandler
 from pytext.exporters.exporter import TextModelExporter
 from pytext.fb.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
 from pytext.metric_reporters.classification_metric_reporter import (
-    ClassificationMetricReporter
+    ClassificationMetricReporter,
 )
 from pytext.metric_reporters.intent_slot_detection_metric_reporter import (
-    IntentSlotMetricReporter
+    IntentSlotMetricReporter,
 )
 from pytext.metric_reporters.language_model_metric_reporter import (
-    LanguageModelMetricReporter
+    LanguageModelMetricReporter,
 )
 from pytext.metric_reporters.word_tagging_metric_reporter import (
-    WordTaggingMetricReporter
+    WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
-from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
 from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
+from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.trainers import Trainer
 from pytext.trainers.ensemble_trainer import EnsembleTrainer
@@ -86,7 +87,7 @@ class JointTextJobSpec(JobSpecBase, ConfigBase):
 class LMJobSpec(JobSpecBase, ConfigBase):
     data_handler: Union[
         LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
-    ]
+    ] = LanguageModelDataHandler.Config()
     model: LMLSTM.Config
     trainer: Trainer.Config = Trainer.Config()
     labels: Optional[LabelConfig] = None

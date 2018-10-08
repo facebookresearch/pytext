@@ -9,15 +9,15 @@ from pytext.models.model import Model
 
 from .decoders.joint_model_decoder import JointModelDecoder
 from .output_layer.intent_slot_output_layer import IntentSlotOutputLayer
-from .representations.jointblstm_rep import JointBLSTMRepresentation
+from .representations.bilstm_doc_slot_attention import BiLSTMDocSlotAttention
 from .representations.jointcnn_rep import JointCNNRepresentation
 
 
 class JointModel(Model):
     class Config(ConfigBase):
         representation: Union[
-            JointBLSTMRepresentation.Config, JointCNNRepresentation.Config
-        ] = JointBLSTMRepresentation.Config()
+            BiLSTMDocSlotAttention.Config, JointCNNRepresentation.Config
+        ] = BiLSTMDocSlotAttention.Config()
         output_layer: IntentSlotOutputLayer.Config = (
             IntentSlotOutputLayer.Config()
         )

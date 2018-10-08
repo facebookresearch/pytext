@@ -12,7 +12,7 @@ from pytext.fields import FieldMeta
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.token_embedding import FeatureConfig
-from pytext.models.representations.bilstm_pooling import BiLSTMPooling
+from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 
 
 class ModuleLoadSaveTest(unittest.TestCase):
@@ -39,7 +39,9 @@ class ModuleLoadSaveTest(unittest.TestCase):
 
         saved_model = create_model(
             DocModel.Config(
-                representation=BiLSTMPooling.Config(save_path=self.representation_path),
+                representation=BiLSTMDocAttention.Config(
+                    save_path=self.representation_path
+                ),
                 decoder=MLPDecoder.Config(save_path=self.decoder_path),
             ),
             FeatureConfig(),
@@ -49,7 +51,9 @@ class ModuleLoadSaveTest(unittest.TestCase):
 
         loaded_model = create_model(
             DocModel.Config(
-                representation=BiLSTMPooling.Config(load_path=self.representation_path),
+                representation=BiLSTMDocAttention.Config(
+                    load_path=self.representation_path
+                ),
                 decoder=MLPDecoder.Config(load_path=self.decoder_path),
             ),
             FeatureConfig(),
@@ -58,7 +62,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
 
         random_model = create_model(
             DocModel.Config(
-                representation=BiLSTMPooling.Config(), decoder=MLPDecoder.Config()
+                representation=BiLSTMDocAttention.Config(), decoder=MLPDecoder.Config()
             ),
             FeatureConfig(),
             metadata,

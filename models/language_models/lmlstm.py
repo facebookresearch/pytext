@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -8,8 +9,7 @@ from pytext.data import CommonMetadata
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
 from pytext.models.output_layer.lm_output_layer import LMOutputLayer
-from pytext.models.representations.bilstm_pooling import BiLSTMPooling
-from pytext.models.representations.pooling import SelfAttention
+from pytext.models.representations.bilstm import BiLSTM
 from pytext.utils import cuda_utils
 
 
@@ -25,10 +25,7 @@ class LMLSTM(Model):
     """A word-level language model that uses LSTM to represent the document."""
 
     class Config(ConfigBase):
-        representation: BiLSTMPooling.Config = BiLSTMPooling.Config(
-            bidirectional=False,
-            pooling=SelfAttention.Config(),
-        )
+        representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
@@ -87,7 +84,7 @@ class LMLSTM(Model):
     def init_hidden(self, bsz):
         # TODO make hidden states initialization more generalized
         weight = next(self.parameters())
-        num_layers = self.representation.lstm.num_layers
+        num_layers = self.representation.num_layers
         rnn_hidden_dim = self.representation.representation_dim
         return (
             weight.new_zeros(bsz, num_layers, rnn_hidden_dim),

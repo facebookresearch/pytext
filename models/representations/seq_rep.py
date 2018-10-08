@@ -6,7 +6,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_module
 from .docnn import DocNNRepresentation
-from .bilstm_pooling import BiLSTMPooling
+from .bilstm_doc_attention import BiLSTMDocAttention
 from .representation_base import RepresentationBase
 
 
@@ -20,9 +20,9 @@ class SeqRepresentation(RepresentationBase):
         doc_representation: \
             DocNNRepresentation.Config = DocNNRepresentation.Config()
         seq_representation: Union[
-            BiLSTMPooling.Config,
+            BiLSTMDocAttention.Config,
             DocNNRepresentation.Config
-        ] = BiLSTMPooling.Config()
+        ] = BiLSTMDocAttention.Config()
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)

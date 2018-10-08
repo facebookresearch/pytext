@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -8,38 +8,43 @@ from pytext.config.component import create_module
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.representations.bilstm import BiLSTM
 
+from .pooling import MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
-from .slot_attention import SlotAttention
 
 
-class BiLSTMSlotAttention(RepresentationBase):
-    """Bidirectional LSTM based representation with slot attention."""
+class BiLSTMDocAttention(RepresentationBase):
+    """Bidirectional LSTM based representation with pooling
+       (e.g. max pooling or self attention)."""
 
     class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
         lstm: BiLSTM.Config = BiLSTM.Config()
-        slot_attention: SlotAttention.Config = SlotAttention.Config()
+        pooling: Union[
+            SelfAttention.Config, MaxPool.Config, MeanPool.Config, NoPool.Config
+        ] = SelfAttention.Config()
         mlp_decoder: Optional[MLPDecoder.Config] = None
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
 
         self.dropout = nn.Dropout(config.dropout)
-        self.relu = nn.ReLU()
 
         # BiLSTM representation.
-        self.lstm = create_module(config.lstm, embed_dim=embed_dim)
+        padding_value = (
+            float("-inf") if isinstance(config.pooling, MaxPool.Config) else 0.0
+        )
+        self.lstm = create_module(
+            config.lstm, embed_dim=embed_dim, padding_value=padding_value
+        )
 
-        # Slot attention.
-        self.attention = None
-        word_representation_dim = self.lstm.representation_dim
-        if config.slot_attention:
-            self.attention = SlotAttention(
-                config.slot_attention, self.lstm.representation_dim, batch_first=True
-            )
-            word_representation_dim += self.lstm.representation_dim
+        # Document attention.
+        self.attention = (
+            create_module(config.pooling, n_input=self.lstm.representation_dim)
+            if config.pooling is not None
+            else None
+        )
 
-        # Projection over attended representation.
+        # Non-linear projection over attended representation.
         self.dense = None
         self.representation_dim = self.lstm.representation_dim
         if config.mlp_decoder:
@@ -57,15 +62,18 @@ class BiLSTMSlotAttention(RepresentationBase):
         chars: torch.Tensor = None,
         pre_trained_rep_feat: torch.Tensor = None,
         states: torch.Tensor = None,
-    ) -> torch.Tensor:
-        rep = self.dropout(embedded_tokens)
+    ) -> Tuple[Any, Any]:
+        embedded_tokens = self.dropout(embedded_tokens)
 
         # LSTM representation
-        rep, _ = self.lstm(embedded_tokens, seq_lengths, states)
+        rep, new_state = self.lstm(embedded_tokens, seq_lengths, states)
 
         # Attention
         if self.attention:
-            rep = self.attention(rep)
+            rep = self.attention(rep, seq_lengths)
 
         # Non-linear projection
-        return self.dense(rep) if self.dense else rep
+        if self.dense:
+            rep = self.dense(rep)
+
+        return rep, new_state

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 from pytext.config import ConfigBase
 from pytext.models.module import Module
 

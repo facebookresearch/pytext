@@ -3,30 +3,30 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_packed_sequence, PackedSequence
+from pytext.config import ConfigBase
 from pytext.config.module_config import SlotAttentionType
+from pytext.models.module import Module
+from torch.nn.utils.rnn import PackedSequence, pad_packed_sequence
 
 
-class SlotAttention(nn.Module):
-    def __init__(
-        self,
-        slot_attention_type: SlotAttentionType,
-        slot_attn_dim: int,
-        n_input: int,
-        batch_first: bool = True,
-    ) -> None:
+class SlotAttention(Module):
+    class Config(ConfigBase):
+        attn_dimension: int = 64
+        attention_type: SlotAttentionType = SlotAttentionType.NO_ATTENTION
+
+    def __init__(self, config: Config, n_input: int, batch_first: bool = True) -> None:
         super().__init__()
 
         self.batch_first = batch_first
-        self.attention_type = slot_attention_type
+        self.attention_type = config.attention_type
 
         # attention can be in the form of h1'Wh2 ("multiply"),
         # g(h1;h2) ("add") or h1'h2 ("dot")
         if self.attention_type == SlotAttentionType.CONCAT:
             self.attention_add = nn.Sequential(
-                nn.Linear(2 * n_input, slot_attn_dim, bias=False),
+                nn.Linear(2 * n_input, config.slot_attn_dim, bias=False),
                 nn.Tanh(),
-                nn.Linear(slot_attn_dim, 1, bias=False),
+                nn.Linear(config.slot_attn_dim, 1, bias=False),
             )
         elif self.attention_type == SlotAttentionType.MULTIPLY:
             self.attention_mult = nn.Linear(n_input, n_input, bias=False)
@@ -50,7 +50,10 @@ class SlotAttention(nn.Module):
             ).unsqueeze(2)
             context_add = torch.matmul(attn_weights_add, exp_inputs_2).squeeze(2)
             output = torch.cat((inputs, context_add), 2)
-        else:
+        elif (
+            self.attention_type == SlotAttentionType.MULTIPLY
+            or self.attention_type == SlotAttentionType.DOT
+        ):
             attended = (
                 inputs
                 if self.attention_type == SlotAttentionType.DOT
@@ -61,5 +64,7 @@ class SlotAttention(nn.Module):
             ).unsqueeze(2)
             context_mult = torch.matmul(attn_weights_mult, exp_inputs_2).squeeze(2)
             output = torch.cat((inputs, context_mult), 2)
+        else:
+            output = inputs
 
         return output

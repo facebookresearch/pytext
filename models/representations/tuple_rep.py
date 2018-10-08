@@ -4,11 +4,12 @@ import itertools
 from typing import Tuple, Union
 
 import torch
+import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.config.component import create_module
 from scipy.special import comb
 
-from .bilstm_pooling import BiLSTMPooling
+from .bilstm_doc_attention import BiLSTMDocAttention
 from .docnn import DocNNRepresentation
 from .representation_base import RepresentationBase
 
@@ -30,8 +31,8 @@ class TupleRepresentation(RepresentationBase):
 
     class Config(RepresentationBase.Config, ConfigBase):
         subrepresentation: Union[
-            BiLSTMPooling.Config, DocNNRepresentation.Config
-        ] = BiLSTMPooling.Config()
+            BiLSTMDocAttention.Config, DocNNRepresentation.Config
+        ] = BiLSTMDocAttention.Config()
         tied_weights: bool = True
         num_subrepresentations: int = 2
         encode_relations: bool = True
@@ -41,14 +42,14 @@ class TupleRepresentation(RepresentationBase):
         assert config.num_subrepresentations > 1
 
         if config.tied_weights:
-            self.subrepresentations = torch.nn.ModuleList(
+            self.subrepresentations = nn.ModuleList(
                 itertools.repeat(
                     create_module(config.subrepresentation, embed_dim=embed_dim),
                     config.num_subrepresentations,
                 )
             )
         else:
-            self.subrepresentations = torch.nn.ModuleList(
+            self.subrepresentations = nn.ModuleList(
                 create_module(config.subrepresentation, embed_dim=embed_dim)
                 for _ in range(config.num_subrepresentations)
             )

@@ -101,5 +101,4 @@ class DataParallelModel(nn.Module):
         elif isinstance(input_representation[-1], tuple):
             # since some lstm based representations return states as (h0, c0)
             input_representation = input_representation[:-1]
-
         return self.decoder(*input_representation)

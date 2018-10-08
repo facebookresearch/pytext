@@ -29,36 +29,40 @@ from torchtext.vocab import Vocab
 
 JOINT_CONFIG = """
 {
-    "model": {
-        "representation": {
-            "JointBLSTMRepresentation": {
-                "lstm": {
-                  "lstm_dim": 30,
-                  "num_layers": 1
-                }
-            }
+  "model": {
+    "representation": {
+      "BiLSTMDocSlotAttention": {
+        "lstm": {
+          "lstm_dim": 30,
+          "num_layers": 1
         },
-        "decoder": {
-            "use_doc_probs_in_word": true
-        },
-        "output_layer": {
-            "doc_output": {
-              "loss": {
-                "CrossEntropyLoss": {}
-              }
-            },
-            "word_output": {
-              "CRFOutputLayer": {}
-            }
+        "pooling": {
+          "SelfAttention": {
+            "attn_dimension": 30,
+            "dropout": 0.3
+          }
         }
+      }
     },
-    "features": {
-      "word_feat": {},
-      "dict_feat": {}
+    "decoder": {
+      "use_doc_probs_in_word": true
     },
-    "exporter": {
-
+    "output_layer": {
+      "doc_output": {
+        "loss": {
+          "CrossEntropyLoss": {}
+        }
+      },
+      "word_output": {
+        "CRFOutputLayer": {}
+      }
     }
+  },
+  "features": {
+    "word_feat": {},
+    "dict_feat": {}
+  },
+  "exporter": {}
 }
 """
 
@@ -67,107 +71,103 @@ DOC_CONFIGS = [
 {
   "model": {
     "representation": {
-        "BiLSTMPooling": {
+        "BiLSTMDocAttention": {
         "pooling": {
           "MaxPool": {}
         }
       }
     },
     "output_layer": {
-        "loss": {
+      "loss": {
         "CrossEntropyLoss": {}
-        }
+      }
     }
   },
   "features": {
     "dict_feat": {
-        "embed_dim": 10
+      "embed_dim": 10
     }
   },
   "trainer": {
     "epochs": 1
   },
-  "exporter": {
-
-  }
+  "exporter": {}
 }
 """,
     """
 {
   "model": {
-      "representation": {
-        "DocNNRepresentation": {}
-      },
-      "output_layer": {
-        "loss": {
-            "CrossEntropyLoss": {}
-            }
+    "representation": {
+      "DocNNRepresentation": {}
+    },
+    "output_layer": {
+      "loss": {
+        "CrossEntropyLoss": {}
       }
+    }
   },
   "features": {
     "word_feat": {},
-    "dict_feat": {
-
-    }
+    "dict_feat": {}
   },
   "trainer": {
     "epochs": 1
   },
-  "exporter": {
-
-  }
+  "exporter": {}
 }
-
-    """,
-]
-WORD_CONFIGS = [
-    """{
-    "model": {
-        "representation": {
-            "BiLSTMSlotAttention": {
-                "lstm": {
-                  "lstm_dim": 30,
-                  "num_layers": 2
-                }
-            }
-        },
-        "output_layer": {
-            "WordTaggingOutputLayer": {}
-        }
-    },
-    "features": {
-        "dict_feat": {
-            "embed_dim": 10
-        }
-    },
-    "exporter": {}
-  }
 """,
-    """{
-    "model": {
-        "representation": {
-            "BiLSTMSlotAttention": {
-                "lstm": {
-                  "lstm_dim": 30,
-                  "num_layers": 2
-                }
-            }
-        },
-        "output_layer": {
-            "CRFOutputLayer": {}
+]
+
+WORD_CONFIGS = [
+    """
+{
+  "model": {
+    "representation": {
+      "BiLSTMSlotAttention": {
+        "lstm": {
+          "lstm_dim": 30,
+          "num_layers": 2
         }
-    },
-    "labels": {
-      "word_label": {}
-    },
-    "features": {
-      "word_feat": {},
-      "dict_feat": {
-        "embed_dim": 10
       }
     },
-    "exporter": {}
+    "output_layer": {
+      "WordTaggingOutputLayer": {}
+    }
+},
+"features": {
+  "dict_feat": {
+    "embed_dim": 10
   }
+},
+"exporter": {}
+}
+""",
+    """
+{
+  "model": {
+    "representation": {
+      "BiLSTMSlotAttention": {
+        "lstm": {
+          "lstm_dim": 30,
+          "num_layers": 2
+        }
+      }
+    },
+    "output_layer": {
+      "CRFOutputLayer": {}
+    }
+  },
+  "labels": {
+    "word_label": {}
+  },
+  "features": {
+    "word_feat": {},
+    "dict_feat": {
+      "embed_dim": 10
+    }
+  },
+  "exporter": {}
+}
 """,
 ]
 

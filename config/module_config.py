@@ -1,15 +1,8 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import List, Optional
+from typing import List
 
 from .pytext_config import ConfigBase
-
-
-class LSTMParams(ConfigBase):
-    # The number of features in the lstm hidden state
-    lstm_dim: int = 100
-    num_layers: int = 1
-    projection_dim: Optional[int] = None
 
 
 class CNNParams(ConfigBase):
