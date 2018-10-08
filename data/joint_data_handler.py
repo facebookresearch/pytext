@@ -81,7 +81,9 @@ class JointModelDataHandler(DataHandler):
             ] = PretrainedModelEmbeddingField()
 
         if label_config.doc_label:
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
+            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField(
+                getattr(label_config.doc_label, 'label_weights', None)
+            )
         if label_config.word_label:
             labels[DatasetFieldName.WORD_LABEL_FIELD] = WordLabelField(
                 use_bio_labels=label_config.word_label.use_bio_labels
