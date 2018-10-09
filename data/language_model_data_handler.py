@@ -60,7 +60,6 @@ class LanguageModelDataHandler(DataHandler):
         }
         labels: Dict[str, Field] = {}
         extra_fields: Dict[str, Field] = {
-            DatasetFieldName.TOKEN_RANGE_PAIR: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
         return cls(
@@ -97,12 +96,6 @@ class LanguageModelDataHandler(DataHandler):
         df[DFColumn.MODEL_FEATS] = pd.Series(
             self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
         )
-        df[DFColumn.TOKEN_RANGE_PAIR] = [
-            data_utils.parse_token(
-                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].token_ranges
-            )
-            for _, row in df.iterrows()
-        ]
 
         return df
 
