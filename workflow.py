@@ -153,5 +153,6 @@ def test_model(config: PyTextConfig) -> Any:
     metric_reporter = create_metric_reporter(
         config.jobspec.metric_reporter, data_handler.metadata
     )
+    data_handler.test_path = config.jobspec.data_handler.test_path
     test_iter = data_handler.get_test_batch()
     return trainer.test(test_iter, model, metric_reporter)
