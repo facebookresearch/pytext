@@ -49,7 +49,6 @@ class SeqModelDataHandler(JointModelDataHandler):
         if label_config.doc_label:
             labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
         extra_fields: Dict[str, Field] = {
-            DatasetFieldName.TOKEN_RANGE_PAIR: RawField(),
             DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
@@ -106,14 +105,4 @@ class SeqModelDataHandler(JointModelDataHandler):
                 for sequence in sequences
             ]
         )
-
-        df[DFColumn.TOKEN_RANGE_PAIR] = [
-            [
-                data_utils.parse_token(utterence, model_feat.token_ranges)
-                for (utterence, model_feat) in zip(
-                    row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS]
-                )
-            ]
-            for _, row in df.iterrows()
-        ]
         return df
