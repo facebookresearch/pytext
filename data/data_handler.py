@@ -324,7 +324,7 @@ class DataHandler(Component):
         data = []
         if isinstance(feat, VocabUsingField) and feat.vocab_from_train_data:
             data.append(train_data)
-        if hasattr(feat, "vocab_file"):
+        if hasattr(feat, "vocab_file") and feat.vocab_file:
             lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
             data.append(
                 [self.load_vocab(feat.vocab_file, feat.vocab_size, lowercase_tokens)]

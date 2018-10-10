@@ -160,6 +160,7 @@ class TextFeatureField(VocabUsingField):
         eos_token=None,
         lower=True,
         tokenize=data_utils.no_tokenize,
+        fix_length=None,
     ) -> None:
         super().__init__(
             pretrained_embeddings_path=pretrained_embeddings_path,
@@ -179,6 +180,7 @@ class TextFeatureField(VocabUsingField):
             eos_token=eos_token,
             lower=lower,
             tokenize=tokenize,
+            fix_length=fix_length,
         )
 
 
