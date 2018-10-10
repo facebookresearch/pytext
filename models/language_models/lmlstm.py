@@ -104,7 +104,7 @@ class StatefulDataParallelModel(nn.Module):
         tokens_lens: torch.Tensor,
         prev_state: torch.Tensor = None,
     ):
-        rep, state = self.representation(token_emb, tokens_lens, prev_state)
+        rep, state = self.representation(token_emb, tokens_lens, states=prev_state)
         if self.decoder is None:
             return rep, state
         if not isinstance(rep, (list, tuple)):

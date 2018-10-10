@@ -38,6 +38,7 @@ class JointModelDataHandler(DataHandler):
             DFColumn.DOC_WEIGHT,
             DFColumn.WORD_WEIGHT,
         ]
+        max_seq_len: int = -1
 
     FULL_FEATURES = [
         DatasetFieldName.TEXT_FIELD,
@@ -110,6 +111,7 @@ class JointModelDataHandler(DataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            max_seq_len=config.max_seq_len,
         )
 
     def __init__(self, featurizer: Featurizer, **kwargs) -> None:
@@ -118,9 +120,7 @@ class JointModelDataHandler(DataHandler):
 
         self.df_to_example_func_map = {
             # features
-            DatasetFieldName.TEXT_FIELD: lambda row, field: row[
-                DFColumn.MODEL_FEATS
-            ].tokens,
+            DatasetFieldName.TEXT_FIELD: self._get_tokens,
             DatasetFieldName.DICT_FIELD: lambda row, field: (
                 row[DFColumn.MODEL_FEATS].gazetteer_feats,
                 row[DFColumn.MODEL_FEATS].gazetteer_feat_weights,
@@ -156,6 +156,13 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.INDEX_FIELD: self.DF_INDEX,
             DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
         }
+
+    def _get_tokens(self, row, field):
+        if self.max_seq_len > 0:
+            # truncate tokens if max_seq_len is set
+            return row[DFColumn.MODEL_FEATS].tokens[:self.max_seq_len]
+        else:
+            return row[DFColumn.MODEL_FEATS].tokens
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
         if DFColumn.DICT_FEAT not in df:

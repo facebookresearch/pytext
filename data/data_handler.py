@@ -120,6 +120,7 @@ class DataHandler(Component):
         train_batch_size: int = 128,
         eval_batch_size: int = 128,
         test_batch_size: int = 128,
+        max_seq_len: int = -1,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
         self.labels: Dict[str, Field] = labels or {}
@@ -133,6 +134,7 @@ class DataHandler(Component):
         self._data_cache: MutableMapping[str, pd.DataFrame] = {}
         self.shuffle = (shuffle,)
         self.num_workers = multiprocessing.cpu_count()
+        self.max_seq_len = max_seq_len
 
         self.train_path = train_path
         self.eval_path = eval_path
@@ -276,10 +278,11 @@ class DataHandler(Component):
         for name, feat in self.features.items():
             if feat.use_vocab:
                 print("building vocab for feature {}".format(name))
-                feat.build_vocab(*self._get_data_to_build_vocab(feat, train_data))
+                feat.build_vocab(*self._get_data_to_build_vocab(
+                    feat, train_data, eval_data, test_data))
                 print(
                     "{} field's vocabulary size is {}".format(
-                        name, len(feat.vocab.itos)
+                        name, len(feat.vocab)
                     )
                 )
 
@@ -309,7 +312,8 @@ class DataHandler(Component):
         self._gen_extra_metadata()
 
     def _get_data_to_build_vocab(
-        self, feat: Field, train_data: textdata.Dataset
+        self, feat: Field, train_data: textdata.Dataset,
+        eval_data: textdata.Dataset, test_data: textdata.Dataset
     ) -> List[Any]:
         """
         This method prepares the list of data sources that
@@ -322,8 +326,11 @@ class DataHandler(Component):
         is appended to the list which, is a list of items read from the vocab file.
         """
         data = []
-        if isinstance(feat, VocabUsingField) and feat.vocab_from_train_data:
-            data.append(train_data)
+        if isinstance(feat, VocabUsingField):
+            if feat.vocab_from_train_data:
+                data.append(train_data)
+            elif feat.vocab_from_all_data:
+                data.extend([train_data, eval_data, test_data])
         if hasattr(feat, "vocab_file") and feat.vocab_file:
             lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
             data.append(
