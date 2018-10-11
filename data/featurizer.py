@@ -35,17 +35,12 @@ class Featurizer(Component):
 
     __COMPONENT_TYPE__ = ComponentType.FEATURIZER
 
-    def featurize(self, input_record: Dict[str, Any]) -> Dict[str, Any]:
+    def featurize(self, input_record: InputRecord) -> OutputRecord:
         raise NotImplementedError("Featurizer.featurize() method must be implemented.")
 
     def featurize_batch(
-        self, input_record_list: Sequence[Dict[str, Any]]
-    ) -> Sequence[Dict[str, Any]]:
-        """Featurize a batch of instances/examples in parallel.
-        This is a default implementation using joblib.Parallel,
-        feel free to re-implement it as needed.
+        self, input_record_list: Sequence[InputRecord]
+    ) -> Sequence[OutputRecord]:
+        """Featurize a batch of instances/examples.
         """
-        features_list = Parallel(n_jobs=-1)(
-            delayed(self.featurize)(record) for record in input_record_list
-        )
-        return features_list
+        return [self.featurize(record) for record in input_record_list]
