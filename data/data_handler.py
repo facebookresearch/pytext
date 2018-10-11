@@ -88,9 +88,7 @@ class DataHandler(Component):
     class Config(ConfigBase):
         columns_to_read: List[str] = []
         shuffle: bool = True
-        pretrained_embeddings_path: str = ""
         featurizer: AssistantFeaturizer.Config = AssistantFeaturizer.Config()
-        pretrained_embeddings_path = ""
         train_path: str = "train.tsv"
         eval_path: str = "eval.tsv"
         test_path: str = "test.tsv"
