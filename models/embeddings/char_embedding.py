@@ -28,12 +28,12 @@ class CharacterEmbedding(nn.Module):
             [
                 # in_channels = embed_dim because input is treated as sequence
                 # of dim [max_word_length] with embed_dim channels
-                nn.Conv1d(embed_dim, out_channels, K)
+                # Adding padding to provide robustness in cases where input
+                # length is less than conv filter width
+                nn.Conv1d(embed_dim, out_channels, K, padding=K // 2)
                 for K in kernel_sizes
             ]
         )
-        # TODO: Revisit this if ONNX can't handle it; use nn.max instead
-        self.pool = nn.AdaptiveMaxPool1d(1)
         self.embedding_dim = out_channels * len(kernel_sizes)
         self.sparse = sparse
 
@@ -51,7 +51,7 @@ class CharacterEmbedding(nn.Module):
 
         # Apply max pooling
         # char_pool_out[i] dims: (bsize * max_sent_length, out_channels)
-        char_pool_outs = [self.pool(out).squeeze() for out in char_conv_outs]
+        char_pool_outs = [torch.max(out, dim=2)[0] for out in char_conv_outs]
 
         # Concat different feature maps together
         # char_pool_out dim: (bsize * max_sent_length, out_channel * num_kernels)

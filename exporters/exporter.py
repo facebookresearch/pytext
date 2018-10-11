@@ -7,7 +7,13 @@ from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.common.constants import DatasetFieldName
 from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import (
+    CapFeatConfig,
+    CharFeatConfig,
+    DictFeatConfig,
+    FeatureConfig,
+    LabelConfig,
+)
 from pytext.data import CommonMetadata
 from pytext.loss import BinaryCrossEntropyLoss
 from pytext.models.output_layer import ClassificationOutputLayer, CRFOutputLayer
@@ -161,6 +167,8 @@ class TextModelExporter(ModelExporter):
         label_config: LabelConfig,
         meta: CommonMetadata,
     ):
+        # The number of names in input_names *must* be equal to the number of
+        # tensors passed in dummy_input
         input_names = list(feature_config.word_feat.export_input_names)
         feature_itos_map = {
             feature_config.word_feat.export_input_names[0]: meta.features[
@@ -172,6 +180,21 @@ class TextModelExporter(ModelExporter):
             feature_itos_map[
                 feature_config.dict_feat.export_input_names[0]
             ] = meta.features[DatasetFieldName.DICT_FIELD].vocab.itos
+        else:
+            input_names.extend(DictFeatConfig._field_defaults["export_input_names"])
+
+        if feature_config.cap_feat:
+            input_names.extend(feature_config.cap_feat.export_input_names)
+        else:
+            input_names.extend(CapFeatConfig._field_defaults["export_input_names"])
+
+        if feature_config.char_feat:
+            input_names.extend(feature_config.char_feat.export_input_names)
+            feature_itos_map[
+                feature_config.char_feat.export_input_names[0]
+            ] = meta.features[DatasetFieldName.CHAR_FIELD].vocab.itos
+        else:
+            input_names.extend(CharFeatConfig._field_defaults["export_input_names"])
 
         output_names: List[str] = []
         axis: List[int] = []
@@ -186,13 +209,15 @@ class TextModelExporter(ModelExporter):
 
         # The sample input should exactly match the shape of the model forward function
         dummy_model_input = (
-            torch.tensor([[1], [1]], dtype=torch.long),
-            torch.tensor([1, 1], dtype=torch.long),
+            torch.tensor([[1], [1]], dtype=torch.long),  # tokens
+            torch.tensor([1, 1], dtype=torch.long),  # token lengths
             (
                 torch.tensor([[2], [2]], dtype=torch.long),
                 torch.tensor([[1.5], [2.5]], dtype=torch.float),
                 torch.tensor([1, 1], dtype=torch.long),
-            ),
+            ),  # dict feats
+            (torch.tensor([[1], [1]], dtype=torch.long), ), # caps feat
+            torch.tensor([[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long),  # char feats
         )
         label_names = [label.vocab.itos for label in meta.labels.values()]
 

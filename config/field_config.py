@@ -37,11 +37,13 @@ class CharFeatConfig(ConfigBase):
     embed_dim: int = 100
     sparse: bool = False
     cnn: CNNParams = CNNParams()
+    export_input_names: List[str] = ["char_vals"]
     vocab_from_train_data: bool = True
 
 
 class CapFeatConfig(ConfigBase):
     embed_dim: int = 100
+    export_input_names: List[str] = ["cap_feats"]
 
 
 class PretrainedModelEmbeddingConfig(ConfigBase):

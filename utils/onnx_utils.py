@@ -14,6 +14,10 @@ CAFFE2_DB_TYPE = "minidb"
 def pytorch_to_caffe2(
     model, export_input, external_input_names, output_names, export_path
 ):
+    num_tensors = 0
+    for inp in export_input:
+        num_tensors += len(inp) if isinstance(inp, (tuple, list)) else 1
+    assert len(external_input_names) == num_tensors
     all_input_names = external_input_names[:]
     for name, _ in model.named_parameters():
         all_input_names.append(name)

@@ -60,7 +60,14 @@ JOINT_CONFIG = """
   },
   "features": {
     "word_feat": {},
-    "dict_feat": {}
+    "dict_feat": {},
+    "char_feat": {
+      "embed_dim": 5,
+      "cnn": {
+        "kernel_num": 2,
+        "kernel_sizes": [2, 3]
+        }
+      }
   },
   "exporter": {}
 }
@@ -108,7 +115,14 @@ DOC_CONFIGS = [
   },
   "features": {
     "word_feat": {},
-    "dict_feat": {}
+    "dict_feat": {},
+    "char_feat": {
+      "embed_dim": 5,
+      "cnn": {
+        "kernel_num": 2,
+        "kernel_sizes": [2, 3]
+        }
+      }
   },
   "trainer": {
     "epochs": 1
@@ -137,7 +151,14 @@ WORD_CONFIGS = [
 "features": {
   "dict_feat": {
     "embed_dim": 10
-  }
+  },
+  "char_feat": {
+    "embed_dim": 5,
+    "cnn": {
+      "kernel_num": 2,
+      "kernel_sizes": [2, 3]
+      }
+    }
 },
 "exporter": {}
 }
@@ -177,6 +198,9 @@ PAD_IDX = 1
 W_VOCAB = ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
 DICT_VOCAB_SIZE = 10
 DICT_VOCAB = ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
+CHAR_VOCAB_SIZE = 10
+CHAR_VOCAB = ["<UNK>", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
+
 # For now we need to fix the batch_size for exporting and testing,
 # Need to remove this and make it a random input once ONNX is able to
 # Handle different batch_sizes
@@ -187,6 +211,7 @@ INPUT_NAMES = [
     PredictorInputNames.DICT_FEAT_IDS,
     PredictorInputNames.DICT_FEAT_WEIGHTS,
     PredictorInputNames.DICT_FEAT_LENS,
+    PredictorInputNames.CHAR_IDS,
 ]
 
 
@@ -198,6 +223,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words=st.integers(1, 7),
         test_num_dict_feat=st.integers(1, 8),
         num_predictions=st.integers(1, 4),
+        test_num_chars=st.integers(1, 7),
     )
     def test_doc_export_to_caffe2(
         self,
@@ -207,6 +233,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words,
         test_num_dict_feat,
         num_predictions,
+        test_num_chars,
     ):
         for config in DOC_CONFIGS:
             config = self._get_config(DocClassificationJobSpec, config)
@@ -230,8 +257,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     BATCH_SIZE,
                     W_VOCAB_SIZE,
                     DICT_VOCAB_SIZE,
+                    CHAR_VOCAB_SIZE,
                     test_num_words,
                     test_num_dict_feat,
+                    test_num_chars,
                 )
                 self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
                 workspace.RunNetOnce(pred_net)
@@ -252,6 +281,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words=st.integers(1, 7),
         test_num_dict_feat=st.integers(1, 8),
         num_predictions=st.integers(2, 5),
+        test_num_chars=st.integers(1, 7),
     )
     def test_wordblstm_export_to_caffe2(
         self,
@@ -261,6 +291,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words,
         test_num_dict_feat,
         num_predictions,
+        test_num_chars,
     ):
         for WORD_CONFIG in WORD_CONFIGS:
             config = self._get_config(WordTaggingJobSpec, WORD_CONFIG)
@@ -280,8 +311,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     BATCH_SIZE,
                     W_VOCAB_SIZE,
                     DICT_VOCAB_SIZE,
+                    CHAR_VOCAB_SIZE,
                     test_num_words,
                     test_num_dict_feat,
+                    test_num_chars,
                 )
                 self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
                 workspace.RunNetOnce(pred_net)
@@ -305,6 +338,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words=st.integers(1, 7),
         test_num_dict_feat=st.integers(1, 8),
         num_predictions=st.integers(1, 5),
+        test_num_chars=st.integers(1, 7),
     )
     def test_joint_export_to_caffe2(
         self,
@@ -315,6 +349,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_words,
         test_num_dict_feat,
         num_predictions,
+        test_num_chars,
     ):
         config = self._get_config(JointTextJobSpec, JOINT_CONFIG)
         metadata = self._get_metadata(num_doc_classes, num_word_classes)
@@ -335,8 +370,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 BATCH_SIZE,
                 W_VOCAB_SIZE,
                 DICT_VOCAB_SIZE,
+                CHAR_VOCAB_SIZE,
                 test_num_words,
                 test_num_dict_feat,
+                test_num_chars,
             )
             self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
             workspace.RunNetOnce(pred_net)
@@ -394,8 +431,10 @@ class TextModelExporterTest(hu.HypothesisTestCase):
 
         w_vocab = Vocab(Counter())
         dict_vocab = Vocab(Counter())
+        c_vocab = Vocab(Counter())
         w_vocab.itos = W_VOCAB
         dict_vocab.itos = DICT_VOCAB
+        c_vocab.itos = CHAR_VOCAB
 
         text_feat_meta = FieldMeta()
         text_feat_meta.unk_token_idx = UNK_IDX
@@ -409,10 +448,16 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         dict_feat_meat.vocab = dict_vocab
         dict_feat_meat.vocab_export_name = PredictorInputNames.DICT_FEAT_IDS
 
+        char_feat_meta = FieldMeta()
+        char_feat_meta.vocab_size = CHAR_VOCAB_SIZE
+        char_feat_meta.vocab = c_vocab
+        char_feat_meta.vocab_export_name = PredictorInputNames.CHAR_IDS
+
         meta = CommonMetadata()
         meta.features = {
             DatasetFieldName.TEXT_FIELD: text_feat_meta,
             DatasetFieldName.DICT_FIELD: dict_feat_meat,
+            DatasetFieldName.CHAR_FIELD: char_feat_meta,
         }
         meta.labels = labels
         meta.label_names = [label.vocab.itos for label in labels.values()]
@@ -422,7 +467,14 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         return meta
 
     def _get_rand_input(
-        self, batch_size, w_vocab_size, d_vocab_size, num_words, num_dict_feats
+        self,
+        batch_size,
+        w_vocab_size,
+        d_vocab_size,
+        c_vocab_size,
+        num_words,
+        num_dict_feats,
+        num_chars,
     ):
         text = torch.from_numpy(
             np.random.randint(w_vocab_size, size=(batch_size, num_words)).astype(
@@ -447,8 +499,20 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 1, num_dict_feats + 1, size=(num_words * batch_size)
             ).astype(np.int64)
         )
+        cap_feats = ()
+        chars = torch.from_numpy(
+            np.random.randint(
+                c_vocab_size, size=(batch_size, num_words, num_chars)
+            ).astype(np.int64)
+        )
 
-        return (text, lengths, (dict_feat, dict_weights, dict_lengths))
+        return (
+            text,
+            lengths,
+            (dict_feat, dict_weights, dict_lengths),
+            cap_feats,
+            chars,
+        )
 
     def _get_config(self, cls, config_str):
         params_json = json.loads(config_str)
@@ -467,7 +531,8 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             if INPUT_NAMES[i] in vocab_map.keys():
                 # Map the input to the str form
                 input_vocab = vocab_map[INPUT_NAMES[i]]
-                input_str = [[input_vocab[x] for x in ex] for ex in input_np]
+                map_fn = np.vectorize(lambda x: input_vocab[x])
+                input_str = map_fn(input_np)
                 input_np = np.array(input_str, dtype=str)
                 workspace.FeedBlob(INPUT_NAMES[i] + "_str:value", input_np)
             else:
