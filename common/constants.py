@@ -21,6 +21,8 @@ class DatasetFieldName:
     LANGUAGE_ID_FIELD = "lang"
     SEQ_LENS = "seq_lens"
     TARGET_SEQ_LENS = "target_seq_lens"
+    SOURCE_SEQ_FIELD = "source_sequence"
+    TARGET_SEQ_FIELD = "target_sequence"
 
 
 class PackageFileName:
@@ -41,6 +43,10 @@ class DFColumn:
     WORD_WEIGHT = "word_weight"
     TOKEN_RANGE_PAIR = "token_range_pair"
     LANGUAGE_ID = "lang"
+    SOURCE_SEQUENCE = "source_sequence"
+    TARGET_SEQUENCE = "target_sequence"
+    SOURCE_FEATS = "source_feats"
+    TARGET_TOKENS = "target_tokens"
 
 
 class ConfigeratorPath:

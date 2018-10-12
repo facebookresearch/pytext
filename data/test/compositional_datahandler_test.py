@@ -110,7 +110,7 @@ class CompositionalDataHandlerTest(unittest.TestCase):
 
     def test_process_data(self):
         self.dh.init_metadata_from_df(self.train_data, self.eval_data, self.test_data)
-        train_iter = self.dh.get_train_batch_from_df((self.train_data,), (1,))[0]
+        train_iter = self.dh.get_train_iter_from_df(self.train_data, 1)
         for input, target, _ in train_iter:
             np.testing.assert_array_almost_equal(
                 input[0][0].numpy(), [[7, 3, 2, 5, 4, 6]]

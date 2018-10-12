@@ -99,7 +99,7 @@ class LanguageModelDataHandler(DataHandler):
 
         return df
 
-    def _input_from_batch(self, batch):
+    def _train_input_from_batch(self, batch):
         # batch.text[1] is the length of each sequence
         # length of the longest sequences will be subtracted by 1, but for other
         # smaller sequences, it will remain the same

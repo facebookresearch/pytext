@@ -189,7 +189,7 @@ class JointModelDataHandler(DataHandler):
 
         return df
 
-    def _input_from_batch(self, batch):
+    def _train_input_from_batch(self, batch):
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         # text_input[1] is the length of each word
         return (text_input[0], text_input[1]) + tuple(

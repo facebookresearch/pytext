@@ -104,23 +104,23 @@ class BPTTLanguageModelDataHandler(DataHandler):
         ret_df[DFColumn.UTTERANCE] = pd.Series([featurize(df)])
         return ret_df
 
-    def _get_train_batch(
-        self, datasets: Tuple[textdata.Dataset, ...], batch_size: Tuple[int, ...]
-    ) -> Tuple[BatchIterator, ...]:
-        return tuple(
-            BatchIterator(iter, self._postprocess_batch)
-            for iter in textdata.BPTTIterator.splits(
-                datasets,
-                batch_sizes=batch_size,
+    def _get_train_iter(
+        self, train_dataset: textdata.Dataset, batch_size: int
+    ) -> BatchIterator:
+        return BatchIterator(
+            textdata.BPTTIterator(
+                train_dataset,
+                batch_size=batch_size,
                 bptt_len=self.bptt_len,
                 device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
                 sort_within_batch=True,
                 repeat=False,
                 sort_key=self.sort_key,
-            )
+            ),
+            self._postprocess_batch,
         )
 
-    def _input_from_batch(self, batch):
+    def _train_input_from_batch(self, batch):
         return (
             # (bsx x seq_len)
             batch.text.t().contiguous(),
@@ -130,7 +130,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
     def _target_from_batch(self, batch):
         return (batch.target.t().contiguous(),)
 
-    def get_test_batch(self, file_path: str, batch_size: int) -> BatchIterator:
+    def get_test_iter(self, file_path: str, batch_size: int) -> BatchIterator:
         test_data = self.gen_dataset_from_path(file_path)
         return BatchIterator(
             textdata.BPTTIterator(

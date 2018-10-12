@@ -65,7 +65,7 @@ class PairClassificationDataHandler(DataHandler):
             test_batch_size=config.test_batch_size,
         )
 
-    def _input_from_batch(self, batch):
+    def _train_input_from_batch(self, batch):
         return tuple(zip(*(getattr(batch, name) for name in self.features)))
 
     def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:

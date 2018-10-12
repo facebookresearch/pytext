@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from pytext.data.data_handler import DataHandler
-from typing import List, Any, Dict
+from typing import Any, Dict, List
+
 import pandas as pd
 import torch.nn as nn
+from pytext.data.data_handler import DataHandler
 
 
 class Predictor:
@@ -13,7 +14,7 @@ class Predictor:
         self.data_handler = data_handler
 
     def predict(self, df: pd.DataFrame) -> List[List[Dict]]:
-        input, context = self.data_handler.get_predict_batch(df)
+        input, context = self.data_handler.get_predict_iter(df)
         # Invoke the model
         model_out = self.model(*input)
         return self.fill_predictions(model_out, context)

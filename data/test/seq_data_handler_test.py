@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import unittest
-import pandas as pd
-import numpy as np
 
+import numpy as np
+import pandas as pd
 from pytext.common.constants import DFColumn
-from pytext.config.field_config import FeatureConfig, LabelConfig, DocLabelConfig
+from pytext.config.field_config import DocLabelConfig, FeatureConfig, LabelConfig
 from pytext.data.seq_data_handler import SeqModelDataHandler
 
 
@@ -14,19 +14,14 @@ class SeqModelDataHandlerTest(unittest.TestCase):
         self.train_data = pd.DataFrame(
             {
                 DFColumn.DOC_LABEL: ["cu:discuss_where"],
-                DFColumn.UTTERANCE: [
-                    '["where do you wanna meet?", "MPK"]'
-                ],
+                DFColumn.UTTERANCE: ['["where do you wanna meet?", "MPK"]'],
             }
         )
 
         self.eval_data = pd.DataFrame(
             {
                 DFColumn.DOC_LABEL: ["cu:discuss_where", "cu:other"],
-                DFColumn.UTTERANCE: [
-                    '["how about SF?", "sounds good"]',
-                    '["lol"]',
-                ],
+                DFColumn.UTTERANCE: ['["how about SF?", "sounds good"]', '["lol"]'],
             }
         )
 
@@ -55,15 +50,10 @@ class SeqModelDataHandlerTest(unittest.TestCase):
 
     def test_process_data(self):
         self.dh.init_metadata_from_df(self.train_data, self.eval_data, self.test_data)
-        train_iter = self.dh.get_train_batch_from_df((self.train_data,), (1,))[0]
+        train_iter = self.dh.get_train_iter_from_df(self.train_data, 1)
         for input, target, _ in train_iter:
             np.testing.assert_array_almost_equal(
-                input[0][0].numpy(),
-                [[7, 3, 8, 6, 4, 2], [5, 1, 1, 1, 1, 1]],
+                input[0][0].numpy(), [[7, 3, 8, 6, 4, 2], [5, 1, 1, 1, 1, 1]]
             )
-            np.testing.assert_array_almost_equal(
-                input[1].numpy(), [2],
-            )
-            np.testing.assert_array_almost_equal(
-                target[0].numpy(), [0],
-            )
+            np.testing.assert_array_almost_equal(input[1].numpy(), [2])
+            np.testing.assert_array_almost_equal(target[0].numpy(), [0])

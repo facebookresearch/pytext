@@ -45,9 +45,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(text_feat_meta.init_token_idx, 2)
         self.assertEqual(text_feat_meta.eos_token_idx, 3)
 
-        train_iter = data_handler.get_train_batch_from_path(
-            (FILE_NAME,), (BATCH_SIZE,)
-        )[0]
+        train_iter = data_handler.get_train_iter_from_path(FILE_NAME, BATCH_SIZE)
 
         batches = [t for t in train_iter]
         # There is only one batch in the tiny dataset

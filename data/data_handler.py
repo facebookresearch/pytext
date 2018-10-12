@@ -48,17 +48,23 @@ class BatchIterator:
         include_input=True,
         include_target=True,
         include_context=True,
+        is_train=True,
     ):
         self.processor = processor
         self.batches = batches
         self.include_input = include_input
         self.include_target = include_target
         self.include_context = include_context
+        self.is_train = is_train
 
     def __iter__(self):
         for batch in self.batches:
             yield self.processor(
-                batch, self.include_input, self.include_target, self.include_context
+                batch,
+                self.include_input,
+                self.include_target,
+                self.include_context,
+                self.is_train,
             )
 
 
@@ -185,16 +191,12 @@ class DataHandler(Component):
                 field.load_meta(metadata.labels[name])
 
     def gen_dataset_from_path(
-        self,
-        path: str,
-        include_label_fields: bool = True,
-        use_cache: bool = True,
+        self, path: str, include_label_fields: bool = True, use_cache: bool = True
     ) -> textdata.Dataset:
         if use_cache and path in self._data_cache:
             return self._data_cache[path]
         res = self.gen_dataset(
-            self.read_from_file(path, self.raw_columns),
-            include_label_fields,
+            self.read_from_file(path, self.raw_columns), include_label_fields
         )
         self._data_cache[path] = res
         return res
@@ -237,11 +239,7 @@ class DataHandler(Component):
         )
 
     def init_metadata(self):
-        self.init_metadata_from_path(
-            self.train_path,
-            self.eval_path,
-            self.test_path,
-        )
+        self.init_metadata_from_path(self.train_path, self.eval_path, self.test_path)
 
     def init_metadata_from_df(
         self, train_data: pd.DataFrame, eval_data: pd.DataFrame, test_data: pd.DataFrame
@@ -276,13 +274,12 @@ class DataHandler(Component):
         for name, feat in self.features.items():
             if feat.use_vocab:
                 print("building vocab for feature {}".format(name))
-                feat.build_vocab(*self._get_data_to_build_vocab(
-                    feat, train_data, eval_data, test_data))
-                print(
-                    "{} field's vocabulary size is {}".format(
-                        name, len(feat.vocab)
+                feat.build_vocab(
+                    *self._get_data_to_build_vocab(
+                        feat, train_data, eval_data, test_data
                     )
                 )
+                print("{} field's vocabulary size is {}".format(name, len(feat.vocab)))
 
                 # Initialize pretrained embedding weights.
                 if (
@@ -310,8 +307,11 @@ class DataHandler(Component):
         self._gen_extra_metadata()
 
     def _get_data_to_build_vocab(
-        self, feat: Field, train_data: textdata.Dataset,
-        eval_data: textdata.Dataset, test_data: textdata.Dataset
+        self,
+        feat: Field,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
     ) -> List[Any]:
         """
         This method prepares the list of data sources that
@@ -340,43 +340,42 @@ class DataHandler(Component):
         """Subclass can overwrite to add more necessary metadata."""
         pass
 
-    def get_train_batch_from_path(
-        self, data_paths: Tuple[str, ...], batch_size: Tuple[int, ...]
-    ) -> Tuple[BatchIterator, ...]:
-        return self._get_train_batch(
-            tuple(self.gen_dataset_from_path(p) for p in data_paths), batch_size
-        )
+    def get_train_iter_from_path(
+        self, train_path: str, batch_size: int
+    ) -> BatchIterator:
+        return self._get_train_iter(self.gen_dataset_from_path(train_path), batch_size)
 
-    def get_train_batch(self):
-        return self.get_train_batch_from_path(
-            (self.train_path, self.eval_path),
-            (self.train_batch_size, self.eval_batch_size),
-        )
+    def get_train_iter(self):
+        return self.get_train_iter_from_path(self.train_path, self.train_batch_size)
 
-    def get_train_batch_from_df(
-        self, data_frames: Tuple[pd.DataFrame, ...], batch_size: Tuple[int, ...]
-    ) -> Tuple[BatchIterator, ...]:
-        return self._get_train_batch(
-            tuple(self.gen_dataset(df) for df in data_frames), batch_size
-        )
+    def get_eval_iter(self):
+        return self.get_train_iter_from_path(self.eval_path, self.eval_batch_size)
 
-    def _get_train_batch(
-        self, datasets: Tuple[textdata.Dataset, ...], batch_size: Tuple[int, ...]
-    ) -> Tuple[BatchIterator, ...]:
-        return tuple(
-            BatchIterator(iter, self._postprocess_batch)
-            for iter in textdata.BucketIterator.splits(
-                datasets,
-                batch_sizes=batch_size,
+    def get_test_iter(self):
+        return self.get_test_iter_from_path(self.test_path, self.test_batch_size)
+
+    def get_train_iter_from_df(
+        self, train_data_frame: pd.DataFrame, batch_size: int
+    ) -> BatchIterator:
+        return self._get_train_iter(self.gen_dataset(train_data_frame), batch_size)
+
+    def _get_train_iter(
+        self, train_dataset: textdata.Dataset, batch_size: int
+    ) -> BatchIterator:
+        return BatchIterator(
+            textdata.BucketIterator(
+                train_dataset,
+                batch_size=batch_size,
                 device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
                 sort_within_batch=True,
                 repeat=False,
                 sort_key=self.sort_key,
                 shuffle=self.shuffle,
-            )
+            ),
+            self._postprocess_batch,
         )
 
-    def get_test_batch_from_path(self, path: str, batch_size: int) -> BatchIterator:
+    def get_test_iter_from_path(self, path: str, batch_size: int) -> BatchIterator:
         test_data = self.gen_dataset_from_path(path)
         return BatchIterator(
             textdata.Iterator(
@@ -389,17 +388,11 @@ class DataHandler(Component):
                 sort_key=self.sort_key,
             ),
             self._postprocess_batch,
+            is_train=False,
         )
 
-    def get_test_batch(self):
-        return self.get_test_batch_from_path(
-            self.test_path,
-            self.test_batch_size,
-        )
-
-    def get_predict_batch(self, df: pd.DataFrame):
+    def get_predict_iter(self, df: pd.DataFrame):
         data = self.gen_dataset(df, include_label_fields=False)
-
         it = BatchIterator(
             textdata.Iterator(
                 data,
@@ -412,6 +405,7 @@ class DataHandler(Component):
             ),
             self._postprocess_batch,
             include_target=False,
+            is_train=False,
         )
         for input, _, context in it:
             # only return the first batch since there is only one
@@ -441,10 +435,15 @@ class DataHandler(Component):
             )
 
     def _postprocess_batch(
-        self, batch, include_input=True, include_target=True, include_context=True
+        self,
+        batch,
+        include_input=True,
+        include_target=True,
+        include_context=True,
+        is_train=True,
     ) -> Tuple:
         return (
-            self._input_from_batch(batch) if include_input else None,
+            self._input_from_batch(batch, is_train) if include_input else None,
             self._target_from_batch(batch) if include_target else None,
             self._context_from_batch(batch) if include_context else None,
         )
@@ -455,8 +454,18 @@ class DataHandler(Component):
             return targets[0]
         return targets
 
-    def _input_from_batch(self, batch):
+    def _input_from_batch(self, batch, is_train=True):
+        return (
+            self._train_input_from_batch(batch)
+            if is_train
+            else self._test_input_from_batch(batch)
+        )
+
+    def _train_input_from_batch(self, batch):
         return tuple(getattr(batch, name) for name in self.features)
+
+    def _test_input_from_batch(self, batch):
+        return self._train_input_from_batch(batch)
 
     def _context_from_batch(self, batch):
         return {name: getattr(batch, name) for name in self.extra_fields}
