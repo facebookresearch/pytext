@@ -83,7 +83,6 @@ class VocabUsingField(Field):
         *args,
         **kwargs
     ):
-        assert vocab_from_train_data ^ vocab_from_all_data
         super().__init__(*args, **kwargs)
         self.pretrained_embeddings_path = pretrained_embeddings_path
         self.vocab_file = vocab_file
