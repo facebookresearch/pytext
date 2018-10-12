@@ -91,7 +91,7 @@ class PretrainedEmbedding(object):
         for chunk in embed_df:
             chunk_vocab = chunk.as_matrix([0]).flatten()
             if lowercase_tokens:
-                chunk_vocab = map(lambda s: s.lower(), chunk_vocab)
+                chunk_vocab = [word.lower() for word in chunk_vocab]
             if dialect is not None:
                 chunk_vocab = [append_dialect(word, dialect) for word in chunk_vocab]
             self.embed_vocab.extend(chunk_vocab)
