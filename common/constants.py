@@ -44,8 +44,11 @@ class DFColumn:
 
 
 class ConfigeratorPath:
-    DEFAULT_TOKENIZER = "assistant/nlu/default_tokenizer_config"
-    LOWER_NO_PUNCT_TOKENIZER = "assistant/nlu/lower_no_punct_tokenizer_config"
+    DEFAULT_TOKENIZER = "configerator:assistant/nlu/default_tokenizer_config"
+    LOWER_NO_PUNCT_TOKENIZER = (
+        "configerator:assistant/nlu/lower_no_punct_tokenizer_config"
+    )
+    PREFIX = "configerator:"
 
 
 class PackageName:

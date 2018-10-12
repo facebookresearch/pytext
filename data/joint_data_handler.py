@@ -83,7 +83,7 @@ class JointModelDataHandler(DataHandler):
 
         if label_config.doc_label:
             labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField(
-                getattr(label_config.doc_label, 'label_weights', None)
+                getattr(label_config.doc_label, "label_weights", None)
             )
         if label_config.word_label:
             labels[DatasetFieldName.WORD_LABEL_FIELD] = WordLabelField(
@@ -205,6 +205,4 @@ class JointModelDataHandler(DataHandler):
         return res
 
     def _gen_extra_metadata(self):
-        self.metadata.tokenizer_config_path_dict = (
-            self.featurizer.tokenizer_config_path_dict
-        )
+        self.metadata.tokenizer_config_dict = self.featurizer.tokenizer_config_dict
