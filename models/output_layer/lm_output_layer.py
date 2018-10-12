@@ -41,7 +41,7 @@ class LMOutputLayer(OutputLayerBase):
         # sequence_loss dim: (bsize,)
         sequence_loss = loss.sum(1) / context[DatasetFieldName.TARGET_SEQ_LENS].float()
         scores = self.calculate_perplexity(sequence_loss)
-        return logit, scores
+        return scores, scores
 
     def get_loss(self, logit, target, context, reduce=True):
         # flatten the logit from [batch_size, seq_lens, dim] to
