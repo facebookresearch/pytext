@@ -29,7 +29,7 @@ class CrossEntropyLoss(Loss):
             logits,
             targets,
             ignore_index=self.ignore_index,
-            reduce=reduce,
+            reduction="elementwise_mean" if reduce else "none",
             weight=self.weight,
         )
 
@@ -56,7 +56,9 @@ class BinaryCrossEntropyLoss(Loss):
         # total_positive = examples_per_class.sum()
         # weights = total_positive.unsqueeze(0) / examples_per_class
 
-        loss = F.binary_cross_entropy_with_logits(m_out, one_hot_targets, reduce=False)
+        loss = F.binary_cross_entropy_with_logits(
+            m_out, one_hot_targets, reduction="none"
+        )
 
         if self.config.reweight_negative:
             # This makes sure we have same weights for all negative classes and
