@@ -28,15 +28,19 @@ def get_slots(word_names):
 class WordTaggingMetricReporter(MetricReporter):
     model_select_metric_name = "f1"
 
-    def __init__(self, label_names: List[str], channels: List[Channel]) -> None:
+    def __init__(
+        self, label_names: List[str], use_bio_labels: bool, channels: List[Channel]
+    ) -> None:
         super().__init__(channels)
         self.label_names = label_names
+        self.use_bio_labels = use_bio_labels
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        label_names = next(iter(meta.labels.values())).vocab.itos
+        label_meta = next(iter(meta.labels.values()))
         return cls(
-            label_names,
+            label_meta.vocab.itos,
+            label_meta.use_bio_labels,
             [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
         )
 
@@ -62,7 +66,9 @@ class WordTaggingMetricReporter(MetricReporter):
                 NodesPredictionPair(
                     get_slots(
                         merge_token_labels_to_slot(
-                            token_range, self.process_pred(pred[0:seq_len])
+                            token_range,
+                            self.process_pred(pred[0:seq_len]),
+                            self.use_bio_labels,
                         )
                     ),
                     get_slots(slots_label),

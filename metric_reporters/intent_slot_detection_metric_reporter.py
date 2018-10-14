@@ -4,12 +4,7 @@ from typing import Dict, List, Tuple
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import (
-    FramePredictionPair,
-    Node,
-    Span,
-    compute_all_metrics,
-)
+from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
 from pytext.utils.data_utils import parse_slot_string
 from pytext.utils.test_utils import merge_token_labels_to_slot
 
@@ -62,20 +57,21 @@ class IntentSlotMetricReporter(MetricReporter):
         self,
         doc_label_names: List[str],
         word_label_names: List[str],
+        use_bio_labels: bool,
         channels: List[Channel],
     ) -> None:
         super().__init__(channels)
         self.doc_label_names = doc_label_names
         self.word_label_names = word_label_names
+        self.use_bio_labels = use_bio_labels
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        doc_label_names, word_label_names = [
-            label.vocab.itos for label in meta.labels.values()
-        ]
+        doc_label_meta, word_label_meta = meta.labels.values()
         return cls(
-            doc_label_names,
-            word_label_names,
+            doc_label_meta.vocab.itos,
+            word_label_meta.vocab.itos,
+            word_label_meta.use_bio_labels,
             [ConsoleChannel(), IntentSlotChannel((Stage.TEST,), config.output_path)],
         )
 
@@ -115,7 +111,7 @@ class IntentSlotMetricReporter(MetricReporter):
     def gen_extra_context(self):
         self.all_context["slots_prediction"] = [
             merge_token_labels_to_slot(
-                token_range, self.process_pred(word_pred[0:seq_len])
+                token_range, self.process_pred(word_pred[0:seq_len]), self.use_bio_labels
             )
             for word_pred, seq_len, token_range in zip(
                 self.all_word_preds,

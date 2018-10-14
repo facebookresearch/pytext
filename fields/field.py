@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Union
+from typing import Any, Mapping, Union
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
@@ -9,7 +9,6 @@ from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
-from typing import Mapping
 
 
 class FieldMeta:
@@ -42,10 +41,7 @@ class Field(textdata.Field):
             meta.eos_token_idx = self.vocab.stoi[self.eos_token]
         return meta
 
-    def load_meta(
-        self,
-        metadata: FieldMeta,
-    ):
+    def load_meta(self, metadata: FieldMeta):
         self.vocab = metadata.vocab
 
 
@@ -55,10 +51,7 @@ class NestedField(Field, textdata.NestedField):
         meta.nesting_meta = self.nesting_field.get_meta()
         return meta
 
-    def load_meta(
-        self,
-        metadata: FieldMeta,
-    ):
+    def load_meta(self, metadata: FieldMeta):
         super().load_meta(metadata)
         self.nesting_field.vocab = metadata.nesting_meta.vocab
 
@@ -95,6 +88,7 @@ class VocabUsingField(Field):
 
 class VocabUsingNestedField(VocabUsingField, NestedField):
     """Base class for all nested fields that need to build a vocabulary."""
+
     pass
 
 
@@ -140,6 +134,11 @@ class WordLabelField(Field):
             unk_token=None,  # Don't include unk in the list of labels
         )
         self.use_bio_labels = use_bio_labels
+
+    def get_meta(self):
+        meta = super().get_meta()
+        meta.use_bio_labels = self.use_bio_labels
+        return meta
 
 
 class TextFeatureField(VocabUsingField):
@@ -220,10 +219,7 @@ class SeqFeatureField(VocabUsingNestedField):
             tokenize=tokenize,
             nesting_field=nesting_field
             if nesting_field is not None
-            else TextFeatureField(
-                include_lengths=False,
-                lower=False,
-            ),
+            else TextFeatureField(include_lengths=False, lower=False),
         )
 
 
