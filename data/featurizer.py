@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence
-
-from joblib import Parallel, delayed
+from typing import List, NamedTuple, Optional, Sequence
 from pytext.config.component import Component, ComponentType
 
 
 class InputRecord(NamedTuple):
     """Input data contract between Featurizer and DataHandler."""
+
     raw_text: str
     raw_gazetteer_feats: str = ""
     locale: str = ""
@@ -14,6 +13,7 @@ class InputRecord(NamedTuple):
 
 class OutputRecord(NamedTuple):
     """Output data contract between Featurizer and DataHandler."""
+
     tokens: List[str]
     token_ranges: Optional[List[int]] = None
     gazetteer_feats: Optional[List[str]] = None
@@ -34,6 +34,7 @@ class Featurizer(Component):
     """
 
     __COMPONENT_TYPE__ = ComponentType.FEATURIZER
+    __EXPANSIBLE__ = True
 
     def featurize(self, input_record: InputRecord) -> OutputRecord:
         raise NotImplementedError("Featurizer.featurize() method must be implemented.")

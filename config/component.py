@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import collections
 import enum
-from typing import Any, Dict, Iterable, List, Type, Union
+from typing import Any, Dict, Iterable, List, Tuple, Type, Union
 
 import torch
 
@@ -54,10 +54,24 @@ class Registry:
         return cls._registered_components[component_type][config_cls]
 
     @classmethod
-    def values(cls, component_type: ComponentType) -> Iterable[Type]:
+    def values(cls, component_type: ComponentType) -> Tuple[Type, ...]:
         if component_type not in cls._registered_components:
             raise RegistryError(f"type {component_type} doesn't exist")
-        return cls._registered_components[component_type].values()
+        return tuple(cls._registered_components[component_type].values())
+
+    @classmethod
+    def configs(cls, component_type: ComponentType) -> Tuple[Type, ...]:
+        if component_type not in cls._registered_components:
+            raise RegistryError(f"type {component_type} doesn't exist")
+        return tuple(cls._registered_components[component_type].keys())
+
+    @classmethod
+    def subconfigs(cls, config_cls: Type) -> Tuple[Type, ...]:
+        return tuple(
+            sub_cls
+            for sub_cls in cls.configs(config_cls.__COMPONENT_TYPE__)
+            if issubclass(sub_cls.__COMPONENT__, config_cls.__COMPONENT__)
+        )
 
 
 class ComponentMeta(type):
@@ -81,8 +95,7 @@ class ComponentMeta(type):
                     pass
 
             namespace["Config"] = Config
-        namespace["Config"].__name__ = f"{typename}.Config"
-        new_cls = super().__new__(metacls, typename, bases, namespace)
+
         component_type = next(
             (
                 base.__COMPONENT_TYPE__
@@ -91,6 +104,12 @@ class ComponentMeta(type):
             ),
             namespace.get("__COMPONENT_TYPE__"),
         )
+        new_cls = super().__new__(metacls, typename, bases, namespace)
+
+        new_cls.Config.__COMPONENT_TYPE__ = component_type
+        new_cls.Config.__name__ = f"{typename}.Config"
+        new_cls.Config.__COMPONENT__ = new_cls
+        new_cls.Config.__EXPANSIBLE__ = namespace.get("__EXPANSIBLE__")
         if component_type:
             Registry.add(component_type, new_cls, new_cls.Config)
         return new_cls

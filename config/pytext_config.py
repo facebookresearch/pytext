@@ -9,13 +9,13 @@ class ConfigBase(metaclass=InheritableNamedTupleMeta):
     _root = True
 
 
-class JobSpecPlaceHolder:
+class PlaceHolder:
     pass
 
 
 class PyTextConfig(ConfigBase):
     # the actual task union types will be generated in runtime
-    jobspec: Union[Any, JobSpecPlaceHolder]
+    jobspec: Union[Any, PlaceHolder]
     use_cuda_if_available: bool = True
 
     # A path to a snapshot of a trained model to test

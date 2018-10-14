@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
-from .trainer import Trainer
+from .trainer import Trainer, TrainerBase
 
 
-class EnsembleTrainer(Trainer):
+class EnsembleTrainer(TrainerBase):
     class Config(ConfigBase):
         real_trainer: Trainer.Config = Trainer.Config()
 

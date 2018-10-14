@@ -12,9 +12,11 @@ from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
 from pytext.utils import cuda_utils
 
 
-class Trainer(Component):
+class TrainerBase(Component):
     __COMPONENT_TYPE__ = ComponentType.TRAINER
 
+
+class Trainer(TrainerBase):
     class Config(ConfigBase):
         # Manual random seed
         random_seed: int = 0

@@ -2,6 +2,8 @@
 from enum import Enum
 from typing import Dict, List, Tuple, Union
 
+from .component import Registry
+
 
 class ConfigParseError(Exception):
     pass
@@ -41,17 +43,20 @@ def _extend_tuple_type(cls, value):
     return sub_cls_list
 
 
-def _union_from_json(union_cls, json_obj):
+def _union_from_json(subclasses, json_obj):
     if type(json_obj) is not dict:
-        raise IncorrectTypeError(f"incorrect Union value {json_obj} for {union_cls}")
+        raise IncorrectTypeError(
+            f"incorrect Union value {json_obj} for union {subclasses}"
+        )
     type_name = list(json_obj)[0]
-
-    for subclass in union_cls.__args__:
+    for subclass in subclasses:
         if type(None) != subclass and (
             type_name.lower() == _canonical_typename(subclass).lower()
         ):
             return _value_from_json(subclass, json_obj[type_name])
-    raise UnionTypeError(f"no suitable type found for {type_name} in union {union_cls}")
+    raise UnionTypeError(
+        f"no suitable type found for {type_name} in union {subclasses}"
+    )
 
 
 def _is_optional(cls):
@@ -78,7 +83,7 @@ def _value_from_json(cls, value):
     elif hasattr(cls, "_fields"):
         return config_from_json(cls, value)
     elif type(cls) is type(Union):
-        return _union_from_json(cls, value)
+        return _union_from_json(cls.__args__, value)
     elif issubclass(cls, Enum):
         return _enum_from_json(cls, value)
     elif issubclass(cls, List):
@@ -96,7 +101,21 @@ def _value_from_json(cls, value):
     return cls(value)
 
 
+def _try_component_config_from_json(cls, value):
+    if type(value) is dict and len(value) == 1:
+        options = Registry.subconfigs(cls)
+        type_name = list(value)[0]
+        for option in options:
+            if type_name.lower() == _canonical_typename(option).lower():
+                return _value_from_json(option, value[type_name])
+    return None
+
+
 def config_from_json(cls, json_obj):
+    if getattr(cls, "__EXPANSIBLE__", False):
+        component_config = _try_component_config_from_json(cls, json_obj)
+        if component_config:
+            return component_config
     parsed_dict = {}
     if not hasattr(cls, "_fields"):
         raise IncorrectTypeError(f"{cls} is not a valid config class")
@@ -145,14 +164,14 @@ def _value_to_json(cls, value):
     elif _is_optional(cls) and len(cls.__args__) == 2:
         sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
         return _value_to_json(sub_cls, value)
+    elif type(cls) is type(Union) or getattr(cls, "__EXPANSIBLE__", False):
+        real_cls = type(value)
+        if hasattr(real_cls, "_fields"):
+            value = config_to_json(real_cls, value)
+        return {_canonical_typename(real_cls): value}
     # nested config
     elif hasattr(cls, "_fields"):
         return config_to_json(cls, value)
-    elif type(cls) is type(Union):
-        union_cls = type(value)
-        if hasattr(union_cls, "_fields"):
-            value = config_to_json(union_cls, value)
-        return {_canonical_typename(union_cls): value}
     elif issubclass(cls, Enum):
         return value.value
     elif issubclass(cls, List):
