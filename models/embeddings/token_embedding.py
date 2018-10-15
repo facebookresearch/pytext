@@ -112,9 +112,6 @@ class TokenEmbedding(Module):
         if pretrained_model_embed:
             self.embedding_dim += pretrained_model_embed.embedding_dim
 
-        if self.embedding_dim == 0:
-            raise ValueError("At least one embedding config must be provided.")
-
     def forward(
         self,
         tokens: torch.Tensor,
