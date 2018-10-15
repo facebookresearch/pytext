@@ -20,7 +20,7 @@ class InheritableNamedTupleMeta(NamedTupleMeta):
         if not annotations:
             # fbl flow types don't support empty namedTuple,
             # add placeholder to workaround
-            annotations["inheritable__"] = bool
-            defaults["inheritable__"] = True
+            annotations["config_name_"] = str
+            defaults["config_name_"] = typename
         defaults["__annotations__"] = annotations
         return super().__new__(cls, typename, bases, defaults)
