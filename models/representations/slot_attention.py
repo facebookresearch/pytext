@@ -24,9 +24,9 @@ class SlotAttention(Module):
         # g(h1;h2) ("add") or h1'h2 ("dot")
         if self.attention_type == SlotAttentionType.CONCAT:
             self.attention_add = nn.Sequential(
-                nn.Linear(2 * n_input, config.slot_attn_dim, bias=False),
+                nn.Linear(2 * n_input, config.attn_dimension, bias=False),
                 nn.Tanh(),
-                nn.Linear(config.slot_attn_dim, 1, bias=False),
+                nn.Linear(config.attn_dimension, 1, bias=False),
             )
         elif self.attention_type == SlotAttentionType.MULTIPLY:
             self.attention_mult = nn.Linear(n_input, n_input, bias=False)
