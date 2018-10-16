@@ -31,14 +31,14 @@ class Field(textdata.Field):
         if self.use_vocab:
             meta.vocab_size = len(self.vocab)
             meta.vocab = self.vocab
-        if self.pad_token is not None:
-            meta.pad_token_idx = self.vocab.stoi[self.pad_token]
-        if self.unk_token is not None:
-            meta.unk_token_idx = self.vocab.stoi[self.unk_token]
-        if self.init_token is not None:
-            meta.init_token_idx = self.vocab.stoi[self.init_token]
-        if self.eos_token is not None:
-            meta.eos_token_idx = self.vocab.stoi[self.eos_token]
+            if self.pad_token is not None:
+                meta.pad_token_idx = self.vocab.stoi[self.pad_token]
+            if self.unk_token is not None:
+                meta.unk_token_idx = self.vocab.stoi[self.unk_token]
+            if self.init_token is not None:
+                meta.init_token_idx = self.vocab.stoi[self.init_token]
+            if self.eos_token is not None:
+                meta.eos_token_idx = self.vocab.stoi[self.eos_token]
         return meta
 
     def load_meta(self, metadata: FieldMeta):
