@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 import pandas as pd
 import torch.nn as nn
-from pytext.data.data_handler import DataHandler
+from pytext.data import DataHandler
 
 
 class Predictor:

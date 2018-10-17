@@ -2,14 +2,10 @@
 from typing import Dict, List
 
 import pandas as pd
-from eit.llama.common.thriftutils import dict_to_thrift
-from messenger.assistant.cu.core.ttypes import IntentFrame
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
-from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig
-from pytext.data.featurizer import Featurizer, InputRecord
-from pytext.fb.rnng.tools.annotation_to_intent_frame import intent_frame_to_tree
+from pytext.data.featurizer import InputRecord
 from pytext.fields import ActionField, DictFeatureField, Field, TextFeatureField
 from pytext.utils import data_utils
 
@@ -54,7 +50,6 @@ class CompositionalDataHandler(DataHandler):
             features[DatasetFieldName.DICT_FIELD] = DictFeatureField()
         features[ACTION_FEATURE_FIELD] = ActionField()
         return cls(
-            featurizer=create_featurizer(config.featurizer, feature_config),
             raw_columns=config.columns_to_read,
             features=features,
             labels={ACTION_LABEL_FIELD: ActionField()},
@@ -67,13 +62,9 @@ class CompositionalDataHandler(DataHandler):
             **kwargs
         )
 
-    def __init__(self, featurizer: Featurizer, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.featurizer = featurizer
 
-        super().__init__(**kwargs)
-        # configs
-        self.featurizer = featurizer
         self.df_to_example_func_map = {
             # TODO set_tokens_indices, should implement another field
             # TODO is it the same with the original tokens seq?
@@ -115,19 +106,13 @@ class CompositionalDataHandler(DataHandler):
             for _, row in df.iterrows()
         ]
 
-        # TODO should implement a version whose params are plain intent, slot and
-        # get rid of IntentFrame class
-        df[TREE_COLUMN] = df.apply(
-            lambda row: intent_frame_to_tree(
-                dict_to_thrift(
-                    IntentFrame,
-                    {
-                        "utterance": row[DFColumn.UTTERANCE],
-                        "intent": row[DFColumn.DOC_LABEL],
-                        "slots": row[DFColumn.WORD_LABEL],
-                    },
-                )
-            ),
-            axis=1,
-        )
         return df
+
+    def _input_from_batch(self, batch, is_train):
+        # text_input[0] is contains numericalized tokens.
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
+        return (text_input[0], text_input[1]) + tuple(
+            getattr(batch, name, None)
+            for name in self.FULL_FEATURES
+            if name != DatasetFieldName.TEXT_FIELD
+        )

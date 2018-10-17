@@ -6,12 +6,15 @@ from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
 from pytext.config.pytext_config import OptimizerParams, SchedulerParams
-from pytext.data.bptt_lm_data_handler import BPTTLanguageModelDataHandler
-from pytext.data.compositional_data_handler import CompositionalDataHandler
-from pytext.data.joint_data_handler import JointModelDataHandler
-from pytext.data.language_model_data_handler import LanguageModelDataHandler
-from pytext.data.pair_classification_data_handler import PairClassificationDataHandler
-from pytext.data.seq_data_handler import SeqModelDataHandler
+from pytext.data import (
+    BPTTLanguageModelDataHandler,
+    CompositionalDataHandler,
+    JointModelDataHandler,
+    LanguageModelDataHandler,
+    PairClassificationDataHandler,
+    SeqModelDataHandler,
+)
+from pytext.data.featurizer import Featurizer
 from pytext.exporters.exporter import TextModelExporter
 from pytext.fb.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
 from pytext.metric_reporters.classification_metric_reporter import (
@@ -45,6 +48,7 @@ class JobSpecBase(ConfigBase):
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporter.Config] = None
     scheduler: Optional[SchedulerParams] = SchedulerParams()
+    featurizer: Featurizer.Config
 
 
 # TODO better to have separate jobspec for different ensemble model
@@ -97,15 +101,13 @@ class LMJobSpec(JobSpecBase, ConfigBase):
 class SemanticParsingJobSpec(JobSpecBase, ConfigBase):
     model: Union[RNNGConfig, Seq2SeqConfig]
     trainer: CompositionalTrainerConfig = CompositionalTrainerConfig()
-    data_handler: CompositionalDataHandler.Config = (CompositionalDataHandler.Config())
+    data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
 
 
 class PairClassificationJobSpec(JobSpecBase, ConfigBase):
     features: SharedTokenEmbedding.Config = SharedTokenEmbedding.Config()
     model: PairClassificationModel.Config = PairClassificationModel.Config()
-    data_handler: PairClassificationDataHandler.Config = (
-        PairClassificationDataHandler.Config()
-    )
+    data_handler: PairClassificationDataHandler.Config = PairClassificationDataHandler.Config()
     trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()

@@ -5,9 +5,8 @@ from typing import Dict, List
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.field_config import LabelConfig
+from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.fields import DocLabelField, Field, RawField, TextFeatureField
-from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
 from pytext.utils import data_utils
 
 from .data_handler import DataHandler
@@ -25,7 +24,7 @@ class PairClassificationDataHandler(DataHandler):
     def from_config(
         cls,
         config: Config,
-        feature_config: SharedTokenEmbedding.Config,
+        feature_config: FeatureConfig,
         label_config: LabelConfig,
         **kwargs,
     ):
@@ -63,6 +62,7 @@ class PairClassificationDataHandler(DataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            **kwargs,
         )
 
     def _train_input_from_batch(self, batch):

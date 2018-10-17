@@ -69,6 +69,9 @@ JOINT_CONFIG = """
         }
       }
   },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
   "exporter": {}
 }
 """
@@ -94,6 +97,9 @@ DOC_CONFIGS = [
     "dict_feat": {
       "embed_dim": 10
     }
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
   },
   "trainer": {
     "epochs": 1
@@ -124,6 +130,9 @@ DOC_CONFIGS = [
         }
       }
   },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
   "trainer": {
     "epochs": 1
   },
@@ -147,20 +156,23 @@ WORD_CONFIGS = [
     "output_layer": {
       "WordTaggingOutputLayer": {}
     }
-},
-"features": {
-  "dict_feat": {
-    "embed_dim": 10
   },
-  "char_feat": {
-    "embed_dim": 5,
-    "cnn": {
-      "kernel_num": 2,
-      "kernel_sizes": [2, 3]
+  "features": {
+    "dict_feat": {
+      "embed_dim": 10
+    },
+    "char_feat": {
+      "embed_dim": 5,
+      "cnn": {
+        "kernel_num": 2,
+        "kernel_sizes": [2, 3]
       }
     }
-},
-"exporter": {}
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
+  "exporter": {}
 }
 """,
     """
@@ -186,6 +198,9 @@ WORD_CONFIGS = [
     "dict_feat": {
       "embed_dim": 10
     }
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
   },
   "exporter": {}
 }

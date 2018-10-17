@@ -10,7 +10,8 @@ from pytext.config.field_config import (
     LabelConfig,
     WordFeatConfig,
 )
-from pytext.data.joint_data_handler import JointModelDataHandler
+from pytext.data import JointModelDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.embeddings_utils import PretrainedEmbedding
 
 
@@ -148,6 +149,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
                 )
             ),
             LabelConfig(),
+            featurizer=SimpleFeaturizer(),
         )
 
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
@@ -168,6 +170,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
                 )
             ),
             LabelConfig(),
+            featurizer=SimpleFeaturizer(),
         )
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 

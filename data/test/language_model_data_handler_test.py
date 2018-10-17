@@ -4,10 +4,8 @@ from typing import Dict
 
 import numpy as np
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
-from pytext.config.component import create_featurizer
-from pytext.config.field_config import FeatureConfig
-from pytext.data.language_model_data_handler import LanguageModelDataHandler
-from pytext.data.simple_featurizer import SimpleFeaturizer
+from pytext.data import LanguageModelDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 from pytext.fields import Field, TextFeatureField
 
 
@@ -29,10 +27,10 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         }
 
         return LanguageModelDataHandler(
-            featurizer=create_featurizer(SimpleFeaturizer.Config(), FeatureConfig()),
             raw_columns=columns,
             features=features,
             labels={},
+            featurizer=SimpleFeaturizer(),
         )
 
     def test_data_handler(self):

@@ -5,7 +5,6 @@ from pytext.config.component import Component, ComponentType
 
 class InputRecord(NamedTuple):
     """Input data contract between Featurizer and DataHandler."""
-
     raw_text: str
     raw_gazetteer_feats: str = ""
     locale: str = ""
@@ -13,7 +12,6 @@ class InputRecord(NamedTuple):
 
 class OutputRecord(NamedTuple):
     """Output data contract between Featurizer and DataHandler."""
-
     tokens: List[str]
     token_ranges: Optional[List[int]] = None
     gazetteer_feats: Optional[List[str]] = None

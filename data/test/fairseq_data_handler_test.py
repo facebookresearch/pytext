@@ -4,13 +4,17 @@ import unittest
 
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.fairseq_data_handler import FairSeqDataHandler
+from pytext.data import FairSeqDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 
 
 class FairSeqDataHandlerTest(unittest.TestCase):
     def test_create_from_config(self):
         data_handler = FairSeqDataHandler.from_config(
-            FairSeqDataHandler.Config(), FeatureConfig(), LabelConfig()
+            FairSeqDataHandler.Config(target_featurizer=SimpleFeaturizer.Config()),
+            FeatureConfig(),
+            LabelConfig(),
+            featurizer=SimpleFeaturizer(),
         )
         expected_columns = [DFColumn.SOURCE_SEQUENCE, DFColumn.TARGET_SEQUENCE]
         # check that the list of columns is as expected
@@ -19,7 +23,10 @@ class FairSeqDataHandlerTest(unittest.TestCase):
     def test_read_from_path(self):
         file_name = "pytext/tests/data/compositional_seq2seq_unit.tsv"
         data_handler = FairSeqDataHandler.from_config(
-            FairSeqDataHandler.Config(), FeatureConfig(), LabelConfig()
+            FairSeqDataHandler.Config(target_featurizer=SimpleFeaturizer.Config()),
+            FeatureConfig(),
+            LabelConfig(),
+            featurizer=SimpleFeaturizer(),
         )
 
         df = data_handler.read_from_file(file_name, data_handler.raw_columns)
@@ -35,7 +42,10 @@ class FairSeqDataHandlerTest(unittest.TestCase):
     def test_batching(self):
         file_name = "pytext/tests/data/compositional_seq2seq_unit.tsv"
         data_handler = FairSeqDataHandler.from_config(
-            FairSeqDataHandler.Config(), FeatureConfig(), LabelConfig()
+            FairSeqDataHandler.Config(target_featurizer=SimpleFeaturizer.Config()),
+            FeatureConfig(),
+            LabelConfig(),
+            featurizer=SimpleFeaturizer(),
         )
         data_handler.init_metadata_from_path(file_name, file_name, file_name)
         train_iter = data_handler.get_train_iter_from_path(file_name, 2)

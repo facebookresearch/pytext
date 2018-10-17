@@ -4,14 +4,12 @@ from typing import Dict, List, Type
 
 import pandas as pd
 import torch
-from facebook.assistant.lib.featurization_lib import DEFAULT_LOCALE
 from fairseq.data.dictionary import Dictionary as FairseqDict
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import Featurizer, InputRecord
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 from pytext.fields import Field, TextFeatureField
 from pytext.utils.cuda_utils import GetTensor
 
@@ -32,15 +30,12 @@ class FairSeqDataHandler(DataHandler):
             DFColumn.SOURCE_SEQUENCE,
             DFColumn.TARGET_SEQUENCE,
         ]
-        target_featurizer: AssistantFeaturizer.Config = AssistantFeaturizer.Config(
-            tokenizer_config_dict={DEFAULT_LOCALE: WHITE_SPACE_TOKENIZER_CONFIG}
-        )
+        target_featurizer: Featurizer.Config
 
     def __init__(
-        self, featurizer: Featurizer, target_featurizer: Featurizer, *args, **kwargs
+        self, target_featurizer: Featurizer, **kwargs
     ) -> None:
-        super().__init__(*args, **kwargs)
-        self.featurizer = featurizer
+        super().__init__(**kwargs)
         self.target_featurizer = target_featurizer
         # Defines how to map columns in the data-frame after preprocessing to
         # the dataset fields so they can be accessed in the BatchIterator as
@@ -80,7 +75,6 @@ class FairSeqDataHandler(DataHandler):
             )
         }
         return cls(
-            featurizer=create_featurizer(config.featurizer, feature_config),
             target_featurizer=create_featurizer(
                 config.target_featurizer, feature_config
             ),
@@ -88,6 +82,7 @@ class FairSeqDataHandler(DataHandler):
             features=features,
             labels=labels,
             text_feature_name=DatasetFieldName.SOURCE_SEQ_FIELD,
+            **kwargs
         )
 
     def _gen_extra_metadata(self) -> None:

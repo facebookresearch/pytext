@@ -5,9 +5,8 @@ from typing import Dict, List
 import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
-from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.featurizer import Featurizer, InputRecord
+from pytext.data.featurizer import InputRecord
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
 from pytext.utils import data_utils
 
@@ -58,7 +57,6 @@ class SeqModelDataHandler(JointModelDataHandler):
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            featurizer=create_featurizer(config.featurizer, feature_config),
             shuffle=config.shuffle,
             train_path=config.train_path,
             eval_path=config.eval_path,
@@ -66,14 +64,11 @@ class SeqModelDataHandler(JointModelDataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            **kwargs
         )
 
-    def __init__(self, featurizer: Featurizer, **kwargs) -> None:
-
-        super().__init__(featurizer=featurizer, **kwargs)
-        # configs
-        self.featurizer = featurizer
-
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.df_to_example_func_map = {
             # features
             DatasetFieldName.TEXT_FIELD: lambda row, field: [

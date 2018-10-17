@@ -4,8 +4,9 @@ import unittest
 import numpy as np
 import pandas as pd
 from pytext.common.constants import DFColumn
-from pytext.config.field_config import DictFeatConfig, FeatureConfig
-from pytext.data.compositional_data_handler import CompositionalDataHandler
+from pytext.config.field_config import FeatureConfig
+from pytext.data import CompositionalDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 
 
 class CompositionalDataHandlerTest(unittest.TestCase):
@@ -85,7 +86,9 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         )
 
         self.dh = CompositionalDataHandler.from_config(
-            CompositionalDataHandler.Config(), FeatureConfig(dict_feat=DictFeatConfig())
+            CompositionalDataHandler.Config(),
+            FeatureConfig(),
+            featurizer=SimpleFeaturizer(),
         )
 
     def test_intermediate_result(self):
@@ -113,10 +116,10 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         train_iter = self.dh.get_train_iter_from_df(self.train_data, 1)
         for input, target, _ in train_iter:
             np.testing.assert_array_almost_equal(
-                input[0][0].numpy(), [[7, 3, 2, 5, 4, 6]]
+                input[0].numpy(), [[7, 3, 2, 5, 4, 6]]
             )
             np.testing.assert_array_almost_equal(
-                input[2].numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
+                input[3].numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]
             )
             np.testing.assert_array_almost_equal(
                 target.numpy(), [[2, 2, 1, 4, 1, 1, 1, 1, 1, 3]]

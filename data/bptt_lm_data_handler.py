@@ -7,9 +7,8 @@ import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.featurizer import Featurizer, InputRecord
+from pytext.data.featurizer import InputRecord
 from pytext.fields import TextFeatureField
 from pytext.utils import cuda_utils
 from torchtext import data as textdata
@@ -31,9 +30,8 @@ class BPTTLanguageModelDataHandler(DataHandler):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
         bptt_len: int = 35
 
-    def __init__(self, featurizer: Featurizer, bptt_len: int, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.featurizer = featurizer
+    def __init__(self, bptt_len: int, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.bptt_len = bptt_len
 
     @classmethod
@@ -57,7 +55,6 @@ class BPTTLanguageModelDataHandler(DataHandler):
             )
         }
         return cls(
-            featurizer=create_featurizer(config.featurizer, feature_config),
             bptt_len=bptt_len,
             raw_columns=columns,
             features=features,
@@ -69,6 +66,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            **kwargs
         )
 
     def _gen_extra_metadata(self):

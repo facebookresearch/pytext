@@ -6,8 +6,8 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 from pytext.config import PyTextConfig, config_from_json, config_to_json
-from pytext.config.component import create_data_handler, create_model
-from pytext.data.data_handler import DataHandler
+from pytext.config.component import create_data_handler, create_featurizer, create_model
+from pytext.data import DataHandler
 
 
 def save(
@@ -25,15 +25,15 @@ def save(
 
 
 def load(load_path: str) -> Tuple[PyTextConfig, nn.Module, DataHandler]:
-
     predictor_state = torch.load(load_path, map_location=lambda storage, loc: storage)
 
     metadata = predictor_state["data_state"]
     model_state_dict = predictor_state["model_state"]
     config = config_from_json(PyTextConfig, predictor_state["config_json"])
     jobspec = config.jobspec
+    featurizer = create_featurizer(jobspec.featurizer, jobspec.features)
     data_handler = create_data_handler(
-        jobspec.data_handler, jobspec.features, jobspec.labels
+        jobspec.data_handler, jobspec.features, jobspec.labels, featurizer=featurizer
     )
     data_handler.load_metadata(metadata)
     model = create_model(jobspec.model, jobspec.features, data_handler.metadata)

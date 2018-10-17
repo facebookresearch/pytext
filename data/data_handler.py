@@ -21,7 +21,7 @@ import torch
 from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
+from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
@@ -94,15 +94,11 @@ class DataHandler(Component):
     class Config(ConfigBase):
         columns_to_read: List[str] = []
         shuffle: bool = True
-        featurizer: AssistantFeaturizer.Config = AssistantFeaturizer.Config()
         train_path: str = "train.tsv"
         eval_path: str = "eval.tsv"
         test_path: str = "test.tsv"
-        # Training batch_size
         train_batch_size: int = 128
-        # Eval batch_size
         eval_batch_size: int = 128
-        # Test batch size
         test_batch_size: int = 128
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
@@ -115,6 +111,7 @@ class DataHandler(Component):
         raw_columns: List[str],
         labels: Dict[str, Field],
         features: Dict[str, Field],
+        featurizer: Featurizer,
         extra_fields: Dict[str, Field] = None,
         text_feature_name: str = DatasetFieldName.TEXT_FIELD,
         shuffle: bool = True,
@@ -129,6 +126,7 @@ class DataHandler(Component):
         self.raw_columns: List[str] = raw_columns or []
         self.labels: Dict[str, Field] = labels or {}
         self.features: Dict[str, Field] = features or {}
+        self.featurizer = featurizer
         self.extra_fields: Dict[str, Field] = extra_fields or {}
         self.text_feature_name: str = text_feature_name
 

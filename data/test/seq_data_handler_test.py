@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from pytext.common.constants import DFColumn
 from pytext.config.field_config import DocLabelConfig, FeatureConfig, LabelConfig
-from pytext.data.seq_data_handler import SeqModelDataHandler
+from pytext.data import SeqModelDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 
 
 class SeqModelDataHandlerTest(unittest.TestCase):
@@ -39,13 +40,13 @@ class SeqModelDataHandlerTest(unittest.TestCase):
             SeqModelDataHandler.Config(),
             FeatureConfig(),
             LabelConfig(doc_label=DocLabelConfig()),
+            featurizer=SimpleFeaturizer(),
         )
 
     def test_intermediate_result(self):
         data = self.dh.gen_dataset(self.train_data)
         self.assertListEqual(
-            data.examples[0].text,
-            [["where", "do", "you", "wanna", "meet", "?"], ["mpk"]],
+            data.examples[0].text, [["where", "do", "you", "wanna", "meet?"], ["mpk"]]
         )
 
     def test_process_data(self):
@@ -53,7 +54,7 @@ class SeqModelDataHandlerTest(unittest.TestCase):
         train_iter = self.dh.get_train_iter_from_df(self.train_data, 1)
         for input, target, _ in train_iter:
             np.testing.assert_array_almost_equal(
-                input[0][0].numpy(), [[7, 3, 8, 6, 4, 2], [5, 1, 1, 1, 1, 1]]
+                input[0][0].numpy(), [[6, 2, 7, 5, 3], [4, 1, 1, 1, 1]]
             )
             np.testing.assert_array_almost_equal(input[1].numpy(), [2])
             np.testing.assert_array_almost_equal(target[0].numpy(), [0])

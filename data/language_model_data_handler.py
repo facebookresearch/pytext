@@ -6,9 +6,8 @@ import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.component import create_featurizer
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.featurizer import Featurizer, InputRecord
+from pytext.data.featurizer import InputRecord
 from pytext.fields import Field, RawField, TextFeatureField
 from pytext.utils import data_utils
 
@@ -22,10 +21,8 @@ class LanguageModelDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
 
-    def __init__(self, featurizer: Featurizer, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.featurizer = featurizer
-
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.df_to_example_func_map = {
             # features
             DatasetFieldName.TEXT_FIELD: lambda row, field: row[
@@ -63,7 +60,6 @@ class LanguageModelDataHandler(DataHandler):
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
         return cls(
-            featurizer=create_featurizer(config.featurizer, feature_config),
             raw_columns=config.columns_to_read,
             features=features,
             labels=labels,
@@ -74,6 +70,7 @@ class LanguageModelDataHandler(DataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            **kwargs
         )
 
     def _gen_extra_metadata(self):

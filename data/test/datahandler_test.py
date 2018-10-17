@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from pytext.data.data_handler import DataHandler
+from pytext.data import DataHandler
 from pytext.common.constants import DFColumn
 
 

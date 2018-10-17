@@ -4,7 +4,8 @@ import unittest
 
 import numpy as np
 from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.data.bptt_lm_data_handler import BPTTLanguageModelDataHandler
+from pytext.data import BPTTLanguageModelDataHandler
+from pytext.data.featurizer import SimpleFeaturizer
 
 
 FILE_NAME = "pytext/tests/data/alarm_lm_tiny.tsv"
@@ -17,6 +18,7 @@ class BPTTLanguageModelDataHandlerTest(unittest.TestCase):
             BPTTLanguageModelDataHandler.Config(bptt_len=4),
             FeatureConfig(),
             LabelConfig(),
+            featurizer=SimpleFeaturizer()
         )
         data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)
 

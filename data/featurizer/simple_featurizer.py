@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-from typing import Any, Dict, Optional, Tuple
+
+from typing import Optional, Tuple, Sequence
 
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig
@@ -23,15 +24,13 @@ class SimpleFeaturizer(Featurizer):
         )
 
     def __init__(
-        self,
-        sentence_markers: Tuple[str, str] = None,
-        lowercase_tokens: bool = True,
+        self, sentence_markers: Tuple[str, str] = None, lowercase_tokens: bool = True
     ) -> None:
         self.sentence_markers = sentence_markers
         self.lowercase_tokens = lowercase_tokens
 
-    def featurize(self, input_record: InputRecord) -> Dict[str, Any]:
-        """Featurize one instance/example only."""
+    def tokenize(self, input_record: InputRecord) -> OutputRecord:
+        """Tokenize one instance/example only."""
         # Dumb tokenization split on space.
         tokens = input_record.raw_text.split()
         if self.lowercase_tokens:
@@ -50,3 +49,17 @@ class SimpleFeaturizer(Featurizer):
             start = end + 1
 
         return OutputRecord(tokens=tokens, token_ranges=token_ranges)
+
+    def tokenize_batch(
+        self, input_records: Sequence[InputRecord]
+    ) -> Sequence[OutputRecord]:
+        return [self.tokenize(in_record) for in_record in input_records]
+
+    def featurize(self, input_record: InputRecord) -> OutputRecord:
+        """Featurize one instance/example only."""
+        return self.tokenize(input_record)
+
+    def featurize_batch(
+        self, input_records: Sequence[InputRecord]
+    ) -> Sequence[OutputRecord]:
+        return [self.featurize(in_record) for in_record in input_records]

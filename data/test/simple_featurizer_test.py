@@ -2,8 +2,7 @@
 import unittest
 
 from pytext.config.field_config import FeatureConfig
-from pytext.data.featurizer import InputRecord
-from pytext.data.simple_featurizer import SimpleFeaturizer
+from pytext.data.featurizer import InputRecord, SimpleFeaturizer
 
 
 class SimpleFeaturizerTest(unittest.TestCase):

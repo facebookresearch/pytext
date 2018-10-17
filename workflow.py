@@ -7,13 +7,13 @@ from pytext.config import PyTextConfig
 from pytext.config.component import (
     create_data_handler,
     create_exporter,
+    create_featurizer,
     create_metric_reporter,
     create_model,
     create_trainer,
 )
-from pytext.data.data_handler import BatchIterator, DataHandler
+from pytext.data import BatchIterator, DataHandler
 from pytext.metric_reporters import MetricReporter
-from pytext.metric_reporters.channel import Channel, ConsoleChannel
 from pytext.optimizer import create_optimizer, create_scheduler
 from pytext.trainers.trainer import Trainer
 
@@ -79,9 +79,10 @@ def prepare_job(config: PyTextConfig) -> Job:
     print("\nParameters:\n{}".format(config))
     _set_cuda(config.use_cuda_if_available)
     jobspec = config.jobspec
+    featurizer = create_featurizer(jobspec.featurizer, jobspec.features)
     # load data
     data_handler = create_data_handler(
-        jobspec.data_handler, jobspec.features, jobspec.labels
+        jobspec.data_handler, jobspec.features, jobspec.labels, featurizer=featurizer
     )
 
     print("\nLoading data...")
