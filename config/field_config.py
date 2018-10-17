@@ -41,11 +41,6 @@ class CharFeatConfig(ConfigBase):
     vocab_from_train_data: bool = True
 
 
-class CapFeatConfig(ConfigBase):
-    embed_dim: int = 100
-    export_input_names: List[str] = ["cap_feats"]
-
-
 class PretrainedModelEmbeddingConfig(ConfigBase):
     embed_dim: int = 0
     model_paths: Optional[Dict[str, str]] = None
@@ -55,7 +50,6 @@ class FeatureConfig(ConfigBase):
     word_feat: WordFeatConfig = WordFeatConfig()
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
-    cap_feat: Optional[CapFeatConfig] = None
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
 
 

@@ -8,7 +8,6 @@ from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
-    CapFeatureField,
     CharFeatureField,
     DictFeatureField,
     DocLabelField,
@@ -42,7 +41,6 @@ class JointModelDataHandler(DataHandler):
     FULL_FEATURES = [
         DatasetFieldName.TEXT_FIELD,
         DatasetFieldName.DICT_FIELD,
-        DatasetFieldName.CAP_FIELD,
         DatasetFieldName.CHAR_FIELD,
         DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
     ]
@@ -69,8 +67,6 @@ class JointModelDataHandler(DataHandler):
         if feature_config.dict_feat:
             features[DatasetFieldName.DICT_FIELD] = DictFeatureField()
 
-        if feature_config.cap_feat:
-            features[DatasetFieldName.CAP_FIELD] = CapFeatureField()
         if feature_config.char_feat:
             features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
 
@@ -130,10 +126,6 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: lambda row, field: row[
                 DFColumn.MODEL_FEATS
             ].pretrained_token_embedding,
-            DatasetFieldName.CAP_FIELD: lambda row, field: [
-                data_utils.capitalization_feature(t)
-                for (t, (_, __)) in row[DFColumn.TOKEN_RANGE_PAIR]
-            ],
             # labels
             DatasetFieldName.DOC_LABEL_FIELD: DFColumn.DOC_LABEL,
             DatasetFieldName.WORD_LABEL_FIELD: lambda row, field: data_utils.align_slot_labels(

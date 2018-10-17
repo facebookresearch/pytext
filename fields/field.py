@@ -223,16 +223,6 @@ class SeqFeatureField(VocabUsingNestedField):
         )
 
 
-class CapFeatureField(Field):
-    def __init__(self):
-        super().__init__(
-            use_vocab=False,
-            sequential=True,
-            batch_first=True,
-            tokenize=data_utils.no_tokenize,
-        )
-
-
 class FloatField(Field):
     def __init__(self):
         super().__init__(

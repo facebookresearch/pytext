@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from enum import Enum
 from typing import List, Any, Tuple
 import json
 
@@ -45,42 +44,6 @@ class Slot:
 
     def __repr__(self):
         return "{}:{}:{}".format(self.start, self.end, self.label)
-
-
-def capitalization_feature(token: str) -> str:
-    class CapType(Enum):
-        ALL_LOWER = 1
-        ALL_UPPER = 2
-        FIRST_UPPER = 3
-        HAS_UPPER = 4
-        COUNT = 5
-        OTHERS = 6
-
-    num_alpha = 0
-    num_lower = 0
-    num_upper = 0
-    for c in token:
-        if c.isalpha():
-            num_alpha += 1
-        if c.islower():
-            num_lower += 1
-        if c.isupper():
-            num_upper += 1
-
-    t = None
-    if num_alpha == 0:
-        t = CapType.OTHERS.value
-    elif num_lower == num_alpha:
-        t = CapType.ALL_LOWER.value
-    elif num_upper == num_alpha:
-        t = CapType.ALL_UPPER.value
-    elif num_upper == 1 and len(token) > 0 and token[0].isupper():
-        t = CapType.FIRST_UPPER.value
-    elif num_upper > 0:
-        t = CapType.HAS_UPPER.value
-    else:
-        t = CapType.OTHERS.value
-    return str(t)
 
 
 def parse_slot_string(slots_field: str) -> List[Slot]:

@@ -4,7 +4,6 @@ from .dict_field import DictFeatureField
 from .pretrained_model_embedding_field import PretrainedModelEmbeddingField
 from .field import (
     ActionField,
-    CapFeatureField,
     DocLabelField,
     Field,
     FieldMeta,
@@ -21,7 +20,6 @@ from .field import (
 
 __all__ = [
     "ActionField",
-    "CapFeatureField",
     "CharFeatureField",
     "DictFeatureField",
     "DocLabelField",

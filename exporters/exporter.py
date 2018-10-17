@@ -8,7 +8,6 @@ from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.common.constants import DatasetFieldName
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import (
-    CapFeatConfig,
     CharFeatConfig,
     DictFeatConfig,
     FeatureConfig,
@@ -183,11 +182,6 @@ class TextModelExporter(ModelExporter):
         else:
             input_names.extend(DictFeatConfig._field_defaults["export_input_names"])
 
-        if feature_config.cap_feat:
-            input_names.extend(feature_config.cap_feat.export_input_names)
-        else:
-            input_names.extend(CapFeatConfig._field_defaults["export_input_names"])
-
         if feature_config.char_feat:
             input_names.extend(feature_config.char_feat.export_input_names)
             feature_itos_map[
@@ -216,7 +210,6 @@ class TextModelExporter(ModelExporter):
                 torch.tensor([[1.5], [2.5]], dtype=torch.float),
                 torch.tensor([1, 1], dtype=torch.long),
             ),  # dict feats
-            (torch.tensor([[1], [1]], dtype=torch.long), ), # caps feat
             torch.tensor([[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long),  # char feats
         )
         label_names = [label.vocab.itos for label in meta.labels.values()]

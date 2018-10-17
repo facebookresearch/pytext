@@ -514,7 +514,6 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 1, num_dict_feats + 1, size=(num_words * batch_size)
             ).astype(np.int64)
         )
-        cap_feats = ()
         chars = torch.from_numpy(
             np.random.randint(
                 c_vocab_size, size=(batch_size, num_words, num_chars)
@@ -525,7 +524,6 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             text,
             lengths,
             (dict_feat, dict_weights, dict_lengths),
-            cap_feats,
             chars,
         )
 

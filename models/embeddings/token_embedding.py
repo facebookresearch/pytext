@@ -117,7 +117,6 @@ class TokenEmbedding(Module):
         tokens: torch.Tensor,
         seq_lens: torch.Tensor = None,
         dict_feat: Tuple[torch.Tensor, ...] = None,
-        cap_feat: Tuple[torch.Tensor, ...] = None,
         chars: torch.Tensor = None,
         pretrained_model_embedding: torch.Tensor = None,
     ) -> torch.Tensor:

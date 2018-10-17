@@ -53,7 +53,6 @@ class BiLSTMSlotAttention(RepresentationBase):
         embedded_tokens: torch.Tensor,
         seq_lengths: torch.Tensor,
         dict_feat: Tuple[torch.Tensor, ...] = None,
-        cap_feat: Tuple[torch.Tensor, ...] = None,
         chars: torch.Tensor = None,
         pre_trained_rep_feat: torch.Tensor = None,
         states: torch.Tensor = None,
