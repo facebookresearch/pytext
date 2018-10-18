@@ -14,8 +14,9 @@ class Module(nn.Module, Component):
     """
 
     class Config(ConfigBase):
-        # checkpoint loading/saving paths
+        # checkpoint load path for modules
         load_path: Optional[str] = None
+        # save path for modules, relative to PyTextConfig.modules_save_dir (if set)
         save_path: Optional[str] = None
 
     __COMPONENT_TYPE__ = ComponentType.MODULE

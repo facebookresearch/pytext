@@ -30,6 +30,8 @@ class PyTextConfig(ConfigBase):
     export_caffe2_path: str = "/tmp/model.caffe2.predictor"
     # if test only TODO, better to use explicit "train" "test" cmd
     test_given_snapshot: bool = False
+    # Base directory where modules are saved
+    modules_save_dir: str = ""
 
 
 class OptimizerType(Enum):

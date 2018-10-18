@@ -13,7 +13,7 @@ from pytext.data import DataHandler
 def save(
     save_path: str, config: PyTextConfig, model: nn.Module, data_handler: DataHandler
 ) -> None:
-    model.save_modules()
+    model.save_modules(base_path=config.modules_save_dir)
     predictor_state = OrderedDict(
         [
             ("data_state", data_handler.metadata_to_save()),

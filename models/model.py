@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from typing import Dict, List, Tuple
 
 import torch
@@ -31,14 +32,14 @@ class Model(nn.Module, Component):
         output_layer = create_module(model_config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)
 
-    def save_modules(self):
+    def save_modules(self, base_path: str = ""):
         for module in [self.representation, self.decoder]:
             if getattr(module.config, "save_path", None):
-                print(
-                    f"Saving state of module {type(module).__name__} "
-                    f"to {module.config.save_path} ..."
-                )
-                torch.save(module.state_dict(), module.config.save_path)
+                path = module.config.save_path
+                if base_path:
+                    path = os.path.join(base_path, path)
+                print(f"Saving state of module {type(module).__name__} to {path} ...")
+                torch.save(module.state_dict(), path)
 
     def __init__(self, embedding, representation, decoder, output_layer) -> None:
         nn.Module.__init__(self)
