@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Dict, List, Optional
 
-from .module_config import CNNParams, PoolingType
+from .module_config import CNNParams, ModuleConfig, PoolingType
 from .pytext_config import ConfigBase
 
 
@@ -46,7 +46,7 @@ class PretrainedModelEmbeddingConfig(ConfigBase):
     model_paths: Optional[Dict[str, str]] = None
 
 
-class FeatureConfig(ConfigBase):
+class FeatureConfig(ConfigBase, ModuleConfig):
     word_feat: WordFeatConfig = WordFeatConfig()
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None

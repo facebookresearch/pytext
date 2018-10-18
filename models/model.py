@@ -33,7 +33,7 @@ class Model(nn.Module, Component):
         return cls(embedding, representation, decoder, output_layer)
 
     def save_modules(self, base_path: str = ""):
-        for module in [self.representation, self.decoder]:
+        for module in [self.embedding, self.representation, self.decoder]:
             if getattr(module.config, "save_path", None):
                 path = module.config.save_path
                 if base_path:

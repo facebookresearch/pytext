@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-from typing import Optional
-
 import torch.nn as nn
-from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
+from pytext.config.module_config import ModuleConfig
 
 
 class Module(nn.Module, Component):
@@ -13,11 +11,7 @@ class Module(nn.Module, Component):
     embedding, representation and decoder to produce predicitons.
     """
 
-    class Config(ConfigBase):
-        # checkpoint load path for modules
-        load_path: Optional[str] = None
-        # save path for modules, relative to PyTextConfig.modules_save_dir (if set)
-        save_path: Optional[str] = None
+    Config = ModuleConfig
 
     __COMPONENT_TYPE__ = ComponentType.MODULE
 

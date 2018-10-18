@@ -85,16 +85,17 @@ class TokenEmbedding(Module):
             pretrained_model_embed = PretrainedModelEmbedding(
                 config.pretrained_model_embedding.embed_dim
             )
-        return cls(word_embed, dict_embed, char_embed, pretrained_model_embed)
+        return cls(config, word_embed, dict_embed, char_embed, pretrained_model_embed)
 
     def __init__(
         self,
+        config: FeatureConfig,
         word_embed: Optional[nn.Embedding],
         dict_embed: Optional[DictEmbedding],
         char_embed: Optional[CharacterEmbedding],
         pretrained_model_embed: Optional[PretrainedModelEmbedding],
     ) -> None:
-        super().__init__()
+        super().__init__(config)
         self.embedding_dim = 0
         self.word_embed = word_embed
         self.dict_embed = dict_embed

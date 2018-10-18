@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 from .pytext_config import ConfigBase
+
+
+class ModuleConfig(ConfigBase):
+    # Checkpoint load path
+    load_path: Optional[str] = None
+    # Checkpoint save path, relative to PyTextConfig.modules_save_dir (if set)
+    save_path: Optional[str] = None
 
 
 class CNNParams(ConfigBase):
