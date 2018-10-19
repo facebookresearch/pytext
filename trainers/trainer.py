@@ -49,7 +49,7 @@ class Trainer(TrainerBase):
 
         best_metric = None
         last_best_epoch = 0
-        best_model = None
+        best_model_state = None
 
         for epoch in range(1, self.config.epochs + 1):
             model.train()
@@ -74,7 +74,7 @@ class Trainer(TrainerBase):
                 last_best_epoch = epoch
                 best_metric = eval_metric
                 print("Found a better model! Saving it...")
-                best_model = copy.deepcopy(model)
+                best_model_state = copy.deepcopy(model.state_dict())
 
             if self.config.early_stop_after > 0 and (
                 epoch - last_best_epoch == self.config.early_stop_after
@@ -85,8 +85,8 @@ class Trainer(TrainerBase):
                     )
                 )
                 break
-
-        return best_model, best_metric
+        model.load_state_dict(best_model_state)
+        return model, best_metric
 
     def _run_epoch(
         self,
