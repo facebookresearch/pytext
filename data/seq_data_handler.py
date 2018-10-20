@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
@@ -70,14 +70,14 @@ class SeqModelDataHandler(JointModelDataHandler):
         sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
 
         features_list = [
-            self.featurizer.featurize(InputRecord(raw_text=utterence))
-            for utterence in sequence
+            self.featurizer.featurize(InputRecord(raw_text=utterance))
+            for utterance in sequence
         ]
 
         return {
             # features
             DatasetFieldName.TEXT_FIELD: [
-                utterence.tokens for utterence in features_list
+                utterance.tokens for utterance in features_list
             ],
             # labels
             DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],

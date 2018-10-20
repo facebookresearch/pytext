@@ -29,6 +29,7 @@ class CommonMetadata:
     features: Dict[str, FieldMeta]
     labels: Dict[str, FieldMeta]
     pretrained_embeds_weight: Optional[torch.Tensor] = None
+    seq_pretrained_embeds_weight: Optional[torch.Tensor] = None
 
 
 class BatchIterator:
@@ -280,7 +281,10 @@ class DataHandler(Component):
                         feat.embedding_init_strategy,
                         feat.lower,
                     )
-                    self.metadata.pretrained_embeds_weight = weights
+                    if name == DatasetFieldName.TEXT_FIELD:
+                        self.metadata.pretrained_embeds_weight = weights
+                    if name == DatasetFieldName.SEQ_FIELD:
+                        self.metadata.seq_pretrained_embeds_weight = weights
 
         # field metadata
         self.metadata.features = {

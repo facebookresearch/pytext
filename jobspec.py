@@ -9,6 +9,7 @@ from pytext.config.pytext_config import OptimizerParams, SchedulerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
     CompositionalDataHandler,
+    ContextualIntentSlotModelDataHandler,
     JointModelDataHandler,
     LanguageModelDataHandler,
     PairClassificationDataHandler,
@@ -30,6 +31,7 @@ from pytext.metric_reporters.word_tagging_metric_reporter import (
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
+from pytext.models.embeddings.seq_token_embedding import SequenceTokenEmbedding
 from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
@@ -37,6 +39,7 @@ from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
+from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.trainers import Trainer
@@ -121,6 +124,17 @@ class SeqNNJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
+class ContextualIntentSlotJobSpec(JobSpecBase, ConfigBase):
+    features: SequenceTokenEmbedding.Config = SequenceTokenEmbedding.Config()
+    model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
+    trainer: Trainer.Config = Trainer.Config()
+    labels: LabelConfig = LabelConfig(
+        doc_label=DocLabelConfig(), word_label=WordLabelConfig()
+    )
+    data_handler: ContextualIntentSlotModelDataHandler.Config = ContextualIntentSlotModelDataHandler.Config()
+    metric_reporter: IntentSlotMetricReporter.Config = IntentSlotMetricReporter.Config()
+
+
 def register_builtin_jobspecs():
     register_jobspec(
         (
@@ -132,5 +146,6 @@ def register_builtin_jobspecs():
             EnsembleJobSpec,
             PairClassificationJobSpec,
             SeqNNJobSpec,
+            ContextualIntentSlotJobSpec,
         )
     )

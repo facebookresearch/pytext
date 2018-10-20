@@ -48,6 +48,7 @@ class PretrainedModelEmbeddingConfig(ConfigBase):
 
 class FeatureConfig(ConfigBase, ModuleConfig):
     word_feat: WordFeatConfig = WordFeatConfig()
+    seq_word_feat: Optional[WordFeatConfig] = None
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None

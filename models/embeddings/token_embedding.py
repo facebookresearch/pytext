@@ -38,6 +38,13 @@ class TokenEmbedding(Module):
     # 4 shall we get metedata in a non-flattened way?
     @classmethod
     def from_config(cls, config: FeatureConfig, metadata: CommonMetadata):
+        word_embed, dict_embed, char_embed, pretrained_model_embed = cls.get_embed(
+            config, metadata
+        )
+        return cls(config, word_embed, dict_embed, char_embed, pretrained_model_embed)
+
+    @classmethod
+    def get_embed(cls, config: FeatureConfig, metadata: CommonMetadata):
         word_embed = None
         dict_embed = None
         char_embed = None
@@ -85,7 +92,7 @@ class TokenEmbedding(Module):
             pretrained_model_embed = PretrainedModelEmbedding(
                 config.pretrained_model_embedding.embed_dim
             )
-        return cls(config, word_embed, dict_embed, char_embed, pretrained_model_embed)
+        return word_embed, dict_embed, char_embed, pretrained_model_embed
 
     def __init__(
         self,

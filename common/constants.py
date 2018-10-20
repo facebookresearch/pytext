@@ -8,6 +8,7 @@ class DatasetFieldName:
     WORD_LABEL_FIELD = "word_label"
     UTTERANCE_FIELD = "utterance"
     TEXT_FIELD = "text"
+    SEQ_FIELD = "seq"
     DICT_FIELD = "dict_feat"
     RAW_DICT_FIELD = "sparsefeat"
     CHAR_FIELD = "char_feat"
