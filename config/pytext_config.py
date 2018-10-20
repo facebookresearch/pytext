@@ -55,8 +55,10 @@ class SchedulerType(Enum):
 
 
 class SchedulerParams(ConfigBase):
+    """Parameters for the learning rate schedulers."""
+
     type: SchedulerType = SchedulerType.NONE
-    step_size: int = 1000
+    step_size: int = 30
     gamma: float = 0.1
     T_max: int = 1000
     eta_min: float = 0

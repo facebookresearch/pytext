@@ -98,10 +98,10 @@ class Trainer(TrainerBase):
         optimizers=None,
         scheduler=None,
     ):
+        if scheduler and model.training:
+            scheduler_step(scheduler)
         for n_batches, (m_input, targets, context) in enumerate(data_iter):
             if model.training:
-                if scheduler:
-                    scheduler_step(scheduler)
                 optimizer_zero_grad(optimizers)
             logits = model(*m_input)
             loss = model.get_loss(logits, targets, context)
