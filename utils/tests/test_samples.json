@@ -6,27 +6,18 @@
       "B-music/type",
       "NoLabel"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "the",
-        [
-          8,
-          11
-        ]
+        8,
+        11
       ],
       [
-        "album",
-        [
-          12,
-          17
-        ]
+        12,
+        17
       ],
       [
-        "that",
-        [
-          18,
-          22
-        ]
+        18,
+        22
       ]
     ]
   },
@@ -37,27 +28,18 @@
       "B-music/type",
       "I-music/type"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "the",
-        [
-          8,
-          11
-        ]
+        8,
+        11
       ],
       [
-        "album",
-        [
-          12,
-          17
-        ]
+        12,
+        17
       ],
       [
-        "cover",
-        [
-          18,
-          23
-        ]
+        18,
+        23
       ]
     ]
   },
@@ -69,34 +51,22 @@
       "NoLabel",
       "B-music/type"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "song",
-        [
-          0,
-          4
-        ]
+        0,
+        4
       ],
       [
-        "in",
-        [
-          5,
-          7
-        ]
+        5,
+        7
       ],
       [
-        "the",
-        [
-          8,
-          11
-        ]
+        8,
+        11
       ],
       [
-        "album",
-        [
-          12,
-          17
-        ]
+        12,
+        17
       ]
     ]
   },
@@ -107,27 +77,18 @@
       "I-music/type",
       "NoLabel"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "song",
-        [
-          0,
-          4
-        ]
+        0,
+        4
       ],
       [
-        "sun",
-        [
-          5,
-          8
-        ]
+        5,
+        8
       ],
       [
-        "in",
-        [
-          9,
-          11
-        ]
+        9,
+        11
       ]
     ]
   },
@@ -139,34 +100,22 @@
       "I-music/type",
       "NoLabel"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "song",
-        [
-          0,
-          4
-        ]
+        0,
+        4
       ],
       [
-        "son",
-        [
-          5,
-          8
-        ]
+        5,
+        8
       ],
       [
-        "sun",
-        [
-          9,
-          12
-        ]
+        9,
+        12
       ],
       [
-        "at",
-        [
-          13,
-          15
-        ]
+        13,
+        15
       ]
     ]
   },
@@ -177,27 +126,18 @@
       "NoLabel",
       "NoLabel"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "song",
-        [
-          0,
-          4
-        ]
+        0,
+        4
       ],
       [
-        "in",
-        [
-          5,
-          7
-        ]
+        5,
+        7
       ],
       [
-        "the",
-        [
-          8,
-          11
-        ]
+        8,
+        11
       ]
     ]
   },
@@ -208,27 +148,18 @@
       "I-music/type",
       "I-music/type"
     ],
-    "tokenized_text": [
+    "token_ranges": [
       [
-        "song",
-        [
-          0,
-          4
-        ]
+        0,
+        4
       ],
       [
-        "son",
-        [
-          5,
-          8
-        ]
+        5,
+        8
       ],
       [
-        "sun",
-        [
-          9,
-          12
-        ]
+        9,
+        12
       ]
     ]
   }

@@ -16,7 +16,7 @@ class TaggerPredictor(Predictor):
             label_meta.vocab.itos,
             model_output[0],
             context[DatasetFieldName.INDEX_FIELD],
-            context[DatasetFieldName.TOKEN_RANGE_PAIR],
+            context[DatasetFieldName.TOKEN_RANGE],
             context[SEQ_LENS],
         )
 

@@ -106,13 +106,7 @@ def merge_token_labels_by_label(token_ranges, labels):
     return summary_list
 
 
-def merge_token_labels_to_slot(tokenized_text, labels, use_bio_label=True):
-    tokens = []
-    token_ranges = []
-    for t, t_range in tokenized_text:
-        tokens.append(t)
-        token_ranges.append(t_range)
-    assert len(tokens) == len(labels)
+def merge_token_labels_to_slot(token_ranges, labels, use_bio_label=True):
     summary_list = (
         merge_token_labels_by_bio(token_ranges, labels)
         if use_bio_label

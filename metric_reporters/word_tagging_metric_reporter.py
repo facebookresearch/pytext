@@ -76,7 +76,7 @@ class WordTaggingMetricReporter(MetricReporter):
                 for pred, seq_len, token_range, slots_label in zip(
                     self.all_preds,
                     self.all_context[DatasetFieldName.SEQ_LENS],
-                    self.all_context[DatasetFieldName.TOKEN_RANGE_PAIR],
+                    self.all_context[DatasetFieldName.TOKEN_RANGE],
                     self.all_context[DatasetFieldName.RAW_WORD_LABEL],
                 )
             ]

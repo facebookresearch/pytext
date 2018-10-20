@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytext.common.constants import DFColumn
+from pytext.common.constants import DFColumn, DatasetFieldName
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
@@ -37,14 +37,14 @@ class JointDataHandlerTest(unittest.TestCase):
             featurizer=SimpleFeaturizer(),
         )
 
-        df = data_handler.read_from_file(file_name, data_handler.raw_columns)
+        data = data_handler.read_from_file(file_name, data_handler.raw_columns)
 
-        # Check if the df has 10 rows and 6 columns
-        self.assertEqual(len(df), 10)
-        self.assertEqual(len(list(df)), 6)
+        # Check if the data has 10 rows and 6 columns
+        self.assertEqual(len(data), 10)
+        self.assertEqual(len(data[0]), 6)
 
         self.assertEqual(
-            df[DFColumn.UTTERANCE][0], "Do i have any of Jeremiah's albums"
+            data[0][DFColumn.UTTERANCE], "Do i have any of Jeremiah's albums"
         )
 
     def test_tokenization(self):
@@ -56,9 +56,9 @@ class JointDataHandlerTest(unittest.TestCase):
             featurizer=SimpleFeaturizer(),
         )
 
-        df = data_handler.read_from_file(file_name, data_handler.raw_columns)
-        df = data_handler._preprocess_df(df)
+        data = data_handler.read_from_file(file_name, data_handler.raw_columns)
+        data = list(data_handler.preprocess(data))
 
         # test tokenization without language-specific tokenizers
-        self.assertEqual(df[DFColumn.MODEL_FEATS][0].tokens[0], "do")
-        self.assertEqual(df[DFColumn.MODEL_FEATS][4].tokens[2], "song")
+        self.assertEqual(data[0][DatasetFieldName.TEXT_FIELD][0], "do")
+        self.assertEqual(data[4][DatasetFieldName.TEXT_FIELD][2], "song")

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
-import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -12,13 +11,14 @@ from pytext.utils import data_utils
 from .data_handler import DataHandler
 
 
+TEXT_1 = "text_1"
 TEXT_2 = "text_2"
 UTTERANCE_PAIR = "utterance"
 
 
 class PairClassificationDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE, TEXT_2]
+        columns_to_read: List[str] = [DFColumn.DOC_LABEL, TEXT_1, TEXT_2]
 
     @classmethod
     def from_config(
@@ -40,11 +40,8 @@ class PairClassificationDataHandler(DataHandler):
             vocab_size=word_feat_config.vocab_size,
             vocab_from_train_data=word_feat_config.vocab_from_train_data,
         )
-        features: Dict[str, Field] = {
-            DatasetFieldName.TEXT_FIELD: text_field,
-            TEXT_2: text_field,
-        }
-        extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
+        features: Dict[str, Field] = {TEXT_1: text_field, TEXT_2: text_field}
+        extra_fields: Dict[str, Field] = {UTTERANCE_PAIR: RawField()}
 
         labels: Dict[str, Field] = {}
         if label_config.doc_label:
@@ -68,8 +65,6 @@ class PairClassificationDataHandler(DataHandler):
     def _train_input_from_batch(self, batch):
         return tuple(zip(*(getattr(batch, name) for name in self.features)))
 
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        df[UTTERANCE_PAIR] = [
-            f"{row[DFColumn.UTTERANCE]} | {row[TEXT_2]}" for _, row in df.iterrows()
-        ]
-        return df
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        row_data[UTTERANCE_PAIR] = f"{row_data[TEXT_1]} | {row_data[TEXT_2]}"
+        return row_data

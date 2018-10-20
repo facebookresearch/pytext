@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
+from typing import Any, Dict, List
+
 import torch
+from fairseq import models, tokenizer, utils
+from fairseq.sequence_generator import SequenceGenerator
 from pytext.common.constants import DatasetFieldName
 from torch.autograd import Variable
-
-from fairseq import tokenizer, utils, models
-from typing import List, Dict
-from fairseq.sequence_generator import SequenceGenerator
-import pandas as pd
 
 
 class SEQ2SEQPyTextPredictor:
@@ -31,12 +30,10 @@ class SEQ2SEQPyTextPredictor:
         if self.use_cuda:
             self.translator.cuda()
 
-    def predict(self, df: pd.DataFrame) -> List[List[Dict]]:
+    def predict(self, data: List[Dict[str, Any]]) -> List[List[Dict]]:
         predicts = []
-
-        utterances = df[DatasetFieldName.TEXT_FIELD].tolist()
         # Most of the code below is copy pasta from fairseq-py/interactive.py
-        for utterance in utterances:
+        for utterance in data[DatasetFieldName.TEXT_FIELD]:
             src_str = utterance.strip()
             src_tokens = tokenizer.Tokenizer.tokenize(
                 src_str, self.src_dict, add_if_not_exist=False

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
-from pytext.server.model_loader import ModelLoader
-from pytext.server.prediction_service import PytextPredictionService
+import logging
+import traceback
+from typing import Any, Dict, List
+
 from configerator.client import ConfigeratorClient
-from messenger.assistant.pytext.server.config.ttypes import ServerConfig
 from fblearner_predictor.model.definitions.ttypes import StructuredPrediction
 from fblearner_predictor.prediction_service.ttypes import (
     PredictionException,
@@ -12,12 +13,12 @@ from fblearner_predictor.prediction_service.ttypes import (
 )
 from libfb.py.controller.base import BaseController
 from libfb.py.controller.tasks import PeriodicTask
+from messenger.assistant.pytext.server.config.ttypes import ServerConfig
+from pytext.server.model_loader import ModelLoader
+from pytext.server.prediction_service import PytextPredictionService
 
-import logging
-import traceback
-import pandas as pd
-from typing import Dict, List, Any
 from .util import convert_to_model_predictions
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -100,17 +101,16 @@ class PytextPredictionServiceHandler(BaseController, PytextPredictionService.Ifa
                 )
             try:
                 # Convert the examples list to a flat list of named features
-                df = pd.DataFrame(
-                    [
-                        {
-                            feat_n: feat_v.value
-                            for feat_n, feat_v in ex.named_features.items()
-                        }
-                        for ex in request.examples
-                    ]
-                )
+                data = [
+                    {
+                        feat_n: feat_v.value
+                        for feat_n, feat_v in ex.named_features.items()
+                    }
+                    for ex in request.examples
+                ]
+
                 model_predictions = convert_to_model_predictions(
-                    model_handle.predict(df)
+                    model_handle.predict(data)
                 )
             except Exception as e:
                 raise PredictionException(

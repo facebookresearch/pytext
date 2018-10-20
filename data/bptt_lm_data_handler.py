@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import itertools
-from typing import List, Tuple
+from typing import Any, Dict, List
 
-import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
@@ -75,32 +74,19 @@ class BPTTLanguageModelDataHandler(DataHandler):
             "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
         }
 
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        if DFColumn.DICT_FEAT not in df:
-            df[DFColumn.DICT_FEAT] = ""
-        df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: InputRecord(
-                raw_text=row[DFColumn.UTTERANCE],
-                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
-            ),
-            axis=1,
-        )
-
-        # NOTE that currently featurizer will lower case all tokens
-        df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
-        )
-
-        def featurize(df):
-            return list(
-                itertools.chain.from_iterable(
-                    row.tokens for row in df[DFColumn.MODEL_FEATS]
+    def preprocess(self, data: List[Dict[str, Any]]):
+        return [
+            {
+                DFColumn.UTTERANCE: list(
+                    itertools.chain.from_iterable(super().preprocess(data))
                 )
-            )
+            }
+        ]
 
-        ret_df = pd.DataFrame()
-        ret_df[DFColumn.UTTERANCE] = pd.Series([featurize(df)])
-        return ret_df
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> List[str]:
+        return self.featurizer.featurize(
+            InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
+        ).tokens
 
     def _get_train_iter(
         self, train_dataset: textdata.Dataset, batch_size: int

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
-import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -67,37 +66,21 @@ class SeqModelDataHandler(JointModelDataHandler):
             **kwargs
         )
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.df_to_example_func_map = {
-            # features
-            DatasetFieldName.TEXT_FIELD: lambda row, field: [
-                utterence.tokens for utterence in row[DFColumn.MODEL_FEATS]
-            ],
-            # labels
-            DatasetFieldName.DOC_LABEL_FIELD: DFColumn.DOC_LABEL,
-            DatasetFieldName.INDEX_FIELD: self.DF_INDEX,
-            DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
-        }
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
 
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        sequences = [
-            [
-                (utterence, "")
-                for utterence in data_utils.parse_json_array(row[DFColumn.UTTERANCE])
-            ]
-            for _, row in df.iterrows()
+        features_list = [
+            self.featurizer.featurize(InputRecord(raw_text=utterence))
+            for utterence in sequence
         ]
 
-        df[DFColumn.MODEL_FEATS] = pd.Series(
-            [
-                [
-                    self.featurizer.featurize(
-                        InputRecord(raw_text=utterence, raw_gazetteer_feats=raw_dict)
-                    )
-                    for (utterence, raw_dict) in sequence
-                ]
-                for sequence in sequences
-            ]
-        )
-        return df
+        return {
+            # features
+            DatasetFieldName.TEXT_FIELD: [
+                utterence.tokens for utterence in features_list
+            ],
+            # labels
+            DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
+            DatasetFieldName.INDEX_FIELD: idx,
+            DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
+        }

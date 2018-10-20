@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-from typing import Dict, List
+from typing import Any, Dict, List
 
-import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import ActionField, DictFeatureField, Field, TextFeatureField
-from pytext.utils import data_utils
 
 from .data_handler import DataHandler
 
@@ -62,52 +60,6 @@ class CompositionalDataHandler(DataHandler):
             **kwargs
         )
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-
-        self.df_to_example_func_map = {
-            # TODO set_tokens_indices, should implement another field
-            # TODO is it the same with the original tokens seq?
-            DatasetFieldName.TEXT_FIELD: lambda row, field: row[
-                DFColumn.MODEL_FEATS
-            ].tokens,
-            DatasetFieldName.DICT_FIELD: lambda row, field: (
-                row[DFColumn.MODEL_FEATS].gazetteer_feats,
-                row[DFColumn.MODEL_FEATS].gazetteer_feat_weights,
-                row[DFColumn.MODEL_FEATS].gazetteer_feat_lengths,
-            ),
-            ACTION_FEATURE_FIELD: lambda row, field: row[TREE_COLUMN].to_actions(),
-            ACTION_LABEL_FIELD: lambda row, field: row[TREE_COLUMN].to_actions(),
-        }
-
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        if DFColumn.DICT_FEAT not in df:
-            df[DFColumn.DICT_FEAT] = ""
-
-        df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: InputRecord(
-                raw_text=row[DFColumn.UTTERANCE],
-                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
-            ),
-            axis=1,
-        )
-
-        df[DFColumn.MODEL_FEATS] = pd.Series(
-            output
-            for output in self.featurizer.featurize_batch(
-                df[DFColumn.RAW_FEATS].tolist()
-            )
-        )
-
-        df[DFColumn.TOKEN_RANGE_PAIR] = [
-            data_utils.parse_token(
-                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].token_ranges
-            )
-            for _, row in df.iterrows()
-        ]
-
-        return df
-
     def _input_from_batch(self, batch, is_train):
         # text_input[0] is contains numericalized tokens.
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
@@ -116,3 +68,37 @@ class CompositionalDataHandler(DataHandler):
             for name in self.FULL_FEATURES
             if name != DatasetFieldName.TEXT_FIELD
         )
+
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        # TODO avoid this mapping
+        raw_input = InputRecord(
+            raw_text=row_data[DFColumn.UTTERANCE],
+            raw_gazetteer_feats=row_data[DFColumn.DICT_FEAT],
+        )
+
+        features = self.featurizer.featurize(raw_input)
+
+        # TODO should implement a version whose params are plain intent, slot and
+        # get rid of IntentFrame class
+        # actions = intent_frame_to_tree(
+        #     dict_to_thrift(
+        #         IntentFrame,
+        #         {
+        #             "utterance": row_data[DFColumn.UTTERANCE],
+        #             "intent": row_data[DFColumn.DOC_LABEL],
+        #             "slots": row_data[DFColumn.WORD_LABEL],
+        #         },
+        #     )
+        # ).to_actions()
+        return {
+            # TODO set_tokens_indices, should implement another field
+            # TODO is it the same with the original tokens seq?
+            DatasetFieldName.TEXT_FIELD: features.tokens,
+            DatasetFieldName.DICT_FIELD: (
+                features.gazetteer_feats,
+                features.gazetteer_feat_weights,
+                features.gazetteer_feat_lengths,
+            ),
+            # ACTION_FEATURE_FIELD: actions,
+            # ACTION_LABEL_FIELD: actions,
+        }

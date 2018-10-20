@@ -6,17 +6,15 @@ from copy import copy
 from typing import (
     Any,
     Dict,
-    Generator,
-    Iterable,
     List,
     MutableMapping,
     Optional,
     Set,
     Tuple,
     Type,
+    Union,
 )
 
-import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
@@ -79,16 +77,11 @@ class DataHandler(Component):
           directly into model.
 
     Attributes:
-        raw_columns: columns to read from data source and put into pandas dataframe,
-            in case of files; the order should match the data stored in that file
+        raw_columns: columns to read from data source. In case of files, the order
+            should match the data stored in that file
         labels:
         features:
-        df_to_example_func_map: a map defines how to convert a pandas dataframe
-        column to a column in torchtext Example, each item can be:
-            1 Nothing, will pick the column in df with the field name
-            2 field_name -> column_name, pick the column in df with the column name
-            3 field_name -> function, take one row as input and output the processed
-              data
+        extra_fields
     """
 
     class Config(ConfigBase):
@@ -133,7 +126,7 @@ class DataHandler(Component):
         self.df_to_example_func_map: Dict = {}
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
-        self._data_cache: MutableMapping[str, pd.DataFrame] = {}
+        self._data_cache: MutableMapping[str, Any] = {}
         self.shuffle = (shuffle,)
         self.num_workers = multiprocessing.cpu_count()
         self.max_seq_len = max_seq_len
@@ -200,32 +193,31 @@ class DataHandler(Component):
         return res
 
     def gen_dataset(
-        self, df: pd.DataFrame, include_label_fields: bool = True
+        self, data: List[Dict[str, Any]], include_label_fields: bool = True
     ) -> textdata.Dataset:
         """ generate torchtext Dataset from dataframe.
         """
-        # preprocess df
-        df = self._preprocess_df(df)
-
         to_process = {}
         to_process.update(self.features)
         to_process.update(self.extra_fields)
         if include_label_fields:
             to_process.update(self.labels)
-        fields = to_process.items()
+        fields = {name: (name, field) for name, field in to_process.items()}
         # generate example from dataframe
-        all_examples = [
-            textdata.Example.fromlist(row, fields)
-            for row in self._df_to_examples(df, fields)
+        examples = [
+            textdata.Example.fromdict(row, fields) for row in self.preprocess(data)
         ]
-        res = textdata.Dataset(all_examples, to_process)
-        # extra context
-        for k, v in self._gen_dataset_context(df).items():
-            setattr(res, k, v)
-        return res
+        return textdata.Dataset(examples, to_process)
 
-    def _gen_dataset_context(self, df: pd.DataFrame) -> Dict[str, Any]:
-        return {}
+    def preprocess(self, data: List[Dict[str, Any]]):
+        for idx, row in enumerate(data):
+            yield self.preprocess_row(row, idx)
+
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        """
+        preprocess steps for a single input row
+        """
+        return row_data
 
     def init_metadata_from_path(self, train_path, eval_path, test_path):
         # get data sets
@@ -239,12 +231,8 @@ class DataHandler(Component):
     def init_metadata(self):
         self.init_metadata_from_path(self.train_path, self.eval_path, self.test_path)
 
-    def init_metadata_from_df(
-        self, train_data: pd.DataFrame, eval_data: pd.DataFrame, test_data: pd.DataFrame
-    ):
-        self._init_metadata(
-            *[self.gen_dataset(df) for df in [train_data, eval_data, test_data]]
-        )
+    def init_metadata_from_raw_data(self, *data):
+        self._init_metadata(*[self.gen_dataset(d) for d in data])
 
     def _init_metadata(
         self,
@@ -352,10 +340,10 @@ class DataHandler(Component):
     def get_test_iter(self):
         return self.get_test_iter_from_path(self.test_path, self.test_batch_size)
 
-    def get_train_iter_from_df(
-        self, train_data_frame: pd.DataFrame, batch_size: int
+    def get_train_iter_from_raw_data(
+        self, train_data: List[Dict[str, Any]], batch_size: int
     ) -> BatchIterator:
-        return self._get_train_iter(self.gen_dataset(train_data_frame), batch_size)
+        return self._get_train_iter(self.gen_dataset(train_data), batch_size)
 
     def _get_train_iter(
         self, train_dataset: textdata.Dataset, batch_size: int
@@ -389,12 +377,12 @@ class DataHandler(Component):
             is_train=False,
         )
 
-    def get_predict_iter(self, df: pd.DataFrame):
-        data = self.gen_dataset(df, include_label_fields=False)
+    def get_predict_iter(self, data: List[Dict[str, Any]]):
+        ds = self.gen_dataset(data, include_label_fields=False)
         it = BatchIterator(
             textdata.Iterator(
-                data,
-                batch_size=len(data.examples),
+                ds,
+                batch_size=len(ds),
                 device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
                 sort=True,
                 repeat=False,
@@ -410,27 +398,29 @@ class DataHandler(Component):
             return input, context
 
     @staticmethod
-    def read_from_file(file_name: str, columns: List[str]) -> pd.DataFrame:
-        """ Read data from file and generate a dataframe to host intermediate data.
-            Input file format is required to be tab-separated columns
+    def read_from_file(
+        file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
+    ) -> List[Dict[str, Any]]:
+        """ Read data from csv file. Input file format is required to be
+        tab-separated columns
         """
         print("reading data from {}".format(file_name))
-        # Replace characters with encoding errors
-        # Doing replace instead of ignore to not cause alignment issues
+        if isinstance(columns_to_use, list):
+            columns_to_use = {
+                name: idx
+                for name, idx in zip(columns_to_use, range(len(columns_to_use)))
+            }
         with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
-            return pd.read_csv(
-                f_handle,
-                header=None,
-                encoding="utf-8",
-                sep="\t",
-                delim_whitespace=False,
-                na_values="\\n",
-                keep_default_na=False,
-                dtype=str,
-                quoting=csv.QUOTE_NONE,
-                names=columns,
-                index_col=False,
-            )
+            csv_reader = csv.reader(f_handle, delimiter="\t")
+            data = []
+            for row in csv_reader:
+                row_len = len(row)
+                row_data = {}
+                for name, idx in columns_to_use.items():
+                    value = row[idx] if idx < row_len else ""
+                    row_data[name] = value
+                data.append(row_data)
+            return data
 
     def _postprocess_batch(
         self,
@@ -467,34 +457,3 @@ class DataHandler(Component):
 
     def _context_from_batch(self, batch):
         return {name: getattr(batch, name) for name in self.extra_fields}
-
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Preprocess the dataframe read from path, generate some intermediate data.
-        Do nothing by default.
-        """
-        return df
-
-    def _df_to_examples(
-        self, df, fields: Iterable[Tuple[str, Field]]
-    ) -> Generator[List[Any], None, None]:
-        for idx, row in df.iterrows():
-            yield [
-                self._df_column_to_example_column(name, field, row, idx)
-                for name, field in fields
-            ]
-
-    def _df_column_to_example_column(self, field_name, field, row, idx):
-        mapping_func = self.df_to_example_func_map.get(field_name)
-        # try to get the feature with same name in df if no mapping method is defined
-        if mapping_func is None:
-            return row.get(field_name, None)
-        # using a different column name
-        if type(mapping_func) is str:
-            column_name = mapping_func
-            if column_name == self.DF_INDEX:
-                return idx
-            return row.get(column_name, None)
-        # map function
-        else:
-            return mapping_func(row, field)

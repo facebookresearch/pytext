@@ -24,14 +24,14 @@ class TestUtilTest(unittest.TestCase):
         for i in data:
             self.assertEqual(
                 test_utils.merge_token_labels_to_slot(
-                    i['tokenized_text'],
+                    i['token_ranges'],
                     i['labels']
                 ),
                 i['output']
             )
             self.assertEqual(
                 test_utils.merge_token_labels_to_slot(
-                    i['tokenized_text'],
+                    i['token_ranges'],
                     [test_utils.strip_bio_prefix(l) for l in i['labels']],
                     use_bio_label=False
                 ),

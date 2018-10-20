@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
-import pandas as pd
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
@@ -88,7 +87,7 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.RAW_WORD_LABEL: RawField(),
-            DatasetFieldName.TOKEN_RANGE_PAIR: RawField(),
+            DatasetFieldName.TOKEN_RANGE: RawField(),
             DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
@@ -109,75 +108,54 @@ class JointModelDataHandler(DataHandler):
             **kwargs
         )
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-
-        self.df_to_example_func_map = {
-            # features
-            DatasetFieldName.TEXT_FIELD: self._get_tokens,
-            DatasetFieldName.DICT_FIELD: lambda row, field: (
-                row[DFColumn.MODEL_FEATS].gazetteer_feats,
-                row[DFColumn.MODEL_FEATS].gazetteer_feat_weights,
-                row[DFColumn.MODEL_FEATS].gazetteer_feat_lengths,
-            ),
-            DatasetFieldName.CHAR_FIELD: lambda row, field: row[
-                DFColumn.MODEL_FEATS
-            ].characters,
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: lambda row, field: row[
-                DFColumn.MODEL_FEATS
-            ].pretrained_token_embedding,
-            # labels
-            DatasetFieldName.DOC_LABEL_FIELD: DFColumn.DOC_LABEL,
-            DatasetFieldName.WORD_LABEL_FIELD: lambda row, field: data_utils.align_slot_labels(
-                row[DFColumn.TOKEN_RANGE_PAIR],
-                row[DFColumn.WORD_LABEL],
-                field.use_bio_labels,
-            ),
-            # extra context
-            DatasetFieldName.DOC_WEIGHT_FIELD: lambda row, field: row.get(
-                DFColumn.DOC_WEIGHT
-            )
-            or 1.0,
-            DatasetFieldName.WORD_WEIGHT_FIELD: lambda row, field: row.get(
-                DFColumn.WORD_WEIGHT
-            )
-            or 1.0,
-            DatasetFieldName.RAW_WORD_LABEL: DFColumn.WORD_LABEL,
-            DatasetFieldName.INDEX_FIELD: self.DF_INDEX,
-            DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
-        }
-
-    def _get_tokens(self, row, field):
+    def _get_tokens(self, mode_feature):
         if self.max_seq_len > 0:
             # truncate tokens if max_seq_len is set
-            return row[DFColumn.MODEL_FEATS].tokens[: self.max_seq_len]
+            return mode_feature.tokens[: self.max_seq_len]
         else:
-            return row[DFColumn.MODEL_FEATS].tokens
+            return mode_feature.tokens
 
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        if DFColumn.DICT_FEAT not in df:
-            df[DFColumn.DICT_FEAT] = ""
-
-        df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: InputRecord(
-                raw_text=row[DFColumn.UTTERANCE],
-                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
-            ),
-            axis=1,
-        )
-
-        df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
-        )
-
-        df[DFColumn.TOKEN_RANGE_PAIR] = [
-            data_utils.parse_token(
-                row[DFColumn.UTTERANCE], row[DFColumn.MODEL_FEATS].token_ranges
+    def featurize(self, row_data: Dict[str, Any]):
+        return self.featurizer.featurize(
+            InputRecord(
+                raw_text=row_data[DFColumn.UTTERANCE],
+                raw_gazetteer_feats=row_data[DFColumn.DICT_FEAT],
             )
-            for _, row in df.iterrows()
-        ]
+        )
 
-        return df
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        features = self.featurize(row_data)
+        res = {
+            # feature field
+            # TODO move the logic to text field
+            DatasetFieldName.TEXT_FIELD: self._get_tokens(features),
+            DatasetFieldName.DICT_FIELD: (
+                features.gazetteer_feats,
+                features.gazetteer_feat_weights,
+                features.gazetteer_feat_lengths,
+            ),
+            DatasetFieldName.CHAR_FIELD: features.characters,
+            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            # labels
+            DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
+            # extra data
+            # TODO move the logic to FloatField
+            DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,
+            DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
+            or 1.0,
+            DatasetFieldName.RAW_WORD_LABEL: row_data[DFColumn.WORD_LABEL],
+            DatasetFieldName.INDEX_FIELD: idx,
+            DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
+            DatasetFieldName.TOKEN_RANGE: features.token_ranges,
+        }
+        if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
+            # TODO move it into word label field
+            res[DatasetFieldName.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
+                features.token_ranges,
+                row_data[DFColumn.WORD_LABEL],
+                self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,
+            )
+        return res
 
     def _train_input_from_batch(self, batch):
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)

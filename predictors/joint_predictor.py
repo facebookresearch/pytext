@@ -24,7 +24,7 @@ class JointPredictor(Predictor):
             word_label_names,
             model_output[1],
             context[DatasetFieldName.INDEX_FIELD],
-            context[DatasetFieldName.TOKEN_RANGE_PAIR],
+            context[DatasetFieldName.TOKEN_RANGE],
             context[SEQ_LENS],
             "word_scores",
         )

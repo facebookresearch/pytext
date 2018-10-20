@@ -3,7 +3,6 @@
 import unittest
 
 import numpy as np
-import pandas as pd
 from pytext.common.constants import DFColumn
 from pytext.config.field_config import DocLabelConfig, FeatureConfig, LabelConfig
 from pytext.data import SeqModelDataHandler
@@ -12,29 +11,31 @@ from pytext.data.featurizer import SimpleFeaturizer
 
 class SeqModelDataHandlerTest(unittest.TestCase):
     def setUp(self):
-        self.train_data = pd.DataFrame(
+        self.train_data = [
             {
-                DFColumn.DOC_LABEL: ["cu:discuss_where"],
-                DFColumn.UTTERANCE: ['["where do you wanna meet?", "MPK"]'],
+                DFColumn.DOC_LABEL: "cu:discuss_where",
+                DFColumn.UTTERANCE: '["where do you wanna meet?", "MPK"]',
             }
-        )
+        ]
 
-        self.eval_data = pd.DataFrame(
+        self.eval_data = [
             {
-                DFColumn.DOC_LABEL: ["cu:discuss_where", "cu:other"],
-                DFColumn.UTTERANCE: ['["how about SF?", "sounds good"]', '["lol"]'],
-            }
-        )
+                DFColumn.DOC_LABEL: "cu:discuss_where",
+                DFColumn.UTTERANCE: '["how about SF?", "sounds good"]',
+            },
+            {DFColumn.DOC_LABEL: "cu:other", DFColumn.UTTERANCE: '["lol"]'},
+        ]
 
-        self.test_data = pd.DataFrame(
+        self.test_data = [
             {
-                DFColumn.DOC_LABEL: ["cu:discuss_where", "cu:other"],
-                DFColumn.UTTERANCE: [
-                    '["MPK sounds good to me"]',
-                    '["great", "awesome"]',
-                ],
-            }
-        )
+                DFColumn.DOC_LABEL: "cu:discuss_where",
+                DFColumn.UTTERANCE: '["MPK sounds good to me"]',
+            },
+            {
+                DFColumn.DOC_LABEL: "cu:other",
+                DFColumn.UTTERANCE: '["great", "awesome"]',
+            },
+        ]
 
         self.dh = SeqModelDataHandler.from_config(
             SeqModelDataHandler.Config(),
@@ -50,8 +51,10 @@ class SeqModelDataHandlerTest(unittest.TestCase):
         )
 
     def test_process_data(self):
-        self.dh.init_metadata_from_df(self.train_data, self.eval_data, self.test_data)
-        train_iter = self.dh.get_train_iter_from_df(self.train_data, 1)
+        self.dh.init_metadata_from_raw_data(
+            self.train_data, self.eval_data, self.test_data
+        )
+        train_iter = self.dh.get_train_iter_from_raw_data(self.train_data, 1)
         for input, target, _ in train_iter:
             np.testing.assert_array_almost_equal(
                 input[0][0].numpy(), [[6, 2, 7, 5, 3], [4, 1, 1, 1, 1]]

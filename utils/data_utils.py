@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from typing import List, Any, Tuple
 import json
+from typing import Any, List, Tuple
 
 
 def simple_tokenize(s: str) -> List[str]:
@@ -66,22 +66,18 @@ def parse_token(
     return [(utterance[s:e], (s, e)) for (s, e) in range_bounds]
 
 
-def parse_json_array(
-    json_text: str
-) -> List[str]:
+def parse_json_array(json_text: str) -> List[str]:
     return json.loads(json_text)
 
 
 # In order to process each field independently, we need to align slot labels
 def align_slot_labels(
-    tokenized_text: List[Tuple[str, Tuple[int, int]]],
-    slots_field: str,
-    use_bio_labels: bool = False,
+    token_ranges: List[Tuple[int, int]], slots_field: str, use_bio_labels: bool = False
 ):
     slot_list = parse_slot_string(slots_field)
 
     token_labels = []
-    for (_, (t_start, t_end)) in tokenized_text:
+    for t_start, t_end in token_ranges:
         tok_label = Slot.NO_LABEL_SLOT
         max_overlap = 0
         for s in slot_list:

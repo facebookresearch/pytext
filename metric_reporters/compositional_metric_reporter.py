@@ -51,16 +51,16 @@ class CompositionalMetricReporter(MetricReporter):
         self.all_context[PRED_TARGET_TREES] = [
             (
                 self.tree_from_tokens_and_indx_actions(
-                    token_range_pair[0], self.actions_bidict, action_preds
+                    token_range[0], self.actions_bidict, action_preds
                 ),
                 self.tree_from_tokens_and_indx_actions(
-                    token_range_pair[0], self.actions_bidict, action_targets
+                    token_range[0], self.actions_bidict, action_targets
                 ),
             )
-            for action_preds, action_targets, token_range_pair in zip(
+            for action_preds, action_targets, token_range in zip(
                 self.all_preds,
                 self.all_targets,
-                self.all_context[DatasetFieldName.TOKEN_RANGE_PAIR],
+                self.all_context[DatasetFieldName.TOKEN_RANGE],
             )
         ]
 

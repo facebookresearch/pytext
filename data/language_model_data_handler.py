@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
-import pandas as pd
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import Field, RawField, TextFeatureField
-from pytext.utils import data_utils
 
 from .data_handler import DataHandler
 
@@ -20,16 +18,6 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 class LanguageModelDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.df_to_example_func_map = {
-            # features
-            DatasetFieldName.TEXT_FIELD: lambda row, field: row[
-                DFColumn.MODEL_FEATS
-            ].tokens,
-            DatasetFieldName.UTTERANCE_FIELD: DFColumn.UTTERANCE,
-        }
 
     @classmethod
     def from_config(
@@ -79,22 +67,18 @@ class LanguageModelDataHandler(DataHandler):
             "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
         }
 
-    def _preprocess_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        if DFColumn.DICT_FEAT not in df:
-            df[DFColumn.DICT_FEAT] = ""
-        df[DFColumn.RAW_FEATS] = df.apply(
-            lambda row: InputRecord(
-                raw_text=row[DFColumn.UTTERANCE],
-                raw_gazetteer_feats=row[DFColumn.DICT_FEAT],
-            ),
-            axis=1,
+    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        raw_input = InputRecord(
+            raw_text=row_data[DFColumn.UTTERANCE]
         )
 
-        df[DFColumn.MODEL_FEATS] = pd.Series(
-            self.featurizer.featurize_batch(df[DFColumn.RAW_FEATS].tolist())
-        )
+        features = self.featurizer.featurize(raw_input)
 
-        return df
+        return {
+            # features
+            DatasetFieldName.TEXT_FIELD: features.tokens,
+            DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
+        }
 
     def _train_input_from_batch(self, batch):
         # batch.text[1] is the length of each sequence
