@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+import os
 from setuptools import setup
 
 
-with open("requirements.txt") as f:
+DIR = os.path.dirname(__file__)
+REQUIREMENTS = os.path.join(DIR, "requirements.txt")
+
+
+with open(REQUIREMENTS) as f:
     reqs = f.read()
 
 setup(
