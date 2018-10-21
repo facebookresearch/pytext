@@ -2,6 +2,7 @@
 
 from typing import Optional, Tuple, Sequence
 
+from pytext.common.constants import VocabMeta
 from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import Featurizer, InputRecord, OutputRecord
@@ -33,6 +34,9 @@ class SimpleFeaturizer(Featurizer):
         """Tokenize one instance/example only."""
         # Dumb tokenization split on space.
         tokens = input_record.raw_text.split()
+        if len(tokens) == 0:
+            # Add PAD_TOKEN in case of empty text
+            tokens = [VocabMeta.PAD_TOKEN]
         if self.lowercase_tokens:
             tokens = list(map(str.lower, tokens))
         if self.sentence_markers:

@@ -17,6 +17,6 @@ class SharedTokenEmbedding(TokenEmbedding):
         self, tokens: Tuple[torch.Tensor, ...], lengths: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, ...]:
         return tuple(
-            super().forward(toks, lens)
+            super(SharedTokenEmbedding, self).forward(toks, lens)
             for toks, lens in zip(tokens, lengths)
         )

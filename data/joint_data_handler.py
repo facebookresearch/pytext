@@ -118,8 +118,8 @@ class JointModelDataHandler(DataHandler):
     def featurize(self, row_data: Dict[str, Any]):
         return self.featurizer.featurize(
             InputRecord(
-                raw_text=row_data[DFColumn.UTTERANCE],
-                raw_gazetteer_feats=row_data[DFColumn.DICT_FEAT],
+                raw_text=row_data.get(DFColumn.UTTERANCE),
+                raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT),
             )
         )
 
@@ -135,17 +135,18 @@ class JointModelDataHandler(DataHandler):
                 features.gazetteer_feat_lengths,
             ),
             DatasetFieldName.CHAR_FIELD: features.characters,
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: \
+            features.pretrained_token_embedding,
             # labels
-            DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
+            DatasetFieldName.DOC_LABEL_FIELD: row_data.get(DFColumn.DOC_LABEL),
             # extra data
             # TODO move the logic to FloatField
             DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,
             DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
             or 1.0,
-            DatasetFieldName.RAW_WORD_LABEL: row_data[DFColumn.WORD_LABEL],
+            DatasetFieldName.RAW_WORD_LABEL: row_data.get(DFColumn.WORD_LABEL),
             DatasetFieldName.INDEX_FIELD: idx,
-            DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
+            DatasetFieldName.UTTERANCE_FIELD: row_data.get(DFColumn.UTTERANCE),
             DatasetFieldName.TOKEN_RANGE: features.token_ranges,
         }
         if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
