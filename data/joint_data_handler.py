@@ -86,11 +86,12 @@ class JointModelDataHandler(DataHandler):
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
-            DatasetFieldName.RAW_WORD_LABEL: RawField(),
             DatasetFieldName.TOKEN_RANGE: RawField(),
             DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
+        if label_config.word_label:
+            extra_fields[DatasetFieldName.RAW_WORD_LABEL] = RawField()
 
         return cls(
             raw_columns=config.columns_to_read,
@@ -118,8 +119,8 @@ class JointModelDataHandler(DataHandler):
     def featurize(self, row_data: Dict[str, Any]):
         return self.featurizer.featurize(
             InputRecord(
-                raw_text=row_data.get(DFColumn.UTTERANCE),
-                raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT),
+                raw_text=row_data.get(DFColumn.UTTERANCE, ""),
+                raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT, ""),
             )
         )
 
@@ -135,20 +136,18 @@ class JointModelDataHandler(DataHandler):
                 features.gazetteer_feat_lengths,
             ),
             DatasetFieldName.CHAR_FIELD: features.characters,
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: \
-            features.pretrained_token_embedding,
-            # labels
-            DatasetFieldName.DOC_LABEL_FIELD: row_data.get(DFColumn.DOC_LABEL),
+            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             # extra data
             # TODO move the logic to FloatField
             DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,
             DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
             or 1.0,
-            DatasetFieldName.RAW_WORD_LABEL: row_data.get(DFColumn.WORD_LABEL),
             DatasetFieldName.INDEX_FIELD: idx,
             DatasetFieldName.UTTERANCE_FIELD: row_data.get(DFColumn.UTTERANCE),
             DatasetFieldName.TOKEN_RANGE: features.token_ranges,
         }
+        if DatasetFieldName.DOC_LABEL_FIELD in self.labels:
+            res[DatasetFieldName.DOC_LABEL_FIELD] = row_data[DFColumn.DOC_LABEL]
         if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
             # TODO move it into word label field
             res[DatasetFieldName.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
@@ -156,6 +155,7 @@ class JointModelDataHandler(DataHandler):
                 row_data[DFColumn.WORD_LABEL],
                 self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,
             )
+            res[DatasetFieldName.RAW_WORD_LABEL] = row_data[DFColumn.WORD_LABEL]
         return res
 
     def _train_input_from_batch(self, batch):
