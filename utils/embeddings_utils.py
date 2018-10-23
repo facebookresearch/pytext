@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-import csv
 import os
 import time
 from typing import Dict, List  # noqa: F401
 
 import numpy as np
-import pandas
 import torch
 from pytext.common.constants import PackageFileName
 from pytext.config.field_config import EmbedInitStrategy
@@ -69,47 +67,53 @@ class PretrainedEmbedding(object):
         Optionally appends _dialect to every token in the vocabulary
         (for XLU embeddings).
         """
-        filetype = {i: np.float32 for i in range(1, 10000)}
-        filetype[0] = np.str
-        embed_df = pandas.read_csv(
-            raw_embeddings_path,
-            chunksize=500000,
-            skiprows=1,  # Assuming the file has a header in the first row
-            delim_whitespace=True,
-            dtype=filetype,
-            header=None,
-            na_filter=False,
-            quoting=csv.QUOTE_NONE,
-        )
-        embed_vectors = []  # type: List[List[float]]
+        chunk_vocab = []
+
+        def iter_parser(skip_header: int = 0,
+                        delimiter: str = ' ',
+                        dtype: type = np.float32):
+            """ Iterator to load numpy 1-d array from multi-row text file,
+            where format is assumed to be:
+                [word_i] [v0, v1, v2, ...., v_dim]
+                [word_2] [v0, v1, v2, ...., v_dim]
+            The iterator will omit the first column (vocabulary) and via closure
+            store values into the 'chunk_vocab' list.
+            """
+            with open(raw_embeddings_path, 'r') as txtfile:
+                for _ in range(skip_header):
+                    next(txtfile)
+                for line in txtfile:
+                    split_line = line.rstrip().split(delimiter)
+                    chunk_vocab.append(split_line[0])
+                    for item in split_line[1:]:
+                        yield dtype(item)
+
+        t = time.time()
+        embed_array = np.fromiter(iter_parser(skip_header=1), dtype=np.float32)
+        embed_matrix = embed_array.reshape((len(chunk_vocab), -1))
+
+        print("Rows loaded: ", embed_matrix.shape[0],
+              "; Time: ", time.time() - t, "s.")
 
         if not append:
             self.embed_vocab = []
             self.stoi = {}
-        t = time.time()
-        size = 0
-        for chunk in embed_df:
-            chunk_vocab = chunk.as_matrix([0]).flatten()
-            if lowercase_tokens:
-                chunk_vocab = [word.lower() for word in chunk_vocab]
-            if dialect is not None:
-                chunk_vocab = [append_dialect(word, dialect) for word in chunk_vocab]
-            self.embed_vocab.extend(chunk_vocab)
-            for i, word in enumerate(chunk_vocab):
-                self.stoi[word] = size + i
-            embed_vectors.extend(chunk.as_matrix(list(range(1, len(chunk.columns)))))
-            size += len(chunk)
-            print("Rows loaded: ", size, "; Time: ", time.time() - t, "s.")
+
+        if lowercase_tokens:
+            chunk_vocab = [word.lower() for word in chunk_vocab]
+        if dialect is not None:
+            chunk_vocab = [append_dialect(word, dialect)
+                           for word in chunk_vocab]
+
+        self.embed_vocab.extend(chunk_vocab)
+        self.stoi = {word : i for i, word in enumerate(chunk_vocab)}
 
         if append and self.embedding_vectors is not None:
-            new_vectors = torch.Tensor(embed_vectors).view(size, -1)
-            self.embedding_vectors = embed_vectors = torch.cat(
-                (self.embedding_vectors, new_vectors)
+            self.embedding_vectors = torch.cat(
+                (self.embedding_vectors, torch.Tensor(embed_matrix))
             )
         else:
-            self.embedding_vectors = torch.Tensor(embed_vectors).view(
-                len(self.embed_vocab), -1
-            )
+            self.embedding_vectors = torch.Tensor(embed_matrix)
 
     def cache_pretrained_embeddings(self, cache_path: str) -> None:
         """
