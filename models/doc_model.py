@@ -8,6 +8,7 @@ from pytext.models.model import Model
 from pytext.models.output_layer import ClassificationOutputLayer
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
+from pytext.models.representations.pure_doc_attention import PureDocAttention
 
 
 class DocModel(Model):
@@ -17,6 +18,7 @@ class DocModel(Model):
 
     class Config(ConfigBase):
         representation: Union[
+            PureDocAttention.Config,
             BiLSTMDocAttention.Config,
             DocNNRepresentation.Config,
         ] = BiLSTMDocAttention.Config()
