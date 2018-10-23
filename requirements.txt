@@ -1,8 +1,10 @@
+future
 hypothesis
 joblib
 numpy
 onnx
 pandas
+scipy
 torch_nightly
 torchtext
 pandas
