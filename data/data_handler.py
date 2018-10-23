@@ -415,7 +415,7 @@ class DataHandler(Component):
                 for name, idx in zip(columns_to_use, range(len(columns_to_use)))
             }
         with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
-            csv_reader = csv.reader(f_handle, delimiter="\t")
+            csv_reader = csv.reader(f_handle, delimiter="\t", quoting=csv.QUOTE_NONE)
             data = []
             for row in csv_reader:
                 row_len = len(row)

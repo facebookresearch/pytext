@@ -79,7 +79,10 @@ class TupleRepresentation(RepresentationBase):
         return representation
 
     def forward(
-        self, embeddings: Tuple[torch.Tensor, ...], lengths: Tuple[torch.Tensor, ...]
+        self,
+        embeddings: Tuple[torch.Tensor, ...],
+        lengths: Tuple[torch.Tensor, ...],
+        *args
     ) -> Tuple[torch.Tensor, ...]:
         # The leftmost inputs already come sorted by length. The others need to
         # be sorted as well, for packing. We do it manually.
