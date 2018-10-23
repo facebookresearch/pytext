@@ -1,8 +1,8 @@
-caffe2
 hypothesis
 joblib
 numpy
 onnx
-torch
+pandas
+torch_nightly
 torchtext
 pandas
