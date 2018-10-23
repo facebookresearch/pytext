@@ -1,4 +1,5 @@
 caffe2
+hypothesis
 joblib
 numpy
 onnx
