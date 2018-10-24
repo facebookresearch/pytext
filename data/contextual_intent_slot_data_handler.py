@@ -117,10 +117,21 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
         sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
 
+        # ignore dictionary feature for context sentences other than the last one
         features_list = [
             self.featurizer.featurize(InputRecord(raw_text=utterance))
-            for utterance in sequence
+            for utterance in sequence[:-1]
         ]
+
+        # adding dictionary feature for the last (current) message
+        features_list.append(
+            self.featurizer.featurize(
+                InputRecord(
+                    raw_text=sequence[-1],
+                    raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT, ""),
+                )
+            )
+        )
 
         res = {
             # features

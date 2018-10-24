@@ -2,20 +2,21 @@
 
 import unittest
 
-from pytext.common.constants import DatasetFieldName, DFColumn
+from pytext.common.constants import DFColumn
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
-from pytext.data.featurizer import SimpleFeaturizer
+from pytext.fb.data.assistant_featurizer import AssistantFeaturizer
 
 
 class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
     def setUp(self):
         file_name = "pytext/tests/data/contextual_intent_slot_train_tiny.tsv"
+        feature_config_dict = {"dict_feat": {"embed_dim": 10}}
         self.dh = ContextualIntentSlotModelDataHandler.from_config(
             ContextualIntentSlotModelDataHandler.Config(),
-            FeatureConfig(),
+            FeatureConfig(**feature_config_dict),
             LabelConfig(),
-            featurizer=SimpleFeaturizer(),
+            featurizer=AssistantFeaturizer(),
         )
 
         self.data = self.dh.read_from_file(file_name, self.dh.raw_columns)
@@ -46,5 +47,13 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(data.examples[0].doc_weight, "0.2")
         self.assertEqual(data.examples[0].word_weight, "0.5")
         self.assertEqual(data.examples[0].raw_word_label, "")
-        self.assertListEqual(data.examples[0].token_range, [0, 4, 5, 9, 10, 14])
+        self.assertListEqual(data.examples[0].token_range, [(0, 4), (5, 9), (10, 14)])
         self.assertEqual(data.examples[0].utterance, '["Hey", "Youd love this"]')
+        self.assertSequenceEqual(
+            data.examples[0].dict_feat,
+            (
+                ['<pad>', 'b_ozlo_ner_category:content_reaction', '<pad>'],
+                [0.0, 0.1203470230102539, 0.0],
+                [1, 1, 1],
+            ),
+        )
