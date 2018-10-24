@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 CUDA_ENABLED = False
+DISTRIBUTED_WORLD_SIZE = 1
 
 
 def Variable(data, *args, **kwargs):
@@ -23,7 +24,8 @@ def zerovar(*size):
 
 
 def parallelize(module, inputs):
-    if CUDA_ENABLED:
+    # Don't use data_parallel when using Distributed training
+    if CUDA_ENABLED and DISTRIBUTED_WORLD_SIZE == 1:
         return nn.parallel.data_parallel(module, inputs)
     else:
         return module(*inputs)

@@ -4,10 +4,11 @@ import copy
 from typing import List, Optional
 
 import torch
-from pytext.common.constants import Stage
+from pytext.common.constants import BatchContext, Stage
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
+from pytext.models.distributed_model import DistributedModel
 from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
 from pytext.utils import cuda_utils
 
@@ -43,9 +44,18 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         optimizers: List[torch.optim.Optimizer],
         scheduler=None,
+        rank: int = 0,
     ):
         if cuda_utils.CUDA_ENABLED:
-            model.cuda()
+            model = model.cuda()
+            if cuda_utils.DISTRIBUTED_WORLD_SIZE > 1:
+                device_id = torch.cuda.current_device()
+                model = DistributedModel(
+                    module=model,
+                    device_ids=[device_id],
+                    output_device=device_id,
+                    broadcast_buffers=False,
+                )
 
         best_metric = None
         last_best_epoch = 0
@@ -63,29 +73,31 @@ class Trainer(TrainerBase):
                 optimizers,
                 scheduler,
             )
-
-            model.eval()
-            eval_metric = self._run_epoch(
-                Stage.EVAL, epoch, eval_iter, model, metric_reporter
-            )
-
-            # choose best model
-            if metric_reporter.compare_metric(eval_metric, best_metric):
-                last_best_epoch = epoch
-                best_metric = eval_metric
-                print("Found a better model! Saving it...")
-                best_model_state = copy.deepcopy(model.state_dict())
-
-            if self.config.early_stop_after > 0 and (
-                epoch - last_best_epoch == self.config.early_stop_after
-            ):
-                print(
-                    "Eval metric hasn't changed for {} epochs, stopping now.".format(
-                        self.config.early_stop_after
-                    )
+            if rank == 0:
+                model.eval()
+                eval_metric = self._run_epoch(
+                    Stage.EVAL, epoch, eval_iter, model, metric_reporter
                 )
-                break
-        model.load_state_dict(best_model_state)
+
+                # choose best model
+                if metric_reporter.compare_metric(eval_metric, best_metric):
+                    last_best_epoch = epoch
+                    best_metric = eval_metric
+                    print("Found a better model! Saving it...")
+                    best_model_state = copy.deepcopy(model.state_dict())
+
+                if self.config.early_stop_after > 0 and (
+                    epoch - last_best_epoch == self.config.early_stop_after
+                ):
+                    print(
+                        "Eval metric hasn't changed for {} epochs".format(
+                            self.config.early_stop_after
+                        )
+                        + "stopping now."
+                    )
+                    break
+        if best_model_state:
+            model.load_state_dict(best_model_state)
         return model, best_metric
 
     def _run_epoch(
@@ -105,6 +117,8 @@ class Trainer(TrainerBase):
                 optimizer_zero_grad(optimizers)
             logits = model(*m_input)
             loss = model.get_loss(logits, targets, context)
+            if BatchContext.IGNORE_LOSS in context:
+                loss *= 0
             if model.training:
                 loss.backward()
                 if self.config.max_clip_norm is not None:

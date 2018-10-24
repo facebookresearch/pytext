@@ -17,7 +17,8 @@ class PyTextConfig(ConfigBase):
     # the actual task union types will be generated in runtime
     jobspec: Union[Any, PlaceHolder]
     use_cuda_if_available: bool = True
-
+    # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
+    distributed_world_size: int = 1
     # A path to a snapshot of a trained model to test
     load_snapshot_path: str = ""
     # A file to store the output of the model when running on the test data

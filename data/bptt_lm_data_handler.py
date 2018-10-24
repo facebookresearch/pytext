@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import itertools
+import math
 from typing import Any, Dict, List
 
 import torch
@@ -89,19 +90,28 @@ class BPTTLanguageModelDataHandler(DataHandler):
         ).tokens
 
     def _get_train_iter(
-        self, train_dataset: textdata.Dataset, batch_size: int
+        self,
+        train_dataset: textdata.Dataset,
+        batch_size: int,
+        rank: int = 0,
+        world_size: int = 1,
     ) -> BatchIterator:
+        dataset_shard = self._get_dataset_shard(train_dataset, rank, world_size)
+        num_all_batches = math.ceil(len(train_dataset) / float(batch_size))
         return BatchIterator(
             textdata.BPTTIterator(
-                train_dataset,
+                dataset_shard,
                 batch_size=batch_size,
                 bptt_len=self.bptt_len,
-                device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
+                device="cuda:{}".format(torch.cuda.curren_device())
+                if cuda_utils.CUDA_ENABLED
+                else "cpu",
                 sort_within_batch=True,
                 repeat=False,
                 sort_key=self.sort_key,
             ),
             self._postprocess_batch,
+            num_batches=math.ceil(num_all_batches / float(world_size)),
         )
 
     def _train_input_from_batch(self, batch):
@@ -121,7 +131,9 @@ class BPTTLanguageModelDataHandler(DataHandler):
                 test_data,
                 batch_size=batch_size,
                 bptt_len=self.bptt_len,
-                device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
+                device="cuda:{}".format(torch.cuda.curren_device())
+                if cuda_utils.CUDA_ENABLED
+                else "cpu",
                 sort=True,
                 repeat=False,
                 train=False,

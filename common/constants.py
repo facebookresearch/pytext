@@ -49,6 +49,7 @@ class DFColumn:
     TARGET_TOKENS = "target_tokens"
 
 
+# ToDo: Move this to fb/ directory
 class ConfigeratorPath:
     DEFAULT_TOKENIZER = "configerator:assistant/nlu/default_tokenizer_config"
     LOWER_NO_PUNCT_TOKENIZER = (
@@ -86,6 +87,10 @@ class PredictorInputNames:
     CHAR_IDS = "char_vals"
     TOKENS_STR = "tokens_vals_str"
     DICT_FEAT_STR = "dict_vals_str"
+
+
+class BatchContext:
+    IGNORE_LOSS = "ignore_loss"
 
 
 class Stage(Enum):

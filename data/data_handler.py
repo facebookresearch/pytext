@@ -1,22 +1,13 @@
 #!/usr/bin/env python3
 import csv
+import math
 import multiprocessing
 import os
-from copy import copy
-from typing import (
-    Any,
-    Dict,
-    List,
-    MutableMapping,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from copy import copy, deepcopy
+from typing import Any, Dict, List, MutableMapping, Optional, Set, Tuple, Type, Union
 
 import torch
-from pytext.common.constants import DatasetFieldName, VocabMeta
+from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
@@ -48,6 +39,7 @@ class BatchIterator:
         include_target=True,
         include_context=True,
         is_train=True,
+        num_batches=-1,
     ):
         self.processor = processor
         self.batches = batches
@@ -55,16 +47,28 @@ class BatchIterator:
         self.include_target = include_target
         self.include_context = include_context
         self.is_train = is_train
+        self.total_num_batches = num_batches
 
     def __iter__(self):
-        for batch in self.batches:
-            yield self.processor(
+        num_batches = len(self.batches)
+        for i, batch in enumerate(self.batches):
+            input, target, context = self.processor(
                 batch,
                 self.include_input,
                 self.include_target,
                 self.include_context,
                 self.is_train,
             )
+            yield (input, target, context)
+            # Due to a limitation in PyTroch's distributed training backend that
+            # enforces that all the parallel workers to have the same number of
+            # batches we keep yielding the last batch until the requested total
+            # number of batches is fullfilled
+            if i == num_batches - 1:
+                context = deepcopy(context)
+                context.update({BatchContext.IGNORE_LOSS: True})
+                for _j in range(num_batches, self.total_num_batches):
+                    yield (input, target, context)
 
 
 class DataHandler(Component):
@@ -128,7 +132,7 @@ class DataHandler(Component):
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: MutableMapping[str, Any] = {}
-        self.shuffle = (shuffle,)
+        self.shuffle = shuffle
         self.num_workers = multiprocessing.cpu_count()
         self.max_seq_len = max_seq_len
 
@@ -331,12 +335,16 @@ class DataHandler(Component):
         pass
 
     def get_train_iter_from_path(
-        self, train_path: str, batch_size: int
+        self, train_path: str, batch_size: int, rank: int = 0, world_size: int = 1
     ) -> BatchIterator:
-        return self._get_train_iter(self.gen_dataset_from_path(train_path), batch_size)
+        return self._get_train_iter(
+            self.gen_dataset_from_path(train_path), batch_size, rank, world_size
+        )
 
-    def get_train_iter(self):
-        return self.get_train_iter_from_path(self.train_path, self.train_batch_size)
+    def get_train_iter(self, rank: int = 0, world_size: int = 1):
+        return self.get_train_iter_from_path(
+            self.train_path, self.train_batch_size, rank, world_size
+        )
 
     def get_eval_iter(self):
         return self.get_train_iter_from_path(self.eval_path, self.eval_batch_size)
@@ -345,24 +353,39 @@ class DataHandler(Component):
         return self.get_test_iter_from_path(self.test_path, self.test_batch_size)
 
     def get_train_iter_from_raw_data(
-        self, train_data: List[Dict[str, Any]], batch_size: int
+        self,
+        train_data: List[Dict[str, Any]],
+        batch_size: int,
+        rank: int = 0,
+        world_size: int = 1,
     ) -> BatchIterator:
-        return self._get_train_iter(self.gen_dataset(train_data), batch_size)
+        return self._get_train_iter(
+            self.gen_dataset(train_data), batch_size, rank, world_size
+        )
 
     def _get_train_iter(
-        self, train_dataset: textdata.Dataset, batch_size: int
+        self,
+        train_dataset: textdata.Dataset,
+        batch_size: int,
+        rank: int = 0,
+        world_size: int = 1,
     ) -> BatchIterator:
+        dataset_shard = self._get_dataset_shard(train_dataset, rank, world_size)
+        num_all_batches = math.ceil(len(train_dataset) / float(batch_size))
         return BatchIterator(
             textdata.BucketIterator(
-                train_dataset,
+                dataset_shard,
                 batch_size=batch_size,
-                device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
+                device="cuda:{}".format(torch.cuda.current_device())
+                if cuda_utils.CUDA_ENABLED
+                else "cpu",
                 sort_within_batch=True,
                 repeat=False,
                 sort_key=self.sort_key,
                 shuffle=self.shuffle,
             ),
             self._postprocess_batch,
+            num_batches=math.ceil(num_all_batches / float(world_size)),
         )
 
     def get_test_iter_from_path(self, path: str, batch_size: int) -> BatchIterator:
@@ -371,7 +394,9 @@ class DataHandler(Component):
             textdata.Iterator(
                 test_data,
                 batch_size=batch_size,
-                device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
+                device="cuda:{}".format(torch.cuda.current_device())
+                if cuda_utils.CUDA_ENABLED
+                else "cpu",
                 sort=True,
                 repeat=False,
                 train=False,
@@ -387,7 +412,9 @@ class DataHandler(Component):
             textdata.Iterator(
                 ds,
                 batch_size=len(ds),
-                device="cuda:0" if cuda_utils.CUDA_ENABLED else "cpu",
+                device="cuda:{}".format(torch.cuda.current_device())
+                if cuda_utils.CUDA_ENABLED
+                else "cpu",
                 sort=True,
                 repeat=False,
                 train=False,
@@ -400,6 +427,18 @@ class DataHandler(Component):
         for input, _, context in it:
             # only return the first batch since there is only one
             return input, context
+
+    @staticmethod
+    def _get_dataset_shard(
+        dataset: textdata.Dataset, rank: int, world_size: int
+    ) -> textdata.Dataset:
+        assert rank > -1 and world_size > 0
+        shard_len = len(dataset) // world_size
+        shard_offset = rank * shard_len
+        shard_end = len(dataset) if rank == world_size - 1 else shard_offset + shard_len
+        return textdata.Dataset(
+            dataset.examples[shard_offset:shard_end], dataset.fields
+        )
 
     @staticmethod
     def read_from_file(

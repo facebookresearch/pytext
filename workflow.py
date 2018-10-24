@@ -16,6 +16,7 @@ from pytext.data import BatchIterator, DataHandler
 from pytext.metric_reporters import MetricReporter
 from pytext.optimizer import create_optimizer, create_scheduler
 from pytext.trainers.trainer import Trainer
+from pytext.utils.dist_utils import dist_init
 
 from .serialize import load, save
 from .utils import cuda_utils
@@ -55,14 +56,26 @@ class Job:
         self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
 
 
-def _set_cuda(use_cuda_if_available: bool) -> None:
+def _set_cuda(
+    use_cuda_if_available: bool, device_id: int = 0, world_size: int = 1
+) -> None:
     cuda_utils.CUDA_ENABLED = use_cuda_if_available and torch.cuda.is_available()
+    cuda_utils.DISTRIBUTED_WORLD_SIZE = world_size
+
     if use_cuda_if_available and not cuda_utils.CUDA_ENABLED:
         print("Cuda is not available, running on CPU...")
+    elif cuda_utils.CUDA_ENABLED:
+        torch.cuda.set_device(device_id)
 
 
-def train_model(config: PyTextConfig) -> Tuple:
-    job = prepare_job(config)
+def train_model(
+    config: PyTextConfig,
+    dist_init_url: str = None,
+    device_id: int = 0,
+    rank: int = 0,
+    world_size: int = 1,
+) -> Tuple:
+    job = prepare_job(config, dist_init_url, device_id, rank, world_size)
     trained_model, best_metric = job.trainer.train(
         job.train_iter,
         job.eval_iter,
@@ -70,14 +83,27 @@ def train_model(config: PyTextConfig) -> Tuple:
         job.metric_reporter,
         job.optimizers,
         job.lr_scheduler,
+        rank,
     )
-    finalize_job(config, trained_model, job.data_handler)
+    # Only rank 0 gets to finalize the job and export the model
+    if rank == 0:
+        finalize_job(config, trained_model, job.data_handler)
     return trained_model, best_metric
 
 
-def prepare_job(config: PyTextConfig) -> Job:
+def prepare_job(
+    config: PyTextConfig,
+    dist_init_url: str = None,
+    device_id: int = 0,
+    rank: int = 0,
+    world_size: int = 1,
+) -> Job:
+
+    if dist_init_url:
+        dist_init(rank, world_size, dist_init_url)
+
     print("\nParameters:\n{}".format(config))
-    _set_cuda(config.use_cuda_if_available)
+    _set_cuda(config.use_cuda_if_available, device_id, world_size)
     jobspec = config.jobspec
     featurizer = create_featurizer(jobspec.featurizer, jobspec.features)
     # load data
@@ -88,7 +114,7 @@ def prepare_job(config: PyTextConfig) -> Job:
     print("\nLoading data...")
     data_handler.init_metadata()
 
-    train_iter = data_handler.get_train_iter()
+    train_iter = data_handler.get_train_iter(rank, world_size)
     eval_iter = data_handler.get_eval_iter()
 
     # load or create model
@@ -100,9 +126,6 @@ def prepare_job(config: PyTextConfig) -> Job:
     else:
         print("\nLoading model from [%s]..." % config.load_snapshot_path)
         model = load(config.load_snapshot_path)["model"]
-
-    if cuda_utils.CUDA_ENABLED:
-        model = model.cuda()
 
     optimizers = create_optimizer(model, jobspec.optimizer)
     lr_scheduler = create_scheduler(optimizers, jobspec.scheduler)
@@ -128,7 +151,8 @@ def finalize_job(
     # Make sure to put the model on CPU and disable CUDA before exporting to
     # ONNX to disable any data_parallel pieces
     _set_cuda(False)
-    save(config.save_snapshot_path, config, trained_model.cpu(), data_handler)
+    trained_model = trained_model.cpu()
+    save(config.save_snapshot_path, config, trained_model, data_handler)
 
     if config.jobspec.exporter:
         print("Saving caffe2 model to: " + config.export_caffe2_path)

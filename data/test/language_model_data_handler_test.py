@@ -3,7 +3,9 @@ import unittest
 from typing import Dict
 
 import numpy as np
-from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
+from pytext.common.constants import BatchContext, DatasetFieldName, DFColumn, VocabMeta
+from pytext.config.component import create_featurizer
+from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import LanguageModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.fields import Field, TextFeatureField
@@ -34,8 +36,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         )
 
     def test_data_handler(self):
-        data_handler = self.create_language_model_data_handler()
-        data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)
+        data_handler = self._init_data_handler()
         text_feat_meta = data_handler.metadata.features[DatasetFieldName.TEXT_FIELD]
         self.assertEqual(text_feat_meta.vocab_size, 25)
         self.assertEqual(text_feat_meta.pad_token_idx, 1)
@@ -78,3 +79,40 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
                 [24, 5, 4, 3, 1, 1, 1, 1, 1, 1, 1, 1],
             ],
         )
+
+    def test_sharding(self):
+        data_handler = self._init_data_handler()
+        num_shards = 2
+        batch_size = 2
+        train_iter_1 = data_handler.get_train_iter_from_path(
+            FILE_NAME, batch_size, 0, num_shards
+        )
+        train_iter_2 = data_handler.get_train_iter_from_path(
+            FILE_NAME, batch_size, 1, num_shards
+        )
+        batches_1 = list(train_iter_1)
+        batches_2 = list(train_iter_2)
+        self.assertEqual(len(batches_1), len(batches_2))
+        # Shard 2 iterator shouldn't have dummy batches
+        CONTEXT_INDEX = 2
+        for b in batches_2:
+            assert BatchContext.IGNORE_LOSS not in b[CONTEXT_INDEX]
+        # Shard 1 should have 1 dummy batch
+        assert BatchContext.IGNORE_LOSS not in batches_1[0][CONTEXT_INDEX]
+        self.assertEqual(batches_1[1][2][BatchContext.IGNORE_LOSS], True)
+        test_batch = batches_2[0]
+        # first batch in shard # 2 is row # 3 and 4 in the dataset
+        np.testing.assert_array_equal(
+            test_batch[1], [[23, 11, 5, 10, 3], [24, 5, 4, 3, 1]]
+        )
+
+    def _init_data_handler(self):
+        data_handler = LanguageModelDataHandler.from_config(
+            LanguageModelDataHandler.Config(),
+            FeatureConfig(),
+            LabelConfig(),
+            featurizer=create_featurizer(SimpleFeaturizer.Config(), FeatureConfig()),
+            shuffle=False,
+        )
+        data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)
+        return data_handler

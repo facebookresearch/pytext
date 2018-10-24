@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
+
 from .trainer import Trainer, TrainerBase
 
 
@@ -26,6 +27,7 @@ class EnsembleTrainer(TrainerBase):
         metrics_reporter,
         optimizers,
         scheduler=None,
+        rank=0,
     ):
         for i in range(len(model.models)):
             model.models[i], _ = self.train_single_model(
@@ -35,9 +37,10 @@ class EnsembleTrainer(TrainerBase):
                 metrics_reporter,
                 optimizers,
                 scheduler,
+                rank,
             )
         model.merge_sub_models()
-        return model
+        return model, None
 
     def train_single_model(
         self,
@@ -47,13 +50,9 @@ class EnsembleTrainer(TrainerBase):
         metrics_reporter,
         optimizers,
         scheduler=None,
+        rank=0,
     ):
         print(f"start training the model")
         return self.real_trainer.train(
-            train_iter,
-            eval_iter,
-            model,
-            metrics_reporter,
-            optimizers,
-            scheduler,
+            train_iter, eval_iter, model, metrics_reporter, optimizers, scheduler, rank
         )
