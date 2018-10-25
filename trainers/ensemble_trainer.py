@@ -27,7 +27,6 @@ class EnsembleTrainer(TrainerBase):
         metrics_reporter,
         optimizers,
         scheduler=None,
-        rank=0,
     ):
         for i in range(len(model.models)):
             model.models[i], _ = self.train_single_model(
@@ -37,7 +36,6 @@ class EnsembleTrainer(TrainerBase):
                 metrics_reporter,
                 optimizers,
                 scheduler,
-                rank,
             )
         model.merge_sub_models()
         return model, None
@@ -50,9 +48,8 @@ class EnsembleTrainer(TrainerBase):
         metrics_reporter,
         optimizers,
         scheduler=None,
-        rank=0,
     ):
         print(f"start training the model")
         return self.real_trainer.train(
-            train_iter, eval_iter, model, metrics_reporter, optimizers, scheduler, rank
+            train_iter, eval_iter, model, metrics_reporter, optimizers, scheduler
         )

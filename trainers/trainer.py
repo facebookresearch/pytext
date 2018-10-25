@@ -9,7 +9,7 @@ from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
-from pytext.optimizer import optimizer_step, optimizer_zero_grad, scheduler_step
+from pytext.optimizer import optimizer_step, optimizer_zero_grad
 from pytext.utils import cuda_utils
 
 
@@ -44,7 +44,6 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         optimizers: List[torch.optim.Optimizer],
         scheduler=None,
-        rank: int = 0,
     ):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
@@ -62,8 +61,12 @@ class Trainer(TrainerBase):
         best_model_state = None
 
         for epoch in range(1, self.config.epochs + 1):
+            print("Starting epoch #{}".format(epoch))
             model.train()
-            print("Starting epoch# {}".format(epoch))
+
+            lrs = [str(g["lr"]) for o in optimizers for g in o.param_groups]
+            print(f"Learning rate(s): {', '.join(lrs)}")
+
             self._run_epoch(
                 Stage.TRAIN,
                 epoch,
@@ -73,31 +76,36 @@ class Trainer(TrainerBase):
                 optimizers,
                 scheduler,
             )
-            if rank == 0:
-                model.eval()
-                eval_metric = self._run_epoch(
-                    Stage.EVAL, epoch, eval_iter, model, metric_reporter
+            model.eval()
+            eval_metric = self._run_epoch(
+                Stage.EVAL, epoch, eval_iter, model, metric_reporter
+            )
+
+            # Step the learning rate scheduler(s)
+            if scheduler:
+                scheduler.step(
+                    metrics=metric_reporter.get_model_select_metric(eval_metric),
+                    epoch=epoch,
                 )
 
-                # choose best model
-                if metric_reporter.compare_metric(eval_metric, best_metric):
-                    last_best_epoch = epoch
-                    best_metric = eval_metric
-                    print("Found a better model! Saving it...")
-                    best_model_state = copy.deepcopy(model.state_dict())
+            # choose best model
+            if metric_reporter.compare_metric(eval_metric, best_metric):
+                last_best_epoch = epoch
+                best_metric = eval_metric
+                print("Found a better model! Saving it...")
+                best_model_state = copy.deepcopy(model.state_dict())
 
-                if self.config.early_stop_after > 0 and (
-                    epoch - last_best_epoch == self.config.early_stop_after
-                ):
-                    print(
-                        "Eval metric hasn't changed for {} epochs".format(
-                            self.config.early_stop_after
-                        )
-                        + "stopping now."
+            if self.config.early_stop_after > 0 and (
+                epoch - last_best_epoch == self.config.early_stop_after
+            ):
+                print(
+                    "Eval metric hasn't changed for {} epochs".format(
+                        self.config.early_stop_after
                     )
-                    break
-        if best_model_state:
-            model.load_state_dict(best_model_state)
+                    + "stopping now."
+                )
+                break
+        model.load_state_dict(best_model_state)
         return model, best_metric
 
     def _run_epoch(
@@ -110,8 +118,6 @@ class Trainer(TrainerBase):
         optimizers=None,
         scheduler=None,
     ):
-        if scheduler and model.training:
-            scheduler_step(scheduler)
         for n_batches, (m_input, targets, context) in enumerate(data_iter):
             if model.training:
                 optimizer_zero_grad(optimizers)

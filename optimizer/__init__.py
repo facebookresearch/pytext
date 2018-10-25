@@ -3,18 +3,7 @@
 from typing import Dict, Iterator, List, Union, ValuesView
 
 import torch
-from pytext.config.pytext_config import (
-    OptimizerParams,
-    OptimizerType,
-    SchedulerParams,
-    SchedulerType,
-)
-from torch.optim.lr_scheduler import (
-    CosineAnnealingLR,
-    ExponentialLR,
-    StepLR,
-    _LRScheduler,
-)
+from pytext.config.pytext_config import OptimizerParams, OptimizerType
 
 
 def create_optimizer(
@@ -67,35 +56,6 @@ def create_optimizer(
         raise ValueError("Unknown optimizer type")
 
 
-def create_scheduler(
-    optimizers: List[torch.optim.Optimizer], scheduler_params: SchedulerParams
-) -> List[_LRScheduler]:
-
-    if scheduler_params.type == SchedulerType.NONE:
-        return []
-
-    if scheduler_params.type == SchedulerType.STEP_LR:
-        return [
-            StepLR(optimizer, scheduler_params.step_size, scheduler_params.gamma)
-            for optimizer in optimizers
-        ]
-
-    if scheduler_params.type == SchedulerType.EXPONENTIAL_LR:
-        return [
-            ExponentialLR(optimizer, scheduler_params.gamma) for optimizer in optimizers
-        ]
-
-    if scheduler_params.type == SchedulerType.COSINE_ANNEALING_LR:
-        return [
-            CosineAnnealingLR(
-                optimizer, scheduler_params.T_max, scheduler_params.eta_min
-            )
-            for optimizer in optimizers
-        ]
-
-    raise ValueError("Unknown optimizer scheduler type")
-
-
 def get_params(
     params: Union[Iterator[torch.nn.Parameter], Dict[str, torch.Tensor]]
 ) -> Union[ValuesView[torch.nn.Parameter], Iterator[torch.nn.Parameter]]:
@@ -117,8 +77,3 @@ def optimizer_zero_grad(optimizers: List[torch.optim.Optimizer]) -> None:
 def optimizer_step(optimizers: List[torch.optim.Optimizer]) -> None:
     for op in optimizers:
         op.step()
-
-
-def scheduler_step(schedulers: List[torch.optim.lr_scheduler._LRScheduler]) -> None:
-    for scheduler in schedulers:
-        scheduler.step()

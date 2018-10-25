@@ -5,7 +5,7 @@ from typing import Optional, Union
 from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
-from pytext.config.pytext_config import OptimizerParams, SchedulerParams
+from pytext.config.pytext_config import OptimizerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
     CompositionalDataHandler,
@@ -42,6 +42,7 @@ from pytext.models.pair_classification_model import PairClassificationModel
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
+from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
 from pytext.trainers.ensemble_trainer import EnsembleTrainer
 
@@ -50,7 +51,7 @@ class JobSpecBase(ConfigBase):
     features: FeatureConfig = FeatureConfig()
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporter.Config] = None
-    scheduler: Optional[SchedulerParams] = SchedulerParams()
+    scheduler: Optional[Scheduler.Config] = Scheduler.Config()
     featurizer: Featurizer.Config
 
 

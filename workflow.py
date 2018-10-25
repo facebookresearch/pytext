@@ -14,7 +14,8 @@ from pytext.config.component import (
 )
 from pytext.data import BatchIterator, DataHandler
 from pytext.metric_reporters import MetricReporter
-from pytext.optimizer import create_optimizer, create_scheduler
+from pytext.optimizer import create_optimizer
+from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers.trainer import Trainer
 from pytext.utils.dist_utils import dist_init
 
@@ -44,7 +45,7 @@ class Job:
         model: torch.nn.Module,
         metric_reporter: MetricReporter,
         optimizers: List[torch.optim.Optimizer],
-        lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler],
+        lr_scheduler: Scheduler,
     ) -> None:
         self.trainer: Trainer = trainer
         self.data_handler: DataHandler = data_handler
@@ -53,7 +54,7 @@ class Job:
         self.model: torch.nn.Module = model
         self.metric_reporter: MetricReporter = metric_reporter
         self.optimizers: List[torch.optim.Optimizer] = optimizers
-        self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
+        self.lr_scheduler: Scheduler = lr_scheduler
 
 
 def _set_cuda(
@@ -83,7 +84,6 @@ def train_model(
         job.metric_reporter,
         job.optimizers,
         job.lr_scheduler,
-        rank,
     )
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
@@ -128,7 +128,7 @@ def prepare_job(
         model = load(config.load_snapshot_path)["model"]
 
     optimizers = create_optimizer(model, jobspec.optimizer)
-    lr_scheduler = create_scheduler(optimizers, jobspec.scheduler)
+    lr_scheduler = Scheduler(optimizers, jobspec.scheduler)
     metric_reporter = create_metric_reporter(config.jobspec.metric_reporter, metadata)
     trainer = create_trainer(jobspec.trainer)
     return Job(
