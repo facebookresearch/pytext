@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple, get_type_hints
 
 import torch
 from pytext.config import PyTextConfig, TestConfig
@@ -12,8 +12,11 @@ from pytext.config.component import (
     create_model,
     create_trainer,
 )
+from pytext.config.field_config import LabelConfig
 from pytext.data import BatchIterator, DataHandler
+from pytext.exporters.exporter import ModelExporter
 from pytext.metric_reporters import MetricReporter
+from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.optimizer import create_optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers.trainer import Trainer
@@ -146,7 +149,6 @@ def prepare_job(
 def finalize_job(
     config: PyTextConfig, trained_model: torch.nn.Module, data_handler: DataHandler
 ) -> None:
-    jobspec = config.jobspec
     print("Saving pytorch model to: " + config.save_snapshot_path)
     # Make sure to put the model on CPU and disable CUDA before exporting to
     # ONNX to disable any data_parallel pieces
@@ -155,11 +157,51 @@ def finalize_job(
     save(config.save_snapshot_path, config, trained_model, data_handler)
 
     if config.jobspec.exporter:
-        print("Saving caffe2 model to: " + config.export_caffe2_path)
-        exporter = create_exporter(
-            jobspec.exporter, jobspec.features, jobspec.labels, data_handler.metadata
-        )
-        exporter.export_to_caffe2(trained_model, config.export_caffe2_path)
+        export_to_caffe2(
+            config.jobspec.exporter,
+            config.jobspec.features,
+            config.jobspec.labels,
+            trained_model,
+            data_handler,
+            config.export_caffe2_path)
+
+
+def export_saved_model_to_caffe2(
+    saved_model_path: str,
+    export_caffe2_path: str
+) -> None:
+    config, model, data_handler = load(saved_model_path)
+    exporter = config.jobspec.exporter
+    if exporter is None:
+        JobspecType = type(config.jobspec)
+        ExporterConfigType = get_type_hints(JobspecType)['exporter'].__args__[0]
+        exporter = ExporterConfigType()
+
+    export_to_caffe2(
+        exporter,
+        config.jobspec.features,
+        config.jobspec.labels,
+        model,
+        data_handler,
+        export_caffe2_path)
+
+
+def export_to_caffe2(
+    exporter: ModelExporter,
+    features: FeatureConfig,
+    labels: Optional[LabelConfig],
+    trained_model: torch.nn.Module,
+    data_handler: DataHandler,
+    export_caffe2_path: str
+) -> None:
+    print("Saving caffe2 model to: " + export_caffe2_path)
+    exporter = create_exporter(
+        exporter,
+        features,
+        labels,
+        data_handler.metadata
+    )
+    exporter.export_to_caffe2(trained_model, export_caffe2_path)
 
 
 def test_model(test_config: TestConfig) -> Any:
