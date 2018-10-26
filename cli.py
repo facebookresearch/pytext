@@ -3,25 +3,28 @@
 import tempfile
 
 import torch
-from pytext.config import PyTextConfig
+from pytext.config import PyTextConfig, TestConfig
 from pytext.utils.dist_utils import ErrorHandler
 from pytext.workflow import test_model, train_model
 
-from .args import parse_config
+from .args import TEST_MODE, parse_config
 from .serialize import config_from_json, config_to_json
 
 
 def run_job():
-    config = parse_config()
-    if config.test_given_snapshot:
+    mode, config = parse_config()
+    if mode == TEST_MODE:
+        print("Start testing...")
         test_model(config)
     else:
         print("Starting training...")
         train_model_distributed(config)
         print("Starting testing...")
-        test_config_dict = config._asdict()
-        test_config_dict["load_snapshot_path"] = config.save_snapshot_path
-        test_config = PyTextConfig(**test_config_dict)
+        test_config = TestConfig(
+            load_snapshot_path=config.save_snapshot_path,
+            test_path=config.jobspec.data_handler.test_path,
+            use_cuda_if_available=config.use_cuda_if_available,
+        )
         test_model(test_config)
 
 

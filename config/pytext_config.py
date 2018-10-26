@@ -19,20 +19,27 @@ class PyTextConfig(ConfigBase):
     use_cuda_if_available: bool = True
     # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
     distributed_world_size: int = 1
-    # A path to a snapshot of a trained model to test
+    # Path to a snapshot of a trained model to keep training on
     load_snapshot_path: str = ""
-    # A file to store the output of the model when running on the test data
-    test_out_path: str = "/tmp/test_out.txt"
     # Where to save the trained pytorch model
     save_snapshot_path: str = "/tmp/model.pt"
-    # A file to store model debug information
-    debug_path: str = "/tmp/model.debug"
     # Exported caffe model will be stored here
     export_caffe2_path: str = "/tmp/model.caffe2.predictor"
-    # if test only TODO, better to use explicit "train" "test" cmd
-    test_given_snapshot: bool = False
     # Base directory where modules are saved
     modules_save_dir: str = ""
+
+    # TODO these two configs are only kept only to be backward comptible with
+    # RNNG, should be removed once RNNG refactoring is done
+    test_out_path: str = "/tmp/test_out.txt"
+    debug_path: str = "/tmp/model.debug"
+
+
+class TestConfig(ConfigBase):
+    # Snapshot of a trained model to test
+    load_snapshot_path: str
+    # Test data path
+    test_path: str = "test.tsv"
+    use_cuda_if_available: bool = True
 
 
 class OptimizerType(Enum):

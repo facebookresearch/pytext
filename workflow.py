@@ -3,7 +3,7 @@ import os
 from typing import Any, List, Tuple
 
 import torch
-from pytext.config import PyTextConfig
+from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import (
     create_data_handler,
     create_exporter,
@@ -162,9 +162,9 @@ def finalize_job(
         exporter.export_to_caffe2(trained_model, config.export_caffe2_path)
 
 
-def test_model(config: PyTextConfig) -> Any:
-    _set_cuda(config.use_cuda_if_available)
-    model_path = config.load_snapshot_path
+def test_model(test_config: TestConfig) -> Any:
+    _set_cuda(test_config.use_cuda_if_available)
+    model_path = test_config.load_snapshot_path
     if model_path is None or not os.path.isfile(model_path):
         raise ValueError("Invalid snapshot path for testing: {}".format(model_path))
 
@@ -175,11 +175,15 @@ def test_model(config: PyTextConfig) -> Any:
 
     if cuda_utils.CUDA_ENABLED:
         model = model.cuda()
+    trainer = create_trainer(train_config.jobspec.trainer)
 
-    trainer = create_trainer(config.jobspec.trainer)
+    # TODO can set different channel for test
     metric_reporter = create_metric_reporter(
-        config.jobspec.metric_reporter, data_handler.metadata
+        train_config.jobspec.metric_reporter, data_handler.metadata
     )
-    data_handler.test_path = config.jobspec.data_handler.test_path
+    data_handler.test_path = test_config.test_path
     test_iter = data_handler.get_test_iter()
-    return trainer.test(test_iter, model, metric_reporter)
+    return (
+        trainer.test(test_iter, model, metric_reporter),
+        train_config.jobspec.metric_reporter.output_path,
+    )
