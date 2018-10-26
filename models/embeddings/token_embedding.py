@@ -141,7 +141,7 @@ class TokenEmbedding(Module):
             if not dict_feat:
                 raise ValueError("dict_feat argument is None.")
             dict_ids, dict_weights, dict_lengths = dict_feat
-            dict_emb = self.dict_embed(tokens, dict_ids, dict_weights, dict_lengths)
+            dict_emb = self.dict_embed(dict_ids, dict_weights, dict_lengths)
             embeddings.append(dict_emb)
 
         if self.char_embed:

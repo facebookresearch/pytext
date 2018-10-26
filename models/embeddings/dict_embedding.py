@@ -21,14 +21,15 @@ class DictEmbedding(nn.Embedding):
 
     def forward(
         self,
-        tokens: torch.Tensor,
         feats: torch.Tensor,
         weights: torch.Tensor,
         lengths: torch.Tensor,
     ) -> torch.Tensor:
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
-        max_toks = torch.onnx.operators.shape_as_tensor(tokens)[1]
-        dict_emb = super(DictEmbedding, self).forward(feats)
+        new_len_shape = torch.cat((batch_size.view(1), torch.LongTensor([-1])))
+        lengths = torch.onnx.operators.reshape_from_tensor_shape(lengths, new_len_shape)
+        max_toks = torch.onnx.operators.shape_as_tensor(lengths)[1]
+        dict_emb = super().forward(feats)
 
         # Calculate weighted average of the embeddings
         weighted_embds = dict_emb * weights.unsqueeze(2)
@@ -43,8 +44,7 @@ class DictEmbedding(nn.Embedding):
         weighted_embds = torch.onnx.operators.reshape_from_tensor_shape(
             weighted_embds, new_emb_shape
         )
-        new_len_shape = torch.cat((batch_size.view(1), torch.LongTensor([-1])))
-        lengths = torch.onnx.operators.reshape_from_tensor_shape(lengths, new_len_shape)
+
         if self.pooling_type == PoolingType.MEAN:
             reduced_embeds = (
                 torch.sum(weighted_embds, dim=2) / lengths.unsqueeze(2).float()
