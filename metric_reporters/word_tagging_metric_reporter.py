@@ -4,11 +4,11 @@ from typing import List
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import (
+from pytext.metrics.intent_slot_metrics import (
     Node,
     NodesPredictionPair,
     Span,
-    compute_classification_metrics_from_nodes_pairs,
+    compute_prf1_metrics,
 )
 from pytext.utils.data_utils import parse_slot_string
 from pytext.utils.test_utils import merge_token_labels_to_slot
@@ -61,7 +61,7 @@ class WordTaggingMetricReporter(MetricReporter):
         return [self.label_names[p] for p in pred]
 
     def calculate_metric(self):
-        return compute_classification_metrics_from_nodes_pairs(
+        return compute_prf1_metrics(
             [
                 NodesPredictionPair(
                     get_slots(

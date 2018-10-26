@@ -6,7 +6,7 @@ from pytext.fb.rnng.annotation import Annotation
 from pytext.metric_reporters.compositional_metric_reporter import (
     CompositionalMetricReporter,
 )
-from pytext.metrics import Node, Span
+from pytext.metrics.intent_slot_metrics import Node, Span
 
 
 class TestCompositionalMetricReporter(TestCase):

@@ -4,7 +4,7 @@ from typing import List
 
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import LabelPrediction, compute_classification_metrics
+from pytext.metrics.basic_metrics import LabelPrediction, compute_classification_metrics
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter

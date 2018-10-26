@@ -4,7 +4,12 @@ from typing import Dict, List, Tuple
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
+from pytext.metrics.intent_slot_metrics import (
+    FramePredictionPair,
+    Node,
+    Span,
+    compute_all_metrics,
+)
 from pytext.utils.data_utils import parse_slot_string
 from pytext.utils.test_utils import merge_token_labels_to_slot
 

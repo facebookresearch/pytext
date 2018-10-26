@@ -2,7 +2,10 @@
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import compute_language_model_metric, LanguageModelMetric
+from pytext.metrics.language_model_metrics import (
+    LanguageModelMetric,
+    compute_language_model_metric,
+)
 
 from .channel import ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter

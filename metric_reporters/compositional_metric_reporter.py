@@ -6,7 +6,12 @@ from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
 from pytext.fb.rnng.annotation import Intent, Slot, Token, Tree, TreeBuilder
 from pytext.fb.rnng.utils import REDUCE, SHIFT, BiDict
-from pytext.metrics import FramePredictionPair, Node, Span, compute_all_metrics
+from pytext.metrics.intent_slot_metrics import (
+    FramePredictionPair,
+    Node,
+    Span,
+    compute_all_metrics,
+)
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter

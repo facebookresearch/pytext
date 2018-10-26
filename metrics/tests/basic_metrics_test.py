@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pytext.metrics import (
+from pytext.metrics.basic_metrics import (
     ClassificationMetrics,
     LabelPrediction,
     MacroPRF1Metrics,

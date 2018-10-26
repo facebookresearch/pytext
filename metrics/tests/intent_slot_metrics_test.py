@@ -2,13 +2,12 @@
 
 from typing import Any, Dict, List
 
-from pytext.metrics import (
-    Confusions,
+from pytext.metrics.basic_metrics import Confusions, MacroPRF1Scores
+from pytext.metrics.intent_slot_metrics import (
     FrameAccuracy,
     FramePredictionPair,
     IntentSlotConfusions,
     IntentSlotMetrics,
-    MacroPRF1Scores,
     Node,
     PRF1Metrics,
     PRF1Scores,
