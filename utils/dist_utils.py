@@ -29,33 +29,3 @@ def suppress_output():
         pass
 
     __builtin__.print = print
-
-
-class ErrorHandler(object):
-    """A class that listens for exceptions in children processes and propagates
-    the tracebacks to the parent process."""
-
-    def __init__(self, error_queue):
-        import threading
-
-        self.error_queue = error_queue
-        self.children_pids = []
-        self.error_thread = threading.Thread(target=self.error_listener, daemon=True)
-        self.error_thread.start()
-        signal.signal(signal.SIGUSR1, self.signal_handler)
-
-    def add_child(self, pid):
-        self.children_pids.append(pid)
-
-    def error_listener(self):
-        (rank, original_trace) = self.error_queue.get()
-        self.error_queue.put((rank, original_trace))
-        os.kill(os.getpid(), signal.SIGUSR1)
-
-    def signal_handler(self, signalnum, stackframe):
-        for pid in self.children_pids:
-            os.kill(pid, signal.SIGINT)  # kill children processes
-        (rank, original_trace) = self.error_queue.get()
-        msg = "\n\n-- Tracebacks above this line can probably be ignored --\n\n"
-        msg += original_trace
-        raise Exception(msg)

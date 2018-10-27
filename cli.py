@@ -4,8 +4,8 @@ import tempfile
 
 import torch
 from pytext.config import PyTextConfig, TestConfig
-from pytext.utils.dist_utils import ErrorHandler
 from pytext.workflow import test_model, train_model
+from torch.fb.multiprocessing.spawn import spawn
 
 from .args import TEST_MODE, parse_config
 from .serialize import config_from_json, config_to_json
@@ -42,35 +42,20 @@ def train_model_distributed(config):
     )
 
     print("Starting training, World size is {}".format(config.distributed_world_size))
-    procs = []
-    mp = torch.multiprocessing.get_context("spawn")
-    error_queue = mp.SimpleQueue()
-    error_handler = ErrorHandler(error_queue)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".dist_sync") as sync_file:
         dist_init_method = "file://" + sync_file.name
-
-        for i in range(config.distributed_world_size):
-            distributed_rank = i
-            device_id = i
-            procs.append(
-                mp.Process(
-                    target=run_single,
-                    args=(
-                        config_to_json(PyTextConfig, config),
-                        device_id,
-                        distributed_rank,
-                        config.distributed_world_size,
-                        dist_init_method,
-                    ),
-                    daemon=True,
-                )
-            )
-            procs[i].start()
-            error_handler.add_child(procs[i].pid)
-        for p in procs:
-            p.join()
+        spawn(
+            run_single,
+            (
+                config_to_json(PyTextConfig, config),
+                config.distributed_world_size,
+                dist_init_method,
+            ),
+            config.distributed_world_size,
+        )
 
 
-def run_single(config_json, device_id, rank, world_size, dist_init_method):
+def run_single(rank, args):
+    config_json, world_size, dist_init_method = args
     config = config_from_json(PyTextConfig, config_json)
-    train_model(config, dist_init_method, device_id, rank, world_size)
+    train_model(config, dist_init_method, rank, rank, world_size)
