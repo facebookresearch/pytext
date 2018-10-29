@@ -21,9 +21,11 @@ class FairseqOutputLayer(OutputLayerBase):
             )
         )
 
-    def get_loss(self, logit, target, context, reduce=True):
+    def get_loss(self, logits_tuple, targets_tuple, context, reduce=True):
         # flatten the logit from [batch_size, seq_lens, dim] to
         # [batch_size * seq_lens, dim]
+        logits, _attention_scores = logits_tuple
+        targets, _target_lens = targets_tuple
         return self.loss_fn(
-            logit[0].view(-1, logit[0].size()[-1]), target[0].view(-1), reduce
+            logits.view(-1, logits.size()[-1]), targets.view(-1), reduce
         )

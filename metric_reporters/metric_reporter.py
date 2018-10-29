@@ -25,7 +25,9 @@ class MetricReporter(Component):
         self.n_batches = 0
         self.batch_size: List = []
 
-    def add_batch_stats(self, n_batches, preds, targets, scores, loss, **context):
+    def add_batch_stats(
+        self, n_batches, preds, targets, scores, loss, m_input, **context
+    ):
         self.n_batches = n_batches
         self.aggregate_preds(preds)
         self.aggregate_targets(targets)
@@ -35,7 +37,7 @@ class MetricReporter(Component):
                 self.all_context[key] = []
             self.aggregate_data(self.all_context[key], val)
         self.all_loss.append(loss)
-        self.batch_size.append(len(preds))
+        self.batch_size.append(len(targets))
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -50,9 +52,21 @@ class MetricReporter(Component):
     def aggregate_data(cls, all_data, new_batch):
         if new_batch is None:
             return
-        if isinstance(new_batch, torch.Tensor):
-            new_batch = new_batch.tolist()
-        all_data.extend(new_batch)
+        simple_list = cls._make_simple_list(new_batch)
+        all_data.extend(simple_list)
+
+    @classmethod
+    def _make_simple_list(cls, data):
+        if isinstance(data, torch.Tensor):
+            return data.tolist()
+        elif isinstance(data, List) and all(
+            isinstance(elem, torch.Tensor) for elem in data
+        ):
+            return [elem.tolist() for elem in data]
+        elif isinstance(data, List):
+            return data
+        else:
+            raise NotImplementedError()
 
     def calculate_loss(self):
         return sum(self.all_loss) / float(len(self.all_loss))

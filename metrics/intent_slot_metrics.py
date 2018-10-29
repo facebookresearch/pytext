@@ -107,6 +107,7 @@ class AllMetrics(NamedTuple):
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
+    loss: Optional[float] = None
 
     def print_metrics(self) -> None:
         if self.frame_accuracy:

@@ -12,6 +12,7 @@ class Channel:
             stages: in which stages the report will be triggered, default is all
                 stages, which includes train, eval, test
     """
+
     def __init__(
         self, stages: Tuple[Stage, ...] = (Stage.TRAIN, Stage.EVAL, Stage.TEST)
     ) -> None:
@@ -29,6 +30,7 @@ class Channel:
         scores,
         context,
         meta,
+        *args,
     ):
         raise NotImplementedError()
 
@@ -46,8 +48,9 @@ class ConsoleChannel(Channel):
         scores,
         context,
         meta,
+        *args
     ):
-        print(f"{stage}")
+        print(f"\n\n{stage}")
         print(f"loss: {loss:.6f}")
         # TODO change print_metrics function to __str__ T33522209
         if hasattr(metrics, "print_metrics"):
@@ -73,6 +76,7 @@ class FileChannel(Channel):
         scores,
         context,
         meta,
+        *args,
     ):
 
         print(f"saving result to file {self.file_path}")
@@ -94,7 +98,9 @@ class FileChannel(Channel):
             )
 
             tsv_writer.writerow(self.get_title())
-            for row in self.gen_content(metrics, loss, preds, targets, scores, context):
+            for row in self.gen_content(
+                metrics, loss, preds, targets, scores, context, *args
+            ):
                 tsv_writer.writerow(row)
 
     def get_title(self):
