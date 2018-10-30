@@ -34,7 +34,6 @@ class SchedulerParams(ConfigBase):
 
     # Parameters specific to `ReduceLROnPlateau` (see PyTorch docs)
     patience: int = 5
-    lower_is_better: bool = True  # reduce when metric stops decreasing
     threshold: float = 0.0001
     threshold_is_absolute: bool = False  # see threshold_mode option in PyTorch
     cooldown: int = 0
@@ -55,7 +54,10 @@ class Scheduler(Component):
     Config = SchedulerParams
 
     def __init__(
-        self, optimizers: List[torch.optim.Optimizer], scheduler_params: SchedulerParams
+        self,
+        optimizers: List[torch.optim.Optimizer],
+        scheduler_params: SchedulerParams,
+        lower_is_better: bool = False,
     ) -> None:
         self.epoch_based_schedulers: List[_LRScheduler] = []
         self.metric_based_schedulers: List[ReduceLROnPlateau] = []
@@ -83,7 +85,7 @@ class Scheduler(Component):
             self.metric_based_schedulers = [
                 ReduceLROnPlateau(
                     optimizer,
-                    mode="min" if scheduler_params.lower_is_better else "max",
+                    mode="min" if lower_is_better else "max",
                     factor=scheduler_params.gamma,
                     patience=scheduler_params.patience,
                     min_lr=scheduler_params.eta_min,

@@ -131,8 +131,10 @@ def prepare_job(
         model = load(config.load_snapshot_path)["model"]
 
     optimizers = create_optimizer(model, jobspec.optimizer)
-    lr_scheduler = Scheduler(optimizers, jobspec.scheduler)
     metric_reporter = create_metric_reporter(config.jobspec.metric_reporter, metadata)
+    lr_scheduler = Scheduler(
+        optimizers, jobspec.scheduler, metric_reporter.lower_is_better
+    )
     trainer = create_trainer(jobspec.trainer)
     return Job(
         trainer,

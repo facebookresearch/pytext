@@ -22,6 +22,7 @@ class LanguageModelChannel(FileChannel):
 
 class LanguageModelMetricReporter(MetricReporter):
     model_select_metric_name = "perplexity_per_word"
+    lower_is_better = True
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
@@ -45,14 +46,6 @@ class LanguageModelMetricReporter(MetricReporter):
             total_loss += loss * num_words_in_batch
             n_words += num_words_in_batch
         return total_loss / float(n_words)
-
-    @staticmethod
-    def compare_metric(new_perplexity, old_perplexity) -> bool:
-        """return True if new metric indicates better model performance
-        """
-        if not old_perplexity:
-            return True
-        return new_perplexity < old_perplexity
 
     @staticmethod
     def get_model_select_metric(metrics) -> float:

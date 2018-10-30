@@ -9,6 +9,10 @@ from pytext.config.pytext_config import ConfigBase
 class MetricReporter(Component):
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
+    # Whether a lower metric indicates better performance. Set to True for e.g.
+    # perplexity, and False for e.g. accuracy.
+    lower_is_better: bool = False
+
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
 
@@ -115,6 +119,9 @@ class MetricReporter(Component):
         """
         if not old_metric:
             return True
-        return cls.get_model_select_metric(new_metric) > cls.get_model_select_metric(
-            old_metric
-        )
+
+        new = cls.get_model_select_metric(new_metric)
+        old = cls.get_model_select_metric(old_metric)
+        if new == old:
+            return False
+        return (new < old) == cls.lower_is_better
