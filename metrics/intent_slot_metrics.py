@@ -4,7 +4,7 @@ from collections import Counter as counter, defaultdict
 from copy import deepcopy
 from typing import Any, Counter, Dict, List, NamedTuple, Optional, Set, Tuple
 
-from .basic_metrics import (
+from . import (
     AllConfusions,
     Confusions,
     PerLabelConfusions,
