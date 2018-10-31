@@ -10,6 +10,8 @@ class ModuleConfig(ConfigBase):
     load_path: Optional[str] = None
     # Checkpoint save path, relative to PyTextConfig.modules_save_dir (if set)
     save_path: Optional[str] = None
+    # Freezing a module means its parameters won't be updated during training.
+    freeze: bool = False
 
 
 class CNNParams(ConfigBase):
