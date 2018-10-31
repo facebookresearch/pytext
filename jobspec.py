@@ -8,7 +8,6 @@ from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelCon
 from pytext.config.pytext_config import OptimizerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
-    CompositionalDataHandler,
     ContextualIntentSlotModelDataHandler,
     JointModelDataHandler,
     LanguageModelDataHandler,
@@ -17,7 +16,7 @@ from pytext.data import (
 )
 from pytext.data.featurizer import Featurizer
 from pytext.exporters.exporter import TextModelExporter
-from pytext.fb.rnng.config import CompositionalTrainerConfig, RNNGConfig, Seq2SeqConfig
+
 from pytext.metric_reporters.classification_metric_reporter import (
     ClassificationMetricReporter,
 )
@@ -102,12 +101,6 @@ class LMJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: LanguageModelMetricReporter.Config = LanguageModelMetricReporter.Config()
 
 
-class SemanticParsingJobSpec(JobSpecBase, ConfigBase):
-    model: Union[RNNGConfig, Seq2SeqConfig]
-    trainer: CompositionalTrainerConfig = CompositionalTrainerConfig()
-    data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
-
-
 class PairClassificationJobSpec(JobSpecBase, ConfigBase):
     features: SharedTokenEmbedding.Config = SharedTokenEmbedding.Config()
     model: PairClassificationModel.Config = PairClassificationModel.Config()
@@ -143,7 +136,6 @@ def register_builtin_jobspecs():
             WordTaggingJobSpec,
             JointTextJobSpec,
             LMJobSpec,
-            SemanticParsingJobSpec,
             EnsembleJobSpec,
             PairClassificationJobSpec,
             SeqNNJobSpec,
