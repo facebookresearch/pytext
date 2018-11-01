@@ -55,7 +55,9 @@ def train_model_distributed(config):
         )
 
 
-def run_single(rank, args):
-    config_json, world_size, dist_init_method = args
+def run_single(rank,
+               config_json,
+               world_size,
+               dist_init_method):
     config = config_from_json(PyTextConfig, config_json)
     train_model(config, dist_init_method, rank, rank, world_size)
