@@ -71,6 +71,23 @@ def _set_cuda(
     elif cuda_utils.CUDA_ENABLED:
         torch.cuda.set_device(device_id)
 
+    # for debug of GPU
+    print("""
+    use_cuda_if_available: {}\n
+    device_id: {}\n
+    world_size: {}\n
+    torch.cuda.is_available(): {}\n
+    cuda_utils.CUDA_ENABLED: {}\n
+    cuda_utils.DISTRIBUTED_WORLD_SIZE: {}\n
+    """.format(
+        use_cuda_if_available,
+        device_id,
+        world_size,
+        torch.cuda.is_available(),
+        cuda_utils.CUDA_ENABLED,
+        cuda_utils.DISTRIBUTED_WORLD_SIZE
+    ))
+
 
 def train_model(
     config: PyTextConfig,

@@ -7,7 +7,8 @@ from pytext.config import ConfigBase
 from pytext.config.component import create_module
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 
-from .pooling import MaxPool, MeanPool, NoPool, SelfAttention
+
+from .pooling import MaxPool, MeanPool, NoPool, SelfAttention, BoundaryPool
 from .representation_base import RepresentationBase
 
 
@@ -18,7 +19,8 @@ class PureDocAttention(RepresentationBase):
     class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
         pooling: Union[
-            SelfAttention.Config, MaxPool.Config, MeanPool.Config, NoPool.Config
+            SelfAttention.Config, MaxPool.Config, MeanPool.Config,
+            NoPool.Config, BoundaryPool.Config
         ] = SelfAttention.Config()
         mlp_decoder: Optional[MLPDecoder.Config] = None
 
@@ -38,7 +40,13 @@ class PureDocAttention(RepresentationBase):
 
         # Non-linear projection over attended representation.
         self.dense = None
-        self.representation_dim = embed_dim
+        if isinstance(config.pooling, BoundaryPool.Config) \
+                and config.pooling.boundary_type == "firstlast":
+            # the dimension double because of concatenating bos and eos
+            self.representation_dim = embed_dim * 2
+        else:
+            self.representation_dim = embed_dim
+
         if config.mlp_decoder:
             self.dense = MLPDecoder(
                 config.mlp_decoder, from_dim=embed_dim

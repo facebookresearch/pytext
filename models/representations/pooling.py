@@ -87,3 +87,33 @@ class NoPool(Module):
         seq_lengths: torch.Tensor = None,
     ) -> torch.Tensor:
         return inputs
+
+
+class BoundaryPool(Module):
+    class Config(ConfigBase):
+        # first, last, firstlast
+        boundary_type: str = "first"
+
+    def __init__(self, config: Config, n_input: int) -> None:
+        super().__init__(config)
+        self.boundary_type = config.boundary_type
+
+    def forward(
+        self,
+        inputs: torch.Tensor,
+        seq_lengths: torch.Tensor = None,
+    ) -> torch.Tensor:
+        if self.boundary_type == "first":
+            return inputs[:, 0, :]
+        elif self.boundary_type == "last":
+            # could only have the bos values if add_bos or add_eos as False
+            # should not reach here if the eos is not added.
+            assert inputs.size()[1] > 1
+            return inputs[:, -1, :]
+        elif self.boundary_type == "firstlast":
+            assert inputs.size()[1] > 1
+            # merge from embed_dim into 2*emded_dim
+            return torch.cat((inputs[:, 0, :], inputs[:, -1, :]), dim=1)
+        else:
+            raise Exception("Unknown configuration type {}".format(
+                self.boundary_type))
