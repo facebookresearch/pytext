@@ -57,6 +57,10 @@ class NestedField(Field, textdata.NestedField):
 
 
 class RawField(textdata.RawField):
+    def __init__(self, *args, is_target=False, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.is_target = is_target
+
     def get_meta(self) -> FieldMeta:
         return FieldMeta()
 
