@@ -81,6 +81,7 @@ class ConfigBaseTest(unittest.TestCase):
         )
         obj = Model2Sub1Sub1(m2s1s1="test")
         self.assertEqual(obj.m2s1, 5)
+        self.assertEqual(len(obj.items()), 3)
 
     def test_subclassing_valid_ordering(self):
         class SubclassDefaultOrdering(Model1, ConfigBase):

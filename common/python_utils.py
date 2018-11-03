@@ -3,10 +3,15 @@ from collections import OrderedDict
 from typing import Any, List, NamedTupleMeta, Optional, Tuple, Union  # noqa
 
 
+def items(self):
+    return self._asdict().items()
+
+
 class InheritableNamedTupleMeta(NamedTupleMeta):
     def __new__(cls, typename, bases, ns):
         defaults = {}
         annotations = OrderedDict()
+        ns["items"] = items
         for base in reversed(bases):
             if not issubclass(base, Tuple):
                 continue

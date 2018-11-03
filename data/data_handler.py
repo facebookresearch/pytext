@@ -118,6 +118,7 @@ class DataHandler(Component):
         eval_batch_size: int = 128,
         test_batch_size: int = 128,
         max_seq_len: int = -1,
+        **kwargs,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
         self.labels: Dict[str, Field] = labels or {}

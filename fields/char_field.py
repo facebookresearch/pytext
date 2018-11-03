@@ -17,6 +17,7 @@ class CharFeatureField(VocabUsingField):
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
+        **kwargs
     ):
         super().__init__(
             sequential=True,  # Otherwise pad is set to None in textdata.Field

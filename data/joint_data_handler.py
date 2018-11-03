@@ -7,6 +7,7 @@ from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
+    create_fields,
     CharFeatureField,
     DictFeatureField,
     DocLabelField,
@@ -37,13 +38,6 @@ class JointModelDataHandler(DataHandler):
         ]
         max_seq_len: int = -1
 
-    FULL_FEATURES = [
-        DatasetFieldName.TEXT_FIELD,
-        DatasetFieldName.DICT_FIELD,
-        DatasetFieldName.CHAR_FIELD,
-        DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
-    ]
-
     @classmethod
     def from_config(
         cls,
@@ -52,37 +46,22 @@ class JointModelDataHandler(DataHandler):
         label_config: LabelConfig,
         **kwargs
     ):
-        word_feat_config = feature_config.word_feat
-        features: Dict[str, Field] = {
-            DatasetFieldName.TEXT_FIELD: TextFeatureField(
-                pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
-                embed_dim=word_feat_config.embed_dim,
-                embedding_init_strategy=word_feat_config.embedding_init_strategy,
-                vocab_file=word_feat_config.vocab_file,
-                vocab_size=word_feat_config.vocab_size,
-                vocab_from_train_data=word_feat_config.vocab_from_train_data,
-            )
-        }
-        if feature_config.dict_feat:
-            features[DatasetFieldName.DICT_FIELD] = DictFeatureField()
-
-        if feature_config.char_feat:
-            features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
-
-        labels: Dict[str, Field] = {}
-        if feature_config.pretrained_model_embedding:
-            features[
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
-            ] = PretrainedModelEmbeddingField()
-
-        if label_config.doc_label:
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField(
-                getattr(label_config.doc_label, "label_weights", None)
-            )
-        if label_config.word_label:
-            labels[DatasetFieldName.WORD_LABEL_FIELD] = WordLabelField(
-                use_bio_labels=label_config.word_label.use_bio_labels
-            )
+        features: Dict[str, Field] = create_fields(
+            feature_config,
+            {
+                DatasetFieldName.TEXT_FIELD: TextFeatureField,
+                DatasetFieldName.DICT_FIELD: DictFeatureField,
+                DatasetFieldName.CHAR_FIELD: CharFeatureField,
+                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField(),
+            },
+        )
+        labels: Dict[str, Field] = create_fields(
+            label_config,
+            {
+                DatasetFieldName.DOC_LABEL_FIELD: DocLabelField,
+                DatasetFieldName.WORD_LABEL_FIELD: WordLabelField,
+            },
+        )
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
@@ -93,20 +72,13 @@ class JointModelDataHandler(DataHandler):
         if label_config.word_label:
             extra_fields[DatasetFieldName.RAW_WORD_LABEL] = RawField()
 
+        kwargs.update(config.items())
         return cls(
             raw_columns=config.columns_to_read,
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            shuffle=config.shuffle,
-            train_path=config.train_path,
-            eval_path=config.eval_path,
-            test_path=config.test_path,
-            train_batch_size=config.train_batch_size,
-            eval_batch_size=config.eval_batch_size,
-            test_batch_size=config.test_batch_size,
-            max_seq_len=config.max_seq_len,
-            **kwargs
+            **kwargs,
         )
 
     def _get_tokens(self, mode_feature):
@@ -161,11 +133,15 @@ class JointModelDataHandler(DataHandler):
     def _train_input_from_batch(self, batch):
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         # text_input[1] is the length of each word
-        return (text_input[0], ) + tuple(
-            getattr(batch, name, None)
-            for name in self.features
-            if name != DatasetFieldName.TEXT_FIELD
-        ) + (text_input[1],)
+        return (
+            (text_input[0],)
+            + tuple(
+                getattr(batch, name, None)
+                for name in self.features
+                if name != DatasetFieldName.TEXT_FIELD
+            )
+            + (text_input[1],)
+        )
 
     def _context_from_batch(self, batch):
         # text_input[1] is the length of each word

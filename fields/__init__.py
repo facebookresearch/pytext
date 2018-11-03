@@ -15,10 +15,12 @@ from .field import (
     NestedField,
     VocabUsingNestedField,
     SeqFeatureField,
+    create_fields,
 )
 
 
 __all__ = [
+    "create_fields",
     "ActionField",
     "CharFeatureField",
     "DictFeatureField",
@@ -30,7 +32,7 @@ __all__ = [
     "TextFeatureField",
     "VocabUsingField",
     "WordLabelField",
-    "PretrainedModelEmbeddingField"
+    "PretrainedModelEmbeddingField",
     "NestedField",
     "VocabUsingNestedField",
     "SeqFeatureField",

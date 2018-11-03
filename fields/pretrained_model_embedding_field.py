@@ -9,7 +9,7 @@ from .field import Field
 
 
 class PretrainedModelEmbeddingField(Field):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(
             sequential=True,
             use_vocab=False,

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Mapping, Union
+from typing import Any, Mapping
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
@@ -9,6 +9,14 @@ from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
+
+
+def create_fields(fields_config, field_cls_dict):
+    return {
+        name: field_cls_dict[name].from_config(field_config)
+        for name, field_config in fields_config.items()
+        if field_config
+    }
 
 
 class FieldMeta:
@@ -23,6 +31,11 @@ class FieldMeta:
 
 
 class Field(textdata.Field):
+    @classmethod
+    def from_config(cls, config):
+        print(f"creating field {cls.__name__}")
+        return cls(**config._asdict())
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -97,7 +110,7 @@ class VocabUsingNestedField(VocabUsingField, NestedField):
 
 
 class DocLabelField(Field):
-    def __init__(self, label_weights: Mapping[str, float] = None) -> None:
+    def __init__(self, label_weights: Mapping[str, float] = None, **kwargs) -> None:
         super().__init__(
             sequential=False,
             batch_first=True,
@@ -129,7 +142,7 @@ class DocLabelField(Field):
 
 
 class WordLabelField(Field):
-    def __init__(self, use_bio_labels):
+    def __init__(self, use_bio_labels, **kwargs):
         super().__init__(
             sequential=True,
             batch_first=True,
@@ -166,6 +179,7 @@ class TextFeatureField(VocabUsingField):
         lower=True,
         tokenize=data_utils.no_tokenize,
         fix_length=None,
+        **kwargs
     ) -> None:
         super().__init__(
             pretrained_embeddings_path=pretrained_embeddings_path,
@@ -206,6 +220,7 @@ class SeqFeatureField(VocabUsingNestedField):
         eos_token=None,
         tokenize=data_utils.no_tokenize,
         nesting_field=None,
+        **kwargs
     ):
         super().__init__(
             pretrained_embeddings_path=pretrained_embeddings_path,
@@ -228,7 +243,7 @@ class SeqFeatureField(VocabUsingNestedField):
 
 
 class FloatField(Field):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(
             sequential=False,
             use_vocab=False,
@@ -240,7 +255,7 @@ class FloatField(Field):
 
 
 class ActionField(VocabUsingField):
-    def __init__(self):
+    def __init__(self, **kwargs):
         super().__init__(
             use_vocab=True,
             sequential=True,
