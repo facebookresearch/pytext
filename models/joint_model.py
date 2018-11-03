@@ -27,7 +27,7 @@ class JointModel(Model):
 
     @classmethod
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
-        embedding = create_module(feat_config, metadata=metadata)
+        embedding = cls.create_embedding(feat_config, metadata)
         representation = create_module(
             model_config.representation, embed_dim=embedding.embedding_dim
         )

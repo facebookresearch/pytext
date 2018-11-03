@@ -17,7 +17,7 @@ class WordFeatConfig(ConfigBase):
     freeze: bool = False
     embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
     embedding_init_range: Optional[List[float]] = None
-    export_input_names: List[str] = ["tokens_vals", "tokens_lens"]
+    export_input_names: List[str] = ["tokens_vals"]
     pretrained_embeddings_path: str = ""
     vocab_file: str = ""
     vocab_size: int = 0

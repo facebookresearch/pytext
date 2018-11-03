@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
@@ -44,9 +44,7 @@ class LanguageModelDataHandler(DataHandler):
             )
         }
         labels: Dict[str, Field] = {}
-        extra_fields: Dict[str, Field] = {
-            DatasetFieldName.UTTERANCE_FIELD: RawField(),
-        }
+        extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
         return cls(
             raw_columns=config.columns_to_read,
             features=features,
@@ -68,9 +66,7 @@ class LanguageModelDataHandler(DataHandler):
         }
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
-        raw_input = InputRecord(
-            raw_text=row_data[DFColumn.UTTERANCE]
-        )
+        raw_input = InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
 
         features = self.featurizer.featurize(raw_input)
 
@@ -90,21 +86,24 @@ class LanguageModelDataHandler(DataHandler):
         # Input for the above batch will be:
         # [[how, are],
         #  [hello, world]]
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         return (
-            batch.text[0][:, 0:-1].contiguous(),
-            torch.min(batch.text[1], batch.text[1].max() - 1),
+            text_input[0][:, 0:-1].contiguous(),
+            torch.min(text_input[1], text_input[1].max() - 1),
         )
 
     def _target_from_batch(self, batch):
-        return batch.text[0][:, 1:].contiguous()
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
+        return text_input[0][:, 1:].contiguous()
 
     def _context_from_batch(self, batch):
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         # batch.text[1] is the length of each sequence
         res = {
             DatasetFieldName.SEQ_LENS: torch.min(
-                batch.text[1], batch.text[1].max() - 1
+                text_input[1], text_input[1].max() - 1
             ),
-            DatasetFieldName.TARGET_SEQ_LENS: batch.text[1] - 1,
+            DatasetFieldName.TARGET_SEQ_LENS: text_input[1] - 1,
         }
         res.update(super()._context_from_batch(batch))
         return res

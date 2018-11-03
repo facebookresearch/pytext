@@ -17,7 +17,11 @@ UTTERANCE_PAIR = "utterance"
 
 class PairClassificationDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE, TEXT_2]
+        columns_to_read: List[str] = [
+            DFColumn.DOC_LABEL,
+            DatasetFieldName.TEXT_FIELD,
+            TEXT_2,
+        ]
 
     @classmethod
     def from_config(
@@ -68,6 +72,7 @@ class PairClassificationDataHandler(DataHandler):
         return tuple(zip(*(getattr(batch, name) for name in self.features)))
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
-        row_data[UTTERANCE_PAIR] = \
-            f"{row_data[DFColumn.UTTERANCE]} | {row_data[TEXT_2]}"
+        row_data[
+            UTTERANCE_PAIR
+        ] = f"{row_data[DatasetFieldName.TEXT_FIELD]} | {row_data[TEXT_2]}"
         return row_data

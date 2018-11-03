@@ -40,16 +40,16 @@ class LMLSTM(Model):
                     "Word embeddings must be used when enabling tied weights"
                 )
             elif (
-                model.embedding.word_embed.embedding_dim
+                feat_config.word_feat.embed_dim
                 != model.representation.representation_dim
             ):
-                print(model.embedding.word_embed.embedding_dim)
+                print(feat_config.word_feat.embed_dim)
                 print(model.representation.representation_dim)
                 raise ValueError(
                     "Embedding dimension must be same as representation "
                     "dimesnions when using tied weights"
                 )
-            model.decoder.get_decoder()[0].weight = model.embedding.word_embed.weight
+            model.decoder.get_decoder()[0].weight = model.embedding[0].weight
 
         # Setting an attribute on model object outside the class.
         model.tied_weights = model_config.tied_weights
@@ -67,15 +67,15 @@ class LMLSTM(Model):
             return {}, {}  # Don't use SparseAdam when tying weights.
         return super().get_model_params_for_optimizer()
 
-    def forward(self, *inputs) -> List[torch.Tensor]:
+    def forward(self, tokens, *inputs) -> List[torch.Tensor]:
         # tokens dim: (bsz, max_seq_len) -> token_emb dim: (bsz, max_seq_len, dim)
-        token_emb = self.embedding(*inputs)
+        token_emb = self.embedding(tokens)
         if self.stateful and self._states is None:
-            self._states = self.init_hidden(inputs[0].size(0))
+            self._states = self.init_hidden(tokens.size(0))
 
         output, states = cuda_utils.parallelize(
             StatefulDataParallelModel(self.representation, self.decoder),
-            (token_emb, *inputs[1:], self._states),  # Assumption: inputs[0] = tokens
+            (token_emb, *inputs, self._states),  # Assumption: inputs[0] = tokens
         )
         if self.stateful:
             self._states = repackage_hidden(states)

@@ -161,11 +161,11 @@ class JointModelDataHandler(DataHandler):
     def _train_input_from_batch(self, batch):
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         # text_input[1] is the length of each word
-        return (text_input[0], text_input[1]) + tuple(
+        return (text_input[0], ) + tuple(
             getattr(batch, name, None)
-            for name in self.FULL_FEATURES
+            for name in self.features
             if name != DatasetFieldName.TEXT_FIELD
-        )
+        ) + (text_input[1],)
 
     def _context_from_batch(self, batch):
         # text_input[1] is the length of each word

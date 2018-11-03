@@ -16,6 +16,7 @@ from .pretrained_model_embedding import PretrainedModelEmbedding
 
 class TokenEmbedding(Module):
     """
+    Depracated, use EmbeddingList instead
     Single point of entry for embedding a token in all possible ways.
     It encapsulates all things that should be used for token representation.
 
@@ -45,6 +46,7 @@ class TokenEmbedding(Module):
 
     @classmethod
     def get_embed(cls, config: FeatureConfig, metadata: CommonMetadata):
+        print("Depracated, use EmbeddingList instead")
         word_embed = None
         dict_embed = None
         char_embed = None
@@ -55,12 +57,12 @@ class TokenEmbedding(Module):
             word_embed = nn.Embedding(
                 word_feat_meta.vocab_size,
                 config.word_feat.embed_dim,
-                _weight=metadata.pretrained_embeds_weight,
+                _weight=word_feat_meta.pretrained_embeds_weight,
                 sparse=config.word_feat.sparse,
             )
             embedding_init_range = config.word_feat.embedding_init_range
             if (
-                metadata.pretrained_embeds_weight is None
+                word_feat_meta.pretrained_embeds_weight is None
                 and embedding_init_range is not None
             ):
                 word_embed.weight.data.uniform_(
@@ -103,6 +105,7 @@ class TokenEmbedding(Module):
         pretrained_model_embed: Optional[PretrainedModelEmbedding],
     ) -> None:
         super().__init__(config)
+        print("Depracated, use EmbeddingList instead")
         self.embedding_dim = 0
         self.word_embed = word_embed
         self.dict_embed = dict_embed

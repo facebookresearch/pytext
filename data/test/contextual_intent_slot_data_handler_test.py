@@ -42,8 +42,10 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
 
     def test_intermediate_result(self):
         data = self.dh.gen_dataset(self.data)
-        self.assertListEqual(data.examples[0].text, ["youd", "love", "this"])
-        self.assertListEqual(data.examples[0].seq, [["hey"], ["youd", "love", "this"]])
+        self.assertListEqual(data.examples[0].word_feat, ["youd", "love", "this"])
+        self.assertListEqual(
+            data.examples[0].seq_word_feat, [["hey"], ["youd", "love", "this"]]
+        )
         self.assertEqual(data.examples[0].doc_weight, "0.2")
         self.assertEqual(data.examples[0].word_weight, "0.5")
         self.assertEqual(data.examples[0].raw_word_label, "")
@@ -52,7 +54,7 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         self.assertSequenceEqual(
             data.examples[0].dict_feat,
             (
-                ['<pad>', 'b_ozlo_ner_category:content_reaction', '<pad>'],
+                ["<pad>", "b_ozlo_ner_category:content_reaction", "<pad>"],
                 [0.0, 0.1203470230102539, 0.0],
                 [1, 1, 1],
             ),

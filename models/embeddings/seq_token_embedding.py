@@ -29,12 +29,12 @@ class SequenceTokenEmbedding(TokenEmbedding):
             seq_word_embed = nn.Embedding(
                 seq_word_feat_meta.vocab_size,
                 config.seq_word_feat.embed_dim,
-                _weight=metadata.seq_pretrained_embeds_weight,
+                _weight=seq_word_feat_meta.pretrained_embeds_weight,
                 sparse=config.seq_word_feat.sparse,
             )
             embedding_init_range = config.seq_word_feat.embedding_init_range
             if (
-                metadata.seq_pretrained_embeds_weight is None
+                seq_word_feat_meta.pretrained_embeds_weight is None
                 and embedding_init_range is not None
             ):
                 seq_word_embed.weight.data.uniform_(
@@ -78,11 +78,11 @@ class SequenceTokenEmbedding(TokenEmbedding):
         chars: torch.Tensor = None,
         pretrained_model_embedding: torch.Tensor = None,
         seq_tokens: torch.Tensor = None,
-    ) -> Tuple[torch.Tensor]:
+    ) -> Tuple[torch.Tensor, ...]:
         token_embed = super().forward(
             tokens, seq_lens, dict_feat, chars, pretrained_model_embedding
         )
         if self.seq_word_embed is None:
             raise ValueError("seq_feat argument is unspecified.")
         seq_word_embed = self.seq_word_embed(seq_tokens)
-        return tuple([token_embed, seq_word_embed])
+        return (token_embed, seq_word_embed)

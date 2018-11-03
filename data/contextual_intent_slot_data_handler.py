@@ -168,3 +168,14 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,
             )
         return res
+
+    # overwrite because it has not been migrated to generic token embedding, will
+    # change in coming diff
+    def _train_input_from_batch(self, batch):
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
+        # text_input[1] is the length of each word
+        return (text_input[0], text_input[1]) + tuple(
+            getattr(batch, name, None)
+            for name in self.FULL_FEATURES
+            if name != DatasetFieldName.TEXT_FIELD
+        )

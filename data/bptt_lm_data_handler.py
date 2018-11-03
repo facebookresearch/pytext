@@ -50,7 +50,8 @@ class BPTTLanguageModelDataHandler(DataHandler):
         if bptt_len <= 0:
             raise TypeError("BPTT Sequence length cannot be 0 or less.")
         features = {
-            DatasetFieldName.TEXT_FIELD: TextFeatureField(
+            # the name must be text because it's hardcoded in torchtext BPTT iterator
+            "text": TextFeatureField(
                 eos_token=VocabMeta.EOS_TOKEN, include_lengths=False
             )
         }
@@ -70,19 +71,17 @@ class BPTTLanguageModelDataHandler(DataHandler):
         )
 
     def _gen_extra_metadata(self):
+        # workaround the hardcoded torchtext name
+        self.metadata.features[DatasetFieldName.TEXT_FIELD] = self.metadata.features[
+            "text"
+        ]
         # a bit hacky here, the label vocab is just the word token vocab
         self.metadata.labels = {
             "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
         }
 
     def preprocess(self, data: List[Dict[str, Any]]):
-        return [
-            {
-                DFColumn.UTTERANCE: list(
-                    itertools.chain.from_iterable(super().preprocess(data))
-                )
-            }
-        ]
+        return [{"text": list(itertools.chain.from_iterable(super().preprocess(data)))}]
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> List[str]:
         return self.featurizer.featurize(
@@ -115,6 +114,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
         )
 
     def _train_input_from_batch(self, batch):
+
         return (
             # (bsx x seq_len)
             batch.text.t().contiguous(),

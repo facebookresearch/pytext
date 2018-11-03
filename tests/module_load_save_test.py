@@ -32,6 +32,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
         text_field_meta.vocab_size = 4
         text_field_meta.unk_token_idx = 1
         text_field_meta.pad_token_idx = 0
+        text_field_meta.pretrained_embeds_weight = None
         label_meta = FieldMeta()
         label_meta.vocab_size = 3
         metadata = CommonMetadata()

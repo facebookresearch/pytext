@@ -220,14 +220,6 @@ CHAR_VOCAB = ["<UNK>", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
 # Need to remove this and make it a random input once ONNX is able to
 # Handle different batch_sizes
 BATCH_SIZE = 1
-INPUT_NAMES = [
-    PredictorInputNames.TOKENS_IDS,
-    PredictorInputNames.TOKENS_LENS,
-    PredictorInputNames.DICT_FEAT_IDS,
-    PredictorInputNames.DICT_FEAT_WEIGHTS,
-    PredictorInputNames.DICT_FEAT_LENS,
-    PredictorInputNames.CHAR_IDS,
-]
 
 
 class TextModelExporterTest(hu.HypothesisTestCase):
@@ -269,6 +261,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             for _i in range(num_predictions):
                 pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
                 test_inputs = self._get_rand_input(
+                    config.features,
                     BATCH_SIZE,
                     W_VOCAB_SIZE,
                     DICT_VOCAB_SIZE,
@@ -277,7 +270,12 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     test_num_dict_feat,
                     test_num_chars,
                 )
-                self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
+                self._feed_c2_input(
+                    workspace,
+                    test_inputs,
+                    exporter.input_names,
+                    metadata.feature_itos_map,
+                )
                 workspace.RunNetOnce(pred_net)
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
 
@@ -323,6 +321,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
             for _i in range(num_predictions):
                 test_inputs = self._get_rand_input(
+                    config.features,
                     BATCH_SIZE,
                     W_VOCAB_SIZE,
                     DICT_VOCAB_SIZE,
@@ -331,12 +330,17 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                     test_num_dict_feat,
                     test_num_chars,
                 )
-                self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
+                self._feed_c2_input(
+                    workspace,
+                    test_inputs,
+                    exporter.input_names,
+                    metadata.feature_itos_map,
+                )
                 workspace.RunNetOnce(pred_net)
                 c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
                 py_model.eval()
                 py_outs = py_model(*test_inputs)
-                context = {SEQ_LENS: test_inputs[1]}
+                context = {SEQ_LENS: test_inputs[-1]}
                 target = None
                 pred, score = py_model.get_pred(py_outs, target, context)
 
@@ -382,6 +386,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
 
         for _i in range(num_predictions):
             test_inputs = self._get_rand_input(
+                config.features,
                 BATCH_SIZE,
                 W_VOCAB_SIZE,
                 DICT_VOCAB_SIZE,
@@ -390,7 +395,9 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 test_num_dict_feat,
                 test_num_chars,
             )
-            self._feed_c2_input(workspace, test_inputs, metadata.feature_itos_map)
+            self._feed_c2_input(
+                workspace, test_inputs, exporter.input_names, metadata.feature_itos_map
+            )
             workspace.RunNetOnce(pred_net)
             doc_output_names = [
                 "{}:{}".format("doc_scores", class_name)
@@ -403,7 +410,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
 
             py_model.eval()
             logits = py_model(*test_inputs)
-            context = {SEQ_LENS: test_inputs[1]}
+            context = {SEQ_LENS: test_inputs[-1]}
             target = None
             (d_pred, w_pred), (d_score, w_score) = py_model.get_pred(
                 logits, target, context
@@ -457,16 +464,19 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         text_feat_meta.vocab_size = W_VOCAB_SIZE
         text_feat_meta.vocab = w_vocab
         text_feat_meta.vocab_export_name = PredictorInputNames.TOKENS_IDS
+        text_feat_meta.pretrained_embeds_weight = None
 
         dict_feat_meat = FieldMeta()
         dict_feat_meat.vocab_size = DICT_VOCAB_SIZE
         dict_feat_meat.vocab = dict_vocab
         dict_feat_meat.vocab_export_name = PredictorInputNames.DICT_FEAT_IDS
+        dict_feat_meat.pretrained_embeds_weight = None
 
         char_feat_meta = FieldMeta()
         char_feat_meta.vocab_size = CHAR_VOCAB_SIZE
         char_feat_meta.vocab = c_vocab
         char_feat_meta.vocab_export_name = PredictorInputNames.CHAR_IDS
+        char_feat_meta.pretrained_embeds_weight = None
 
         meta = CommonMetadata()
         meta.features = {
@@ -483,6 +493,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
 
     def _get_rand_input(
         self,
+        features,
         batch_size,
         w_vocab_size,
         d_vocab_size,
@@ -519,20 +530,22 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 c_vocab_size, size=(batch_size, num_words, num_chars)
             ).astype(np.int64)
         )
-
-        return (
-            text,
-            lengths,
-            (dict_feat, dict_weights, dict_lengths),
-            chars,
-        )
+        inputs = []
+        if features.word_feat:
+            inputs.append(text)
+        if features.dict_feat:
+            inputs.append((dict_feat, dict_weights, dict_lengths))
+        if features.char_feat:
+            inputs.append(chars)
+        inputs.append(lengths)
+        return tuple(inputs)
 
     def _get_config(self, cls, config_str):
         params_json = json.loads(config_str)
         config = config_from_json(cls, params_json)
         return config
 
-    def _feed_c2_input(self, workspace, py_inputs, vocab_map):
+    def _feed_c2_input(self, workspace, py_inputs, input_names, vocab_map):
         c2_input = []
 
         for py_input in py_inputs:
@@ -541,12 +554,12 @@ class TextModelExporterTest(hu.HypothesisTestCase):
             )
         for i, input in enumerate(list(c2_input)):
             input_np = input.numpy()
-            if INPUT_NAMES[i] in vocab_map.keys():
+            if input_names[i] in vocab_map.keys():
                 # Map the input to the str form
-                input_vocab = vocab_map[INPUT_NAMES[i]]
+                input_vocab = vocab_map[input_names[i]]
                 map_fn = np.vectorize(lambda x: input_vocab[x])
                 input_str = map_fn(input_np)
                 input_np = np.array(input_str, dtype=str)
-                workspace.FeedBlob(INPUT_NAMES[i] + "_str:value", input_np)
+                workspace.FeedBlob(input_names[i] + "_str:value", input_np)
             else:
-                workspace.FeedBlob(INPUT_NAMES[i], input_np)
+                workspace.FeedBlob(input_names[i], input_np)

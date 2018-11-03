@@ -9,6 +9,8 @@ from pytext.config.component import Component, ComponentType, create_module
 from pytext.data import CommonMetadata
 from pytext.utils import cuda_utils
 
+from .embeddings import EmbeddingList, EmbeddingBase
+
 
 class Model(nn.Module, Component):
     """
@@ -19,17 +21,42 @@ class Model(nn.Module, Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     @classmethod
-    def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
-        embedding = create_module(feat_config, metadata=metadata)
+    def create_sub_embs(cls, emb_config, metadata: CommonMetadata):
+        sub_embs = {}
+        for name, config in emb_config._asdict().items():
+            if issubclass(getattr(config, "__COMPONENT__", object), EmbeddingBase):
+                sub_embs[name] = create_module(config, meta=metadata.features[name])
+            else:
+                print(f"{name} is not a config of embedding, skipping")
+        return sub_embs
+
+    @classmethod
+    def compose_embedding(cls, sub_embs):
+        return EmbeddingList(sub_embs.values(), concat=True)
+
+    @classmethod
+    def create_embedding(cls, emb_config, metadata: CommonMetadata):
+        sub_embs = cls.create_sub_embs(emb_config, metadata)
+        emb = cls.compose_embedding(sub_embs)
+        if getattr(emb_config, "load_path", None):
+            print(f"Loading state of embedding from {emb_config.load_path} ...")
+            emb.load_state_dict(torch.load(emb_config.load_path))
+        return emb
+
+    @classmethod
+    def from_config(cls, config, feat_config, metadata: CommonMetadata):
+        embedding = cls.create_embedding(feat_config, metadata)
+        # TODO hacky way to enable saving embedding now
+        embedding.config = feat_config
         representation = create_module(
-            model_config.representation, embed_dim=embedding.embedding_dim
+            config.representation, embed_dim=embedding.embedding_dim
         )
         decoder = create_module(
-            model_config.decoder,
+            config.decoder,
             from_dim=representation.representation_dim,
             to_dim=next(iter(metadata.labels.values())).vocab_size,
         )
-        output_layer = create_module(model_config.output_layer, metadata)
+        output_layer = create_module(config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)
 
     def save_modules(self, base_path: str = ""):
@@ -55,10 +82,12 @@ class Model(nn.Module, Component):
         return self.output_layer.get_pred(logit, target, context)
 
     def forward(self, *inputs) -> List[torch.Tensor]:
-        token_emb = self.embedding(*inputs)
+        embedding_input = inputs[: self.embedding.num_emb]
+        token_emb = self.embedding(*embedding_input)
+        other_input = inputs[self.embedding.num_emb :]
         return cuda_utils.parallelize(
             DataParallelModel(self.representation, self.decoder),
-            (token_emb, *inputs[1:]),  # Assumption: inputs[0] = tokens
+            (token_emb, *other_input),
         )  # returned Tensor's dim = (batch_size, num_classes)
 
     def get_model_params_for_optimizer(
@@ -70,10 +99,9 @@ class Model(nn.Module, Component):
         embeddings only.
         """
         prefix = "embedding"  # It is the name of embedding member variable.
-        embedding_modules = self.embedding.__dict__.get("_modules")
         sparse_grad_embedding_param_names = set()
-        for module_name, embedding_module in embedding_modules.items():
-            if hasattr(embedding_module, "sparse") and embedding_module.sparse:
+        for module_name, embedding_module in self.embedding.named_children():
+            if getattr(embedding_module, "sparse", False):
                 for name, _ in embedding_module.named_parameters():
                     param_name = "{}.{}.{}".format(prefix, module_name, name)
                     sparse_grad_embedding_param_names.add(param_name)

@@ -174,22 +174,34 @@ class TextModelExporter(ModelExporter):
                 DatasetFieldName.TEXT_FIELD
             ].vocab.itos
         }
+        dummy_model_input = [torch.tensor([[1], [1]], dtype=torch.long)]  # tokens
+
         if feature_config.dict_feat:
             input_names.extend(feature_config.dict_feat.export_input_names)
             feature_itos_map[
                 feature_config.dict_feat.export_input_names[0]
             ] = meta.features[DatasetFieldName.DICT_FIELD].vocab.itos
-        else:
-            input_names.extend(DictFeatConfig._field_defaults["export_input_names"])
+            dummy_model_input.append(
+                (
+                    torch.tensor([[2], [2]], dtype=torch.long),
+                    torch.tensor([[1.5], [2.5]], dtype=torch.float),
+                    torch.tensor([1, 1], dtype=torch.long),
+                )
+            )
 
         if feature_config.char_feat:
             input_names.extend(feature_config.char_feat.export_input_names)
             feature_itos_map[
                 feature_config.char_feat.export_input_names[0]
             ] = meta.features[DatasetFieldName.CHAR_FIELD].vocab.itos
-        else:
-            input_names.extend(CharFeatConfig._field_defaults["export_input_names"])
+            dummy_model_input.append(
+                torch.tensor([[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long)
+            )
 
+        dummy_model_input.append(
+            torch.tensor([1, 1], dtype=torch.long)
+        )  # token lengths
+        input_names.append("tokens_lens")
         output_names: List[str] = []
         axis: List[int] = []
 
@@ -201,17 +213,6 @@ class TextModelExporter(ModelExporter):
             output_names.extend(label_config.word_label.export_output_names)
             axis.append(2)
 
-        # The sample input should exactly match the shape of the model forward function
-        dummy_model_input = (
-            torch.tensor([[1], [1]], dtype=torch.long),  # tokens
-            torch.tensor([1, 1], dtype=torch.long),  # token lengths
-            (
-                torch.tensor([[2], [2]], dtype=torch.long),
-                torch.tensor([[1.5], [2.5]], dtype=torch.float),
-                torch.tensor([1, 1], dtype=torch.long),
-            ),  # dict feats
-            torch.tensor([[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long),  # char feats
-        )
         label_names = [label.vocab.itos for label in meta.labels.values()]
 
         return cls(
@@ -221,7 +222,7 @@ class TextModelExporter(ModelExporter):
             meta,
             input_names,
             output_names,
-            dummy_model_input,
+            tuple(dummy_model_input),
         )
 
     def prepend_operators(

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-
+from pytext.utils import cuda_utils
 import torch
 from pytext.config import ConfigBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.model import Model
+from pytext.models.model import Model, DataParallelModel
 from pytext.models.output_layer import ClassificationOutputLayer
 from pytext.models.representations.tuple_rep import TupleRepresentation
-
+from pytext.config.component import create_module
 
 class PairClassificationModel(Model):
     """Pair classification model
@@ -28,6 +28,19 @@ class PairClassificationModel(Model):
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
+
+    # TODO still use old way to create embedding, will replace soon
+    @classmethod
+    def create_embedding(cls, emb_config, metadata):
+        return create_module(emb_config, metadata=metadata)
+
+    # TODO keep old forward function, will migrate to generic embedding in next diff
+    def forward(self, *inputs):
+        token_emb = self.embedding(*inputs)
+        return cuda_utils.parallelize(
+            DataParallelModel(self.representation, self.decoder),
+            (token_emb, *inputs[1:]),  # Assumption: inputs[0] = tokens
+        )  # returned Tensor's dim = (batch_size, num_classes)
 
     def save_modules(self, base_path: str = ""):
         super().save_modules(base_path)

@@ -3,10 +3,22 @@
 import torch
 import torch.nn as nn
 import torch.onnx.operators
+from pytext.config.field_config import DictFeatConfig
 from pytext.config.module_config import PoolingType
+from pytext.fields import FieldMeta
+
+from .embedding_base import EmbeddingBase
 
 
-class DictEmbedding(nn.Embedding):
+class DictEmbedding(EmbeddingBase, nn.Embedding):
+    Config = DictFeatConfig
+
+    @classmethod
+    def from_config(cls, config: DictFeatConfig, meta: FieldMeta):
+        return cls(
+            meta.vocab_size, config.embed_dim, config.pooling, sparse=config.sparse
+        )
+
     def __init__(
         self,
         embed_num: int,
@@ -14,16 +26,14 @@ class DictEmbedding(nn.Embedding):
         pooling_type: PoolingType,
         sparse: bool = False,
     ) -> None:
-        super().__init__(embed_num, embed_dim, sparse=sparse)
+        EmbeddingBase.__init__(self, embed_dim)
+        nn.Embedding.__init__(self, embed_num, embed_dim, sparse=sparse)
         self.pooling_type = pooling_type
         self.weight.data.uniform_(0, 0.1)
         self.sparse = sparse
 
     def forward(
-        self,
-        feats: torch.Tensor,
-        weights: torch.Tensor,
-        lengths: torch.Tensor,
+        self, feats: torch.Tensor, weights: torch.Tensor, lengths: torch.Tensor
     ) -> torch.Tensor:
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
         new_len_shape = torch.cat((batch_size.view(1), torch.LongTensor([-1])))

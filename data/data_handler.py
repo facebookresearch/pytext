@@ -19,8 +19,6 @@ from torchtext import data as textdata
 class CommonMetadata:
     features: Dict[str, FieldMeta]
     labels: Dict[str, FieldMeta]
-    pretrained_embeds_weight: Optional[torch.Tensor] = None
-    seq_pretrained_embeds_weight: Optional[torch.Tensor] = None
 
 
 class BatchIterator:
@@ -128,7 +126,6 @@ class DataHandler(Component):
         self.extra_fields: Dict[str, Field] = extra_fields or {}
         self.text_feature_name: str = text_feature_name
 
-        self.df_to_example_func_map: Dict = {}
         self.metadata_cls: Type = CommonMetadata
         self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: MutableMapping[str, Any] = {}
@@ -260,9 +257,11 @@ class DataHandler(Component):
                         name, len(label.vocab.itos)
                     )
                 )
-
+        # field metadata
+        self.metadata.features = {}
         # build vocabs for features
         for name, feat in self.features.items():
+            weights = None
             if feat.use_vocab:
                 print("building vocab for feature {}".format(name))
                 feat.build_vocab(
@@ -285,15 +284,10 @@ class DataHandler(Component):
                         feat.embedding_init_strategy,
                         feat.lower,
                     )
-                    if name == DatasetFieldName.TEXT_FIELD:
-                        self.metadata.pretrained_embeds_weight = weights
-                    if name == DatasetFieldName.SEQ_FIELD:
-                        self.metadata.seq_pretrained_embeds_weight = weights
+            meta = feat.get_meta()
+            meta.pretrained_embeds_weight = weights
+            self.metadata.features[name] = meta
 
-        # field metadata
-        self.metadata.features = {
-            name: field.get_meta() for name, field in self.features.items()
-        }
         self.metadata.labels = {
             name: field.get_meta() for name, field in self.labels.items()
         }

@@ -47,7 +47,8 @@ class SeqModelDataHandlerTest(unittest.TestCase):
     def test_intermediate_result(self):
         data = self.dh.gen_dataset(self.train_data)
         self.assertListEqual(
-            data.examples[0].text, [["where", "do", "you", "wanna", "meet?"], ["mpk"]]
+            data.examples[0].word_feat,
+            [["where", "do", "you", "wanna", "meet?"], ["mpk"]],
         )
 
     def test_process_data(self):

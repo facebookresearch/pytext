@@ -5,14 +5,30 @@ from typing import List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.config.field_config import CharFeatConfig
+from pytext.fields import FieldMeta
+
+from .embedding_base import EmbeddingBase
 
 
-class CharacterEmbedding(nn.Module):
+class CharacterEmbedding(EmbeddingBase):
     """Implements character aware CNN embeddings for tokens.
 
     Implementation is loosely based on https://arxiv.org/abs/1508.06615 and
     does not implement the Highway Network illustrated in the paper.
     """
+
+    Config = CharFeatConfig
+
+    @classmethod
+    def from_config(cls, config: CharFeatConfig, meta: FieldMeta):
+        return cls(
+            meta.vocab_size,
+            config.embed_dim,
+            config.cnn.kernel_num,
+            config.cnn.kernel_sizes,
+            sparse=config.sparse,
+        )
 
     def __init__(
         self,
@@ -22,7 +38,7 @@ class CharacterEmbedding(nn.Module):
         kernel_sizes: List[int],
         sparse=False,
     ) -> None:
-        super().__init__()
+        super().__init__(embed_dim)
         self.char_embed = nn.Embedding(embed_num, embed_dim, sparse=sparse)
         self.convs = nn.ModuleList(
             [
