@@ -2,77 +2,79 @@
 
 from typing import Dict, List, Any
 
-from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
+from pytext.config.pair_classification import (
+    ModelInput,
+    Target,
+    ExtraField,
+    ModelInputConfig,
+    TargetConfig,
+)
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
-from pytext.fields import DocLabelField, Field, RawField, TextFeatureField
-from pytext.utils import data_utils
-
+from pytext.fields import (
+    DocLabelField,
+    Field,
+    RawField,
+    TextFeatureField,
+    create_fields,
+)
+from pytext.data.featurizer import InputRecord
 from .data_handler import DataHandler
 
 
-TEXT_2 = "text_2"
-UTTERANCE_PAIR = "utterance"
+class RawData:
+    DOC_LABEL = "doc_label"
+    TEXT1 = "text1"
+    TEXT2 = "text2"
 
 
 class PairClassificationDataHandler(DataHandler):
     class Config(ConfigBase, DataHandler.Config):
-        columns_to_read: List[str] = [
-            DFColumn.DOC_LABEL,
-            DatasetFieldName.TEXT_FIELD,
-            TEXT_2,
-        ]
+        columns_to_read: List[str] = [RawData.DOC_LABEL, RawData.TEXT1, RawData.TEXT2]
+
+    def sort_key(self, example) -> Any:
+        return len(getattr(example, ModelInput.TEXT1))
 
     @classmethod
     def from_config(
         cls,
         config: Config,
-        feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        feature_config: ModelInputConfig,
+        target_config: TargetConfig,
         **kwargs,
     ):
-        word_feat_config = feature_config.word_feat
-        text_field = TextFeatureField(
-            eos_token=VocabMeta.EOS_TOKEN,
-            init_token=VocabMeta.INIT_TOKEN,
-            tokenize=data_utils.simple_tokenize,
-            pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
-            embed_dim=word_feat_config.embed_dim,
-            embedding_init_strategy=word_feat_config.embedding_init_strategy,
-            vocab_file=word_feat_config.vocab_file,
-            vocab_size=word_feat_config.vocab_size,
-            vocab_from_train_data=word_feat_config.vocab_from_train_data,
+        features: Dict[str, Field] = create_fields(
+            feature_config,
+            {ModelInput.TEXT1: TextFeatureField, ModelInput.TEXT2: TextFeatureField},
         )
-        features: Dict[str, Field] = {
-            DatasetFieldName.TEXT_FIELD: text_field,
-            TEXT_2: text_field,
-        }
-        extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
+        assert len(features) == 2
+        # share the processing field
+        features[ModelInput.TEXT2] = features[ModelInput.TEXT1]
 
-        labels: Dict[str, Field] = {}
-        if label_config.doc_label:
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
-
+        labels: Dict[str, Field] = create_fields(
+            target_config, {Target.DOC_LABEL: DocLabelField}
+        )
+        extra_fields: Dict[str, Field] = {ExtraField.UTTERANCE_PAIR: RawField()}
+        kwargs.update(config.items())
         return cls(
             raw_columns=config.columns_to_read,
             labels=labels,
             features=features,
-            shuffle=config.shuffle,
             extra_fields=extra_fields,
-            train_path=config.train_path,
-            eval_path=config.eval_path,
-            test_path=config.test_path,
-            train_batch_size=config.train_batch_size,
-            eval_batch_size=config.eval_batch_size,
-            test_batch_size=config.test_batch_size,
             **kwargs,
         )
 
     def _train_input_from_batch(self, batch):
-        return tuple(zip(*(getattr(batch, name) for name in self.features)))
+        # token1, token2, seq_len1, seq_len2
+        return batch.text1[0], batch.text2[0], batch.text1[1], batch.text2[1]
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
-        row_data[
-            UTTERANCE_PAIR
-        ] = f"{row_data[DatasetFieldName.TEXT_FIELD]} | {row_data[TEXT_2]}"
-        return row_data
+        return {
+            ModelInput.TEXT1: self.featurizer.featurize(
+                InputRecord(raw_text=row_data[RawData.TEXT1])
+            ).tokens,
+            ModelInput.TEXT2: self.featurizer.featurize(
+                InputRecord(raw_text=row_data[RawData.TEXT2])
+            ).tokens,
+            Target.DOC_LABEL: row_data[RawData.DOC_LABEL],
+            ExtraField.UTTERANCE_PAIR: f"{row_data[RawData.TEXT1]} | {row_data[RawData.TEXT2]}",
+        }

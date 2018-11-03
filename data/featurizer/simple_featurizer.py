@@ -4,7 +4,6 @@ from typing import Optional, Tuple, Sequence
 
 from pytext.common.constants import VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import Featurizer, InputRecord, OutputRecord
 
 
@@ -18,10 +17,10 @@ class SimpleFeaturizer(Featurizer):
         lowercase_tokens: bool = True
 
     @classmethod
-    def from_config(cls, config: Config, feature_config: FeatureConfig, *kwargs):
+    def from_config(cls, config: Config, *kwargs):
         return cls(
             sentence_markers=config.sentence_markers,
-            lowercase_tokens=feature_config.word_feat.lowercase_tokens,
+            lowercase_tokens=config.lowercase_tokens,
         )
 
     def __init__(

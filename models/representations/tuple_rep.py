@@ -37,21 +37,24 @@ class TupleRepresentation(RepresentationBase):
         num_subrepresentations: int = 2
         encode_relations: bool = True
 
-    def __init__(self, config: Config, embed_dim: int) -> None:
+    def __init__(self, config: Config, embed_dim: Tuple[int, ...]) -> None:
         super().__init__(config)
-        assert config.num_subrepresentations > 1
+        assert (
+            config.num_subrepresentations > 1
+            and config.num_subrepresentations == len(embed_dim)
+        )
 
         if config.tied_weights:
             self.subrepresentations = nn.ModuleList(
                 itertools.repeat(
-                    create_module(config.subrepresentation, embed_dim=embed_dim),
+                    create_module(config.subrepresentation, embed_dim=embed_dim[0]),
                     config.num_subrepresentations,
                 )
             )
         else:
             self.subrepresentations = nn.ModuleList(
-                create_module(config.subrepresentation, embed_dim=embed_dim)
-                for _ in range(config.num_subrepresentations)
+                create_module(config.subrepresentation, embed_dim=ed)
+                for ed in embed_dim
             )
 
         self.representation_dim = self.subrepresentations[0].representation_dim
@@ -79,10 +82,7 @@ class TupleRepresentation(RepresentationBase):
         return representation
 
     def forward(
-        self,
-        embeddings: Tuple[torch.Tensor, ...],
-        lengths: Tuple[torch.Tensor, ...],
-        *args
+        self, embeddings: Tuple[torch.Tensor, ...], *lengths: torch.Tensor
     ) -> Tuple[torch.Tensor, ...]:
         # The leftmost inputs already come sorted by length. The others need to
         # be sorted as well, for packing. We do it manually.

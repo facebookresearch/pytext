@@ -5,6 +5,7 @@ from typing import Optional, Union
 from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
+from pytext.config import pair_classification as PairClassificationTask
 from pytext.config.pytext_config import OptimizerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
@@ -31,7 +32,6 @@ from pytext.metric_reporters.word_tagging_metric_reporter import (
 )
 from pytext.models.doc_model import DocModel
 from pytext.models.embeddings.seq_token_embedding import SequenceTokenEmbedding
-from pytext.models.embeddings.shared_token_embedding import SharedTokenEmbedding
 from pytext.models.embeddings.token_embedding import FeatureConfig
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
 from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
@@ -102,11 +102,11 @@ class LMJobSpec(JobSpecBase, ConfigBase):
 
 
 class PairClassificationJobSpec(JobSpecBase, ConfigBase):
-    features: SharedTokenEmbedding.Config = SharedTokenEmbedding.Config()
+    features: PairClassificationTask.ModelInputConfig = PairClassificationTask.ModelInputConfig()
     model: PairClassificationModel.Config = PairClassificationModel.Config()
     data_handler: PairClassificationDataHandler.Config = PairClassificationDataHandler.Config()
     trainer: Trainer.Config = Trainer.Config()
-    labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+    labels: PairClassificationTask.TargetConfig = PairClassificationTask.TargetConfig()
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
