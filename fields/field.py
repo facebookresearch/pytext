@@ -12,10 +12,11 @@ from torchtext.vocab import Vocab
 
 
 def create_fields(fields_config, field_cls_dict):
+    fields_config_dict = fields_config._asdict()
     return {
-        name: field_cls_dict[name].from_config(field_config)
-        for name, field_config in fields_config.items()
-        if field_config
+        name: field_cls.from_config(fields_config_dict[name])
+        for name, field_cls in field_cls_dict.items()
+        if fields_config_dict[name]
     }
 
 
