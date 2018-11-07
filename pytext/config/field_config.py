@@ -46,7 +46,7 @@ class PretrainedModelEmbeddingConfig(ConfigBase):
     model_paths: Optional[Dict[str, str]] = None
 
 
-class FeatureConfig(ConfigBase, ModuleConfig):
+class FeatureConfig(ConfigBase, ModuleConfig):  # type: ignore
     word_feat: WordFeatConfig = WordFeatConfig()
     seq_word_feat: Optional[WordFeatConfig] = None
     dict_feat: Optional[DictFeatConfig] = None

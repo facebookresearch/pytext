@@ -8,7 +8,7 @@ from pytext.config.module_config import ModuleConfig
 class Module(nn.Module, Component):
     """
     Generic model class that depends on input
-    embedding, representation and decoder to produce predicitons.
+    embedding, representation and decoder to produce predictions.
     """
 
     Config = ModuleConfig

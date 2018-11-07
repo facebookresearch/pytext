@@ -451,13 +451,20 @@ class DataHandler(Component):
         with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
             csv_reader = csv.reader(f_handle, delimiter="\t", quoting=csv.QUOTE_NONE)
             data = []
-            for row in csv_reader:
-                row_len = len(row)
-                row_data = {}
-                for name, idx in columns_to_use.items():
-                    value = row[idx] if idx < row_len else ""
-                    row_data[name] = value
-                data.append(row_data)
+            i = 0
+            while True:
+                i += 1
+                try:
+                    row = next(csv_reader)
+                except csv.Error:
+                    print("ignoring line {}".format(i))
+                    continue
+                except StopIteration:
+                    break
+                data.append({
+                    name: row[index] if index < len(row) else ""
+                    for name, index in columns_to_use.items()
+                })
             return data
 
     def _postprocess_batch(
