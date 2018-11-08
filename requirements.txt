@@ -4,7 +4,7 @@ joblib
 numpy
 onnx
 pandas
+requests
 scipy
 torch_nightly
 torchtext
-pandas
