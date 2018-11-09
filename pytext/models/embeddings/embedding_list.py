@@ -23,10 +23,19 @@ class EmbeddingList(EmbeddingBase, ModuleList):
 
     def __init__(self, embeddings: Iterable[EmbeddingBase], concat: bool) -> None:
         EmbeddingBase.__init__(self, 0)
-        ModuleList.__init__(self, filter(None, embeddings))
+        embeddings = list(filter(None, embeddings))
+        self.num_emb = sum(emb.num_emb for emb in embeddings)
+        embeddings_list, input_start_indices = [], []
+        start = 0
+        for emb in embeddings:
+            if emb.embedding_dim > 0:
+                embeddings_list.append(emb)
+                input_start_indices.append(start)
+            start += emb.num_emb
+        ModuleList.__init__(self, embeddings_list)
+        self.input_start_indices = input_start_indices
         self.concat = concat
         assert len(self) > 0, "must have at least 1 sub embedding"
-        self.num_emb = sum(emb.num_emb for emb in self)
         embedding_dims = tuple(emb.embedding_dim for emb in self)
         self.embedding_dim = sum(embedding_dims) if concat else embedding_dims
 
@@ -42,11 +51,9 @@ class EmbeddingList(EmbeddingBase, ModuleList):
                 f"expecting {self.num_emb} embeddings, but get {len(emb_input)} input"
             )
         tensors = []
-        start = 0
-        for emb in self:
+        for emb, start in zip(self, self.input_start_indices):
             end = start + emb.num_emb
             input = emb_input[start:end]
-            start = end
             # single embedding
             if len(input) == 1:
                 # the input for the single embedding is a tuple or list of tensors
