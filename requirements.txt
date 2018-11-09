@@ -8,3 +8,4 @@ requests
 scipy
 torch_nightly
 torchtext
+tensorboardX
