@@ -42,17 +42,21 @@ def train_model_distributed(config):
     )
 
     print("Starting training, World size is {}".format(config.distributed_world_size))
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".dist_sync") as sync_file:
-        dist_init_method = "file://" + sync_file.name
-        spawn(
-            run_single,
-            (
-                config_to_json(PyTextConfig, config),
+    if (not config.use_cuda_if_available or not torch.cuda.is_available()):
+        run_single(0, (config_to_json(PyTextConfig, config), 1, None,))
+    else:
+        with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".dist_sync") as sync_file:
+            dist_init_method = "file://" + sync_file.name
+            spawn(
+                run_single,
+                (
+                    config_to_json(PyTextConfig, config),
+                    config.distributed_world_size,
+                    dist_init_method,
+                ),
                 config.distributed_world_size,
-                dist_init_method,
-            ),
-            config.distributed_world_size,
-        )
+            )
 
 
 def run_single(rank, args):
