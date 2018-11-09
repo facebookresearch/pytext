@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import torch
 from pytext.common.constants import BatchContext, Stage
+from pytext.config import PyTextConfig
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
@@ -43,6 +44,7 @@ class Trainer(TrainerBase):
         model,
         metric_reporter: MetricReporter,
         optimizers: List[torch.optim.Optimizer],
+        config: PyTextConfig,
         scheduler=None,
     ):
         if cuda_utils.CUDA_ENABLED:
@@ -93,6 +95,10 @@ class Trainer(TrainerBase):
                 last_best_epoch = epoch
                 best_metric = eval_metric
                 print("Found a better model! Saving it...")
+                if config.save_module_checkpoints:
+                    model.save_modules(
+                        base_path=config.modules_save_dir, suffix=f"-ep{epoch}"
+                    )
                 best_model_state = copy.deepcopy(model.state_dict())
 
             if self.config.early_stop_after > 0 and (

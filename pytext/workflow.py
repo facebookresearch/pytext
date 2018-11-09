@@ -72,7 +72,8 @@ def _set_cuda(
         torch.cuda.set_device(device_id)
 
     # for debug of GPU
-    print("""
+    print(
+        """
     use_cuda_if_available: {}\n
     device_id: {}\n
     world_size: {}\n
@@ -80,13 +81,14 @@ def _set_cuda(
     cuda_utils.CUDA_ENABLED: {}\n
     cuda_utils.DISTRIBUTED_WORLD_SIZE: {}\n
     """.format(
-        use_cuda_if_available,
-        device_id,
-        world_size,
-        torch.cuda.is_available(),
-        cuda_utils.CUDA_ENABLED,
-        cuda_utils.DISTRIBUTED_WORLD_SIZE
-    ))
+            use_cuda_if_available,
+            device_id,
+            world_size,
+            torch.cuda.is_available(),
+            cuda_utils.CUDA_ENABLED,
+            cuda_utils.DISTRIBUTED_WORLD_SIZE,
+        )
+    )
 
 
 def train_model(
@@ -103,6 +105,7 @@ def train_model(
         job.model,
         job.metric_reporter,
         job.optimizers,
+        config,
         job.lr_scheduler,
     )
     # Only rank 0 gets to finalize the job and export the model
@@ -182,18 +185,18 @@ def finalize_job(
             config.jobspec.labels,
             trained_model,
             data_handler,
-            config.export_caffe2_path)
+            config.export_caffe2_path,
+        )
 
 
 def export_saved_model_to_caffe2(
-    saved_model_path: str,
-    export_caffe2_path: str
+    saved_model_path: str, export_caffe2_path: str
 ) -> None:
     config, model, data_handler = load(saved_model_path)
     exporter = config.jobspec.exporter
     if exporter is None:
         JobspecType = type(config.jobspec)
-        ExporterConfigType = get_type_hints(JobspecType)['exporter'].__args__[0]
+        ExporterConfigType = get_type_hints(JobspecType)["exporter"].__args__[0]
         exporter = ExporterConfigType()
 
     export_to_caffe2(
@@ -202,7 +205,8 @@ def export_saved_model_to_caffe2(
         config.jobspec.labels,
         model,
         data_handler,
-        export_caffe2_path)
+        export_caffe2_path,
+    )
 
 
 def export_to_caffe2(
@@ -211,15 +215,10 @@ def export_to_caffe2(
     labels: Optional[LabelConfig],
     trained_model: torch.nn.Module,
     data_handler: DataHandler,
-    export_caffe2_path: str
+    export_caffe2_path: str,
 ) -> None:
     print("Saving caffe2 model to: " + export_caffe2_path)
-    exporter = create_exporter(
-        exporter,
-        features,
-        labels,
-        data_handler.metadata
-    )
+    exporter = create_exporter(exporter, features, labels, data_handler.metadata)
     exporter.export_to_caffe2(trained_model, export_caffe2_path)
 
 

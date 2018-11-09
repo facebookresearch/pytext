@@ -27,6 +27,8 @@ class PyTextConfig(ConfigBase):
     export_caffe2_path: str = "/tmp/model.caffe2.predictor"
     # Base directory where modules are saved
     modules_save_dir: str = ""
+    # Whether to save intermediate checkpoints for modules
+    save_module_checkpoints: bool = False
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done

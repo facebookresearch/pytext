@@ -35,13 +35,13 @@ class PairClassificationModel(Model):
     def compose_embedding(cls, sub_embs):
         return EmbeddingList(sub_embs.values(), concat=False)
 
-    def save_modules(self, base_path: str = ""):
-        super().save_modules(base_path)
+    def save_modules(self, base_path: str = "", suffix: str = ""):
+        super().save_modules(base_path, suffix)
 
         # Special case to also save the sub-representations separately, if needed.
         for i, subrep in enumerate(self.representation.subrepresentations):
             if getattr(subrep.config, "save_path", None):
-                path = subrep.config.save_path + "-" + str(i)
+                path = subrep.config.save_path + "-" + str(i) + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(

@@ -59,10 +59,10 @@ class Model(nn.Module, Component):
         output_layer = create_module(config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)
 
-    def save_modules(self, base_path: str = ""):
+    def save_modules(self, base_path: str = "", suffix: str = ""):
         for module in [self.embedding, self.representation, self.decoder]:
             if getattr(module.config, "save_path", None):
-                path = module.config.save_path
+                path = module.config.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
