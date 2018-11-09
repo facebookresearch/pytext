@@ -175,19 +175,6 @@ def create_loss(loss_config, *args, **kwargs):
     return create_component(ComponentType.LOSS, loss_config, *args, **kwargs)
 
 
-def create_module(module_config, *args, **kwargs):
-    module = create_component(ComponentType.MODULE, module_config, *args, **kwargs)
-    name = type(module).__name__
-    if getattr(module_config, "load_path", None):
-        print(f"Loading state of module {name} from {module_config.load_path} ...")
-        module.load_state_dict(torch.load(module_config.load_path))
-    if getattr(module.config, "freeze", False):
-        print(f"Freezing the parameters of module {name} ...")
-        for param in module.parameters():
-            param.requires_grad = False
-    return module
-
-
 def create_metric_reporter(module_config, *args, **kwargs):
     return create_component(
         ComponentType.METRIC_REPORTER, module_config, *args, **kwargs

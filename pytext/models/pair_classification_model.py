@@ -9,7 +9,7 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model, DataParallelModel
 from pytext.models.output_layer import ClassificationOutputLayer
 from pytext.models.representations.tuple_rep import TupleRepresentation
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 
 
 class PairClassificationModel(Model):

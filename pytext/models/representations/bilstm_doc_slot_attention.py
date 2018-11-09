@@ -4,7 +4,7 @@ from typing import Any, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 from pytext.config.module_config import SlotAttentionType
 
 from .bilstm import BiLSTM

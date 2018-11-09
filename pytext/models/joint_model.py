@@ -3,7 +3,7 @@ from typing import Union
 
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
 

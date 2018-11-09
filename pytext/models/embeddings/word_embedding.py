@@ -21,7 +21,6 @@ class WordEmbedding(EmbeddingBase, nn.Embedding):
             embeds_weight=meta.pretrained_embeds_weight,
             init_range=config.embedding_init_range,
             unk_token_idx=meta.unk_token_idx,
-            freeze=config.freeze,
             sparse=config.sparse,
         )
 
@@ -32,7 +31,6 @@ class WordEmbedding(EmbeddingBase, nn.Embedding):
         embeds_weight: torch.Tensor,
         init_range: List[int],
         unk_token_idx: int,
-        freeze: bool,
         sparse: bool,
     ) -> None:
         EmbeddingBase.__init__(self, embedding_dim=embedding_dim)
@@ -44,5 +42,3 @@ class WordEmbedding(EmbeddingBase, nn.Embedding):
         # Initialize unk embedding with zeros
         # to guard the model against randomized decisions based on unknown words
         self.weight.data[unk_token_idx].fill_(0.0)
-        # TODO do it in a generic way, by using Barlas's diff
-        self.weight.requires_grad = not freeze

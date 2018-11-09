@@ -4,7 +4,7 @@ from typing import List, Union
 
 import torch
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 
 from .bilstm_doc_slot_attention import BiLSTMDocSlotAttention
 from .jointcnn_rep import JointCNNRepresentation

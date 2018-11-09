@@ -4,7 +4,7 @@ from typing import Union
 import torch
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 
 from .output_layer import ClassificationOutputLayer, CRFOutputLayer, OutputLayerBase

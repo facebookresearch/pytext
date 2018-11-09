@@ -5,7 +5,7 @@ from typing import List
 import torch
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 from pytext.models.decoders.joint_model_decoder import JointModelDecoder
 from pytext.models.model import DataParallelModel, Model

@@ -5,7 +5,8 @@ from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
-from pytext.config.component import Component, ComponentType, create_module
+from pytext.config.component import Component, ComponentType
+from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 from pytext.utils import cuda_utils
 
@@ -38,16 +39,14 @@ class Model(nn.Module, Component):
     def create_embedding(cls, emb_config, metadata: CommonMetadata):
         sub_embs = cls.create_sub_embs(emb_config, metadata)
         emb = cls.compose_embedding(sub_embs)
-        if getattr(emb_config, "load_path", None):
-            print(f"Loading state of embedding from {emb_config.load_path} ...")
-            emb.load_state_dict(torch.load(emb_config.load_path))
+        emb.config = emb_config
         return emb
 
     @classmethod
     def from_config(cls, config, feat_config, metadata: CommonMetadata):
-        embedding = cls.create_embedding(feat_config, metadata)
-        # TODO hacky way to enable saving embedding now
-        embedding.config = feat_config
+        embedding = create_module(
+            feat_config, create_fn=cls.create_embedding, metadata=metadata
+        )
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )

@@ -6,7 +6,7 @@ from typing import Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.config.component import create_module
+from pytext.models.module import create_module
 from scipy.special import comb
 
 from .bilstm_doc_attention import BiLSTMDocAttention
