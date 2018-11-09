@@ -5,4 +5,4 @@ jobs:
       - image: image: circleci/python:latest
     steps:
       - checkout
-      - run: source activation_venv && ./install_deps && ./run_tests
+      - run: source .circleci/setup_circleimg.sh && ./run_tests
