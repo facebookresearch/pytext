@@ -8,8 +8,6 @@ import torch.nn as nn
 from pytext.config.component import Component, ComponentType
 from pytext.models.module import create_module
 from pytext.data import CommonMetadata
-from pytext.utils import cuda_utils
-
 from .embeddings import EmbeddingList, EmbeddingBase
 
 
@@ -84,9 +82,14 @@ class Model(nn.Module, Component):
         embedding_input = inputs[: self.embedding.num_emb]
         token_emb = self.embedding(*embedding_input)
         other_input = inputs[self.embedding.num_emb :]
-        return cuda_utils.parallelize(
-            DataParallelModel(self.representation, self.decoder),
-            (token_emb, *other_input),
+        input_representation = self.representation(token_emb, *other_input)
+        if not isinstance(input_representation, (list, tuple)):
+            input_representation = [input_representation]
+        elif isinstance(input_representation[-1], tuple):
+            # since some lstm based representations return states as (h0, c0)
+            input_representation = input_representation[:-1]
+        return self.decoder(
+            *input_representation
         )  # returned Tensor's dim = (batch_size, num_classes)
 
     def get_model_params_for_optimizer(
@@ -114,19 +117,3 @@ class Model(nn.Module, Component):
                 dense_grads_params[name] = param
 
         return sparse_grads_params, dense_grads_params
-
-
-class DataParallelModel(nn.Module):
-    def __init__(self, representation, decoder):
-        super().__init__()
-        self.representation = representation
-        self.decoder = decoder
-
-    def forward(self, *inputs):
-        input_representation = self.representation(*inputs)
-        if not isinstance(input_representation, (list, tuple)):
-            input_representation = [input_representation]
-        elif isinstance(input_representation[-1], tuple):
-            # since some lstm based representations return states as (h0, c0)
-            input_representation = input_representation[:-1]
-        return self.decoder(*input_representation)

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import torch
-import torch.nn as nn
-
 
 CUDA_ENABLED = False
 DISTRIBUTED_WORLD_SIZE = 1
@@ -21,14 +19,6 @@ def var_to_numpy(v):
 
 def zerovar(*size):
     return Variable(torch.zeros(*size))
-
-
-def parallelize(module, inputs):
-    # Don't use data_parallel when using Distributed training
-    if CUDA_ENABLED and DISTRIBUTED_WORLD_SIZE == 1:
-        return nn.parallel.data_parallel(module, inputs)
-    else:
-        return module(*inputs)
 
 
 def xaviervar(*size):

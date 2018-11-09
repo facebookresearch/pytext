@@ -10,7 +10,6 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
 from pytext.models.output_layer.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
-from pytext.utils import cuda_utils
 
 
 def repackage_hidden(h):
@@ -73,10 +72,14 @@ class LMLSTM(Model):
         if self.stateful and self._states is None:
             self._states = self.init_hidden(tokens.size(0))
 
-        output, states = cuda_utils.parallelize(
-            StatefulDataParallelModel(self.representation, self.decoder),
-            (token_emb, *inputs, self._states),  # Assumption: inputs[0] = tokens
-        )
+        rep, states = self.representation(token_emb, *inputs, states=self._states)
+        if self.decoder is None:
+            output = rep
+        else:
+            if not isinstance(rep, (list, tuple)):
+                rep = [rep]
+            output = self.decoder(*rep)
+
         if self.stateful:
             self._states = repackage_hidden(states)
         return output  # (bsz, nclasses)
@@ -90,24 +93,3 @@ class LMLSTM(Model):
             weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
             weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
         )
-
-
-class StatefulDataParallelModel(nn.Module):
-    def __init__(self, representation, decoder):
-        super().__init__()
-        self.representation = representation
-        self.decoder = decoder
-
-    def forward(
-        self,
-        token_emb: torch.Tensor,
-        tokens_lens: torch.Tensor,
-        prev_state: torch.Tensor = None,
-    ):
-        rep, state = self.representation(token_emb, tokens_lens, states=prev_state)
-        if self.decoder is None:
-            return rep, state
-        if not isinstance(rep, (list, tuple)):
-            rep = [rep]
-
-        return self.decoder(*rep), state

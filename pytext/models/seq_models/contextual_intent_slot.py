@@ -8,12 +8,11 @@ from pytext.config import ConfigBase
 from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 from pytext.models.decoders.joint_model_decoder import JointModelDecoder
-from pytext.models.model import DataParallelModel, Model
+from pytext.models.model import Model
 from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
 from pytext.models.representations.contextual_intent_slot_rep import (
     ContextualIntentSlotRepresentation,
 )
-from pytext.utils import cuda_utils
 
 
 class ContextualIntentSlotModel(Model):
@@ -54,24 +53,18 @@ class ContextualIntentSlotModel(Model):
         return cls(embedding, representation, decoder, output_layer)
 
     def forward(
-        self,
-        tokens,
-        seq_lens,
-        dict_feat,
-        chars,
-        pretrained_model_embedding,
-        seq_feat,
+        self, tokens, seq_lens, dict_feat, chars, pretrained_model_embedding, seq_feat
     ) -> List[torch.Tensor]:
         seq_tokens, sen_seq_lens, _ = seq_feat
         word_embed, seq_embed = self.embedding(
-            tokens,
-            seq_lens,
-            dict_feat,
-            chars,
-            pretrained_model_embedding,
-            seq_tokens,
+            tokens, seq_lens, dict_feat, chars, pretrained_model_embedding, seq_tokens
         )
-        return cuda_utils.parallelize(
-            DataParallelModel(self.representation, self.decoder),
-            (word_embed, seq_embed, seq_lens, sen_seq_lens),
+        input_representation = self.representation(
+            word_embed, seq_embed, seq_lens, sen_seq_lens
+        )
+        if isinstance(input_representation[-1], tuple):
+            # since some lstm based representations return states as (h0, c0)
+            input_representation = input_representation[:-1]
+        return self.decoder(
+            *input_representation
         )  # returned Tensor's dim = (batch_size, num_classes)
