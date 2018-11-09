@@ -1,0 +1,8 @@
+version: 2
+jobs:
+  test:
+    docker: # use the docker executor type; machine and macos executors are also supported
+      - image: image: circleci/python:latest
+    steps:
+      - checkout # check out the code in the project directory
+      - run: ./install_deps && ./run_tests
