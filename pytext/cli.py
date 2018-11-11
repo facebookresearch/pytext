@@ -5,7 +5,7 @@ import tempfile
 import torch
 from pytext.config import PyTextConfig, TestConfig
 from pytext.workflow import test_model, train_model
-from torch.fb.multiprocessing.spawn import spawn
+from torch.multiprocessing.spawn import spawn
 
 from .args import TEST_MODE, parse_config
 from .serialize import config_from_json, config_to_json
@@ -42,11 +42,12 @@ def train_model_distributed(config):
     )
 
     print("Starting training, World size is {}".format(config.distributed_world_size))
-    if (not config.use_cuda_if_available or not torch.cuda.is_available()):
-        run_single(0, (config_to_json(PyTextConfig, config), 1, None,))
+    if not config.use_cuda_if_available or not torch.cuda.is_available():
+        run_single(0, config_to_json(PyTextConfig, config), 1, None)
     else:
         with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".dist_sync") as sync_file:
+            delete=False, suffix=".dist_sync"
+        ) as sync_file:
             dist_init_method = "file://" + sync_file.name
             spawn(
                 run_single,
@@ -59,7 +60,6 @@ def train_model_distributed(config):
             )
 
 
-def run_single(rank, args):
-    config_json, world_size, dist_init_method = args
+def run_single(rank, config_json: str, world_size: int, dist_init_method: str):
     config = config_from_json(PyTextConfig, config_json)
     train_model(config, dist_init_method, rank, rank, world_size)
