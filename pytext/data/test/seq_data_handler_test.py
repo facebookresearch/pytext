@@ -41,7 +41,8 @@ class SeqModelDataHandlerTest(unittest.TestCase):
             SeqModelDataHandler.Config(),
             FeatureConfig(),
             LabelConfig(doc_label=DocLabelConfig()),
-            featurizer=SimpleFeaturizer(),
+            featurizer=SimpleFeaturizer.from_config(
+                SimpleFeaturizer.Config(), FeatureConfig()),
         )
 
     def test_intermediate_result(self):

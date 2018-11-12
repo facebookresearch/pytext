@@ -140,17 +140,19 @@ class PretrainedEmbedsTest(unittest.TestCase):
         )  # embedding vector for 'the-es_XX'
 
     def test_intializing_embeds_from_config(self):
+        feature_config = FeatureConfig(
+            word_feat=WordFeatConfig(
+                embedding_init_strategy=EmbedInitStrategy.RANDOM,
+                embed_dim=5,
+                pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
+            )
+        )
         data_handler = JointModelDataHandler.from_config(
             JointModelDataHandler.Config(),
-            FeatureConfig(
-                word_feat=WordFeatConfig(
-                    embedding_init_strategy=EmbedInitStrategy.RANDOM,
-                    embed_dim=5,
-                    pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
-                )
-            ),
+            feature_config,
             LabelConfig(),
-            featurizer=SimpleFeaturizer(),
+            featurizer=SimpleFeaturizer.from_config(
+                SimpleFeaturizer.Config(), feature_config),
         )
 
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
@@ -163,17 +165,19 @@ class PretrainedEmbedsTest(unittest.TestCase):
             [0, 0, 0, 0, 0], np.absolute(pretrained_embeds[11].numpy())
         )
 
+        feature_config = FeatureConfig(
+            word_feat=WordFeatConfig(
+                embedding_init_strategy=EmbedInitStrategy.ZERO,
+                embed_dim=5,
+                pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
+            )
+        )
         data_handler = JointModelDataHandler.from_config(
             JointModelDataHandler.Config(),
-            FeatureConfig(
-                word_feat=WordFeatConfig(
-                    embedding_init_strategy=EmbedInitStrategy.ZERO,
-                    embed_dim=5,
-                    pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
-                )
-            ),
+            feature_config,
             LabelConfig(),
-            featurizer=SimpleFeaturizer(),
+            featurizer=SimpleFeaturizer.from_config(
+                SimpleFeaturizer.Config(), feature_config),
         )
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 

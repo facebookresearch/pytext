@@ -15,7 +15,7 @@ from pytext.data import (
     PairClassificationDataHandler,
     SeqModelDataHandler,
 )
-from pytext.data.featurizer import Featurizer
+from pytext.data.featurizer import Featurizer, SimpleFeaturizer
 from pytext.exporters.exporter import TextModelExporter
 
 from pytext.metric_reporters.classification_metric_reporter import (
@@ -51,7 +51,7 @@ class JobSpecBase(ConfigBase):
     optimizer: OptimizerParams = OptimizerParams()
     exporter: Optional[TextModelExporter.Config] = None
     scheduler: Optional[Scheduler.Config] = Scheduler.Config()
-    featurizer: Featurizer.Config
+    featurizer: Featurizer.Config = SimpleFeaturizer.Config()
 
 
 # TODO better to have separate jobspec for different ensemble model

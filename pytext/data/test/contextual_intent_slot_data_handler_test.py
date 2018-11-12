@@ -15,7 +15,7 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
             ContextualIntentSlotModelDataHandler.Config(),
             FeatureConfig(),
             LabelConfig(),
-            featurizer=SimpleFeaturizer(),
+            featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), FeatureConfig()),
         )
 
         self.data = self.dh.read_from_file(file_name, self.dh.raw_columns)

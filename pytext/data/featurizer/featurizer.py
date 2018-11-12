@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from typing import List, NamedTuple, Optional, Sequence
 from pytext.config.component import Component, ComponentType
+from pytext.config.field_config import FeatureConfig
 
 
 class InputRecord(NamedTuple):
@@ -33,6 +34,14 @@ class Featurizer(Component):
 
     __COMPONENT_TYPE__ = ComponentType.FEATURIZER
     __EXPANSIBLE__ = True
+
+    @classmethod
+    def from_config(cls, config, feature_config: FeatureConfig):
+        return cls(config, feature_config)
+
+    def __init__(self, config, feature_config: FeatureConfig) -> None:
+        super().__init__(config)
+        self.feature_config = feature_config
 
     def featurize(self, input_record: InputRecord) -> OutputRecord:
         raise NotImplementedError("Featurizer.featurize() method must be implemented.")

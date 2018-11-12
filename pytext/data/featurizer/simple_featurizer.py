@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Optional, Tuple, Sequence
+import re
+from typing import List, Optional, Tuple, Sequence
 
 from pytext.common.constants import VocabMeta
 from pytext.config import ConfigBase
@@ -15,41 +16,35 @@ class SimpleFeaturizer(Featurizer):
     class Config(ConfigBase):
         sentence_markers: Optional[Tuple[str, str]] = None
         lowercase_tokens: bool = True
-
-    @classmethod
-    def from_config(cls, config: Config, *kwargs):
-        return cls(
-            sentence_markers=config.sentence_markers,
-            lowercase_tokens=config.lowercase_tokens,
-        )
-
-    def __init__(
-        self, sentence_markers: Tuple[str, str] = None, lowercase_tokens: bool = True
-    ) -> None:
-        self.sentence_markers = sentence_markers
-        self.lowercase_tokens = lowercase_tokens
+        split_regex: str = r"\s+"
 
     def tokenize(self, input_record: InputRecord) -> OutputRecord:
         """Tokenize one instance/example only."""
-        # Dumb tokenization split on space.
-        tokens = input_record.raw_text.split()
-        if len(tokens) == 0:
+
+        tokens: List[str] = []
+        token_ranges: List[int] = []
+
+        def add_token(text, start, end):
+            token = text[start:end]
+            if token:
+                tokens.append(token)
+                token_ranges.extend((start, end))
+
+        start = 0
+        text = input_record.raw_text
+        for sep in re.finditer(self.config.split_regex, text):
+            add_token(text, start, sep.start())
+            start = sep.end()
+        add_token(text, start, len(text))
+
+        if not tokens:
             # Add PAD_TOKEN in case of empty text
             tokens = [VocabMeta.PAD_TOKEN]
-        if self.lowercase_tokens:
+        if self.config.lowercase_tokens:
             tokens = list(map(str.lower, tokens))
-        if self.sentence_markers:
-            tokens.insert(0, self.sentence_markers[0])
-            tokens.append(self.sentence_markers[1])
-
-        # Token ranges computed based off of the dumb tokenization.
-        token_ranges = []
-        start, end = 0, -1
-        for token in tokens:
-            end = start + len(token)
-            token_ranges.append(start)
-            token_ranges.append(end)
-            start = end + 1
+        if self.config.sentence_markers:
+            tokens.insert(0, self.config.sentence_markers[0])
+            tokens.append(self.config.sentence_markers[1])
 
         return OutputRecord(tokens=tokens, token_ranges=token_ranges)
 
