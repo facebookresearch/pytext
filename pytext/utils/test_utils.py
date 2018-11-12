@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from typing import Sequence
+
 from pytext.utils.data_utils import Slot
 
 
@@ -26,91 +28,57 @@ class ResultTable:
 
 
 def strip_bio_prefix(label):
-    if label.startswith(Slot.B_LABEL_PREFIX) or label.startswith(Slot.I_LABEL_PREFIX):
-        label = label[len(Slot.B_LABEL_PREFIX) :]
+    if label.startswith((Slot.B_LABEL_PREFIX, Slot.I_LABEL_PREFIX)):
+        label = label[len(Slot.B_LABEL_PREFIX):]
     return label
 
 
-def merge_token_labels_by_bio(token_ranges, labels):
-    summary_list = []
-    previous_B = None
-    for i, label in enumerate(labels):
+def merge_token_bio_labels_to_slots(token_ranges, labels):
+    begin, end = None, None
+    prev_label = None
+    for span, label in zip(token_ranges, labels):
         # Take action only if the prefix is not i
         if not label.startswith(Slot.I_LABEL_PREFIX):
-            # Label the previous chunk
-            if previous_B is not None:
-                begin = token_ranges[previous_B][0]
-                end = token_ranges[i - 1][1]
-                summary_list.append(
-                    ":".join([str(begin), str(end), strip_bio_prefix(labels[i - 1])])
-                )
-            # Assign the begin location of new chunk
+            if begin is not None:
+                # Label the previous chunk
+                yield Slot(strip_bio_prefix(prev_label), begin, end)
+                begin = None
             if label.startswith(Slot.B_LABEL_PREFIX):
-                previous_B = i
-            else:  # label == Slot.NO_LABEL_SLOT
-                previous_B = None
+                # Assign the begin location of new chunk
+                begin, _ = span
+        _, end = span
+        prev_label = label
 
     # Take last token into account
-    if previous_B is not None:
-        begin = token_ranges[previous_B][0]
-        end = token_ranges[-1][1]
-        summary_list.append(
-            ":".join([str(begin), str(end), strip_bio_prefix(labels[-1])])
-        )
-
-    return summary_list
+    if begin is not None:
+        _, end = token_ranges[-1]
+        yield Slot(strip_bio_prefix(labels[-1]), begin, end)
 
 
-def merge_token_labels_by_label(token_ranges, labels):
-    # no bio prefix in labels
-    begin = token_ranges[0][0]
-    end = token_ranges[0][1]
-
-    summary_list = []
-    for i in range(1, len(labels)):
-        # Extend
-        if labels[i] == labels[i - 1] and labels[i] != Slot.NO_LABEL_SLOT:
-            end = token_ranges[i][1]
-
-        # Update and start new
-        elif (
-            (labels[i] != labels[i - 1])
-            and (labels[i] != Slot.NO_LABEL_SLOT)
-            and (labels[i - 1] != Slot.NO_LABEL_SLOT)
-        ):
-            summary_list.append(":".join([str(begin), str(end), labels[i - 1]]))
-            begin = token_ranges[i][0]
-            end = token_ranges[i][1]
-
-        # Update and skip
-        elif (
-            (labels[i] != labels[i - 1])
-            and (labels[i] == Slot.NO_LABEL_SLOT)
-            and (labels[i - 1] != Slot.NO_LABEL_SLOT)
-        ):
-            summary_list.append(":".join([str(begin), str(end), labels[i - 1]]))
-
-        # Skip
-        elif (
-            (labels[i] != labels[i - 1])
-            and (labels[i] != Slot.NO_LABEL_SLOT)
-            and (labels[i - 1] == Slot.NO_LABEL_SLOT)
-        ):
-            begin = token_ranges[i][0]
-            end = token_ranges[i][1]
+def merge_adjacent_token_labels_to_slots(token_ranges, labels):
+    begin, end = token_ranges[0]
+    for prev_label, label, span in zip(labels, labels[1:], token_ranges[1:]):
+        if label == prev_label:
+            # Extend span
+            _, end = span
+        elif prev_label == Slot.NO_LABEL_SLOT:
+            # Update and skip
+            begin, end = span
+        else:
+            # Update and start new
+            yield Slot(prev_label, begin, end)
+            begin, end = span
 
     # Take last token into account
     if labels[-1] != Slot.NO_LABEL_SLOT:
-        summary_list.append(":".join([str(begin), str(end), labels[-1]]))
-
-    return summary_list
+        yield Slot(labels[-1], begin, end)
 
 
-def merge_token_labels_to_slot(token_ranges, labels, use_bio_label=True):
-    summary_list = (
-        merge_token_labels_by_bio(token_ranges, labels)
-        if use_bio_label
-        else merge_token_labels_by_label(token_ranges, labels)
-    )
+def merge_token_labels_to_slots(token_ranges, labels, use_bio_labels=True):
+    if use_bio_labels:
+        return merge_token_bio_labels_to_slots(token_ranges, labels)
+    return merge_adjacent_token_labels_to_slots(token_ranges, labels)
 
-    return ",".join(summary_list)
+
+def format_token_labels(token_labels: Sequence[Slot]) -> str:
+    return ",".join(repr(slot) for slot in token_labels)
