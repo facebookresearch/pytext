@@ -4,7 +4,7 @@ from .pytext_config import ConfigBase
 from .field_config import WordFeatConfig, DocLabelConfig
 
 
-class ModelInputConfig(ConfigBase, ModuleConfig):
+class ModelInputConfig(ModuleConfig):
     text1: WordFeatConfig = WordFeatConfig()
     text2: WordFeatConfig = WordFeatConfig()
 

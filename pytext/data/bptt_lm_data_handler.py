@@ -26,7 +26,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
     hidden state of ith batch carried over to (i+1)th batch.
     """
 
-    class Config(ConfigBase, DataHandler.Config):
+    class Config(DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
         bptt_len: int = 35
 

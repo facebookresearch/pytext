@@ -27,7 +27,7 @@ SEQ_LENS = "seq_lens"
 
 
 class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
-    class Config(ConfigBase, JointModelDataHandler.Config):
+    class Config(JointModelDataHandler.Config):
         columns_to_read: List[str] = [
             DFColumn.DOC_LABEL,
             DFColumn.WORD_LABEL,

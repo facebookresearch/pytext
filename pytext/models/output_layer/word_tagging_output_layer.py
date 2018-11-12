@@ -11,7 +11,7 @@ from .output_layer import OutputLayerBase
 
 
 class WordTaggingOutputLayer(OutputLayerBase):
-    class Config(OutputLayerBase.Config, ConfigBase):
+    class Config(OutputLayerBase.Config):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod

@@ -10,7 +10,7 @@ from .decoder_base import DecoderBase
 
 
 class MLPDecoder(DecoderBase):
-    class Config(DecoderBase.Config, ConfigBase):
+    class Config(DecoderBase.Config):
         # Intermediate hidden dimensions
         hidden_dims: List[int] = []
 

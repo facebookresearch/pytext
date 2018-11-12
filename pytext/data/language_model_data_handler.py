@@ -16,7 +16,7 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 
 
 class LanguageModelDataHandler(DataHandler):
-    class Config(ConfigBase, DataHandler.Config):
+    class Config(DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
 
     @classmethod

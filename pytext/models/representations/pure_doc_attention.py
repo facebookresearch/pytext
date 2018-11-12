@@ -16,7 +16,7 @@ class PureDocAttention(RepresentationBase):
     """pooling (e.g. max pooling or self attention)
         followed by optional MLP"""
 
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         dropout: float = 0.4
         pooling: Union[
             SelfAttention.Config, MaxPool.Config, MeanPool.Config,

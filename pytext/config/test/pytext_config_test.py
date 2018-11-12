@@ -23,11 +23,11 @@ class Model2(ConfigBase):
     bar: str
 
 
-class Model2Sub1(Model2, ConfigBase):
+class Model2Sub1(Model2):
     m2s1: int = 5
 
 
-class Model2Sub1Sub1(Model2Sub1, ConfigBase):
+class Model2Sub1Sub1(Model2Sub1):
     m2s1s1: str
     bar: int = 3
 
@@ -57,7 +57,7 @@ class RegisteredModel(Component):
 class JointModel(Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
-    class Config(Model1, ConfigBase):
+    class Config(Model1):
         models: List[RegisteredModel.Config]
 
 
@@ -84,11 +84,11 @@ class ConfigBaseTest(unittest.TestCase):
         self.assertEqual(len(obj.items()), 3)
 
     def test_subclassing_valid_ordering(self):
-        class SubclassDefaultOrdering(Model1, ConfigBase):
+        class SubclassDefaultOrdering(Model1):
             foo: int
             bar: int
 
-        class SubclassDefaultOrdering2(SubclassDefaultOrdering, Model1, ConfigBase):
+        class SubclassDefaultOrdering2(SubclassDefaultOrdering, Model1):
             pass
 
 

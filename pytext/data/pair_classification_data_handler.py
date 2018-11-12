@@ -28,7 +28,7 @@ class RawData:
 
 
 class PairClassificationDataHandler(DataHandler):
-    class Config(ConfigBase, DataHandler.Config):
+    class Config(DataHandler.Config):
         columns_to_read: List[str] = [RawData.DOC_LABEL, RawData.TEXT1, RawData.TEXT2]
 
     def sort_key(self, example) -> Any:

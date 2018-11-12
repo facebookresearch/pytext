@@ -9,7 +9,7 @@ from .ensemble import Ensemble
 
 
 class BaggingDocEnsemble(Ensemble):
-    class Config(Ensemble.Config, ConfigBase):
+    class Config(Ensemble.Config):
         models: List[DocModel.Config]
 
     def forward(self, *args, **kwargs):

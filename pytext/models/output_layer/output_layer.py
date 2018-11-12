@@ -43,7 +43,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             label_weights = FloatTensor(label_weights)
         return cls(create_loss(config.loss, weight=label_weights), config)
 
-    class Config(OutputLayerBase.Config, ConfigBase):
+    class Config(OutputLayerBase.Config):
         loss: Union[
             CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config
         ] = CrossEntropyLoss.Config()

@@ -19,7 +19,7 @@ class BSeqCNNRepresentation(RepresentationBase):
     TODO: Current implementation has a single layer conv-maxpool operation.
     """
 
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         cnn = CNNParams()
         fwd_bwd_context_len: int = 5
         surrounding_context_len: int = 2

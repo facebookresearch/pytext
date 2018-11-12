@@ -86,7 +86,7 @@ class ComponentMeta(type):
             )
             if parent_config is not None:
 
-                class Config(parent_config, ConfigBase):
+                class Config(parent_config):
                     pass
 
             else:
@@ -132,7 +132,7 @@ def register_jobspec(cls_list: Union[Type, List[Type]]):
         cls_list = [cls_list]
     for cls in cls_list:
         Registry.add(ComponentType.JOB_SPEC, cls, cls)
-    PyTextConfig._field_types["jobspec"].__args__ = tuple(
+    vars(PyTextConfig)["__annotations__"]["jobspec"].__args__ = tuple(
         Registry.values(ComponentType.JOB_SPEC)
     )
 

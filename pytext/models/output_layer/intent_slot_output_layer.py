@@ -12,7 +12,7 @@ from .word_tagging_output_layer import WordTaggingOutputLayer
 
 
 class IntentSlotOutputLayer(OutputLayerBase):
-    class Config(OutputLayerBase.Config, ConfigBase):
+    class Config(OutputLayerBase.Config):
         doc_output: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )

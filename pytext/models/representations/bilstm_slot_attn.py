@@ -15,7 +15,7 @@ from .slot_attention import SlotAttention
 class BiLSTMSlotAttention(RepresentationBase):
     """Bidirectional LSTM based representation with slot attention."""
 
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         dropout: float = 0.4
         lstm: BiLSTM.Config = BiLSTM.Config()
         slot_attention: SlotAttention.Config = SlotAttention.Config()

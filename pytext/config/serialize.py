@@ -111,7 +111,7 @@ def _try_component_config_from_json(cls, value):
     return None
 
 
-def config_from_json(cls, json_obj):
+def config_from_json(cls, json_obj, ignore_fields=()):
     if getattr(cls, "__EXPANSIBLE__", False):
         component_config = _try_component_config_from_json(cls, json_obj)
         if component_config:

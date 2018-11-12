@@ -10,7 +10,7 @@ from .ensemble import Ensemble
 
 
 class BaggingJointEnsemble(Ensemble):
-    class Config(Ensemble.Config, ConfigBase):
+    class Config(Ensemble.Config):
         models: List[JointModel.Config]
         use_crf: bool = False
 

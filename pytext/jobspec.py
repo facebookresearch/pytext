@@ -55,7 +55,7 @@ class JobSpecBase(ConfigBase):
 
 
 # TODO better to have separate jobspec for different ensemble model
-class EnsembleJobSpec(JobSpecBase, ConfigBase):
+class EnsembleJobSpec(JobSpecBase):
     model: Union[BaggingDocEnsemble.Config, BaggingJointEnsemble.Config]
     trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
@@ -65,7 +65,7 @@ class EnsembleJobSpec(JobSpecBase, ConfigBase):
     ]
 
 
-class DocClassificationJobSpec(JobSpecBase, ConfigBase):
+class DocClassificationJobSpec(JobSpecBase):
     model: DocModel.Config = DocModel.Config()
     trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
@@ -73,7 +73,7 @@ class DocClassificationJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
-class WordTaggingJobSpec(JobSpecBase, ConfigBase):
+class WordTaggingJobSpec(JobSpecBase):
     model: WordTaggingModel.Config = WordTaggingModel.Config()
     trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
@@ -81,7 +81,7 @@ class WordTaggingJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: WordTaggingMetricReporter.Config = WordTaggingMetricReporter.Config()
 
 
-class JointTextJobSpec(JobSpecBase, ConfigBase):
+class JointTextJobSpec(JobSpecBase):
     model: JointModel.Config = JointModel.Config()
     trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(
@@ -91,7 +91,7 @@ class JointTextJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: IntentSlotMetricReporter.Config = IntentSlotMetricReporter.Config()
 
 
-class LMJobSpec(JobSpecBase, ConfigBase):
+class LMJobSpec(JobSpecBase):
     data_handler: Union[
         LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
     ] = LanguageModelDataHandler.Config()
@@ -101,7 +101,7 @@ class LMJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: LanguageModelMetricReporter.Config = LanguageModelMetricReporter.Config()
 
 
-class PairClassificationJobSpec(JobSpecBase, ConfigBase):
+class PairClassificationJobSpec(JobSpecBase):
     features: PairClassificationTask.ModelInputConfig = PairClassificationTask.ModelInputConfig()
     model: PairClassificationModel.Config = PairClassificationModel.Config()
     data_handler: PairClassificationDataHandler.Config = PairClassificationDataHandler.Config()
@@ -110,7 +110,7 @@ class PairClassificationJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
-class SeqNNJobSpec(JobSpecBase, ConfigBase):
+class SeqNNJobSpec(JobSpecBase):
     model: SeqNNModel.Config = SeqNNModel.Config()
     trainer: Trainer.Config = Trainer.Config()
     labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
@@ -118,7 +118,7 @@ class SeqNNJobSpec(JobSpecBase, ConfigBase):
     metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
 
 
-class ContextualIntentSlotJobSpec(JobSpecBase, ConfigBase):
+class ContextualIntentSlotJobSpec(JobSpecBase):
     features: SequenceTokenEmbedding.Config = SequenceTokenEmbedding.Config()
     model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
     trainer: Trainer.Config = Trainer.Config()

@@ -16,7 +16,7 @@ class SeqRepresentation(RepresentationBase):
     Each sentence will be embedded with a DocNN model,
     then all the sentences are embedded with another DocNN/BiLSTM model
     """
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         doc_representation: \
             DocNNRepresentation.Config = DocNNRepresentation.Config()
         seq_representation: Union[

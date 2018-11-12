@@ -29,7 +29,7 @@ class TupleRepresentation(RepresentationBase):
         * `num_subrepresentations`: the arity. Default: 2.
     """
 
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         subrepresentation: Union[
             BiLSTMDocAttention.Config, DocNNRepresentation.Config
         ] = BiLSTMDocAttention.Config()

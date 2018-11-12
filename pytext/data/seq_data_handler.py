@@ -17,7 +17,7 @@ SEQ_LENS = "seq_lens"
 
 
 class SeqModelDataHandler(JointModelDataHandler):
-    class Config(ConfigBase, DataHandler.Config):
+    class Config(DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE]
         pretrained_embeds_file: str = ""
 

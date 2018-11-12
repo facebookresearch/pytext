@@ -30,7 +30,7 @@ class ContextualIntentSlotRepresentation(RepresentationBase):
                                                    joint_representation
     """
 
-    class Config(RepresentationBase.Config, ConfigBase):
+    class Config(RepresentationBase.Config):
         seq_representation: SeqRepresentation.Config = SeqRepresentation.Config()
         joint_representation: Union[
             BiLSTMDocSlotAttention.Config, JointCNNRepresentation.Config

@@ -1,12 +1,58 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import Any, List, NamedTupleMeta, Optional, Tuple, Union  # noqa
+from collections import OrderedDict
+from typing import Any, Union
 
-from pytext.common.python_utils import InheritableNamedTupleMeta
+
+class ConfigBaseMeta(type):
+    def annotations_and_defaults(cls):
+        annotations = OrderedDict()
+        defaults = {}
+        for base in reversed(cls.__bases__):
+            if base is ConfigBase:
+                continue
+            annotations.update(getattr(base, "__annotations__", {}))
+            defaults.update(getattr(base, "_field_defaults", {}))
+        annotations.update(vars(cls).get("__annotations__", {}))
+        defaults.update({
+            k: getattr(cls, k) for k in annotations if hasattr(cls, k)
+        })
+        return annotations, defaults
+
+    @property
+    def __annotations__(cls):
+        annotations, _ = cls.annotations_and_defaults()
+        return annotations
+
+    _field_types = __annotations__
+
+    @property
+    def _fields(cls):
+        return cls.__annotations__.keys()
+
+    @property
+    def _field_defaults(cls):
+        _, defaults = cls.annotations_and_defaults()
+        return defaults
 
 
-class ConfigBase(metaclass=InheritableNamedTupleMeta):
-    _root = True
+class ConfigBase(metaclass=ConfigBaseMeta):
+    def items(self):
+        return self._asdict().items()
+
+    def _asdict(self):
+        return {k: getattr(self, k) for k in type(self).__annotations__}
+
+    def __init__(self, **kwargs):
+        unspecified_fields = (
+            type(self).__annotations__.keys() -
+            ((kwargs.keys() | type(self)._field_defaults.keys()))
+        )
+        if unspecified_fields:
+            raise TypeError(
+                f"Failed to specify {unspecified_fields} for {type(self)}"
+            )
+        vars(self).update(kwargs)
 
 
 class PlaceHolder:
