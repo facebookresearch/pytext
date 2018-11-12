@@ -4,7 +4,7 @@ import math
 import multiprocessing
 import os
 from copy import copy, deepcopy
-from typing import Any, Dict, List, MutableMapping, Optional, Set, Tuple, Type, Union
+from typing import Any, Dict, List, MutableMapping, Set, Tuple, Type, Union
 
 import torch
 from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
@@ -170,9 +170,10 @@ class DataHandler(Component):
 
     def metadata_to_save(self):
         # make a copy
-        metadata = copy(self.metadata)
+        metadata = deepcopy(self.metadata)
         # pretrained_embeds_weight takes a lot space and is not needed in inference time
-        metadata.pretrained_embeds_weight = None
+        for feature_meta in metadata.features.values():
+            feature_meta.pretrained_embeds_weight = None
         return metadata
 
     def load_metadata(self, metadata: CommonMetadata):
