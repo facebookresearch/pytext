@@ -69,9 +69,9 @@ class PretrainedEmbedding(object):
         """
         chunk_vocab = []
 
-        def iter_parser(skip_header: int = 0,
-                        delimiter: str = ' ',
-                        dtype: type = np.float32):
+        def iter_parser(
+            skip_header: int = 0, delimiter: str = " ", dtype: type = np.float32
+        ):
             """ Iterator to load numpy 1-d array from multi-row text file,
             where format is assumed to be:
                 [word_i] [v0, v1, v2, ...., v_dim]
@@ -79,7 +79,7 @@ class PretrainedEmbedding(object):
             The iterator will omit the first column (vocabulary) and via closure
             store values into the 'chunk_vocab' list.
             """
-            with open(raw_embeddings_path, 'r') as txtfile:
+            with open(raw_embeddings_path, "r") as txtfile:
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
@@ -92,8 +92,7 @@ class PretrainedEmbedding(object):
         embed_array = np.fromiter(iter_parser(skip_header=1), dtype=np.float32)
         embed_matrix = embed_array.reshape((len(chunk_vocab), -1))
 
-        print("Rows loaded: ", embed_matrix.shape[0],
-              "; Time: ", time.time() - t, "s.")
+        print("Rows loaded: ", embed_matrix.shape[0], "; Time: ", time.time() - t, "s.")
 
         if not append:
             self.embed_vocab = []
@@ -102,11 +101,10 @@ class PretrainedEmbedding(object):
         if lowercase_tokens:
             chunk_vocab = [word.lower() for word in chunk_vocab]
         if dialect is not None:
-            chunk_vocab = [append_dialect(word, dialect)
-                           for word in chunk_vocab]
+            chunk_vocab = [append_dialect(word, dialect) for word in chunk_vocab]
 
         self.embed_vocab.extend(chunk_vocab)
-        self.stoi = {word : i for i, word in enumerate(chunk_vocab)}
+        self.stoi = {word: i for i, word in enumerate(chunk_vocab)}
 
         if append and self.embedding_vectors is not None:
             self.embedding_vectors = torch.cat(
