@@ -7,6 +7,6 @@ onnx
 pandas
 requests
 scipy
-torch_nightly
 torchtext
+torch_nightly
 tensorboardX
