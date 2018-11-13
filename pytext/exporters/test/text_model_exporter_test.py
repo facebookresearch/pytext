@@ -141,6 +141,41 @@ DOC_CONFIGS = [
 """,
 ]
 
+DOC_CONFIGS_WITH_EXPORT_LOGITS = [
+    """
+{
+  "model": {
+    "representation": {
+        "BiLSTMDocAttention": {
+        "pooling": {
+          "MaxPool": {}
+        }
+      }
+    },
+    "output_layer": {
+      "loss": {
+        "CrossEntropyLoss": {}
+      }
+    }
+  },
+  "features": {
+    "dict_feat": {
+      "embed_dim": 10
+    }
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
+  "trainer": {
+    "epochs": 1
+  },
+  "exporter": {
+    "export_logits": true
+  }
+}
+""",
+]
+
 WORD_CONFIGS = [
     """
 {
@@ -285,6 +320,72 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 py_outs = F.log_softmax(py_outs, 1)
                 np.testing.assert_array_almost_equal(
                     py_outs.view(-1).detach().numpy(), np.array(c2_out).flatten()
+                )
+
+    @given(
+        num_doc_classes=st.integers(2, 5),
+        test_num_words=st.integers(1, 7),
+        test_num_dict_feat=st.integers(1, 8),
+        num_predictions=st.integers(1, 4),
+        test_num_chars=st.integers(1, 7),
+    )
+    def test_doc_export_to_caffe2_with_logits(
+        self,
+        num_doc_classes,
+        test_num_words,
+        test_num_dict_feat,
+        num_predictions,
+        test_num_chars,
+    ):
+        for config in DOC_CONFIGS_WITH_EXPORT_LOGITS:
+            config = self._get_config(DocClassificationJobSpec, config)
+            metadata = self._get_metadata(num_doc_classes, 0)
+            py_model = create_model(config.model, config.features, metadata)
+            exporter = create_exporter(
+                config.exporter, config.features, config.labels, metadata
+            )
+
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".predictor"
+            ) as pred_file:
+                print(pred_file.name)
+                output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+                workspace.ResetWorkspace()
+            pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
+
+            for _i in range(num_predictions):
+                pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
+                test_inputs = self._get_rand_input(
+                    config.features,
+                    BATCH_SIZE,
+                    W_VOCAB_SIZE,
+                    DICT_VOCAB_SIZE,
+                    CHAR_VOCAB_SIZE,
+                    test_num_words,
+                    test_num_dict_feat,
+                    test_num_chars,
+                )
+                self._feed_c2_input(
+                    workspace,
+                    test_inputs,
+                    exporter.input_names,
+                    metadata.feature_itos_map,
+                )
+                workspace.RunNetOnce(pred_net)
+                c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
+
+                py_model.eval()
+                py_outs = py_model(*test_inputs)
+                np.testing.assert_array_almost_equal(
+                    py_outs.view(-1).detach().numpy(),
+                    np.array(c2_out[-1]).flatten(),
+                )
+
+                # Do log_softmax since we do that before exporting predictor nets
+                py_outs = F.log_softmax(py_outs, 1)
+                np.testing.assert_array_almost_equal(
+                    py_outs.view(-1).detach().numpy(),
+                    np.array(c2_out[:-1]).flatten()
                 )
 
     @given(

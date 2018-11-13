@@ -6,6 +6,7 @@ import torch
 from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.common.constants import DatasetFieldName
+from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import (
     CharFeatConfig,
@@ -25,7 +26,7 @@ class ModelExporter(Component):
 
     __COMPONENT_TYPE__ = ComponentType.EXPORTER
 
-    def __init__(self, input_names, output_names, dummy_model_input):
+    def __init__(self, config, input_names, output_names, dummy_model_input):
         """Define the names and shapes of input/output
         1 input names, names of the input variables to model forward function,
           in a flattened way
@@ -36,6 +37,7 @@ class ModelExporter(Component):
         3 dummy_model_input, dummy values to define the shape of input tensors,
           should exactly match the shape of the model forward function
         """
+        super().__init__(config)
         self.input_names = input_names
         self.output_names = output_names
         self.dummy_model_input = dummy_model_input
@@ -136,8 +138,12 @@ class TextModelExporter(ModelExporter):
             as [batch_size, words, score], so input can be [1 , 2]
     """
 
+    class Config(ConfigBase):
+        export_logits: bool = False
+
     def __init__(
         self,
+        config,
         label_names: List[List[str]],
         feature_itos_map: Dict[str, List[str]],
         score_axis_list: List[int],
@@ -145,7 +151,7 @@ class TextModelExporter(ModelExporter):
         *args,
         **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(config, *args, **kwargs)
         self.label_names_list = label_names
         self.vocab_map = feature_itos_map
         self.score_axis_list = score_axis_list
@@ -161,7 +167,7 @@ class TextModelExporter(ModelExporter):
     @classmethod
     def from_config(
         cls,
-        unused_config,
+        config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
         meta: CommonMetadata,
@@ -216,6 +222,7 @@ class TextModelExporter(ModelExporter):
         label_names = [label.vocab.itos for label in meta.labels.values()]
 
         return cls(
+            config,
             label_names,
             feature_itos_map,
             axis,
@@ -271,4 +278,8 @@ class TextModelExporter(ModelExporter):
                     predict_net.Copy(label_score, "{}:{}".format(output_score, name))
                 )
 
-        return res, [str(output) for output in res]
+        # optionaly include the last decoder layer of pytorch model
+        final_output_names = [str(output) for output in res] + (
+            output_names if self.config.export_logits else []
+        )
+        return res, final_output_names
