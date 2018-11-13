@@ -9,11 +9,15 @@ from torch.autograd import Variable
 
 class CRF(nn.Module):
     """
-    CRF Layer
+    Compute the log-likelihood of the input assuming a conditional random field
+    model.
+
+    Args:
+        num_tags: The number of tags
     """
     def __init__(self, num_tags: int) -> None:
         if num_tags <= 0:
-            raise ValueError(f"invalid number of tags: {num_tags}")
+            raise ValueError(f"Invalid number of tags: {num_tags}")
         super().__init__()
         self.num_tags = num_tags
         # Add two states at the end to accommodate start and end states
@@ -44,8 +48,14 @@ class CRF(nn.Module):
         reduce: bool = True,
     ) -> Variable:
         """
-        emissions : batch_size * seq_len * num_labels
-        tags : batch_size * seq_len
+        Compute log-likelihood of input.
+
+        Args:
+            emissions: Emission values for different tags for each input. The
+                expected shape is batch_size * seq_len * num_labels. Padding is
+                should be on the right side of the input.
+            tags: Actual tags for each token in the input. Expected shape is
+                batch_size * seq_len
         """
         self.ignore_index = ignore_index
         mask = self._make_mask_from_targets(tags)
@@ -60,8 +70,12 @@ class CRF(nn.Module):
         self, emissions: torch.FloatTensor, seq_lens: torch.LongTensor
     ) -> torch.Tensor:
         """
-        emissions : batch_size * seq_len * num_labels
-        seq_lens : batch_size
+        Given a set of emission probabilities, return the predicted tags.
+
+        Args:
+            emissions: Emission probabilities with expected shape of
+                batch_size * seq_len * num_labels
+            seq_lens: Length of each input.
         """
         mask = self._make_mask_from_seq_lens(seq_lens)
         result = self._viterbi_decode(emissions, mask)
@@ -247,15 +261,19 @@ class CRF(nn.Module):
         return masked_tensor
 
     def export_to_caffe2(self, workspace, init_net, predict_net, logits_output_name):
-        """Exports the crf layer to caffe2 by manually adding the necessary operators
-            to the init_net and predict net.
+        """
+        Exports the crf layer to caffe2 by manually adding the necessary operators
+        to the init_net and predict net.
+
+        Args:
             init_net: caffe2 init net created by the current graph
             predict_net: caffe2 net created by the current graph
             workspace: caffe2 current workspace
             output_names: current output names of the caffe2 net
             py_model: original pytorch model object
-            Returns:
-            The updated predictions blob name
+
+        Returns:
+            string: The updated predictions blob name
         """
         crf_transitions = init_net.AddExternalInput(init_net.NextName())
         workspace.FeedBlob(str(crf_transitions), self.get_transitions().numpy())
