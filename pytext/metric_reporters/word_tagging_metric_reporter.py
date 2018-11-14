@@ -11,17 +11,18 @@ from pytext.metrics.intent_slot_metrics import (
     compute_prf1_metrics,
 )
 from pytext.utils.data_utils import parse_slot_string
-from pytext.utils.test_utils import merge_token_labels_to_slots
+from pytext.utils.test_utils import merge_token_labels_to_slot
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
 
 
-def get_slots(token_labels):
-    return Counter(
+def get_slots(word_names):
+    slots = {
         Node(label=slot.label, span=Span(slot.start, slot.end))
-        for slot in token_labels
-    )
+        for slot in parse_slot_string(word_names)
+    }
+    return Counter(slots)
 
 
 class WordTaggingMetricReporter(MetricReporter):
@@ -64,13 +65,13 @@ class WordTaggingMetricReporter(MetricReporter):
             [
                 NodesPredictionPair(
                     get_slots(
-                        merge_token_labels_to_slots(
+                        merge_token_labels_to_slot(
                             token_range,
-                            self.process_pred(pred[:seq_len]),
+                            self.process_pred(pred[0:seq_len]),
                             self.use_bio_labels,
                         )
                     ),
-                    get_slots(parse_slot_string(slots_label)),
+                    get_slots(slots_label),
                 )
                 for pred, seq_len, token_range, slots_label in zip(
                     self.all_preds,

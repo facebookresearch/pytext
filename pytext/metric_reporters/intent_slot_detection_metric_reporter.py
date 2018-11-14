@@ -11,7 +11,7 @@ from pytext.metrics.intent_slot_metrics import (
     compute_all_metrics,
 )
 from pytext.utils.data_utils import parse_slot_string
-from pytext.utils.test_utils import merge_token_labels_to_slots
+from pytext.utils.test_utils import merge_token_labels_to_slot
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -43,13 +43,13 @@ class IntentSlotChannel(FileChannel):
             ]
 
 
-def create_frame(intent_label, slots, utterance):
+def create_frame(intent_label, slot_names_str, utterance):
     frame = Node(
         label=intent_label,
         span=Span(0, len(utterance)),
         children={
             Node(label=slot.label, span=Span(slot.start, slot.end))
-            for slot in parse_slot_string(slots)
+            for slot in parse_slot_string(slot_names_str)
         },
     )
     return frame
@@ -115,12 +115,10 @@ class IntentSlotMetricReporter(MetricReporter):
 
     def gen_extra_context(self):
         self.all_context["slots_prediction"] = [
-            ",".join(repr(slot) for slot in
-                merge_token_labels_to_slots(
-                    token_range,
-                    self.process_pred(word_pred[:seq_len]),
-                    self.use_bio_labels,
-                )
+            merge_token_labels_to_slot(
+                token_range,
+                self.process_pred(word_pred[0:seq_len]),
+                self.use_bio_labels,
             )
             for word_pred, seq_len, token_range in zip(
                 self.all_word_preds,
@@ -143,9 +141,7 @@ class IntentSlotMetricReporter(MetricReporter):
                         self.doc_label_names[intent_pred], slots_pred, utterance
                     ),
                     create_frame(
-                        self.doc_label_names[intent_target],
-                        slots_label,
-                        utterance,
+                        self.doc_label_names[intent_target], slots_label, utterance
                     ),
                 )
                 for intent_pred, intent_target, slots_pred, slots_label, utterance in zip(

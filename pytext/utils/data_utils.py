@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import json
-from typing import Any, Generator, List, NamedTuple, Tuple
+from typing import Any, List, Tuple
 
 
 def simple_tokenize(s: str) -> List[str]:
@@ -11,16 +11,15 @@ def no_tokenize(s: Any) -> Any:
     return s
 
 
-class SlotBase(NamedTuple):
-    label: str
-    start: int
-    end: int
-
-
-class Slot(SlotBase):
+class Slot:
     B_LABEL_PREFIX = "B-"
     I_LABEL_PREFIX = "I-"
     NO_LABEL_SLOT = "NoLabel"
+
+    def __init__(self, label: str, start: int, end: int) -> None:
+        self.label = label
+        self.start = start
+        self.end = end
 
     def token_overlap(self, token_start, token_end):
         start = min(token_end, max(token_start, self.start))
@@ -44,17 +43,18 @@ class Slot(SlotBase):
         return token_label
 
     def __repr__(self):
-        return f"{self.start}:{self.end}:{self.label}"
+        return "{}:{}:{}".format(self.start, self.end, self.label)
 
 
-def parse_slot_string(label_str: str) -> Generator[Slot, None, None]:
-    for token_label in label_str.split(","):
-        label_elements = token_label.split(":", 2)
-        if len(label_elements) < 3:
-            # Invalid label, for now we swallow it and move on
-            continue
-        begin, end, label = label_elements
-        yield Slot(label, int(begin), int(end))
+def parse_slot_string(slots_field: str) -> List[Slot]:
+    slots = slots_field.split(",")
+    slot_list = []
+    for slot in slots:
+        slot_toks = slot.split(":", 2)
+        if len(slot_toks) == 3:
+            curr_slot = Slot(slot_toks[2], int(slot_toks[0]), int(slot_toks[1]))
+            slot_list.append(curr_slot)
+    return slot_list
 
 
 def parse_token(
