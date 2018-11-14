@@ -6,6 +6,7 @@ from pytext.config import ConfigBase
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
 from pytext.config import pair_classification as PairClassificationTask
+from pytext.config import doc_classification as DocClassificationTask
 from pytext.config.pytext_config import OptimizerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
@@ -14,6 +15,7 @@ from pytext.data import (
     LanguageModelDataHandler,
     PairClassificationDataHandler,
     SeqModelDataHandler,
+    DocClassificationDataHandler,
 )
 from pytext.data.featurizer import Featurizer, SimpleFeaturizer
 from pytext.exporters.exporter import TextModelExporter
@@ -68,9 +70,16 @@ class EnsembleJobSpec(JobSpecBase):
 class DocClassificationJobSpec(JobSpecBase):
     model: DocModel.Config = DocModel.Config()
     trainer: Trainer.Config = Trainer.Config()
-    labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
-    data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
-    metric_reporter: ClassificationMetricReporter.Config = ClassificationMetricReporter.Config()
+    features: DocClassificationTask.ModelInputConfig = (
+        DocClassificationTask.ModelInputConfig()
+    )
+    labels: DocClassificationTask.TargetConfig = DocClassificationTask.TargetConfig()
+    data_handler: DocClassificationDataHandler.Config = (
+        DocClassificationDataHandler.Config()
+    )
+    metric_reporter: ClassificationMetricReporter.Config = (
+        ClassificationMetricReporter.Config()
+    )
 
 
 class WordTaggingJobSpec(JobSpecBase):

@@ -7,7 +7,7 @@ from .joint_data_handler import JointModelDataHandler
 from .language_model_data_handler import LanguageModelDataHandler
 from .pair_classification_data_handler import PairClassificationDataHandler
 from .seq_data_handler import SeqModelDataHandler
-
+from .doc_classification_data_handler import DocClassificationDataHandler
 
 __all__ = [
     "BPTTLanguageModelDataHandler",
@@ -19,4 +19,5 @@ __all__ = [
     "LanguageModelDataHandler",
     "PairClassificationDataHandler",
     "SeqModelDataHandler",
+    "DocClassificationDataHandler",
 ]

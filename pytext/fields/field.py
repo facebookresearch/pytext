@@ -92,7 +92,7 @@ class VocabUsingField(Field):
         vocab_from_train_data=True,
         vocab_from_all_data=False,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.pretrained_embeddings_path = pretrained_embeddings_path
@@ -180,7 +180,7 @@ class TextFeatureField(VocabUsingField):
         lower=True,
         tokenize=data_utils.no_tokenize,
         fix_length=None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             pretrained_embeddings_path=pretrained_embeddings_path,
@@ -221,7 +221,7 @@ class SeqFeatureField(VocabUsingNestedField):
         eos_token=None,
         tokenize=data_utils.no_tokenize,
         nesting_field=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             pretrained_embeddings_path=pretrained_embeddings_path,

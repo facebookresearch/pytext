@@ -211,11 +211,11 @@ class TextModelExporter(ModelExporter):
         output_names: List[str] = []
         axis: List[int] = []
 
-        if label_config.doc_label:
+        if getattr(label_config, "doc_label", None):
             output_names.extend(label_config.doc_label.export_output_names)
             axis.append(1)
 
-        if label_config.word_label:
+        if getattr(label_config, "word_label", None):
             output_names.extend(label_config.word_label.export_output_names)
             axis.append(2)
 
