@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:latest
+      - image: circleci/python:3.6
     steps:
       - checkout
       - run: source .circleci/setup_circleimg.sh && ./run_tests
