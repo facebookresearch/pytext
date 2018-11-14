@@ -15,6 +15,7 @@
 import os
 import sys
 
+# source code directory, relative to this file, for sphinx-autobuild
 sys.path.insert(0, os.path.abspath("../../../"))
 
 
@@ -41,8 +42,9 @@ release = ""
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
-    "sphinx_autodoc_napoleon_typehints",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -52,7 +54,7 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = [".rst"]
 
 # The master toctree document.
 master_doc = "index"
@@ -67,10 +69,11 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+exclude_patterns = ["modules/pytext.fb.*"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
+highlight_language = "python"
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -78,7 +81,7 @@ pygments_style = "sphinx"
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "nature"
+html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

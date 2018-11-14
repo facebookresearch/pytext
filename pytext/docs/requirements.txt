@@ -1,2 +1,2 @@
-sphinx
-sphinx-autodoc-napoleon-typehints
+sphinx<2.0
+sphinx_rtd_theme
