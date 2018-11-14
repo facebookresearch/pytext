@@ -18,6 +18,12 @@ class TrainerBase(Component):
     __COMPONENT_TYPE__ = ComponentType.TRAINER
 
 
+def learning_rates(optimizers):
+    for optimizer in optimizers:
+        for param_group in optimizer.param_groups:
+            yield param_group["lr"]
+
+
 class Trainer(TrainerBase):
     class Config(ConfigBase):
         # Manual random seed
@@ -62,11 +68,21 @@ class Trainer(TrainerBase):
         last_best_epoch = 0
         best_model_state = None
 
+        def training_pre_batch_callback():
+            optimizer_zero_grad(optimizers)
+
+        def training_backprop(loss):
+            loss.backward()
+            if self.config.max_clip_norm is not None:
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), self.config.max_clip_norm
+                )
+            optimizer_step(optimizers)
+
         for epoch in range(1, self.config.epochs + 1):
             print("Starting epoch #{}".format(epoch))
             model.train()
-
-            lrs = [str(g["lr"]) for o in optimizers for g in o.param_groups]
+            lrs = (str(lr) for lr in learning_rates(optimizers))
             print(f"Learning rate(s): {', '.join(lrs)}")
 
             self._run_epoch(
@@ -75,8 +91,8 @@ class Trainer(TrainerBase):
                 train_iter,
                 model,
                 metric_reporter,
-                optimizers,
-                scheduler,
+                pre_batch=training_pre_batch_callback,
+                backprop=training_backprop,
             )
             model.eval()
             eval_metric = self._run_epoch(
@@ -86,7 +102,9 @@ class Trainer(TrainerBase):
             # Step the learning rate scheduler(s)
             if scheduler:
                 scheduler.step(
-                    metrics=metric_reporter.get_model_select_metric(eval_metric),
+                    metrics=metric_reporter.get_model_select_metric(
+                        eval_metric,
+                    ),
                     epoch=epoch,
                 )
 
@@ -105,12 +123,11 @@ class Trainer(TrainerBase):
                 epoch - last_best_epoch == self.config.early_stop_after
             ):
                 print(
-                    "Eval metric hasn't changed for {} epochs".format(
-                        self.config.early_stop_after
-                    )
-                    + "stopping now."
+                    "Eval metric hasn't changed for "
+                    "{self.config.early_stop_after} epochs, stopping now."
                 )
                 break
+
         model.load_state_dict(best_model_state)
         return model, best_metric
 
@@ -121,26 +138,20 @@ class Trainer(TrainerBase):
         data_iter,
         model,
         metric_reporter,
-        optimizers=None,
-        scheduler=None,
+        pre_batch=lambda: None,
+        backprop=lambda loss: None
     ):
-        for n_batches, (m_input, targets, context) in enumerate(data_iter):
-            if model.training:
-                optimizer_zero_grad(optimizers)
-            logits = model(*m_input)
+        for batch, (inputs, targets, context) in enumerate(data_iter):
+            pre_batch()
+            logits = model(*inputs)
             loss = model.get_loss(logits, targets, context)
             if BatchContext.IGNORE_LOSS in context:
                 loss *= 0
-            if model.training:
-                loss.backward()
-                if self.config.max_clip_norm is not None:
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), self.config.max_clip_norm
-                    )
-                optimizer_step(optimizers)
-            preds, scores = model.get_pred(logits, targets, context, stage, *m_input)
-            metric_reporter.add_batch_stats(
-                n_batches, preds, targets, scores, loss.item(), m_input, **context
+            backprop(loss)
+            preds, scores = model.get_pred(
+                logits, targets, context, stage, *inputs
             )
-        metrics = metric_reporter.report_metric(stage, epoch)
-        return metrics
+            metric_reporter.add_batch_stats(
+                batch, preds, targets, scores, loss.item(), inputs, **context
+            )
+        return metric_reporter.report_metric(stage, epoch)
