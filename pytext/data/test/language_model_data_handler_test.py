@@ -84,7 +84,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
     def test_sharding(self):
         data_handler = self._init_data_handler()
         num_shards = 2
-        batch_size = 2
+        batch_size = 5
         train_iter_1 = data_handler.get_train_iter_from_path(
             FILE_NAME, batch_size, 0, num_shards
         )

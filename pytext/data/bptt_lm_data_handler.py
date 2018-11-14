@@ -96,6 +96,11 @@ class BPTTLanguageModelDataHandler(DataHandler):
         world_size: int = 1,
     ) -> BatchIterator:
         dataset_shard = self._get_dataset_shard(train_dataset, rank, world_size)
+        # Compute the per-worker batch size
+        assert (
+            batch_size >= world_size
+        ), "batch size needs to be >= the distributed world size"
+        batch_size = batch_size // world_size
         num_all_batches = math.ceil(len(train_dataset) / float(batch_size))
         return BatchIterator(
             textdata.BPTTIterator(
