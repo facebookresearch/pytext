@@ -97,7 +97,10 @@ def test(context):
 def train(context):
     config = parse_config(Mode.TRAIN, context.obj["config_json"])
     print("Starting training...")
-    train_model_distributed(config)
+    if config.distributed_world_size == 1:
+        train_model(config)
+    else:
+        train_model_distributed(config)
     print("Starting testing...")
     test_config = TestConfig(
         load_snapshot_path=config.save_snapshot_path,
