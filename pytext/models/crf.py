@@ -90,6 +90,12 @@ class CRF(nn.Module):
     ) -> torch.Tensor:
         seq_len = emissions.shape[1]
 
+        # Log-likelihood for a given input is calculated by using the known
+        # correct tag for each timestep and its repsective emission value.
+        # Since actual tags for each time step is also known, sum of transition
+        # probabilities is also calculated.
+        # Sum of emission and transition probablities gives the final score for
+        # the input.
         llh = self.transitions[self.start_tag, tags[:, 0]].unsqueeze(1)
         llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * mask[
             :, 0
@@ -104,11 +110,10 @@ class CRF(nn.Module):
             transition_scores = self.transitions[old_state, new_state]
             llh += (emission_scores + transition_scores) * mask[:, idx].unsqueeze(1)
 
-        # To get index for last element in the sequence, sort the mask tensor
-        # in ascending and the index of last "one" is the last valid timestep
-        _, last_tag_indices = mask.sort(1)
-        max_indices = last_tag_indices[:, -1]
-        last_tags = tags.gather(1, max_indices.view(-1, 1))
+        # Index of the last tag is calculated by taking the sum of mask matrix
+        # for each input row and subtracting 1 from the sum.
+        last_tag_indices = mask.sum(1, dtype=torch.long) - 1
+        last_tags = tags.gather(1, last_tag_indices.view(-1, 1))
 
         llh += self.transitions[last_tags.squeeze(1), self.end_tag].unsqueeze(1)
 
