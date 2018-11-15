@@ -16,9 +16,9 @@ from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.embeddings_utils import PretrainedEmbedding
 
 
-TRAIN_FILE = "pytext/tests/data/music_train_tiny.tsv"
-EVAL_FILE = "pytext/tests/data/music_test_tiny.tsv"
-TEST_FILE = "pytext/tests/data/music_test_tiny.tsv"
+TRAIN_FILE = "pytext/tests/data/train_data_tiny.tsv"
+EVAL_FILE = "pytext/tests/data/test_data_tiny.tsv"
+TEST_FILE = "pytext/tests/data/test_data_tiny.tsv"
 
 PRETRAINED_EMBEDDINGS_PATH = "pytext/tests/data"
 

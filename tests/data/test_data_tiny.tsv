@@ -1,0 +1,5 @@
+alarm/set_alarm	11:17:datetime	reactivate weekly alarm	
+alarm/set_alarm	23:38:datetime	Set alarm to ring only on the weekdays	
+alarm/show_alarms	23:32:datetime	show me the alarms set for today	
+alarm/time_left_on_alarm		When will alarm go off	
+reminder/set_reminder	10:18:datetime,22:38:reminder/todo	remind be tomorrow to call the groomer	

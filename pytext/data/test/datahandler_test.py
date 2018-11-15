@@ -8,7 +8,7 @@ from pytext.data.data_handler import DataHandler
 
 class DataHandlerTest(unittest.TestCase):
     def test_read_from_csv(self):
-        file_name = "pytext/tests/data/music_train_tiny.tsv"
+        file_name = "pytext/tests/data/train_data_tiny.tsv"
         columns = [
             DFColumn.DOC_LABEL,
             DFColumn.WORD_LABEL,
@@ -20,30 +20,29 @@ class DataHandlerTest(unittest.TestCase):
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual(
-            "aloha_assistant:music/isAvailable", data[0][DFColumn.DOC_LABEL]
+            "alarm/modify_alarm", data[0][DFColumn.DOC_LABEL]
         )
         self.assertEqual(
-            "17:25:music/artistName,28:34:music/type", data[0][DFColumn.WORD_LABEL]
+            "16:24:datetime,39:57:datetime", data[0][DFColumn.WORD_LABEL]
         )
         self.assertEqual(
-            "Do i have any of Jeremiah's albums", data[0][DFColumn.UTTERANCE]
+            "change my alarm tomorrow to wake me up 30 minutes earlier",
+            data[0][DFColumn.UTTERANCE]
         )
-        self.assertEqual(
-            '{"tokenFeatList": [{"tokenIdx": 3, "features": {"texasHandler_companies": 1.0}}]}',
-            data[0][DFColumn.DICT_FEAT],
-        )
+        self.assertEqual('', data[0][DFColumn.DICT_FEAT])
 
     def test_read_partially_from_csv(self):
-        file_name = "pytext/tests/data/music_train_tiny.tsv"
+        file_name = "pytext/tests/data/train_data_tiny.tsv"
         columns = {DFColumn.DOC_LABEL: 0, DFColumn.UTTERANCE: 2}
 
         data = DataHandler.read_from_file(file_name, columns)
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual(
-            "aloha_assistant:music/isAvailable", data[0][DFColumn.DOC_LABEL]
+            "alarm/modify_alarm", data[0][DFColumn.DOC_LABEL]
         )
         self.assertEqual(
-            "Do i have any of Jeremiah's albums", data[0][DFColumn.UTTERANCE]
+            "change my alarm tomorrow to wake me up 30 minutes earlier",
+            data[0][DFColumn.UTTERANCE]
         )
 
