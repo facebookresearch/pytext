@@ -48,5 +48,5 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(data.examples[0].doc_weight, "0.2")
         self.assertEqual(data.examples[0].word_weight, "0.5")
         self.assertEqual(data.examples[0].raw_word_label, "")
-        self.assertListEqual(data.examples[0].token_range, [0, 4, 5, 9, 10, 14])
+        self.assertListEqual(data.examples[0].token_range, [(0, 4), (5, 9), (10, 14)])
         self.assertEqual(data.examples[0].utterance, '["Hey", "Youd love this"]')

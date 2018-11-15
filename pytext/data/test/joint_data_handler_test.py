@@ -58,3 +58,7 @@ class JointDataHandlerTest(unittest.TestCase):
         # test tokenization without language-specific tokenizers
         self.assertEqual(data[0][DatasetFieldName.TEXT_FIELD][0], "change")
         self.assertEqual(data[4][DatasetFieldName.TEXT_FIELD][2], "alarm")
+
+        # test token ranges
+        self.assertEqual(data[0][DatasetFieldName.TOKEN_RANGE][0], (0, 6))
+        self.assertEqual(data[4][DatasetFieldName.TOKEN_RANGE][2], (12, 17))

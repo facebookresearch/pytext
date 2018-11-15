@@ -20,15 +20,14 @@ class SimpleFeaturizer(Featurizer):
 
     def tokenize(self, input_record: InputRecord) -> OutputRecord:
         """Tokenize one instance/example only."""
-
         tokens: List[str] = []
-        token_ranges: List[int] = []
+        token_ranges: List[Tuple[int]] = []
 
         def add_token(text, start, end):
             token = text[start:end]
             if token:
                 tokens.append(token)
-                token_ranges.extend((start, end))
+                token_ranges.append((start, end))
 
         start = 0
         text = input_record.raw_text

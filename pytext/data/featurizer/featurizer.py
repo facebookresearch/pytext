@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import List, NamedTuple, Optional, Sequence
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import FeatureConfig
@@ -17,7 +17,7 @@ class OutputRecord(NamedTuple):
     """Output data contract between Featurizer and DataHandler."""
 
     tokens: List[str]
-    token_ranges: Optional[List[int]] = None
+    token_ranges: Optional[List[Tuple[int]]] = None
     gazetteer_feats: Optional[List[str]] = None
     gazetteer_feat_lengths: Optional[List[int]] = None
     gazetteer_feat_weights: Optional[List[float]] = None
