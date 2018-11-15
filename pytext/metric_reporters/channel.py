@@ -129,6 +129,7 @@ class TensorBoardChannel(Channel):
         scores,
         context,
         meta,
+        *args
     ):
         if stage == Stage.TEST:
             tag = "test"
