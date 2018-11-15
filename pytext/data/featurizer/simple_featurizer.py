@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import re
-from typing import List, Optional, Tuple, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 from pytext.common.constants import VocabMeta
 from pytext.config import ConfigBase

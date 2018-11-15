@@ -13,31 +13,26 @@ class SimpleFeaturizerTest(unittest.TestCase):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(), FeatureConfig()
         )
-        tokens = featurizer.featurize(
-            InputRecord(raw_text=self.sentence)).tokens
+        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
         self.assertListEqual(tokens, ["order", "me", "a", "coffee"])
 
     def test_tokenize_dont_lowercase(self):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(lowercase_tokens=False), FeatureConfig()
         )
-        tokens = featurizer.featurize(
-            InputRecord(raw_text=self.sentence)).tokens
+        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
         self.assertListEqual(tokens, ["Order", "me", "a", "coffee"])
 
     def test_tokenize_add_sentence_markers(self):
         featurizer = SimpleFeaturizer.from_config(
-            SimpleFeaturizer.Config(sentence_markers=("<s>", "</s>")),
-            FeatureConfig(),
+            SimpleFeaturizer.Config(sentence_markers=("<s>", "</s>")), FeatureConfig()
         )
-        tokens = featurizer.featurize(
-            InputRecord(raw_text=self.sentence)).tokens
+        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
         self.assertListEqual(tokens, ["<s>", "order", "me", "a", "coffee", "</s>"])
 
     def test_split_with_regex(self):
         featurizer = SimpleFeaturizer.from_config(
-            SimpleFeaturizer.Config(split_regex=r"[\s,;!.?\"\(\)\-]+"),
-            FeatureConfig(),
+            SimpleFeaturizer.Config(split_regex=r"[\s,;!.?\"\(\)\-]+"), FeatureConfig()
         )
         sentence = """
             Your bones don't break, mine do. That's clear. Your cells react to

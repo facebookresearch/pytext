@@ -8,13 +8,13 @@ from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data import CommonMetadata
-from pytext.utils.cuda_utils import FloatTensor
 
 # TODO move to constant
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.loss import BinaryCrossEntropyLoss, CrossEntropyLoss
 from pytext.models.crf import CRF
 from pytext.models.module import Module
+from pytext.utils.cuda_utils import FloatTensor
 
 
 class OutputLayerBase(Module):

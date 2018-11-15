@@ -4,8 +4,8 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.models.module import create_module
 from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 
 from .representation_base import RepresentationBase

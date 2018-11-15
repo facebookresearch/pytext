@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-from pytext.config import ConfigBase
-from pytext.models.module import Module
-
 import torch
 import torch.nn as nn
 import torch.onnx.operators
+from pytext.config import ConfigBase
+from pytext.models.module import Module
 
 
 class SelfAttention(Module):
@@ -29,9 +28,7 @@ class SelfAttention(Module):
         self.ws2.weight.data.uniform_(-init_range, init_range)
 
     def forward(
-        self,
-        inputs: torch.Tensor,
-        seq_lengths: torch.Tensor = None,
+        self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
     ) -> torch.Tensor:
         # size: (bsz, sent_len, rep_dim)
         size = torch.onnx.operators.shape_as_tensor(inputs)
@@ -58,9 +55,7 @@ class MaxPool(Module):
         super().__init__(config)
 
     def forward(
-        self,
-        inputs: torch.Tensor,
-        seq_lengths: torch.Tensor = None,
+        self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
     ) -> torch.Tensor:
         return torch.max(inputs, 1)[0]
 
@@ -69,11 +64,7 @@ class MeanPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
 
-    def forward(
-        self,
-        inputs: torch.Tensor,
-        seq_lengths: torch.Tensor,
-    ) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, seq_lengths: torch.Tensor) -> torch.Tensor:
         return torch.sum(inputs, 1) / seq_lengths.unsqueeze(1).float()
 
 
@@ -82,9 +73,7 @@ class NoPool(Module):
         super().__init__(config)
 
     def forward(
-        self,
-        inputs: torch.Tensor,
-        seq_lengths: torch.Tensor = None,
+        self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
     ) -> torch.Tensor:
         return inputs
 
@@ -99,9 +88,7 @@ class BoundaryPool(Module):
         self.boundary_type = config.boundary_type
 
     def forward(
-        self,
-        inputs: torch.Tensor,
-        seq_lengths: torch.Tensor = None,
+        self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
     ) -> torch.Tensor:
         if self.boundary_type == "first":
             return inputs[:, 0, :]
@@ -115,5 +102,4 @@ class BoundaryPool(Module):
             # merge from embed_dim into 2*emded_dim
             return torch.cat((inputs[:, 0, :], inputs[:, -1, :]), dim=1)
         else:
-            raise Exception("Unknown configuration type {}".format(
-                self.boundary_type))
+            raise Exception("Unknown configuration type {}".format(self.boundary_type))

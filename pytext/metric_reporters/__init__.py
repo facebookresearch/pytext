@@ -3,4 +3,5 @@
 from .channel import Channel
 from .metric_reporter import MetricReporter
 
-__all__ = ['Channel', 'MetricReporter']
+
+__all__ = ["Channel", "MetricReporter"]

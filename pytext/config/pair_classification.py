@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
+from .field_config import DocLabelConfig, WordFeatConfig
 from .module_config import ModuleConfig
 from .pytext_config import ConfigBase
-from .field_config import WordFeatConfig, DocLabelConfig
 
 
 class ModelInputConfig(ModuleConfig):

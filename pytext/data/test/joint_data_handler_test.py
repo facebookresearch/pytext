@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytext.common.constants import DFColumn, DatasetFieldName
+from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
@@ -15,7 +15,8 @@ class JointDataHandlerTest(unittest.TestCase):
             FeatureConfig(),
             LabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), FeatureConfig()),
+                SimpleFeaturizer.Config(), FeatureConfig()
+            ),
         )
 
     def test_create_from_config(self):
@@ -34,7 +35,8 @@ class JointDataHandlerTest(unittest.TestCase):
     def test_read_from_file(self):
         file_name = "pytext/tests/data/train_data_tiny.tsv"
         data = self.data_handler.read_from_file(
-            file_name, self.data_handler.raw_columns)
+            file_name, self.data_handler.raw_columns
+        )
 
         # Check if the data has 10 rows and 6 columns
         self.assertEqual(len(data), 10)
@@ -42,14 +44,15 @@ class JointDataHandlerTest(unittest.TestCase):
 
         self.assertEqual(
             data[0][DFColumn.UTTERANCE],
-            "change my alarm tomorrow to wake me up 30 minutes earlier"
+            "change my alarm tomorrow to wake me up 30 minutes earlier",
         )
 
     def test_tokenization(self):
         file_name = "pytext/tests/data/train_data_tiny.tsv"
 
         data = self.data_handler.read_from_file(
-            file_name, self.data_handler.raw_columns)
+            file_name, self.data_handler.raw_columns
+        )
         data = list(self.data_handler.preprocess(data))
 
         # test tokenization without language-specific tokenizers

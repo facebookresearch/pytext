@@ -4,8 +4,8 @@ from typing import Any, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.models.module import create_module
 from pytext.config.module_config import SlotAttentionType
+from pytext.models.module import create_module
 
 from .bilstm import BiLSTM
 from .pooling import MaxPool, MeanPool, SelfAttention
@@ -79,9 +79,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
             self.word_attention = lambda x: x
             if config.slot_attention.attention_type != SlotAttentionType.NO_ATTENTION:
                 self.word_attention = SlotAttention(
-                    config.slot_attention,
-                    lstm_out_dim,
-                    batch_first=True,
+                    config.slot_attention, lstm_out_dim, batch_first=True
                 )
                 word_out_dim += lstm_out_dim
 

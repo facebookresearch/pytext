@@ -19,7 +19,8 @@ class BPTTLanguageModelDataHandlerTest(unittest.TestCase):
             FeatureConfig(),
             LabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), FeatureConfig()),
+                SimpleFeaturizer.Config(), FeatureConfig()
+            ),
         )
         data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)
 

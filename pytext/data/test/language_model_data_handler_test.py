@@ -32,8 +32,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
             raw_columns=columns,
             features=features,
             labels={},
-            featurizer=create_featurizer(
-                SimpleFeaturizer.Config(), FeatureConfig()),
+            featurizer=create_featurizer(SimpleFeaturizer.Config(), FeatureConfig()),
         )
 
     def test_data_handler(self):
@@ -112,8 +111,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
             LanguageModelDataHandler.Config(),
             FeatureConfig(),
             LabelConfig(),
-            featurizer=create_featurizer(
-                SimpleFeaturizer.Config(), FeatureConfig()),
+            featurizer=create_featurizer(SimpleFeaturizer.Config(), FeatureConfig()),
             shuffle=False,
         )
         data_handler.init_metadata_from_path(FILE_NAME, FILE_NAME, FILE_NAME)

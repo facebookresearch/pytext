@@ -4,11 +4,10 @@ from typing import Any, Optional, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.models.module import create_module
 from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.module import create_module
 
-
-from .pooling import MaxPool, MeanPool, NoPool, SelfAttention, BoundaryPool
+from .pooling import BoundaryPool, MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
 
 
@@ -19,8 +18,11 @@ class PureDocAttention(RepresentationBase):
     class Config(RepresentationBase.Config):
         dropout: float = 0.4
         pooling: Union[
-            SelfAttention.Config, MaxPool.Config, MeanPool.Config,
-            NoPool.Config, BoundaryPool.Config
+            SelfAttention.Config,
+            MaxPool.Config,
+            MeanPool.Config,
+            NoPool.Config,
+            BoundaryPool.Config,
         ] = SelfAttention.Config()
         mlp_decoder: Optional[MLPDecoder.Config] = None
 
@@ -40,24 +42,21 @@ class PureDocAttention(RepresentationBase):
 
         # Non-linear projection over attended representation.
         self.dense = None
-        if isinstance(config.pooling, BoundaryPool.Config) \
-                and config.pooling.boundary_type == "firstlast":
+        if (
+            isinstance(config.pooling, BoundaryPool.Config)
+            and config.pooling.boundary_type == "firstlast"
+        ):
             # the dimension double because of concatenating bos and eos
             self.representation_dim = embed_dim * 2
         else:
             self.representation_dim = embed_dim
 
         if config.mlp_decoder:
-            self.dense = MLPDecoder(
-                config.mlp_decoder, from_dim=embed_dim
-            )
+            self.dense = MLPDecoder(config.mlp_decoder, from_dim=embed_dim)
             self.representation_dim = self.dense.out_dim
 
     def forward(
-        self,
-        embedded_tokens: torch.Tensor,
-        seq_lengths: torch.Tensor,
-        *args
+        self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor, *args
     ) -> Any:
         rep = self.dropout(embedded_tokens)
 

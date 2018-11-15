@@ -3,9 +3,9 @@ from typing import Union
 
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
-from pytext.models.module import create_module
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
+from pytext.models.module import create_module
 
 from .decoders.joint_model_decoder import JointModelDecoder
 from .output_layer.intent_slot_output_layer import IntentSlotOutputLayer
@@ -18,9 +18,7 @@ class JointModel(Model):
         representation: Union[
             BiLSTMDocSlotAttention.Config, JointCNNRepresentation.Config
         ] = BiLSTMDocSlotAttention.Config()
-        output_layer: IntentSlotOutputLayer.Config = (
-            IntentSlotOutputLayer.Config()
-        )
+        output_layer: IntentSlotOutputLayer.Config = (IntentSlotOutputLayer.Config())
         decoder: JointModelDecoder.Config = JointModelDecoder.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5

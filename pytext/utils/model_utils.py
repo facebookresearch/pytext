@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import torch
+
 from .cuda_utils import Variable, zerovar
 
 

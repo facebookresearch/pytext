@@ -4,6 +4,7 @@
 import torch
 from pytext.common.constants import PredictorInputNames
 
+
 TOKENS_INPUT_NAMES = [PredictorInputNames.TOKENS_IDS, PredictorInputNames.TOKENS_LENS]
 
 DICT_FEAT_INPUT_NAMES = [

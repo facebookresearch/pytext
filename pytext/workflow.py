@@ -3,8 +3,6 @@ import os
 from typing import Any, List, Optional, Tuple, get_type_hints
 
 import torch
-from tensorboardX import SummaryWriter
-
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import (
     create_data_handler,
@@ -24,6 +22,7 @@ from pytext.optimizer import create_optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers.trainer import Trainer
 from pytext.utils.dist_utils import dist_init
+from tensorboardX import SummaryWriter
 
 from .serialize import load, save
 from .utils import cuda_utils
@@ -175,7 +174,7 @@ def finalize_job(
     config: PyTextConfig,
     trained_model: torch.nn.Module,
     data_handler: DataHandler,
-    summary_writer: SummaryWriter = None
+    summary_writer: SummaryWriter = None,
 ) -> None:
     print("Saving pytorch model to: " + config.save_snapshot_path)
     # Make sure to put the model on CPU and disable CUDA before exporting to
@@ -189,7 +188,7 @@ def finalize_job(
             config.jobspec.exporter,
             config.jobspec.features,
             config.jobspec.labels,
-            data_handler.metadata
+            data_handler.metadata,
         )
 
         if summary_writer is not None:
@@ -205,31 +204,26 @@ def export_saved_model_to_caffe2(
     export_config = config.jobspec.exporter
     if export_config is None:
         JobspecType = type(config.jobspec)
-        ExporterConfigType = get_type_hints(JobspecType)['exporter'].__args__[0]
+        ExporterConfigType = get_type_hints(JobspecType)["exporter"].__args__[0]
         export_config = ExporterConfigType()
     exporter = create_exporter(
         export_config,
         config.jobspec.features,
         config.jobspec.labels,
-        data_handler.metadata
+        data_handler.metadata,
     )
 
     export_to_caffe2(exporter, model, export_caffe2_path)
 
 
 def export_to_caffe2(
-    exporter: ModelExporter,
-    trained_model: torch.nn.Module,
-    export_caffe2_path: str,
+    exporter: ModelExporter, trained_model: torch.nn.Module, export_caffe2_path: str
 ) -> None:
     print("Saving caffe2 model to: " + export_caffe2_path)
     exporter.export_to_caffe2(trained_model, export_caffe2_path)
 
 
-def test_model(
-    test_config: TestConfig,
-    metrics_channel: Channel = None
-) -> Any:
+def test_model(test_config: TestConfig, metrics_channel: Channel = None) -> Any:
     _set_cuda(test_config.use_cuda_if_available)
     model_path = test_config.load_snapshot_path
     if model_path is None or not os.path.isfile(model_path):

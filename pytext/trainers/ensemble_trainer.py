@@ -20,9 +20,8 @@ class EnsembleTrainer(TrainerBase):
 
     def train(self, train_iter, eval_iter, model, *args, **kwargs):
         model.models = [
-            self.train_single_model(
-                train_iter, eval_iter, m, *args, **kwargs,
-            ) for m in model.models
+            self.train_single_model(train_iter, eval_iter, m, *args, **kwargs)
+            for m in model.models
         ]
         model.merge_sub_models()
         return model, None

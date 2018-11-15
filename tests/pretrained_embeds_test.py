@@ -152,7 +152,8 @@ class PretrainedEmbedsTest(unittest.TestCase):
             feature_config,
             LabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), feature_config),
+                SimpleFeaturizer.Config(), feature_config
+            ),
         )
 
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
@@ -177,7 +178,8 @@ class PretrainedEmbedsTest(unittest.TestCase):
             feature_config,
             LabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), feature_config),
+                SimpleFeaturizer.Config(), feature_config
+            ),
         )
         data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
 

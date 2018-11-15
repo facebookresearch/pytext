@@ -4,8 +4,8 @@ from typing import Any, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.models.module import create_module
 from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 
 from .pooling import MaxPool, MeanPool, NoPool, SelfAttention
@@ -57,7 +57,8 @@ class BiLSTMDocAttention(RepresentationBase):
         self,
         embedded_tokens: torch.Tensor,
         seq_lengths: torch.Tensor,
-        *args, states: torch.Tensor = None,
+        *args,
+        states: torch.Tensor = None,
     ) -> Tuple[Any, Any]:
         embedded_tokens = self.dropout(embedded_tokens)
 

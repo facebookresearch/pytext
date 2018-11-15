@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import unittest
-import json
 
 from pytext.utils import test_utils
 
@@ -13,7 +13,7 @@ RAW_TEST_PATH = os.path.join(
 
 
 def get_test_sample():
-    with open(RAW_TEST_PATH, 'r') as f:
+    with open(RAW_TEST_PATH, "r") as f:
         data = json.load(f)
     return data
 
@@ -23,17 +23,14 @@ class TestUtilTest(unittest.TestCase):
         data = get_test_sample()
         for i in data:
             self.assertEqual(
-                test_utils.merge_token_labels_to_slot(
-                    i['token_ranges'],
-                    i['labels']
-                ),
-                i['output']
+                test_utils.merge_token_labels_to_slot(i["token_ranges"], i["labels"]),
+                i["output"],
             )
             self.assertEqual(
                 test_utils.merge_token_labels_to_slot(
-                    i['token_ranges'],
-                    [test_utils.strip_bio_prefix(l) for l in i['labels']],
-                    use_bio_label=False
+                    i["token_ranges"],
+                    [test_utils.strip_bio_prefix(l) for l in i["labels"]],
+                    use_bio_label=False,
                 ),
-                i['output']
+                i["output"],
             )

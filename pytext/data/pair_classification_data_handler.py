@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
+from pytext.config import ConfigBase
 from pytext.config.pair_classification import (
-    ModelInput,
-    Target,
     ExtraField,
+    ModelInput,
     ModelInputConfig,
+    Target,
     TargetConfig,
 )
-from pytext.config import ConfigBase
+from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     DocLabelField,
     Field,
@@ -17,7 +18,7 @@ from pytext.fields import (
     TextFeatureField,
     create_fields,
 )
-from pytext.data.featurizer import InputRecord
+
 from .data_handler import DataHandler
 
 

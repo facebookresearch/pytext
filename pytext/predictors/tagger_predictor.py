@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from pytext.predictors.predictor import Predictor
-from typing import List, Any, Tuple, Dict
+from typing import Any, Dict, List, Tuple
+
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
 from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.predictors.predictor import Predictor
 
 
 class TaggerPredictor(Predictor):

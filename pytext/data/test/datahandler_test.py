@@ -19,17 +19,13 @@ class DataHandlerTest(unittest.TestCase):
         data = DataHandler.read_from_file(file_name, columns)
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
-        self.assertEqual(
-            "alarm/modify_alarm", data[0][DFColumn.DOC_LABEL]
-        )
-        self.assertEqual(
-            "16:24:datetime,39:57:datetime", data[0][DFColumn.WORD_LABEL]
-        )
+        self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
+        self.assertEqual("16:24:datetime,39:57:datetime", data[0][DFColumn.WORD_LABEL])
         self.assertEqual(
             "change my alarm tomorrow to wake me up 30 minutes earlier",
-            data[0][DFColumn.UTTERANCE]
+            data[0][DFColumn.UTTERANCE],
         )
-        self.assertEqual('', data[0][DFColumn.DICT_FEAT])
+        self.assertEqual("", data[0][DFColumn.DICT_FEAT])
 
     def test_read_partially_from_csv(self):
         file_name = "pytext/tests/data/train_data_tiny.tsv"
@@ -38,11 +34,8 @@ class DataHandlerTest(unittest.TestCase):
         data = DataHandler.read_from_file(file_name, columns)
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
-        self.assertEqual(
-            "alarm/modify_alarm", data[0][DFColumn.DOC_LABEL]
-        )
+        self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
         self.assertEqual(
             "change my alarm tomorrow to wake me up 30 minutes earlier",
-            data[0][DFColumn.UTTERANCE]
+            data[0][DFColumn.UTTERANCE],
         )
-

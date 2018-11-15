@@ -3,15 +3,14 @@
 from typing import Any, Dict, List
 
 from pytext.config.doc_classification import (
-    ModelInput,
-    Target,
     ExtraField,
+    ModelInput,
     ModelInputConfig,
+    Target,
     TargetConfig,
 )
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
-    create_fields,
     CharFeatureField,
     DictFeatureField,
     DocLabelField,
@@ -19,8 +18,10 @@ from pytext.fields import (
     PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
+    create_fields,
 )
 from pytext.utils.python_utils import cls_vars
+
 from .data_handler import DataHandler
 
 

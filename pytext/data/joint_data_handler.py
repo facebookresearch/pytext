@@ -7,7 +7,6 @@ from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
-    create_fields,
     CharFeatureField,
     DictFeatureField,
     DocLabelField,
@@ -17,6 +16,7 @@ from pytext.fields import (
     RawField,
     TextFeatureField,
     WordLabelField,
+    create_fields,
 )
 from pytext.utils import data_utils
 
@@ -44,7 +44,7 @@ class JointModelDataHandler(DataHandler):
         config: Config,
         feature_config: FeatureConfig,
         label_config: LabelConfig,
-        **kwargs
+        **kwargs,
     ):
         features: Dict[str, Field] = create_fields(
             feature_config,

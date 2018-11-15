@@ -102,9 +102,7 @@ class Trainer(TrainerBase):
             # Step the learning rate scheduler(s)
             if scheduler:
                 scheduler.step(
-                    metrics=metric_reporter.get_model_select_metric(
-                        eval_metric,
-                    ),
+                    metrics=metric_reporter.get_model_select_metric(eval_metric),
                     epoch=epoch,
                 )
 
@@ -139,7 +137,7 @@ class Trainer(TrainerBase):
         model,
         metric_reporter,
         pre_batch=lambda: None,
-        backprop=lambda loss: None
+        backprop=lambda loss: None,
     ):
         for batch, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
@@ -148,9 +146,7 @@ class Trainer(TrainerBase):
             if BatchContext.IGNORE_LOSS in context:
                 loss *= 0
             backprop(loss)
-            preds, scores = model.get_pred(
-                logits, targets, context, stage, *inputs
-            )
+            preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
             metric_reporter.add_batch_stats(
                 batch, preds, targets, scores, loss.item(), inputs, **context
             )

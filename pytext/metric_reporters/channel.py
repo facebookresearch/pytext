@@ -48,7 +48,7 @@ class ConsoleChannel(Channel):
         scores,
         context,
         meta,
-        *args
+        *args,
     ):
         print(f"\n\n{stage}")
         print(f"loss: {loss:.6f}")
@@ -134,8 +134,7 @@ class TensorBoardChannel(Channel):
             tag = "test"
             self.summary_writer.add_text(tag, f"loss={loss}")
             if isinstance(metrics, (int, float)):
-                self.summary_writer.add_text(
-                    tag, f"{self.metric_name}={metrics}")
+                self.summary_writer.add_text(tag, f"{self.metric_name}={metrics}")
             else:
                 self.add_texts(tag, metrics)
         else:
@@ -143,24 +142,23 @@ class TensorBoardChannel(Channel):
             self.summary_writer.add_scalar(f"{prefix}/loss", loss, epoch)
             if isinstance(metrics, (int, float)):
                 self.summary_writer.add_scalar(
-                    f"{prefix}/{self.metric_name}", metrics, epoch)
+                    f"{prefix}/{self.metric_name}", metrics, epoch
+                )
             else:
                 self.add_scalars(prefix, metrics, epoch)
 
     def add_texts(self, tag, metrics):
         for field_name, field_value in metrics._asdict().items():
             if isinstance(field_value, (int, float)):
-                self.summary_writer.add_text(
-                    tag, f"{field_name}={field_value}")
-            elif (hasattr(field_value, "_asdict")):
-                self.add_texts(
-                    f"{tag}/{field_name}", field_value)
+                self.summary_writer.add_text(tag, f"{field_name}={field_value}")
+            elif hasattr(field_value, "_asdict"):
+                self.add_texts(f"{tag}/{field_name}", field_value)
 
     def add_scalars(self, prefix, metrics, epoch):
         for field_name, field_value in metrics._asdict().items():
             if isinstance(field_value, (int, float)):
                 self.summary_writer.add_scalar(
-                    f"{prefix}/{field_name}", field_value, epoch)
-            elif (hasattr(field_value, "_asdict")):
-                self.add_scalars(
-                    f"{prefix}/{field_name}", field_value, epoch)
+                    f"{prefix}/{field_name}", field_value, epoch
+                )
+            elif hasattr(field_value, "_asdict"):
+                self.add_scalars(f"{prefix}/{field_name}", field_value, epoch)

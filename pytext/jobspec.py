@@ -2,24 +2,25 @@
 
 from typing import Optional, Union
 
-from pytext.config import ConfigBase
+from pytext.config import (
+    ConfigBase,
+    doc_classification as DocClassificationTask,
+    pair_classification as PairClassificationTask,
+)
 from pytext.config.component import register_jobspec
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
-from pytext.config import pair_classification as PairClassificationTask
-from pytext.config import doc_classification as DocClassificationTask
 from pytext.config.pytext_config import OptimizerParams
 from pytext.data import (
     BPTTLanguageModelDataHandler,
     ContextualIntentSlotModelDataHandler,
+    DocClassificationDataHandler,
     JointModelDataHandler,
     LanguageModelDataHandler,
     PairClassificationDataHandler,
     SeqModelDataHandler,
-    DocClassificationDataHandler,
 )
 from pytext.data.featurizer import Featurizer, SimpleFeaturizer
 from pytext.exporters.exporter import TextModelExporter
-
 from pytext.metric_reporters.classification_metric_reporter import (
     ClassificationMetricReporter,
 )

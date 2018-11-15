@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
+from typing import Optional
+
+from .field_config import (
+    CharFeatConfig,
+    DictFeatConfig,
+    DocLabelConfig,
+    PretrainedModelEmbeddingConfig,
+    WordFeatConfig,
+)
 from .module_config import ModuleConfig
 from .pytext_config import ConfigBase
-from .field_config import (
-    WordFeatConfig,
-    DocLabelConfig,
-    DictFeatConfig,
-    CharFeatConfig,
-    PretrainedModelEmbeddingConfig,
-)
-from typing import Optional
 
 
 class ModelInputConfig(ModuleConfig):

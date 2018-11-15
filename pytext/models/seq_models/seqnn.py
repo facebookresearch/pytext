@@ -23,6 +23,5 @@ class SeqNNModel(Model):
 
     class Config(ConfigBase):
         representation: SeqRepresentation.Config = SeqRepresentation.Config()
-        output_layer: ClassificationOutputLayer.Config = \
-            ClassificationOutputLayer.Config()
+        output_layer: ClassificationOutputLayer.Config = ClassificationOutputLayer.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()

@@ -6,14 +6,12 @@ import sys
 import tempfile
 
 import click
-
 import torch
-from torch.multiprocessing.spawn import spawn
-
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
 from pytext.jobspec import register_builtin_jobspecs
 from pytext.workflow import test_model, train_model
+from torch.multiprocessing.spawn import spawn
 
 
 class Mode(enum.Enum):
@@ -79,17 +77,17 @@ def main(context, config_file, config_json):
     context.obj = {}
     if config_file:
         with open(config_file) as file:
-            context.obj['config_json'] = json.load(file)
+            context.obj["config_json"] = json.load(file)
     elif config_json:
-        context.obj['config_json'] = json.loads(config_json)
+        context.obj["config_json"] = json.loads(config_json)
     else:
-        context.obj['config_json'] = json.load(sys.stdin)
+        context.obj["config_json"] = json.load(sys.stdin)
 
 
 @main.command()
 @click.pass_context
 def test(context):
-    config = parse_config(Mode.TEST, context.obj['config_json'])
+    config = parse_config(Mode.TEST, context.obj["config_json"])
     print("Start testing...")
     test_model(config)
 
@@ -97,7 +95,7 @@ def test(context):
 @main.command()
 @click.pass_context
 def train(context):
-    config = parse_config(Mode.TRAIN, context.obj['config_json'])
+    config = parse_config(Mode.TRAIN, context.obj["config_json"])
     print("Starting training...")
     train_model_distributed(config)
     print("Starting testing...")

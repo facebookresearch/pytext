@@ -17,7 +17,7 @@ class PretrainedModelEmbeddingField(Field):
             tokenize=data_utils.no_tokenize,
             dtype=torch.float,
             unk_token=None,
-            pad_token=None
+            pad_token=None,
         )
 
     def pad(self, minibatch: List[List[List[float]]]) -> List[List[List[float]]]:
@@ -53,9 +53,7 @@ class PretrainedModelEmbeddingField(Field):
         for i, sentence in enumerate(padded_minibatch):
             if len(sentence) < max_sentence_length:
                 one_word_embedding = [0.0] * word_embedding_dim
-                padding = [one_word_embedding] * (
-                    max_sentence_length - len(sentence)
-                )
+                padding = [one_word_embedding] * (max_sentence_length - len(sentence))
                 padded_minibatch[i].extend(padding)
         return padded_minibatch
 

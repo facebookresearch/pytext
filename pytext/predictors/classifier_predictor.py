@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from typing import Any, Dict, List
+
 import torch.nn.functional as F
+from pytext.common.constants import DatasetFieldName
 from pytext.predictors.predictor import Predictor
 from pytext.utils.cuda_utils import Variable
-from pytext.common.constants import DatasetFieldName
-from typing import List, Any, Dict
 
 
 class ClassifierPredictor(Predictor):

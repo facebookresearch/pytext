@@ -15,6 +15,7 @@ class CRF(nn.Module):
     Args:
         num_tags: The number of tags
     """
+
     def __init__(self, num_tags: int) -> None:
         if num_tags <= 0:
             raise ValueError(f"Invalid number of tags: {num_tags}")
@@ -131,7 +132,7 @@ class CRF(nn.Module):
 
             score = torch.logsumexp(score, 1)
             log_prob = score * mask[:, idx].unsqueeze(1) + log_prob.squeeze(1) * (
-                1. - mask[:, idx].unsqueeze(1)
+                1.0 - mask[:, idx].unsqueeze(1)
             )
 
         log_prob += self.transitions[: self.start_tag, self.end_tag].unsqueeze(0)
@@ -190,7 +191,7 @@ class CRF(nn.Module):
         # Label for the last position is always based on the index with max score
         # For illegal timesteps, we set as ignore_index
         labels = max_indices_from_scores[:, seq_len - 1]
-        labels = self._mask_tensor(labels, 1. - mask[:, seq_len - 1], padding_tensor)
+        labels = self._mask_tensor(labels, 1.0 - mask[:, seq_len - 1], padding_tensor)
 
         all_labels = labels.unsqueeze(1).long()
 
@@ -220,7 +221,7 @@ class CRF(nn.Module):
                 .squeeze(1)
             )
             indices_from_prev_pos = self._mask_tensor(
-                indices_from_prev_pos, (1. - mask[:, idx + 1]), padding_tensor
+                indices_from_prev_pos, (1.0 - mask[:, idx + 1]), padding_tensor
             )
 
             # Option 2 is used when last timestep was not valid which means idx+1

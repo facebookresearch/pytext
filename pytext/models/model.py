@@ -6,9 +6,10 @@ from typing import Dict, List, Tuple
 import torch
 import torch.nn as nn
 from pytext.config.component import Component, ComponentType
-from pytext.models.module import create_module
 from pytext.data import CommonMetadata
-from .embeddings import EmbeddingList, EmbeddingBase
+from pytext.models.module import create_module
+
+from .embeddings import EmbeddingBase, EmbeddingList
 
 
 class Model(nn.Module, Component):

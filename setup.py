@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+
 from setuptools import setup
 
 
@@ -21,11 +22,7 @@ setup(
     packages=["pytext"],
     install_requires=reqs.strip().split("\n"),
     dependency_links=[
-        "https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html",
+        "https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html"
     ],
-    entry_points={
-        'console_scripts': [
-            'pytext = pytext.main:main'
-        ],
-    },
+    entry_points={"console_scripts": ["pytext = pytext.main:main"]},
 )

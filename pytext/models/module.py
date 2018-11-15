@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.config.module_config import ModuleConfig
 

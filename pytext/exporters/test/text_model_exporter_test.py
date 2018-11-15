@@ -173,7 +173,7 @@ DOC_CONFIGS_WITH_EXPORT_LOGITS = [
     "export_logits": true
   }
 }
-""",
+"""
 ]
 
 WORD_CONFIGS = [
@@ -377,15 +377,13 @@ class TextModelExporterTest(hu.HypothesisTestCase):
                 py_model.eval()
                 py_outs = py_model(*test_inputs)
                 np.testing.assert_array_almost_equal(
-                    py_outs.view(-1).detach().numpy(),
-                    np.array(c2_out[-1]).flatten(),
+                    py_outs.view(-1).detach().numpy(), np.array(c2_out[-1]).flatten()
                 )
 
                 # Do log_softmax since we do that before exporting predictor nets
                 py_outs = F.log_softmax(py_outs, 1)
                 np.testing.assert_array_almost_equal(
-                    py_outs.view(-1).detach().numpy(),
-                    np.array(c2_out[:-1]).flatten()
+                    py_outs.view(-1).detach().numpy(), np.array(c2_out[:-1]).flatten()
                 )
 
     @given(

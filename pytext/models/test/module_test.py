@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import unittest
+
 from pytext.config.component import create_model
+from pytext.config.field_config import DictFeatConfig, FeatureConfig, WordFeatConfig
 from pytext.data import CommonMetadata
-from pytext.models.doc_model import DocModel
-from pytext.config.field_config import FeatureConfig, DictFeatConfig, WordFeatConfig
 from pytext.fields import FieldMeta
+from pytext.models.doc_model import DocModel
 
 
 def mock_metadata():

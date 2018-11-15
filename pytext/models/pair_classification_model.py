@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import os
+
 import torch
 from pytext.config import ConfigBase
-from pytext.models.embeddings import EmbeddingList
 from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.embeddings import EmbeddingList
 from pytext.models.model import Model
 from pytext.models.output_layer import ClassificationOutputLayer
 from pytext.models.representations.tuple_rep import TupleRepresentation

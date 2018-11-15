@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from enum import Enum
 from collections import OrderedDict
+from enum import Enum
 from typing import Any, Union
 
 
@@ -14,9 +14,7 @@ class ConfigBaseMeta(type):
             annotations.update(getattr(base, "__annotations__", {}))
             defaults.update(getattr(base, "_field_defaults", {}))
         annotations.update(vars(cls).get("__annotations__", {}))
-        defaults.update({
-            k: getattr(cls, k) for k in annotations if hasattr(cls, k)
-        })
+        defaults.update({k: getattr(cls, k) for k in annotations if hasattr(cls, k)})
         return annotations, defaults
 
     @property
@@ -44,14 +42,11 @@ class ConfigBase(metaclass=ConfigBaseMeta):
         return {k: getattr(self, k) for k in type(self).__annotations__}
 
     def __init__(self, **kwargs):
-        unspecified_fields = (
-            type(self).__annotations__.keys() -
-            ((kwargs.keys() | type(self)._field_defaults.keys()))
+        unspecified_fields = type(self).__annotations__.keys() - (
+            (kwargs.keys() | type(self)._field_defaults.keys())
         )
         if unspecified_fields:
-            raise TypeError(
-                f"Failed to specify {unspecified_fields} for {type(self)}"
-            )
+            raise TypeError(f"Failed to specify {unspecified_fields} for {type(self)}")
         vars(self).update(kwargs)
 
 
