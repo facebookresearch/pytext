@@ -180,6 +180,7 @@ class TextFeatureField(VocabUsingField):
         lower=True,
         tokenize=data_utils.no_tokenize,
         fix_length=None,
+        pad_first=None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -201,6 +202,7 @@ class TextFeatureField(VocabUsingField):
             lower=lower,
             tokenize=tokenize,
             fix_length=fix_length,
+            pad_first=pad_first,
         )
 
 
