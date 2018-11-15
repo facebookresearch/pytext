@@ -12,17 +12,13 @@ import torch
 import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
+from pytext.builtin_task import DocClassificationTask, JointTextTask, WordTaggingTask
 from pytext.common.constants import DatasetFieldName, PredictorInputNames
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.fields import FieldMeta
-from pytext.jobspec import (
-    DocClassificationJobSpec,
-    JointTextJobSpec,
-    WordTaggingJobSpec,
-)
 from pytext.utils.onnx_utils import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
@@ -278,7 +274,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for config in DOC_CONFIGS:
-            config = self._get_config(DocClassificationJobSpec, config)
+            config = self._get_config(DocClassificationTask.Config, config)
             metadata = self._get_metadata(num_doc_classes, 0)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -338,7 +334,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for config in DOC_CONFIGS_WITH_EXPORT_LOGITS:
-            config = self._get_config(DocClassificationJobSpec, config)
+            config = self._get_config(DocClassificationTask.Config, config)
             metadata = self._get_metadata(num_doc_classes, 0)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -406,7 +402,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for WORD_CONFIG in WORD_CONFIGS:
-            config = self._get_config(WordTaggingJobSpec, WORD_CONFIG)
+            config = self._get_config(WordTaggingTask.Config, WORD_CONFIG)
             metadata = self._get_metadata(0, num_word_classes)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -469,7 +465,7 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         num_predictions,
         test_num_chars,
     ):
-        config = self._get_config(JointTextJobSpec, JOINT_CONFIG)
+        config = self._get_config(JointTextTask.Config, JOINT_CONFIG)
         metadata = self._get_metadata(num_doc_classes, num_word_classes)
         py_model = create_model(config.model, config.features, metadata)
         exporter = create_exporter(

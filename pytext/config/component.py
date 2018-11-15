@@ -3,13 +3,11 @@ import collections
 import enum
 from typing import Any, Dict, Iterable, List, Tuple, Type, Union
 
-import torch
-
 from .pytext_config import ConfigBase, PyTextConfig
 
 
 class ComponentType(enum.Enum):
-    JOB_SPEC = "job_spec"
+    TASK = "task"
     DATA_HANDLER = "data_handler"
     FEATURIZER = "featurizer"
     TRAINER = "trainer"
@@ -127,13 +125,13 @@ class Component(metaclass=ComponentMeta):
         self.config = config
 
 
-def register_jobspec(cls_list: Union[Type, List[Type]]):
-    if not isinstance(cls_list, Iterable):
-        cls_list = [cls_list]
-    for cls in cls_list:
-        Registry.add(ComponentType.JOB_SPEC, cls, cls)
-    vars(PyTextConfig)["__annotations__"]["jobspec"].__args__ = tuple(
-        Registry.values(ComponentType.JOB_SPEC)
+def register_tasks(task_cls: Union[Type, List[Type]]):
+    """
+        Task classes are already added to registry during declaration, pass them
+        as parameters here just to make sure they're imported
+    """
+    vars(PyTextConfig)["__annotations__"]["task"].__args__ = Registry.configs(
+        ComponentType.TASK
     )
 
 

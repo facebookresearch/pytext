@@ -7,9 +7,9 @@ import tempfile
 
 import click
 import torch
+from pytext.builtin_task import register_builtin_tasks
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
-from pytext.jobspec import register_builtin_jobspecs
 from pytext.workflow import test_model, train_model
 from torch.multiprocessing.spawn import spawn
 
@@ -104,12 +104,12 @@ def train(context):
     print("Starting testing...")
     test_config = TestConfig(
         load_snapshot_path=config.save_snapshot_path,
-        test_path=config.jobspec.data_handler.test_path,
+        test_path=config.task.data_handler.test_path,
         use_cuda_if_available=config.use_cuda_if_available,
     )
     test_model(test_config)
 
 
 if __name__ == "__main__":
-    register_builtin_jobspecs()
+    register_builtin_tasks()
     main()

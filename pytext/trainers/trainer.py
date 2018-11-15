@@ -49,8 +49,8 @@ class Trainer(TrainerBase):
         eval_iter,
         model,
         metric_reporter: MetricReporter,
+        train_config: PyTextConfig,
         optimizers: List[torch.optim.Optimizer],
-        config: PyTextConfig,
         scheduler=None,
     ):
         if cuda_utils.CUDA_ENABLED:
@@ -111,9 +111,9 @@ class Trainer(TrainerBase):
                 last_best_epoch = epoch
                 best_metric = eval_metric
                 print("Found a better model! Saving it...")
-                if config.save_module_checkpoints:
+                if train_config.save_module_checkpoints:
                     model.save_modules(
-                        base_path=config.modules_save_dir, suffix=f"-ep{epoch}"
+                        base_path=train_config.modules_save_dir, suffix=f"-ep{epoch}"
                     )
                 best_model_state = copy.deepcopy(model.state_dict())
 

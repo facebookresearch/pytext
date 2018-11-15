@@ -56,7 +56,7 @@ class PlaceHolder:
 
 class PyTextConfig(ConfigBase):
     # the actual task union types will be generated in runtime
-    jobspec: Union[Any, PlaceHolder]
+    task: Union[PlaceHolder, Any]
     use_cuda_if_available: bool = True
     # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
     distributed_world_size: int = 1
