@@ -24,15 +24,15 @@ def _set_cuda(
     elif cuda_utils.CUDA_ENABLED:
         torch.cuda.set_device(device_id)
 
-    # for debug of GPU
     print(
         """
-    use_cuda_if_available: {}\n
-    device_id: {}\n
-    world_size: {}\n
-    torch.cuda.is_available(): {}\n
-    cuda_utils.CUDA_ENABLED: {}\n
-    cuda_utils.DISTRIBUTED_WORLD_SIZE: {}\n
+    # for debug of GPU
+    use_cuda_if_available: {}
+    device_id: {}
+    world_size: {}
+    torch.cuda.is_available(): {}
+    cuda_utils.CUDA_ENABLED: {}
+    cuda_utils.DISTRIBUTED_WORLD_SIZE: {}
     """.format(
             use_cuda_if_available,
             device_id,
@@ -70,6 +70,7 @@ def prepare_task(
     if dist_init_url:
         dist_init(rank, world_size, dist_init_url)
 
+    print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         return load(config.load_snapshot_path)
@@ -79,6 +80,7 @@ def prepare_task(
 def save_and_export(
     config: PyTextConfig, task: Task, summary_writer: SummaryWriter = None
 ) -> None:
+    print("\n=== Saving model to: " + config.save_snapshot_path)
     save(config, task.model, task.data_handler.metadata)
     task.export(task.model, config.export_caffe2_path, summary_writer)
 

@@ -146,9 +146,9 @@ class ClassificationMetrics(NamedTuple):
         self.macro_prf1_metrics.print_metrics()
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
-            print(f"\t{'Label':<10}{'Average precision':<10}")
+            print(f"\t{'Label':<10}\t{'Average precision':<10}")
             for label, label_metrics in self.per_label_soft_scores.items():
-                print(f"\t{label:<10}{label_metrics.average_precision * 100:<10.2f}")
+                print(f"\t{label:<10}\t{label_metrics.average_precision * 100:<10.2f}")
         if self.mcc:
             print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
 

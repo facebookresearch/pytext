@@ -80,7 +80,7 @@ class Trainer(TrainerBase):
             optimizer_step(optimizers)
 
         for epoch in range(1, self.config.epochs + 1):
-            print("Starting epoch #{}".format(epoch))
+            print("\n=== Starting epoch #{}".format(epoch))
             model.train()
             lrs = (str(lr) for lr in learning_rates(optimizers))
             print(f"Learning rate(s): {', '.join(lrs)}")

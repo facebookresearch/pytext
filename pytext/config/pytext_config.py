@@ -49,6 +49,12 @@ class ConfigBase(metaclass=ConfigBaseMeta):
             raise TypeError(f"Failed to specify {unspecified_fields} for {type(self)}")
         vars(self).update(kwargs)
 
+    def __str__(self):
+        lines = [self.__class__.__name__ + ":"]
+        for key, val in vars(self).items():
+            lines += f"{key}: {val}".split("\n")
+        return "\n    ".join(lines)
+
 
 class PlaceHolder:
     pass

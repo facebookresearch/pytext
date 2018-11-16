@@ -45,7 +45,7 @@ def train_model_distributed(config):
         "{config.distributed_world_size} GPUs were requested"
     )
 
-    print(f"Starting training, World size is {config.distributed_world_size}")
+    print(f"\n=== Starting training, World size is {config.distributed_world_size}")
     if not config.use_cuda_if_available or not torch.cuda.is_available():
         run_single(0, config_to_json(PyTextConfig, config), 1, None)
     else:
@@ -88,7 +88,7 @@ def main(context, config_file, config_json):
 @click.pass_context
 def test(context):
     config = parse_config(Mode.TEST, context.obj["config_json"])
-    print("Start testing...")
+    print("\n=== Starting testing...")
     test_model(config)
 
 
@@ -96,12 +96,12 @@ def test(context):
 @click.pass_context
 def train(context):
     config = parse_config(Mode.TRAIN, context.obj["config_json"])
-    print("Starting training...")
+    print("\n===Starting training...")
     if config.distributed_world_size == 1:
         train_model(config)
     else:
         train_model_distributed(config)
-    print("Starting testing...")
+    print("\n=== Starting testing...")
     test_config = TestConfig(
         load_snapshot_path=config.save_snapshot_path,
         test_path=config.task.data_handler.test_path,
