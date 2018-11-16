@@ -25,10 +25,10 @@ PyText is a NLU framework. Brief summary goes here.
     tutorial2
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
     :caption: Library Reference
 
-    models
+    modules/pytext
 
 Indices and tables
 ==================
