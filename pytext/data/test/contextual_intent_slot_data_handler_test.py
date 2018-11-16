@@ -3,7 +3,7 @@
 import unittest
 
 from pytext.common.constants import DFColumn
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.contextual_intent_slot import ModelInputConfig, TargetConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 
@@ -13,9 +13,9 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         file_name = "pytext/tests/data/contextual_intent_slot_train_tiny.tsv"
         self.dh = ContextualIntentSlotModelDataHandler.from_config(
             ContextualIntentSlotModelDataHandler.Config(),
-            FeatureConfig(),
-            LabelConfig(),
-            featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), FeatureConfig()),
+            ModelInputConfig(),
+            TargetConfig(),
+            featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), ModelInputConfig()),
         )
 
         self.data = self.dh.read_from_file(file_name, self.dh.raw_columns)

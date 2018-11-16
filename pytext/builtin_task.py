@@ -3,6 +3,7 @@
 from typing import Optional, Union
 
 from pytext.config import (
+    contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
     pair_classification as PairClassification,
 )
@@ -30,7 +31,6 @@ from pytext.metric_reporters.word_tagging_metric_reporter import (
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
-from pytext.models.embeddings.seq_token_embedding import SequenceTokenEmbedding
 from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
 from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
@@ -150,11 +150,13 @@ class SeqNNTask(Task):
 
 class ContextualIntentSlotTask(Task):
     class Config(Task.Config):
-        features: SequenceTokenEmbedding.Config = SequenceTokenEmbedding.Config()
+        features: ContextualIntentSlot.ModelInputConfig = (
+            ContextualIntentSlot.ModelInputConfig()
+        )
         model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: LabelConfig = LabelConfig(
-            doc_label=DocLabelConfig(), word_label=WordLabelConfig()
+        labels: ContextualIntentSlot.TargetConfig = (
+            ContextualIntentSlot.TargetConfig()
         )
         data_handler: ContextualIntentSlotModelDataHandler.Config = (
             ContextualIntentSlotModelDataHandler.Config()

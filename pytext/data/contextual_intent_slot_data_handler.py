@@ -2,8 +2,13 @@
 
 from typing import Any, Dict, List
 
-from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.config import ConfigBase
+from pytext.config.contextual_intent_slot import (
+    ExtraField,
+    ModelInput,
+    ModelInputConfig,
+    Target,
+    TargetConfig,
+)
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
@@ -17,105 +22,77 @@ from pytext.fields import (
     SeqFeatureField,
     TextFeatureField,
     WordLabelField,
+    create_fields,
 )
 from pytext.utils import data_utils
 
 from .joint_data_handler import JointModelDataHandler
 
 
-SEQ_LENS = "seq_lens"
+class RawData:
+    DOC_LABEL = "doc_label"
+    WORD_LABEL = "word_label"
+    TEXT = "text"
+    DICT_FEAT = "dict_feat"
+    DOC_WEIGHT = "doc_weight"
+    WORD_WEIGHT = "word_weight"
 
 
 class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
     class Config(JointModelDataHandler.Config):
         columns_to_read: List[str] = [
-            DFColumn.DOC_LABEL,
-            DFColumn.WORD_LABEL,
-            DFColumn.UTTERANCE,
-            DFColumn.DICT_FEAT,
-            DFColumn.DOC_WEIGHT,
-            DFColumn.WORD_WEIGHT,
+            RawData.DOC_LABEL,
+            RawData.WORD_LABEL,
+            RawData.TEXT,
+            RawData.DICT_FEAT,
+            RawData.DOC_WEIGHT,
+            RawData.WORD_WEIGHT,
         ]
-
-    FULL_FEATURES = [
-        DatasetFieldName.TEXT_FIELD,
-        DatasetFieldName.DICT_FIELD,
-        DatasetFieldName.CHAR_FIELD,
-        DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
-        DatasetFieldName.SEQ_FIELD,
-    ]
 
     @classmethod
     def from_config(
         cls,
         config: Config,
-        feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        feature_config: ModelInputConfig,
+        target_config: TargetConfig,
         **kwargs,
     ):
-        word_feat_config = feature_config.word_feat
-        features: Dict[str, Field] = {
-            DatasetFieldName.SEQ_FIELD: SeqFeatureField(
-                pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
-                embed_dim=word_feat_config.embed_dim,
-                embedding_init_strategy=word_feat_config.embedding_init_strategy,
-                vocab_file=word_feat_config.vocab_file,
-                vocab_size=word_feat_config.vocab_size,
-                vocab_from_train_data=word_feat_config.vocab_from_train_data,
-            ),
-            DatasetFieldName.TEXT_FIELD: TextFeatureField(
-                pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
-                embed_dim=word_feat_config.embed_dim,
-                embedding_init_strategy=word_feat_config.embedding_init_strategy,
-                vocab_file=word_feat_config.vocab_file,
-                vocab_size=word_feat_config.vocab_size,
-                vocab_from_train_data=word_feat_config.vocab_from_train_data,
-            ),
-        }
-        if feature_config.dict_feat:
-            features[DatasetFieldName.DICT_FIELD] = DictFeatureField()
+        features: Dict[str, Field] = create_fields(
+            feature_config,
+            {
+                ModelInput.TEXT: TextFeatureField,
+                ModelInput.DICT: DictFeatureField,
+                ModelInput.CHAR: CharFeatureField,
+                ModelInput.PRETRAINED: PretrainedModelEmbeddingField,
+                ModelInput.SEQ: SeqFeatureField,
+            },
+        )
 
-        if feature_config.char_feat:
-            features[DatasetFieldName.CHAR_FIELD] = CharFeatureField()
+        labels: Dict[str, Field] = create_fields(
+            target_config,
+            {Target.DOC_LABEL: DocLabelField, Target.WORD_LABEL: WordLabelField},
+        )
 
-        labels: Dict[str, Field] = {}
-        if feature_config.pretrained_model_embedding:
-            features[
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
-            ] = PretrainedModelEmbeddingField()
-
-        if label_config.doc_label:
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
-        if label_config.word_label:
-            labels[DatasetFieldName.WORD_LABEL_FIELD] = WordLabelField(
-                use_bio_labels=label_config.word_label.use_bio_labels
-            )
         extra_fields: Dict[str, Field] = {
-            DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
-            DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
-            DatasetFieldName.RAW_WORD_LABEL: RawField(),
-            DatasetFieldName.TOKEN_RANGE: RawField(),
-            DatasetFieldName.INDEX_FIELD: RawField(),
-            DatasetFieldName.UTTERANCE_FIELD: RawField(),
+            ExtraField.DOC_WEIGHT: FloatField(),
+            ExtraField.WORD_WEIGHT: FloatField(),
+            ExtraField.RAW_WORD_LABEL: RawField(),
+            ExtraField.TOKEN_RANGE: RawField(),
+            ExtraField.INDEX_FIELD: RawField(),
+            ExtraField.UTTERANCE: RawField(),
         }
 
+        kwargs.update(config.items())
         return cls(
             raw_columns=config.columns_to_read,
             labels=labels,
             features=features,
             extra_fields=extra_fields,
-            shuffle=config.shuffle,
-            train_path=config.train_path,
-            eval_path=config.eval_path,
-            test_path=config.test_path,
-            train_batch_size=config.train_batch_size,
-            eval_batch_size=config.eval_batch_size,
-            test_batch_size=config.test_batch_size,
             **kwargs,
         )
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
-        sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
+        sequence = data_utils.parse_json_array(row_data[RawData.TEXT])
 
         # ignore dictionary feature for context sentences other than the last one
         features_list = [
@@ -128,54 +105,55 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             self.featurizer.featurize(
                 InputRecord(
                     raw_text=sequence[-1],
-                    raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT, ""),
+                    raw_gazetteer_feats=row_data.get(ModelInput.DICT, ""),
                 )
             )
         )
 
         res = {
             # features
-            DatasetFieldName.SEQ_FIELD: [
-                utterance.tokens for utterance in features_list
-            ],
-            DatasetFieldName.TEXT_FIELD: features_list[-1].tokens,
-            DatasetFieldName.DICT_FIELD: (
+            ModelInput.SEQ: [utterance.tokens for utterance in features_list],
+            ModelInput.TEXT: features_list[-1].tokens,
+            ModelInput.DICT: (
                 features_list[-1].gazetteer_feats,
                 features_list[-1].gazetteer_feat_weights,
                 features_list[-1].gazetteer_feat_lengths,
             ),
-            DatasetFieldName.CHAR_FIELD: features_list[-1].characters,
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features_list[
-                -1
-            ].pretrained_token_embedding,
+            ModelInput.CHAR: features_list[-1].characters,
+            ModelInput.PRETRAINED: features_list[-1].pretrained_token_embedding,
             # labels
-            DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
+            Target.DOC_LABEL: row_data[RawData.DOC_LABEL],
             # extra data
             # TODO move the logic to FloatField
-            DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,
-            DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
-            or 1.0,
-            DatasetFieldName.RAW_WORD_LABEL: row_data[DFColumn.WORD_LABEL],
-            DatasetFieldName.INDEX_FIELD: idx,
-            DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
-            DatasetFieldName.TOKEN_RANGE: features_list[-1].token_ranges,
+            ExtraField.DOC_WEIGHT: row_data.get(RawData.DOC_WEIGHT) or 1.0,
+            ExtraField.WORD_WEIGHT: row_data.get(RawData.WORD_WEIGHT) or 1.0,
+            ExtraField.RAW_WORD_LABEL: row_data[RawData.WORD_LABEL],
+            ExtraField.INDEX_FIELD: idx,
+            ExtraField.UTTERANCE: row_data[RawData.TEXT],
+            ExtraField.TOKEN_RANGE: features_list[-1].token_ranges,
         }
-        if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
+        if Target.WORD_LABEL in self.labels:
             # TODO move it into word label field
-            res[DatasetFieldName.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
+            res[Target.WORD_LABEL] = data_utils.align_slot_labels(
                 features_list[-1].token_ranges,
-                row_data[DFColumn.WORD_LABEL],
-                self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,
+                row_data[RawData.WORD_LABEL],
+                self.labels[Target.WORD_LABEL].use_bio_labels,
             )
         return res
 
-    # overwrite because it has not been migrated to generic token embedding, will
-    # change in coming diff
     def _train_input_from_batch(self, batch):
-        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
-        # text_input[1] is the length of each word
-        return (text_input[0], text_input[1]) + tuple(
-            getattr(batch, name, None)
-            for name in self.FULL_FEATURES
-            if name != DatasetFieldName.TEXT_FIELD
+        text_input = getattr(batch, ModelInput.TEXT)
+        seq_input = getattr(batch, ModelInput.SEQ)
+        return (
+            # text_input[0] contains the word embeddings,
+            # text_input[1] contains the lengths of each word
+            text_input[0],
+            *(
+                getattr(batch, key)
+                for key in self.features
+                if key not in [ModelInput.TEXT, ModelInput.SEQ]
+            ),
+            seq_input[0],
+            text_input[1],
+            seq_input[1],
         )
