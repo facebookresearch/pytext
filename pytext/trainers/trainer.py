@@ -67,12 +67,15 @@ class Trainer(TrainerBase):
         best_metric = None
         last_best_epoch = 0
         best_model_state = None
+        scheduler = self._prepare_scheduler(train_iter, scheduler)
 
         def training_pre_batch_callback():
             optimizer_zero_grad(optimizers)
 
         def training_backprop(loss):
             loss.backward()
+            if scheduler:
+                scheduler.step_batch()
             if self.config.max_clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(
                     model.parameters(), self.config.max_clip_norm
@@ -151,3 +154,11 @@ class Trainer(TrainerBase):
                 batch, preds, targets, scores, loss.item(), inputs, **context
             )
         return metric_reporter.report_metric(stage, epoch)
+
+    def _prepare_scheduler(self, train_iter, scheduler=None):
+        if scheduler:
+            for batch_based_scheduler in scheduler.batch_based_schedulers:
+                batch_based_scheduler.T_max = (
+                    train_iter.total_num_batches * self.config.epochs
+                )
+        return scheduler
