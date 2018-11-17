@@ -7,7 +7,6 @@ import tempfile
 
 import click
 import torch
-from pytext.builtin_task import register_builtin_tasks
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
 from pytext.workflow import test_model, train_model
@@ -111,5 +110,4 @@ def train(context):
 
 
 if __name__ == "__main__":
-    register_builtin_tasks()
     main()
