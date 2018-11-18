@@ -37,6 +37,8 @@ class MetricReporter(Component):
         self.aggregate_targets(targets)
         self.aggregate_scores(scores)
         for key, val in context.items():
+            if not (isinstance(val, torch.Tensor) or isinstance(val, List)):
+                continue
             if key not in self.all_context:
                 self.all_context[key] = []
             self.aggregate_data(self.all_context[key], val)
