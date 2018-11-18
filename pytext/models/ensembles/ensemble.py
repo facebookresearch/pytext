@@ -24,12 +24,6 @@ class Ensemble(Model):
     def merge_sub_models(self):
         pass
 
-    def cpu(self):
-        # Needed when the ensembled models are wrapped in DistributedModel
-        for i in range(len(self.models)):
-            self.models[i] = self.models[i].cpu()
-        return self
-
     @classmethod
     def from_config(cls, model_config, feat_config, *arg, **kwargs):
         sub_models = [
