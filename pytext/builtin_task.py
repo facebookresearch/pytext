@@ -19,7 +19,6 @@ from pytext.data import (
     PairClassificationDataHandler,
     SeqModelDataHandler,
 )
-from pytext.exporters import RNNGCppExporter
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     CompositionalMetricReporter,
@@ -33,7 +32,7 @@ from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
-from pytext.models.semantic_parsers.rnng.rnng_base import RNNGParser
+from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
@@ -170,7 +169,6 @@ class SemanticParsingTask(Task):
         data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
         labels: Optional[LabelConfig] = None
         metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
-        exporter: Optional[RNNGCppExporter.Config] = None
 
 
 def register_builtin_tasks():

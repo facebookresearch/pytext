@@ -1,18 +1,89 @@
 #!/usr/bin/env python3
 
+from enum import Enum
 from typing import List, Optional, Tuple
 
+import numpy as np
+import pytext.utils.cuda_utils as cuda_utils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.config import ConfigBase
+from pytext.config.component import Component, ComponentType
+from pytext.data import CommonMetadata
+from pytext.models.module import create_module
+from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
+    CompositionalNN,
+    CompositionalSummationNN,
     Element,
     ParserState,
 )
-from pytext.utils.cuda_utils import Variable
 
 
-class RNNGParserPy(nn.Module):
+class CompositionalType(Enum):
+    BLSTM = "blstm"
+    SUM = "sum"
+
+
+class AblationParams(ConfigBase):
+    use_buffer: bool = True
+    use_stack: bool = True
+    use_action: bool = True
+    use_last_open_NT_feature: bool = False
+
+
+class RNNGConstraints(ConfigBase):
+    intent_slot_nesting: bool = True
+    ignore_loss_for_unsupported: bool = False
+    no_slots_inside_unsupported: bool = True
+
+
+class RNNGParser(nn.Module, Component):
+    __COMPONENT_TYPE__ = ComponentType.MODEL
+
+    class Config(ConfigBase):
+        version: int = 0
+        lstm: BiLSTM.Config = BiLSTM.Config()
+        ablation: AblationParams = AblationParams()
+        constraints: RNNGConstraints = RNNGConstraints()
+        max_open_NT: int = 10
+        dropout: float = 0.1
+        compositional_type: CompositionalType = CompositionalType.BLSTM
+
+    @classmethod
+    def from_config(cls, model_config, feature_config, metadata: CommonMetadata):
+        if model_config.compositional_type == CompositionalType.SUM:
+            p_compositional = CompositionalSummationNN(
+                lstm_dim=model_config.lstm.lstm_dim
+            )
+        elif model_config.compositional_type == CompositionalType.BLSTM:
+            p_compositional = CompositionalNN(lstm_dim=model_config.lstm.lstm_dim)
+        else:
+            raise ValueError(
+                "Cannot understand compositional flag {}".format(
+                    model_config.compositional_type
+                )
+            )
+
+        return cls(
+            ablation=model_config.ablation,
+            constraints=model_config.constraints,
+            lstm_num_layers=model_config.lstm.num_layers,
+            lstm_dim=model_config.lstm.lstm_dim,
+            max_open_NT=model_config.max_open_NT,
+            dropout=model_config.dropout,
+            actions_vocab=metadata.actions_vocab,
+            shift_idx=metadata.shift_idx,
+            reduce_idx=metadata.reduce_idx,
+            ignore_subNTs_roots=metadata.ignore_subNTs_roots,
+            valid_NT_idxs=metadata.valid_NT_idxs,
+            valid_IN_idxs=metadata.valid_IN_idxs,
+            valid_SL_idxs=metadata.valid_SL_idxs,
+            embedding=create_module(feature_config, metadata=metadata),
+            p_compositional=p_compositional,
+        )
+
     def __init__(
         self,
         ablation,
@@ -96,70 +167,9 @@ class RNNGParserPy(nn.Module):
         self.empty_action_emb = nn.Parameter(torch.randn(1, lstm_dim))
 
         self.actions_lookup = nn.Embedding(num_actions, lstm_dim)
+        self.loss_func = nn.CrossEntropyLoss()
 
-    # Initializes LSTM parameters
-    def init_lstm(self):
-        return (
-            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
-            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
-        )
-
-    def _valid_actions(self, state: ParserState) -> List[int]:
-        valid_actions: List[int] = []
-        is_open_NT = state.is_open_NT
-        num_open_NT = state.num_open_NT
-        stack = state.stack_stackrnn
-        buffer = state.buffer_stackrnn
-
-        # Reduce if there are 1. the top of stack is not an NT, and
-        # 2. two open NT on stack, or 3. buffer is empty
-        if (is_open_NT and not is_open_NT[-1]) and (
-            num_open_NT >= 2 or len(buffer) == 0
-        ):
-            assert len(stack) > 0
-            valid_actions.append(self.reduce_idx)
-
-        if len(buffer) > 0 and num_open_NT < self.max_open_NT:
-            last_open_NT = None
-            try:
-                last_open_NT = stack.ele_from_top(is_open_NT[::-1].index(True))
-            except ValueError:
-                pass
-
-            if (not self.training) or self.constraints_intent_slot_nesting:
-                # if stack is empty or the last open NT is slot
-                if (not last_open_NT) or last_open_NT.node in self.valid_SL_idxs:
-                    valid_actions += self.valid_IN_idxs
-                elif last_open_NT.node in self.valid_IN_idxs:
-                    if (
-                        self.constraints_no_slots_inside_unsupported
-                        and state.found_unsupported
-                    ):
-                        pass
-                    else:
-                        valid_actions += self.valid_SL_idxs
-            else:
-                valid_actions += self.valid_IN_idxs
-                valid_actions += self.valid_SL_idxs
-
-        elif (not self.training) and num_open_NT >= self.max_open_NT:
-            print(
-                "not predicting NT because buffer len is "
-                + str(len(buffer))
-                + " and num open NTs is "
-                + str(num_open_NT)
-            )
-        if len(buffer) > 0 and num_open_NT >= 1:
-            valid_actions.append(self.shift_idx)
-
-        assert (
-            len(valid_actions) > 0
-        ), "No valid actions. stack is {}, buffer is {}, num open NT: {}".format(
-            str(stack), str(buffer), str(num_open_NT)
-        )
-        return valid_actions
-
-    def forward(  # noqa: C901
+    def forward(
         self,
         tokens: torch.Tensor,
         seq_lens: torch.Tensor,
@@ -287,7 +297,7 @@ class RNNGParserPy(nn.Module):
                     state.action_scores.append(action_p)
 
                 action_embedding = self.actions_lookup(
-                    Variable(torch.LongTensor([target_action_idx]))
+                    cuda_utils.Variable(torch.LongTensor([target_action_idx]))
                 )
                 state.action_stackrnn.push(action_embedding, Element(target_action_idx))
 
@@ -366,3 +376,102 @@ class RNNGParserPy(nn.Module):
                 )
                 for state in sorted(beam)[:topk]
             ]
+
+    # Initializes LSTM parameters
+    def init_lstm(self):
+        return (
+            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
+            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
+        )
+
+    def _valid_actions(self, state: ParserState) -> List[int]:
+        valid_actions: List[int] = []
+        is_open_NT = state.is_open_NT
+        num_open_NT = state.num_open_NT
+        stack = state.stack_stackrnn
+        buffer = state.buffer_stackrnn
+
+        # Reduce if there are 1. the top of stack is not an NT, and
+        # 2. two open NT on stack, or 3. buffer is empty
+        if (is_open_NT and not is_open_NT[-1]) and (
+            num_open_NT >= 2 or len(buffer) == 0
+        ):
+            assert len(stack) > 0
+            valid_actions.append(self.reduce_idx)
+
+        if len(buffer) > 0 and num_open_NT < self.max_open_NT:
+            last_open_NT = None
+            try:
+                last_open_NT = stack.ele_from_top(is_open_NT[::-1].index(True))
+            except ValueError:
+                pass
+
+            if (not self.training) or self.constraints_intent_slot_nesting:
+                # if stack is empty or the last open NT is slot
+                if (not last_open_NT) or last_open_NT.node in self.valid_SL_idxs:
+                    valid_actions += self.valid_IN_idxs
+                elif last_open_NT.node in self.valid_IN_idxs:
+                    if (
+                        self.constraints_no_slots_inside_unsupported
+                        and state.found_unsupported
+                    ):
+                        pass
+                    else:
+                        valid_actions += self.valid_SL_idxs
+            else:
+                valid_actions += self.valid_IN_idxs
+                valid_actions += self.valid_SL_idxs
+
+        elif (not self.training) and num_open_NT >= self.max_open_NT:
+            print(
+                "not predicting NT because buffer len is "
+                + str(len(buffer))
+                + " and num open NTs is "
+                + str(num_open_NT)
+            )
+        if len(buffer) > 0 and num_open_NT >= 1:
+            valid_actions.append(self.shift_idx)
+
+        assert (
+            len(valid_actions) > 0
+        ), "No valid actions. stack is {}, buffer is {}, num open NT: {}".format(
+            str(stack), str(buffer), str(num_open_NT)
+        )
+        return valid_actions
+
+    def get_model_params_for_optimizer(self):
+        # First arg is None because there aren't params that need sparse gradients.
+        return None, self.parameters()
+
+    def get_loss(
+        self, logits: torch.Tensor, target_actions: torch.Tensor, context: torch.Tensor
+    ):
+        # action scores is a 2D Tensor of dims sequence_length x number_of_actions
+        # targets is a 1D list of integers of length sequence_length
+
+        # Get rid of the batch dimension
+        action_scores = logits[1].squeeze(0)
+        target_actions = target_actions.squeeze(0)
+
+        action_scores_list = torch.chunk(action_scores, action_scores.size()[0])
+        target_vars = [
+            cuda_utils.Variable(torch.LongTensor([t])) for t in target_actions
+        ]
+        losses = [
+            self.loss_func(action, target).view(1)
+            for action, target in zip(action_scores_list, target_vars)
+        ]
+        total_loss = torch.sum(torch.cat(losses)) if len(losses) > 0 else None
+        return total_loss
+
+    def get_pred(self, logits: Tuple[torch.Tensor, torch.Tensor], *args):
+        predicted_action_idx, predicted_action_scores = logits
+        predicted_scores = [
+            np.exp(np.max(action_scores)).item() / np.sum(np.exp(action_scores)).item()
+            for action_scores in predicted_action_scores.detach().squeeze(0).tolist()
+        ]
+
+        return predicted_action_idx.tolist(), [predicted_scores]
+
+    def save_modules(self, *args, **kwargs):
+        pass
