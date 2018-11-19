@@ -4,8 +4,15 @@ from typing import List, Set, Union
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
-from pytext.fb.rnng.annotation import Intent, Slot, Token, Tree, TreeBuilder
-from pytext.fb.rnng.utils import REDUCE, SHIFT, BiDict
+from pytext.data.data_structures.annotation import (
+    REDUCE,
+    SHIFT,
+    Intent,
+    Slot,
+    Token,
+    Tree,
+    TreeBuilder,
+)
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
     Node,
@@ -36,45 +43,41 @@ class CompositionalFileChannel(FileChannel):
 class CompositionalMetricReporter(MetricReporter):
     model_select_metric_name = "frame_accuracy"
 
-    def __init__(self, actions_bidict: BiDict, channels: List[Channel]) -> None:
+    def __init__(self, actions_vocab, channels: List[Channel]) -> None:
         super().__init__(channels)
-        # This will be removed and done via data handler context in D10101440.
-        self.actions_bidict = actions_bidict
+        self.actions_vocab = actions_vocab
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        actions_bidict = meta.actions_bidict
+    def from_config(cls, config, metadata: CommonMetadata):
+        actions_vocab = metadata.actions_vocab.itos
         return cls(
-            actions_bidict,
+            actions_vocab,
             [
                 ConsoleChannel(),
-                CompositionalFileChannel((Stage.TEST), config.output_path),
+                CompositionalFileChannel((Stage.TEST,), config.output_path),
             ],
         )
 
     def gen_extra_context(self):
-        self.all_context[PRED_TARGET_TREES] = [
-            (
-                self.tree_from_tokens_and_indx_actions(
-                    token_range[0], self.actions_bidict, action_preds
-                ),
-                self.tree_from_tokens_and_indx_actions(
-                    token_range[0], self.actions_bidict, action_targets
-                ),
+        pred_target_trees = []
+        for action_preds, action_targets, token_str_list in zip(
+            self.all_preds, self.all_targets, self.all_context[DatasetFieldName.TOKENS]
+        ):
+            pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                token_str_list, self.actions_vocab, action_preds
             )
-            for action_preds, action_targets, token_range in zip(
-                self.all_preds,
-                self.all_targets,
-                self.all_context[DatasetFieldName.TOKEN_RANGE],
+            target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                token_str_list, self.actions_vocab, action_targets
             )
-        ]
+            pred_target_trees.append((pred_tree, target_tree))
+        self.all_context[PRED_TARGET_TREES] = pred_target_trees
 
     def calculate_metric(self):
         return compute_all_metrics(
             [
                 FramePredictionPair(
-                    self.tree_to_metric_node(pred_tree),
-                    self.tree_to_metric_node(target_tree),
+                    CompositionalMetricReporter.tree_to_metric_node(pred_tree),
+                    CompositionalMetricReporter.tree_to_metric_node(target_tree),
                 )
                 for pred_tree, target_tree in self.all_context[PRED_TARGET_TREES]
             ],
@@ -87,16 +90,16 @@ class CompositionalMetricReporter(MetricReporter):
 
     @staticmethod
     def tree_from_tokens_and_indx_actions(
-        tokens_str, actions_dict: BiDict, actions_indices
+        token_str_list: List[str], actions_vocab: List[str], actions_indices: List[int]
     ):
         builder = TreeBuilder()
         i = 0
         for action_idx in actions_indices:
-            action = actions_dict.value(action_idx)
+            action = actions_vocab[action_idx]
             if action == REDUCE:
                 builder.update_tree(action, None)
             elif action == SHIFT:
-                builder.update_tree(action, tokens_str[i])
+                builder.update_tree(action, token_str_list[i])
                 i += 1
             else:
                 builder.update_tree(action, action)

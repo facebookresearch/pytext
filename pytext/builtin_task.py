@@ -11,6 +11,7 @@ from pytext.config.component import register_tasks
 from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
 from pytext.data import (
     BPTTLanguageModelDataHandler,
+    CompositionalDataHandler,
     ContextualIntentSlotModelDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
@@ -18,16 +19,12 @@ from pytext.data import (
     PairClassificationDataHandler,
     SeqModelDataHandler,
 )
-from pytext.metric_reporters.classification_metric_reporter import (
+from pytext.exporters import RNNGCppExporter
+from pytext.metric_reporters import (
     ClassificationMetricReporter,
-)
-from pytext.metric_reporters.intent_slot_detection_metric_reporter import (
+    CompositionalMetricReporter,
     IntentSlotMetricReporter,
-)
-from pytext.metric_reporters.language_model_metric_reporter import (
     LanguageModelMetricReporter,
-)
-from pytext.metric_reporters.word_tagging_metric_reporter import (
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
@@ -36,12 +33,12 @@ from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
+from pytext.models.semantic_parsers.rnng.rnng_base import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task
-from pytext.trainers import Trainer
-from pytext.trainers.ensemble_trainer import EnsembleTrainer
+from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
 
 
 # TODO better to have separate Task for different ensemble model
@@ -166,6 +163,16 @@ class ContextualIntentSlotTask(Task):
         )
 
 
+class SemanticParsingTask(Task):
+    class Config(Task.Config):
+        model: RNNGParser.Config = RNNGParser.Config()
+        trainer: HogwildTrainer.Config = HogwildTrainer.Config()
+        data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
+        labels: Optional[LabelConfig] = None
+        metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
+        exporter: Optional[RNNGCppExporter.Config] = None
+
+
 def register_builtin_tasks():
     register_tasks(
         (
@@ -177,5 +184,6 @@ def register_builtin_tasks():
             PairClassification,
             SeqNNTask,
             ContextualIntentSlotTask,
+            SemanticParsingTask,
         )
     )

@@ -17,6 +17,7 @@ class DatasetFieldName:
     WORD_WEIGHT_FIELD = "word_weight"
     RAW_WORD_LABEL = "raw_word_label"
     TOKEN_RANGE = "token_range"
+    TOKENS = "tokens"
     INDEX_FIELD = "index_field"
     LANGUAGE_ID_FIELD = "lang"
     SEQ_LENS = "seq_lens"
@@ -46,6 +47,7 @@ class DFColumn:
     TARGET_SEQUENCE = "target_sequence"
     SOURCE_FEATS = "source_feats"
     TARGET_TOKENS = "target_tokens"
+    SEQLOGICAL = "seqlogical"
 
 
 class Padding:

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import csv
 import math
 import multiprocessing
@@ -90,12 +91,14 @@ class DataHandler(Component):
     class Config(ConfigBase):
         columns_to_read: List[str] = []
         shuffle: bool = True
+        sort_within_batch: bool = True
         train_path: str = "train.tsv"
         eval_path: str = "eval.tsv"
         test_path: str = "test.tsv"
         train_batch_size: int = 128
         eval_batch_size: int = 128
         test_batch_size: int = 128
+        min_item_freq_for_vocab: int = 1
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
@@ -111,6 +114,7 @@ class DataHandler(Component):
         extra_fields: Dict[str, Field] = None,
         text_feature_name: str = DatasetFieldName.TEXT_FIELD,
         shuffle: bool = True,
+        sort_within_batch: bool = True,
         train_path: str = "train.tsv",
         eval_path: str = "eval.tsv",
         test_path: str = "test.tsv",
@@ -118,6 +122,7 @@ class DataHandler(Component):
         eval_batch_size: int = 128,
         test_batch_size: int = 128,
         max_seq_len: int = -1,
+        min_item_freq_for_vocab: int = 1,
         **kwargs,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
@@ -131,6 +136,7 @@ class DataHandler(Component):
         self.metadata: CommonMetadata = CommonMetadata()
         self._data_cache: MutableMapping[str, Any] = {}
         self.shuffle = shuffle
+        self.sort_within_batch = sort_within_batch
         self.num_workers = multiprocessing.cpu_count()
         self.max_seq_len = max_seq_len
 
@@ -140,6 +146,8 @@ class DataHandler(Component):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.test_batch_size = test_batch_size
+
+        self.min_item_freq_for_vocab = min_item_freq_for_vocab
 
     def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
@@ -161,7 +169,7 @@ class DataHandler(Component):
                         break
                     line = line.strip()
                     vocab.add(line.lower() if lowercase_tokens else line)
-        else:
+        elif not vocab_file:
             print(f"{vocab_file} doesn't exist. Cannot load vocabulary from it")
         return vocab
 
@@ -215,7 +223,9 @@ class DataHandler(Component):
 
     def preprocess(self, data: List[Dict[str, Any]]):
         for idx, row in enumerate(data):
-            yield self.preprocess_row(row, idx)
+            preprocessed_row = self.preprocess_row(row, idx)
+            if preprocessed_row:
+                yield preprocessed_row
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
         """
@@ -252,7 +262,7 @@ class DataHandler(Component):
 
             # if vocab is already built, skip
             if label.use_vocab and not getattr(label, "vocab", None):
-                print("building vocab for label {}".format(name))
+                print("Building vocab for label {}".format(name))
                 label.build_vocab(train_data, eval_data, test_data)
                 print(
                     "{} field's vocabulary size is {}".format(
@@ -265,12 +275,23 @@ class DataHandler(Component):
         for name, feat in self.features.items():
             weights = None
             if feat.use_vocab:
-                print("building vocab for feature {}".format(name))
-                feat.build_vocab(
-                    *self._get_data_to_build_vocab(
-                        feat, train_data, eval_data, test_data
+                if not hasattr(feat, "vocab"):  # Don't rebuild vocab
+                    if feat.vocab_from_all_data:
+                        print(
+                            f"Building vocab for feature {name} from train, eval and test data."
+                        )
+                    else:
+                        print(
+                            f"Building vocab for feature {name} from train data only."
+                        )
+                    feat.build_vocab(
+                        *self._get_data_to_build_vocab(
+                            feat, train_data, eval_data, test_data
+                        ),
+                        min_freq=self.min_item_freq_for_vocab,
                     )
-                )
+                else:
+                    print(f"Vocab for feature {name} has been built. Not building.")
                 print("{} field's vocabulary size is {}".format(name, len(feat.vocab)))
 
                 # Initialize pretrained embedding weights.
@@ -285,7 +306,7 @@ class DataHandler(Component):
                         VocabMeta.UNK_TOKEN,
                         feat.embedding_init_strategy,
                         feat.lower,
-                    )
+                    )  # this is of type torch.Tensor
             meta = feat.get_meta()
             meta.pretrained_embeds_weight = weights
             self.metadata.features[name] = meta
@@ -315,15 +336,17 @@ class DataHandler(Component):
         """
         data = []
         if isinstance(feat, VocabUsingField):
-            if feat.vocab_from_train_data:
-                data.append(train_data)
-            elif feat.vocab_from_all_data:
+            if feat.vocab_from_all_data:
                 data.extend([train_data, eval_data, test_data])
+            elif feat.vocab_from_train_data:
+                data.append(train_data)
         if hasattr(feat, "vocab_file") and feat.vocab_file:
             lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
-            data.append(
-                [self.load_vocab(feat.vocab_file, feat.vocab_size, lowercase_tokens)]
+            vocab_set = self.load_vocab(
+                feat.vocab_file, feat.vocab_size, lowercase_tokens
             )
+            if vocab_set:
+                data.append([vocab_set])
         return data
 
     def _gen_extra_metadata(self) -> None:
@@ -336,6 +359,9 @@ class DataHandler(Component):
         return self._get_train_iter(
             self.gen_dataset_from_path(train_path), batch_size, rank, world_size
         )
+
+    def get_test_iter_from_path(self, test_path: str, batch_size: int) -> BatchIterator:
+        return self._get_test_iter(self.gen_dataset_from_path(test_path), batch_size)
 
     def get_train_iter(self, rank: int = 0, world_size: int = 1):
         return self.get_train_iter_from_path(
@@ -359,6 +385,15 @@ class DataHandler(Component):
             self.gen_dataset(train_data), batch_size, rank, world_size
         )
 
+    def get_test_iter_from_raw_data(
+        self,
+        test_data: List[Dict[str, Any]],
+        batch_size: int,
+        rank: int = 0,
+        world_size: int = 1,
+    ) -> BatchIterator:
+        return self._get_test_iter(self.gen_dataset(test_data), batch_size)
+
     def _get_train_iter(
         self,
         train_dataset: textdata.Dataset,
@@ -380,7 +415,7 @@ class DataHandler(Component):
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
                 else "cpu",
-                sort_within_batch=True,
+                sort_within_batch=self.sort_within_batch,
                 repeat=False,
                 sort_key=self.sort_key,
                 shuffle=self.shuffle,
@@ -389,11 +424,12 @@ class DataHandler(Component):
             num_batches=math.ceil(num_all_batches / float(world_size)),
         )
 
-    def get_test_iter_from_path(self, path: str, batch_size: int) -> BatchIterator:
-        test_data = self.gen_dataset_from_path(path)
+    def _get_test_iter(
+        self, test_dataset: textdata.Dataset, batch_size: int
+    ) -> BatchIterator:
         return BatchIterator(
             textdata.Iterator(
-                test_data,
+                test_dataset,
                 batch_size=batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED

@@ -8,8 +8,10 @@ from pytext.common.constants import BatchContext, Stage
 from pytext.config import PyTextConfig
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
+from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
+from pytext.models.model import Model
 from pytext.optimizer import optimizer_step, optimizer_zero_grad
 from pytext.utils import cuda_utils
 
@@ -38,6 +40,8 @@ class Trainer(TrainerBase):
         eval_interval: int = 1
         # Clip gradient norm if set
         max_clip_norm: Optional[float] = None
+        # Whether metrics on training data should be computed and reported.
+        report_train_metrics: bool = True
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
@@ -45,13 +49,15 @@ class Trainer(TrainerBase):
 
     def train(
         self,
-        train_iter,
-        eval_iter,
-        model,
+        train_iter: BatchIterator,
+        eval_iter: BatchIterator,
+        model: Model,
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
         optimizers: List[torch.optim.Optimizer],
         scheduler=None,
+        training_result=None,  # only meaningful for Hogwild training.
+        rank: int = 0,
     ):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
@@ -83,7 +89,7 @@ class Trainer(TrainerBase):
             optimizer_step(optimizers)
 
         for epoch in range(1, self.config.epochs + 1):
-            print("\n=== Starting epoch #{}".format(epoch))
+            print(f"Rank {rank} worker: Starting epoch #{epoch}")
             model.train()
             lrs = (str(lr) for lr in learning_rates(optimizers))
             print(f"Learning rate(s): {', '.join(lrs)}")
@@ -96,25 +102,31 @@ class Trainer(TrainerBase):
                 metric_reporter,
                 pre_batch=training_pre_batch_callback,
                 backprop=training_backprop,
+                rank=rank,
             )
+
             model.eval()
             eval_metric = self._run_epoch(
-                Stage.EVAL, epoch, eval_iter, model, metric_reporter
+                Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
             )
 
             # Step the learning rate scheduler(s)
             if scheduler:
+                assert eval_metric is not None
                 scheduler.step(
                     metrics=metric_reporter.get_model_select_metric(eval_metric),
                     epoch=epoch,
                 )
 
-            # choose best model
+            # choose best model.
             if metric_reporter.compare_metric(eval_metric, best_metric):
+                print(
+                    f"Rank {rank} worker: Found a better model! Saving the model state."
+                )
                 last_best_epoch = epoch
                 best_metric = eval_metric
-                print("Found a better model! Saving it...")
-                if train_config.save_module_checkpoints:
+                # Only rank = 0 trainer saves modules.
+                if train_config.save_module_checkpoints and rank == 0:
                     model.save_modules(
                         base_path=train_config.modules_save_dir, suffix=f"-ep{epoch}"
                     )
@@ -124,13 +136,17 @@ class Trainer(TrainerBase):
                 epoch - last_best_epoch == self.config.early_stop_after
             ):
                 print(
-                    "Eval metric hasn't changed for "
-                    "{self.config.early_stop_after} epochs, stopping now."
+                    f"Rank {rank} worker: Eval metric hasn't changed for "
+                    + f"{self.config.early_stop_after} epochs. Stopping now."
                 )
                 break
 
         model.load_state_dict(best_model_state)
-        return model, best_metric
+
+        if training_result is not None:
+            training_result.append((model, best_metric))
+        else:
+            return model, best_metric
 
     def _run_epoch(
         self,
@@ -141,19 +157,29 @@ class Trainer(TrainerBase):
         metric_reporter,
         pre_batch=lambda: None,
         backprop=lambda loss: None,
+        rank=0,
     ):
-        for batch, (inputs, targets, context) in enumerate(data_iter):
+        print(f"Rank {rank} worker: Running epoch for {stage}")
+        report_metrics = stage != Stage.TRAIN or self.config.report_train_metrics
+        for batch_id, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
             logits = model(*inputs)
             loss = model.get_loss(logits, targets, context)
             if BatchContext.IGNORE_LOSS in context:
                 loss *= 0
             backprop(loss)
-            preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
-            metric_reporter.add_batch_stats(
-                batch, preds, targets, scores, loss.item(), inputs, **context
-            )
-        return metric_reporter.report_metric(stage, epoch)
+            if report_metrics:
+                preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
+                metric_reporter.add_batch_stats(
+                    batch_id, preds, targets, scores, loss.item(), inputs, **context
+                )
+
+        metrics = None
+        if report_metrics:
+            metrics = metric_reporter.report_metric(stage, epoch)
+        else:
+            metric_reporter._reset()
+        return metrics
 
     def _prepare_scheduler(self, train_iter, scheduler=None):
         if scheduler:

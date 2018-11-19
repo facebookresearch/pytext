@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from .char_field import CharFeatureField
 from .dict_field import DictFeatureField
 from .field import (
@@ -17,6 +18,7 @@ from .field import (
     create_fields,
 )
 from .pretrained_model_embedding_field import PretrainedModelEmbeddingField
+from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
 
 
 __all__ = [
@@ -36,4 +38,5 @@ __all__ = [
     "NestedField",
     "VocabUsingNestedField",
     "SeqFeatureField",
+    "TextFeatureFieldWithSpecialUnk",
 ]

@@ -79,6 +79,7 @@ class Task(Component):
                 task_config.features,
                 task_config.labels,
                 data_handler.metadata,
+                task_config.model,
             )
             if task_config.exporter
             else None

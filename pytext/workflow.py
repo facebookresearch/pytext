@@ -67,7 +67,7 @@ def prepare_task(
     world_size: int = 1,
 ) -> Task:
 
-    if dist_init_url:
+    if dist_init_url and world_size > 1:
         dist_init(rank, world_size, dist_init_url)
 
     print("\nParameters: {}\n".format(config))

@@ -2,7 +2,7 @@
 
 from unittest import TestCase
 
-from pytext.fb.rnng.annotation import Annotation
+from pytext.data.data_structures.annotation import Annotation
 from pytext.metric_reporters.compositional_metric_reporter import (
     CompositionalMetricReporter,
 )

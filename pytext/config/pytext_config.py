@@ -76,6 +76,8 @@ class PyTextConfig(ConfigBase):
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules
     save_module_checkpoints: bool = False
+    # Whether to use TensorBoard
+    use_tensorboard: bool = True
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done
@@ -89,6 +91,10 @@ class TestConfig(ConfigBase):
     # Test data path
     test_path: str = "test.tsv"
     use_cuda_if_available: bool = True
+    is_compositional: bool = False
+    flat_out_file_for_compositional: str = ""
+    # Whether to use TensorBoard
+    use_tensorboard: bool = True
 
 
 class OptimizerType(Enum):

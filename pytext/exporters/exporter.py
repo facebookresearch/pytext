@@ -171,6 +171,8 @@ class TextModelExporter(ModelExporter):
         feature_config: FeatureConfig,
         label_config: LabelConfig,
         meta: CommonMetadata,
+        *args,
+        **kwargs,
     ):
         # The number of names in input_names *must* be equal to the number of
         # tensors passed in dummy_input

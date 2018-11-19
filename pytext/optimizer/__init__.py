@@ -11,6 +11,7 @@ def create_optimizer(
 ) -> List[torch.optim.Optimizer]:
     if optimizer_params.type == OptimizerType.ADAM:
         sparse_grads_params: Dict[str, torch.nn.Parameter] = {}
+        dense_grads_params: Dict[str, torch.nn.Parameter] = model.named_parameters()
         if hasattr(model, "get_model_params_for_optimizer"):
             sparse_grads_params, dense_grads_params = (
                 model.get_model_params_for_optimizer()
@@ -39,7 +40,7 @@ def create_optimizer(
         else:
             return [
                 torch.optim.Adam(
-                    get_params(model.parameters()),
+                    get_params(dense_grads_params),
                     lr=optimizer_params.lr,
                     weight_decay=optimizer_params.weight_decay,
                 )

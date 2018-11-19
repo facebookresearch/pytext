@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import json
+import unicodedata
 from typing import Any, List, Tuple
+
+from pytext.common.constants import VocabMeta
 
 
 def simple_tokenize(s: str) -> List[str]:
@@ -87,3 +90,81 @@ def align_slot_labels(
                 tok_label = s.token_label(use_bio_labels, t_start, t_end)
         token_labels.append(tok_label)
     return " ".join(token_labels)
+
+
+def is_number(string):
+    try:
+        float(string)
+        return True
+    except ValueError:
+        pass
+
+    try:
+        unicodedata.numeric(string)
+        return True
+    except (TypeError, ValueError):
+        pass
+
+    return False
+
+
+# This function has been adapted from
+# https://github.com/clab/rnng/blob/master/get_oracle.py
+def unkify(token):  # noqa: C901
+    if len(token.rstrip()) == 0:
+        return VocabMeta.UNK_TOKEN
+
+    numCaps = 0
+    hasDigit = False
+    hasDash = False
+    hasLower = False
+    for char in token.rstrip():
+        if char.isdigit():
+            hasDigit = True
+        elif char == "-":
+            hasDash = True
+        elif char.isalpha():
+            if char.islower():
+                hasLower = True
+            elif char.isupper():
+                numCaps += 1
+    result = VocabMeta.UNK_TOKEN
+    lower = token.rstrip().lower()
+    ch0 = token.rstrip()[0]
+    if ch0.isupper():
+        if numCaps == 1:
+            result = result + "-INITC"
+        else:
+            result = result + "-CAPS"
+    elif not (ch0.isalpha()) and numCaps > 0:
+        result = result + "-CAPS"
+    elif hasLower:
+        result = result + "-LC"
+    if hasDigit:
+        result = result + "-NUM"
+    if hasDash:
+        result = result + "-DASH"
+    if lower[-1] == "s" and len(lower) >= 3:
+        ch2 = lower[-2]
+        if not (ch2 == "s") and not (ch2 == "i") and not (ch2 == "u"):
+            result = result + "-s"
+    elif len(lower) >= 5 and not (hasDash) and not (hasDigit and numCaps > 0):
+        if lower[-2:] == "ed":
+            result = result + "-ed"
+        elif lower[-3:] == "ing":
+            result = result + "-ing"
+        elif lower[-3:] == "ion":
+            result = result + "-ion"
+        elif lower[-2:] == "er":
+            result = result + "-er"
+        elif lower[-3:] == "est":
+            result = result + "-est"
+        elif lower[-2:] == "ly":
+            result = result + "-ly"
+        elif lower[-3:] == "ity":
+            result = result + "-ity"
+        elif lower[-1] == "y":
+            result = result + "-y"
+        elif lower[-2:] == "al":
+            result = result + "-al"
+    return result

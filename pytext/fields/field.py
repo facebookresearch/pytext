@@ -5,7 +5,6 @@ from typing import Any, Mapping
 import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
-from pytext.fields.utils import reverse_tensor
 from pytext.utils import data_utils
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
@@ -89,8 +88,8 @@ class VocabUsingField(Field):
         embedding_init_strategy=EmbedInitStrategy.RANDOM,
         vocab_file="",
         vocab_size="",
-        vocab_from_train_data=True,
-        vocab_from_all_data=False,
+        vocab_from_train_data=True,  # build vocab from train data
+        vocab_from_all_data=False,  # build vocab from train, eval, test data
         *args,
         **kwargs,
     ):
@@ -168,6 +167,7 @@ class TextFeatureField(VocabUsingField):
         vocab_file="",
         vocab_size="",
         vocab_from_train_data=True,
+        vocab_from_all_data=False,
         postprocessing=None,
         use_vocab=True,
         include_lengths=True,
@@ -190,6 +190,7 @@ class TextFeatureField(VocabUsingField):
             vocab_file=vocab_file,
             vocab_size=vocab_size,
             vocab_from_train_data=vocab_from_train_data,
+            vocab_from_all_data=vocab_from_all_data,
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,
@@ -215,6 +216,7 @@ class SeqFeatureField(VocabUsingNestedField):
         vocab_file="",
         vocab_size="",
         vocab_from_train_data=True,
+        vocab_from_all_data=False,
         postprocessing=None,
         use_vocab=True,
         include_lengths=True,
@@ -232,6 +234,7 @@ class SeqFeatureField(VocabUsingNestedField):
             vocab_file=vocab_file,
             vocab_size=vocab_size,
             vocab_from_train_data=vocab_from_train_data,
+            vocab_from_all_data=vocab_from_all_data,
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,
@@ -264,7 +267,6 @@ class ActionField(VocabUsingField):
             sequential=True,
             batch_first=True,
             tokenize=data_utils.no_tokenize,
-            unk_token=None,  # Don't include unk in the list of labels
-            # reverse the tensor
-            postprocessing=reverse_tensor,
+            unk_token=None,  # Don't include UNK in the list of labels
+            pad_token=None,  # Don't include PAD in the list of labels
         )

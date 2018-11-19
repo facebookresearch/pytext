@@ -52,7 +52,7 @@ class TokenEmbedding(Module):
         char_embed = None
         pretrained_model_embed = None
 
-        if config.word_feat.embed_dim:
+        if config.word_feat and config.word_feat.embed_dim > 0:
             word_feat_meta = metadata.features[DatasetFieldName.TEXT_FIELD]
             word_embed = nn.Embedding(
                 word_feat_meta.vocab_size,
@@ -73,7 +73,7 @@ class TokenEmbedding(Module):
             word_embed.weight.data[word_feat_meta.unk_token_idx].fill_(0.0)
             word_embed.weight.requires_grad = not config.word_feat.freeze
 
-        if config.dict_feat:
+        if config.dict_feat and config.dict_feat.embed_dim > 0:
             dict_feat_meta = metadata.features[DatasetFieldName.DICT_FIELD]
             dict_embed = DictEmbedding(
                 dict_feat_meta.vocab_size,
@@ -81,7 +81,7 @@ class TokenEmbedding(Module):
                 config.dict_feat.pooling,
                 sparse=config.dict_feat.sparse,
             )
-        if config.char_feat:
+        if config.char_feat and config.char_feat.embed_dim > 0:
             char_feat_meta = metadata.features[DatasetFieldName.CHAR_FIELD]
             char_embed = CharacterEmbedding(
                 char_feat_meta.vocab_size,

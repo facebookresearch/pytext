@@ -63,7 +63,7 @@ class LMLSTM(Model):
         self
     ) -> Tuple[Dict[str, nn.Parameter], Dict[str, nn.Parameter]]:
         if self.tied_weights:
-            return {}, {}  # Don't use SparseAdam when tying weights.
+            return {}, self.parameters()  # Don't use SparseAdam when tying weights.
         return super().get_model_params_for_optimizer()
 
     def forward(self, tokens, *inputs) -> List[torch.Tensor]:
