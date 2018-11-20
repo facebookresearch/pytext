@@ -81,7 +81,7 @@ def save_and_export(
     config: PyTextConfig, task: Task, summary_writer: SummaryWriter = None
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
-    save(config, task.model, task.data_handler.metadata)
+    save(config, task.model, task.data_handler.metadata_to_save())
     task.export(task.model, config.export_caffe2_path, summary_writer)
 
 
