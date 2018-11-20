@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-from typing import Any, List, Tuple
+import re
+from typing import Any, List, Tuple, Union
 
 
+OPEN = "["
+CLOSE = "]"
+ESCAPE = "\\"
 INTENT_PREFIX = "IN:"
 SLOT_PREFIX = "SL:"
 COMBINATION_INTENT_LABEL = INTENT_PREFIX + "COMBINE"
@@ -29,6 +33,10 @@ def is_unsupported(node_label: str) -> bool:
     )
 
 
+def escape_brackets(string: str) -> str:
+    return re.sub(rf"([\{OPEN}\{CLOSE}\{ESCAPE}])", rf"\{ESCAPE}\1", string)
+
+
 """
 A data structure for an Intents and Slots annotation:
 Each Node has type (Root, Intent, or Token), a pointer to its parent, and
@@ -45,7 +53,7 @@ class Annotation:
     def __init__(
         self,
         annotation_string: str,
-        brackets: str = "[]",
+        brackets: str = OPEN + CLOSE,
         combination_labels: bool = True,
         add_dict_feat: bool = False,
         accept_flat_intents_slots: bool = False,
@@ -66,113 +74,88 @@ class Annotation:
         else:
             raise ValueError("Cannot parse annotation_string")
 
-        self.items = self.split_seqlogical()
         self.tree = Tree(self.build_tree(accept_flat_intents_slots), combination_labels)
         self.root: Root = self.tree.root
 
-    def split_seqlogical(self):
-        if not self.seqlogical.endswith("]"):
-            raise ValueError("Not a valid tree.")
-
-        result = []
-        previous_char = ""
-        for char in self.seqlogical:
-            if char == self.OPEN and previous_char != "\\":
-                result.append(" ")
-                result.append(char)
-            elif char == self.CLOSE and previous_char != "\\":
-                result.append(" ")
-                result.append(char)
-                result.append(" ")
-            else:
-                result.append(char)
-            previous_char = char
-
-        return "".join(result).split()
-
-    # add parameter to turn off the added build method
-    def build_tree(self, accept_flat_intents_slots: bool = False):  # noqa
-        token_count = 0
+    def build_tree(self, accept_flat_intents_slots: bool = False):
         root = Root()
-
         node_stack: List[Any] = [root]
-        num_topintent = 0
+        curr_chars: List[str] = []
+        token_count = 0
+        expecting_label = False
+        it = iter(self.seqlogical)
 
-        for item in self.items:
-            if item == self.CLOSE:
-                # close the non-terminal
-                if not node_stack:
-                    raise ValueError("Not a valid tree.")
-                node_stack.pop()
-            elif item.startswith(self.OPEN):
-                if len(node_stack) < 1:
-                    raise ValueError("Not a valid tree.")
+        while True:
+            char = next(it, None)
+            if char is None:
+                break
 
-                # either intent or slot non-terminal
-                label = item[1:]
-                if item.startswith(self.OPEN + INTENT_PREFIX):
-                    node_stack.append(Intent(label))
-                elif item.startswith(self.OPEN + SLOT_PREFIX):
-                    node_stack.append(Slot(label))
-                else:
-                    if accept_flat_intents_slots:
-                        # Temporary, for compatibility with flat annotations
-                        # that does not contain IN:, SL: prefixes
-                        #
-                        # This assumes any child of ROOT or SLOT must be INTENT,
-                        # and any child of INTENT must be SLOT
-                        if type(node_stack[-1]) == Root or type(node_stack[-1]) == Slot:
-                            node_stack.append(Intent(label))
-                        elif type(node_stack[-1]) == Intent:
-                            node_stack.append(Slot(label))
+            if char.isspace() or char in (OPEN, CLOSE):
+                if curr_chars:
+                    word = "".join(curr_chars)
+                    curr_chars = []
+                    parent = node_stack[-1]
+                    if expecting_label:
+                        if word.startswith(INTENT_PREFIX):
+                            node: Union[Intent, Slot, Token] = Intent(word)
+                        elif word.startswith(SLOT_PREFIX):
+                            node = Slot(word)
+                        elif accept_flat_intents_slots:
+                            # Temporary, for compatibility with flat annotations that
+                            # does not contain IN:, SL: prefixes. This assumes any child
+                            # of ROOT or SLOT must be INTENT, and any child of INTENT
+                            # must be SLOT.
+                            if isinstance(parent, (Root, Slot)):
+                                node = Intent(word)
+                            elif isinstance(parent, Intent):
+                                node = Slot(word)
+                            else:
+                                raise ValueError(
+                                    "The previous node in node_stack is not of type "
+                                    "Root, Intent or Slot."
+                                )
                         else:
-                            raise ValueError(
-                                "The previous object in node_stack is not of"
-                                + " type Root, Intent or Slot."
-                            )
+                            raise ValueError(f"Label {word} must start with IN: or SL:")
+                        node_stack.append(node)
+                        expecting_label = False
                     else:
-                        raise ValueError(
-                            "Label "
-                            + item
-                            + " must start with IN: or SL: for "
-                            + str(self.seqlogical)
-                        )
-
-                if len(node_stack) < 2:
-                    raise ValueError("Not a valid tree.")
-
-                node_stack[-1].parent = node_stack[-2]
-                node_stack[-2].children.append(node_stack[-1])
-
-                if type(node_stack[-1]) == Intent and node_stack[-1].parent == root:
-                    num_topintent += 1
-
+                        node = Token(word, token_count)
+                        token_count += 1
+                    parent.children.append(node)
+                    node.parent = parent
+                if char in (OPEN, CLOSE):
+                    if expecting_label:
+                        raise ValueError("Invalid tree. No label found after '['.")
+                    if char == OPEN:
+                        expecting_label = True
+                    else:
+                        node_stack.pop()
             else:
-                # Token terminal
-                token = Token(item, token_count)
-                # self.tokenNode_list.append(token)
-                token_count += 1
-                if len(node_stack) <= 0:
-                    raise ValueError("Not a valid tree.")
-                token.parent = node_stack[-1]
-                node_stack[-1].children.append(token)
+                if char == ESCAPE:
+                    char = next(it, None)
+                    if char not in (OPEN, CLOSE, ESCAPE):
+                        raise ValueError(
+                            f"Escape '{ESCAPE}' followed by none of '{OPEN}', "
+                            f"'{CLOSE}', or '{ESCAPE}'."
+                        )
+                curr_chars.append(char)
 
-        if len(node_stack) > 1:
-            raise ValueError("Not a valid tree.")
+        if len(node_stack) != 1:
+            raise ValueError("Invalid tree.")
 
-        if num_topintent > 1 and self.combination_labels:
+        if len(root.children) > 1 and self.combination_labels:
             comb_intent = Intent(COMBINATION_INTENT_LABEL)
             node_stack.insert(1, comb_intent)
-            for c in root.children:
-                if type(c) == Intent:
+            for child in root.children:
+                if type(child) == Intent:
                     comb_slot = Slot(COMBINATION_SLOT_LABEL)
                     comb_slot.parent = comb_intent
-                    comb_slot.children.append(c)
+                    comb_slot.children.append(child)
                     comb_intent.children.append(comb_slot)
-                    c.parent = comb_slot
+                    child.parent = comb_slot
                 else:
-                    c.parent = comb_intent
-                    comb_intent.children.append(c)
+                    child.parent = comb_intent
+                    comb_intent.children.append(child)
             comb_intent.parent = root
             root.children = [comb_intent]
 
@@ -271,14 +254,14 @@ class Node:
     def flat_str(self):
         string = ""
         if type(self) == Intent or type(self) == Slot:
-            string = "["
+            string = OPEN
         if type(self) != Root:
-            string += str(self.label) + " "
+            string += escape_brackets(str(self.label)) + " "
         if self.children:
             for child in self.children:
                 string += child.flat_str()
         if type(self) == Intent or type(self) == Slot:
-            string += "] "
+            string += CLOSE + " "
         return string
 
     def children_flat_str_spans(self):
