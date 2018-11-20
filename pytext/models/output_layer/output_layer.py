@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import Union
+from typing import Any, List, Union
 
 import torch
 import torch.nn.functional as F
+from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
-from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data import CommonMetadata
 
@@ -32,6 +32,24 @@ class OutputLayerBase(Module):
     def get_pred(self, logit, targets=None, context=None):
         return logit, None
 
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+        label_names: List[str],
+    ) -> List[core.BlobReference]:
+        """
+        Exports the output layer to caffe2 by manually adding the necessary
+        operators to the init_net and predict net, and returns the list of
+        external output blobs to be added to the model. By default this does
+        nothing, so sub-classes should implement and override this method if
+        necessary.
+        """
+        return []
+
 
 class ClassificationOutputLayer(OutputLayerBase):
     @classmethod
@@ -43,7 +61,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             label_weights = FloatTensor(label_weights)
         return cls(create_loss(config.loss, weight=label_weights), config)
 
-    class Config(OutputLayerBase.Config):
+    class Config(OutputLayerBase.Config):  # noqa: T484
         loss: Union[
             CrossEntropyLoss.Config, BinaryCrossEntropyLoss.Config
         ] = CrossEntropyLoss.Config()
@@ -56,6 +74,29 @@ class ClassificationOutputLayer(OutputLayerBase):
         else:
             scores = F.log_softmax(logit, 1)
         return preds, scores
+
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+        label_names: List[str],
+    ) -> List[core.BlobReference]:
+        """
+        Exports the doc classification layer to caffe2 by manually adding the
+        necessary operators to the init_net and predict net, and returns the
+        list of external output blobs to be added to the model.
+        """
+        if isinstance(self.loss_fn, BinaryCrossEntropyLoss):
+            probability_out = predict_net.Sigmoid(output_name)
+        else:
+            probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
+
+        return gen_additional_blobs(
+            predict_net, probability_out, model_out, output_name, label_names
+        )
 
 
 class CRFOutputLayer(OutputLayerBase):
@@ -77,6 +118,28 @@ class CRFOutputLayer(OutputLayerBase):
         logit = _rearrange_output(logit, pred)
         return pred, F.log_softmax(logit, 2)
 
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+        label_names: List[str],
+    ) -> List[core.BlobReference]:
+        """
+        Exports the CRF output layer to caffe2 by manually adding the necessary
+        operators to the init_net and predict net, and returns the list of
+        external output blobs to be added to the model.
+        """
+        output_score = self.crf.export_to_caffe2(
+            workspace, init_net, predict_net, output_name
+        )
+        probability_out = predict_net.Softmax(output_score, axis=model_out.dim() - 1)
+        return gen_additional_blobs(
+            predict_net, probability_out, model_out, output_name, label_names
+        )
+
 
 # TODO T33442979 remove this after exposing prediction in caffe2 model
 def _rearrange_output(logit, pred):
@@ -95,3 +158,27 @@ def _rearrange_output(logit, pred):
             )
             logit[batch_idx][w_idx] = w_logits
     return logit
+
+
+def gen_additional_blobs(
+    predict_net: core.Net,
+    probability_out,
+    model_out: torch.Tensor,
+    output_name: str,
+    label_names: List[str],
+) -> List[core.BlobReference]:
+    """
+    Utility method to generate additional blobs for human readable result.
+    """
+    res = []
+    tmp_out_score = predict_net.Log(probability_out)
+    label_scores = predict_net.Split(
+        tmp_out_score, label_names, axis=model_out.dim() - 1
+    )
+
+    # Make sure label_scores is iterable
+    if not isinstance(label_scores, tuple):
+        label_scores = (label_scores,)
+    for name, label_score in zip(label_names, label_scores):
+        res.append(predict_net.Copy(label_score, "{}:{}".format(output_name, name)))
+    return res

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-from typing import Union
+from typing import List, Union
 
 import torch
+from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
@@ -60,3 +61,25 @@ class IntentSlotOutputLayer(OutputLayerBase):
         d_pred, d_score = self.doc_output.get_pred(d_logit, d_target, context)
         w_pred, w_score = self.word_output.get_pred(w_logit, w_target, context)
         return (d_pred, w_pred), (d_score, w_score)
+
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: List[torch.Tensor],
+        doc_out_name: str,
+        word_out_name: str,
+        doc_labels: List[str],
+        word_labels: List[str],
+    ) -> List[core.BlobReference]:
+        """
+        Exports the intent slot output layer to caffe2 by manually adding the
+        necessary operators to the init_net and predict net, and returns the
+        list of external output blobs to be added to the model.
+        """
+        return self.doc_output.export_to_caffe2(
+            workspace, init_net, predict_net, model_out[0], doc_out_name, doc_labels
+        ) + self.word_output.export_to_caffe2(
+            workspace, init_net, predict_net, model_out[1], word_out_name, word_labels
+        )

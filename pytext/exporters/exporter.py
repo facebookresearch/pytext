@@ -75,7 +75,22 @@ class ModelExporter(Component):
             list of blobs that will be added to the caffe2 model
             list of output names of the blobs to add
         """
-        return [], output_names
+        model_out = py_model(*self.dummy_model_input)
+        res = py_model.output_layer.export_to_caffe2(
+            workspace,
+            init_net,
+            predict_net,
+            model_out,
+            *output_names,
+            *self.label_names_list,
+        )
+
+        # optionaly include the last decoder layer of pytorch model
+        final_output_names = [str(output) for output in res] + (
+            output_names if self.config.export_logits else []
+        )
+
+        return res, final_output_names
 
     def get_extra_params(self) -> List[str]:
         """
@@ -132,10 +147,6 @@ class TextModelExporter(ModelExporter):
             {
                 "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
                 "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
-            }
-        score_axis_list: list of axis of score in the output tensor. e.g:
-            doc model has output as [batch_size, score] and word model has output
-            as [batch_size, words, score], so input can be [1 , 2]
     """
 
     class Config(ConfigBase):
@@ -146,7 +157,6 @@ class TextModelExporter(ModelExporter):
         config,
         label_names: List[List[str]],
         feature_itos_map: Dict[str, List[str]],
-        score_axis_list: List[int],
         meta: CommonMetadata,
         *args,
         **kwargs,
@@ -154,7 +164,6 @@ class TextModelExporter(ModelExporter):
         super().__init__(config, *args, **kwargs)
         self.label_names_list = label_names
         self.vocab_map = feature_itos_map
-        self.score_axis_list = score_axis_list
         self.meta = meta
         # validate vocab_map
         for vocab_name in self.vocab_map:
@@ -211,15 +220,12 @@ class TextModelExporter(ModelExporter):
         )  # token lengths
         input_names.append("tokens_lens")
         output_names: List[str] = []
-        axis: List[int] = []
 
         if getattr(label_config, "doc_label", None):
             output_names.extend(label_config.doc_label.export_output_names)
-            axis.append(1)
 
         if getattr(label_config, "word_label", None):
             output_names.extend(label_config.word_label.export_output_names)
-            axis.append(2)
 
         label_names = [label.vocab.itos for label in meta.labels.values()]
 
@@ -227,7 +233,6 @@ class TextModelExporter(ModelExporter):
             config,
             label_names,
             feature_itos_map,
-            axis,
             meta,
             input_names,
             output_names,
@@ -240,48 +245,3 @@ class TextModelExporter(ModelExporter):
         return onnx_utils.add_feats_numericalize_ops(
             c2_prepared, self.vocab_map, input_names
         )
-
-    def postprocess_output(
-        self,
-        init_net: core.Net,
-        predict_net: core.Net,
-        workspace: core.workspace,
-        output_names: List[str],
-        py_model,
-    ) -> Tuple[List[core.BlobReference], List[str]]:
-        res = []
-        for class_names, output_score, axis in zip(
-            self.label_names_list, output_names, self.score_axis_list
-        ):
-            # TODO Hacky way to check for crf, will refactor T33443796
-            output_layer = py_model.output_layer
-            if isinstance(output_layer, IntentSlotOutputLayer):
-                output_layer = output_layer.word_output
-
-            if isinstance(output_layer, CRFOutputLayer) and axis == 2:
-                output_score = output_layer.crf.export_to_caffe2(
-                    workspace, init_net, predict_net, output_score
-                )
-
-            if isinstance(output_layer, ClassificationOutputLayer) and isinstance(
-                output_layer.loss_fn, BinaryCrossEntropyLoss
-            ):
-                probability_out = predict_net.Sigmoid(output_score)
-            else:
-                probability_out = predict_net.Softmax(output_score, axis=axis)
-            tmp_out_score = predict_net.Log(probability_out)
-            label_scores = predict_net.Split(tmp_out_score, class_names, axis=axis)
-
-            # Make sure label_scores is iterable
-            if not isinstance(label_scores, tuple):
-                label_scores = (label_scores,)
-            for name, label_score in zip(class_names, label_scores):
-                res.append(
-                    predict_net.Copy(label_score, "{}:{}".format(output_score, name))
-                )
-
-        # optionaly include the last decoder layer of pytorch model
-        final_output_names = [str(output) for output in res] + (
-            output_names if self.config.export_logits else []
-        )
-        return res, final_output_names
