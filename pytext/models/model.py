@@ -51,8 +51,8 @@ class Model(nn.Module, Component):
         )
         decoder = create_module(
             config.decoder,
-            from_dim=representation.representation_dim,
-            to_dim=next(iter(metadata.labels.values())).vocab_size,
+            in_dim=representation.representation_dim,
+            out_dim=next(iter(metadata.labels.values())).vocab_size,
         )
         output_layer = create_module(config.output_layer, metadata)
         return cls(embedding, representation, decoder, output_layer)

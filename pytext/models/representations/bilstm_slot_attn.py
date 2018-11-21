@@ -44,7 +44,7 @@ class BiLSTMSlotAttention(RepresentationBase):
         self.representation_dim = self.lstm.representation_dim
         if config.mlp_decoder:
             self.dense = MLPDecoder(
-                config.mlp_decoder, from_dim=self.lstm.representation_dim
+                config.mlp_decoder, in_dim=self.lstm.representation_dim
             )
             self.representation_dim = self.dense.out_dim
 

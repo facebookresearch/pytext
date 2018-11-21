@@ -4,30 +4,55 @@ from typing import List
 
 import torch
 import torch.nn as nn
-from pytext.config import ConfigBase
 
 from .decoder_base import DecoderBase
 
 
 class MLPDecoder(DecoderBase):
+    """
+    `MLPDecoder` implementes a fully connected network and uses ReLU as the
+    activation function. The module projects an input tensor to `out_dim`.
+
+    Args:
+        config (Config): Configuration object of type MLPDecoder.Config.
+        in_dim (int): Dimension of input Tensor passed to MLP.
+        out_dim (int): Dimension of output Tensor produced by MLP. Defaults to 0.
+
+    Attributes:
+        mlp (type): Module that implements the MLP.
+        out_dim (type): Dimension of the output of this module.
+        hidden_dims (List[int]): Dimensions of the outputs of hidden layers.
+
+    """
+
     class Config(DecoderBase.Config):
-        # Intermediate hidden dimensions
+        """
+        Configuration class for `MLPDecoder`.
+
+        Attributes:
+            hidden_dims (List[int]): Dimensions of the outputs of hidden layers..
+        """
+
         hidden_dims: List[int] = []
 
-    def __init__(self, config: Config, from_dim: int, to_dim: int = 0) -> None:
+    def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
+
         layers = []
         for dim in config.hidden_dims or []:
-            layers.append(nn.Linear(from_dim, dim))
+            layers.append(nn.Linear(in_dim, dim))
             layers.append(nn.ReLU())
-            from_dim = dim
-        if to_dim > 0:
-            layers.append(nn.Linear(from_dim, to_dim))
-        self.mlp = nn.Sequential(*layers)
-        self.out_dim = to_dim if to_dim > 0 else config.hidden_dims[-1]
+            in_dim = dim
+        if out_dim > 0:
+            layers.append(nn.Linear(in_dim, out_dim))
 
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
-        return self.mlp(x)
+        self.mlp = nn.Sequential(*layers)
+        self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return self.mlp(input)
 
     def get_decoder(self) -> List[nn.Module]:
-        return self.mlp
+        """Returns the MLP module that is used as a decoder.
+        """
+        return [self.mlp]

@@ -52,7 +52,7 @@ class PureDocAttention(RepresentationBase):
             self.representation_dim = embed_dim
 
         if config.mlp_decoder:
-            self.dense = MLPDecoder(config.mlp_decoder, from_dim=embed_dim)
+            self.dense = MLPDecoder(config.mlp_decoder, in_dim=embed_dim)
             self.representation_dim = self.dense.out_dim
 
     def forward(
