@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
-from pytext.models.embeddings.token_embedding import TokenEmbedding  # noqa
+from pytext.models import Model
 from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
@@ -81,7 +81,7 @@ class RNNGParser(nn.Module, Component):
             valid_NT_idxs=metadata.valid_NT_idxs,
             valid_IN_idxs=metadata.valid_IN_idxs,
             valid_SL_idxs=metadata.valid_SL_idxs,
-            embedding=create_module(feature_config, metadata=metadata),
+            embedding=Model.create_embedding(feature_config, metadata=metadata),
             p_compositional=p_compositional,
         )
 
@@ -197,7 +197,7 @@ class RNNGParser(nn.Module, Component):
             dict_weights_rev = torch.flip(dict_weights, [len(dict_weights.size()) - 1])
             dict_lengths_rev = torch.flip(dict_lengths, [len(dict_lengths.size()) - 1])
             dict_feat_rev = (dict_ids_rev, dict_weights_rev, dict_lengths_rev)
-        tok_embeddings = self.embedding(tokens_list_rev, seq_lens, dict_feat_rev)
+        tok_embeddings = self.embedding(tokens_list_rev, dict_feat_rev)
 
         # Batch size is always = 1. So we squeeze the batch_size dimension.
         tok_embeddings = tok_embeddings.squeeze(0)
