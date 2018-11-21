@@ -6,6 +6,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
+from pytext.utils.test_utils import tests_module
 
 
 class JointDataHandlerTest(unittest.TestCase):
@@ -33,7 +34,7 @@ class JointDataHandlerTest(unittest.TestCase):
         self.assertTrue(self.data_handler.raw_columns == expected_columns)
 
     def test_read_from_file(self):
-        file_name = "pytext/tests/data/train_data_tiny.tsv"
+        file_name = tests_module.test_file("train_data_tiny.tsv")
         data = self.data_handler.read_from_file(
             file_name, self.data_handler.raw_columns
         )
@@ -48,7 +49,7 @@ class JointDataHandlerTest(unittest.TestCase):
         )
 
     def test_tokenization(self):
-        file_name = "pytext/tests/data/train_data_tiny.tsv"
+        file_name = tests_module.test_file("train_data_tiny.tsv")
 
         data = self.data_handler.read_from_file(
             file_name, self.data_handler.raw_columns

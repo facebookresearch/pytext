@@ -4,11 +4,12 @@ import unittest
 
 from pytext.common.constants import DFColumn
 from pytext.data.data_handler import DataHandler
+from pytext.utils.test_utils import tests_module
 
 
 class DataHandlerTest(unittest.TestCase):
     def test_read_from_csv(self):
-        file_name = "pytext/tests/data/train_data_tiny.tsv"
+        file_name = tests_module.test_file("train_data_tiny.tsv")
         columns = [
             DFColumn.DOC_LABEL,
             DFColumn.WORD_LABEL,
@@ -28,7 +29,7 @@ class DataHandlerTest(unittest.TestCase):
         self.assertEqual("", data[0][DFColumn.DICT_FEAT])
 
     def test_read_partially_from_csv(self):
-        file_name = "pytext/tests/data/train_data_tiny.tsv"
+        file_name = tests_module.test_file("train_data_tiny.tsv")
         columns = {DFColumn.DOC_LABEL: 0, DFColumn.UTTERANCE: 2}
 
         data = DataHandler.read_from_file(file_name, columns)

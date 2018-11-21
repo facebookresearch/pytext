@@ -14,17 +14,17 @@ from pytext.config.field_config import (
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.embeddings_utils import PretrainedEmbedding
+from pytext.utils.test_utils import tests_module
 
 
-TRAIN_FILE = "pytext/tests/data/train_data_tiny.tsv"
-EVAL_FILE = "pytext/tests/data/test_data_tiny.tsv"
-TEST_FILE = "pytext/tests/data/test_data_tiny.tsv"
+TRAIN_FILE = tests_module.test_file("train_data_tiny.tsv")
+EVAL_FILE = tests_module.test_file("test_data_tiny.tsv")
+TEST_FILE = tests_module.test_file("test_data_tiny.tsv")
 
-PRETRAINED_EMBEDDINGS_PATH = "pytext/tests/data"
 
-EMBED_RAW_PATH = "pytext/tests/data/pretrained_embed_raw"
-EMBED_CACHED_PATH = "pytext/tests/data/test_embed.cached"
-EMBED_XLU_CACHED_PATH = "pytext/tests/data/test_embed_xlu.cached"
+EMBED_RAW_PATH = tests_module.test_file("pretrained_embed_raw")
+EMBED_CACHED_PATH = tests_module.test_file("test_embed.cached")
+EMBED_XLU_CACHED_PATH = tests_module.test_file("test_embed_xlu.cached")
 
 
 class PretrainedEmbedsTest(unittest.TestCase):
@@ -144,7 +144,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
             word_feat=WordFeatConfig(
                 embedding_init_strategy=EmbedInitStrategy.RANDOM,
                 embed_dim=5,
-                pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
+                pretrained_embeddings_path=tests_module.TEST_BASE_DIR,
             )
         )
         data_handler = JointModelDataHandler.from_config(
@@ -170,7 +170,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
             word_feat=WordFeatConfig(
                 embedding_init_strategy=EmbedInitStrategy.ZERO,
                 embed_dim=5,
-                pretrained_embeddings_path=PRETRAINED_EMBEDDINGS_PATH,
+                pretrained_embeddings_path=tests_module.TEST_BASE_DIR,
             )
         )
         data_handler = JointModelDataHandler.from_config(

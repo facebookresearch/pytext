@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from importlib import import_module
+
 from pytext.utils.data_utils import Slot
 
 
@@ -114,3 +116,19 @@ def merge_token_labels_to_slot(token_ranges, labels, use_bio_label=True):
     )
 
     return ",".join(summary_list)
+
+
+def import_tests_module(packages_to_scan=None):
+    if not packages_to_scan:
+        packages_to_scan = ["pytext.tests", "tests"]
+
+    for package in packages_to_scan:
+        try:
+            return import_module(".data_utils", package=package)
+        except ModuleNotFoundError:
+            pass
+    else:
+        raise ModuleNotFoundError(f"Scanned packages: {packages_to_scan}")
+
+
+tests_module = import_tests_module()

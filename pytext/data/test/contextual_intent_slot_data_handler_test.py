@@ -6,11 +6,12 @@ from pytext.common.constants import DFColumn
 from pytext.config.contextual_intent_slot import ModelInputConfig, TargetConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
+from pytext.utils.test_utils import tests_module
 
 
 class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
     def setUp(self):
-        file_name = "pytext/tests/data/contextual_intent_slot_train_tiny.tsv"
+        file_name = tests_module.test_file("contextual_intent_slot_train_tiny.tsv")
         self.dh = ContextualIntentSlotModelDataHandler.from_config(
             ContextualIntentSlotModelDataHandler.Config(),
             ModelInputConfig(),

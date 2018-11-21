@@ -6,9 +6,10 @@ import numpy as np
 from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import BPTTLanguageModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
+from pytext.utils.test_utils import tests_module
 
 
-FILE_NAME = "pytext/tests/data/alarm_lm_tiny.tsv"
+FILE_NAME = tests_module.test_file("alarm_lm_tiny.tsv")
 BATCH_SIZE = 4
 
 
