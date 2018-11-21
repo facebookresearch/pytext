@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
+from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
     Node,
@@ -17,30 +18,61 @@ from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
 
 
+DOC_LABEL_NAMES = "doc_label_names"
+
+
 class IntentSlotChannel(FileChannel):
     def get_title(self):
-        return (
-            "doc_index",
-            "intent_prediction",
-            "intent_label",
-            "slots_prediction",
-            "slots_label",
-            "text",
-        )
+        return ("doc_index", "text", "predicted_annotation", "actual_annotation")
 
     def gen_content(self, metrics, loss, preds, targets, scores, context):
-        doc_preds = preds[0]
-        doc_targets = targets[0]
+        for (
+            index,
+            utterance,
+            intent_pred,
+            intent_target,
+            slots_pred_label,
+            slots_target_label,
+        ) in zip(
+            context[DatasetFieldName.INDEX_FIELD],
+            context[DatasetFieldName.UTTERANCE_FIELD],
+            preds[0],
+            targets[0],
+            context["slots_prediction"],
+            context[DatasetFieldName.RAW_WORD_LABEL],
+        ):
+            yield (
+                index,
+                utterance,
+                self.create_annotation(
+                    utterance, context[DOC_LABEL_NAMES][intent_pred], slots_pred_label
+                ),
+                self.create_annotation(
+                    utterance,
+                    context[DOC_LABEL_NAMES][intent_target],
+                    slots_target_label,
+                ),
+            )
 
-        for i in range(len(doc_preds)):
-            yield [
-                context[DatasetFieldName.INDEX_FIELD][i],
-                doc_preds[i],
-                doc_targets[i],
-                context["slots_prediction"][i],
-                context[DatasetFieldName.RAW_WORD_LABEL][i],
-                context[DatasetFieldName.UTTERANCE_FIELD][i],
-            ]
+    @staticmethod
+    def create_annotation(utterance: str, intent_label: str, slots_label: str) -> str:
+        annotation_str = OPEN + escape_brackets(intent_label) + " "
+        slots = parse_slot_string(slots_label)
+        cur_index = 0
+        for slot in slots:
+            annotation_str += escape_brackets(utterance[cur_index : slot.start])
+            annotation_str += (
+                OPEN
+                + escape_brackets(slot.label)
+                + " "
+                + escape_brackets(utterance[slot.start : slot.end])
+                + " "
+                + CLOSE
+            )
+            cur_index = slot.end
+        annotation_str += escape_brackets(utterance[cur_index:]) + " " + CLOSE
+
+        return annotation_str
 
 
 def create_frame(intent_label, slot_names_str, utterance):
@@ -126,12 +158,7 @@ class IntentSlotMetricReporter(MetricReporter):
                 self.all_context[DatasetFieldName.TOKEN_RANGE],
             )
         ]
-
-    def get_meta(self):
-        return {
-            "doc_label_names": self.doc_label_names,
-            "word_label_names": self.word_label_names,
-        }
+        self.all_context[DOC_LABEL_NAMES] = self.doc_label_names
 
     def calculate_metric(self):
         return compute_all_metrics(
