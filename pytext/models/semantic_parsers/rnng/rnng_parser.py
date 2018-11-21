@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
+from pytext.models.embeddings.token_embedding import TokenEmbedding  # noqa
 from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
