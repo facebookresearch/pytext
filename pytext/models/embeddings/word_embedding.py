@@ -11,33 +11,61 @@ from .embedding_base import EmbeddingBase
 
 
 class WordEmbedding(EmbeddingBase, nn.Embedding):
+    """
+    A word embedding wrapper module around `torch.nn.Embedding` with opitions to
+    initialize the word embedding weights.
+
+    Note: Embedding weights for UNK token are always initialized to zeros.
+
+    Args:
+        num_embeddings (int): Total number of words/tokens (vocabulary size).
+        embedding_dim (int): Size of embedding vector.
+        embeddings_weight (torch.Tensor): Pretrained weights to initialize the
+            embedding table with.
+        init_range (List[int]): Range of uniform distribution to initialize the
+            weights with if `embeddings_weight` is None.
+        unk_token_idx (int): Index of UNK token in the word vocabulary.
+
+    """
+
     Config = WordFeatConfig
 
     @classmethod
-    def from_config(cls, config: WordFeatConfig, meta: FieldMeta):
+    def from_config(cls, config: WordFeatConfig, metadata: FieldMeta):
+        """Factory method to construct an instance of WordEmbedding from
+        the module's config object and the field's metadata object.
+
+        Args:
+            cls (type): WordEmbedding type.
+            config (WordFeatConfig): Configuration object specifying all the
+            parameters of WordEmbedding.
+            metadata (FieldMeta): Object containing this field's metadata.
+
+        Returns:
+            type: An instance of WordEmbedding.
+
+        """
         return cls(
-            num_embeddings=meta.vocab_size,
+            num_embeddings=metadata.vocab_size,
             embedding_dim=config.embed_dim,
-            embeds_weight=meta.pretrained_embeds_weight,
+            embeddings_weight=metadata.pretrained_embeds_weight,
             init_range=config.embedding_init_range,
-            unk_token_idx=meta.unk_token_idx,
-            sparse=config.sparse,
+            unk_token_idx=metadata.unk_token_idx,
         )
 
     def __init__(
         self,
         num_embeddings: int,
         embedding_dim: int,
-        embeds_weight: torch.Tensor,
+        embeddings_weight: torch.Tensor,
         init_range: List[int],
         unk_token_idx: int,
-        sparse: bool,
     ) -> None:
         EmbeddingBase.__init__(self, embedding_dim=embedding_dim)
         nn.Embedding.__init__(
-            self, num_embeddings, embedding_dim, _weight=embeds_weight, sparse=sparse
+            self, num_embeddings, embedding_dim, _weight=embeddings_weight
         )
-        if embeds_weight is None and init_range:
+        if embeddings_weight is None and init_range:
             self.weight.data.uniform_(init_range[0], init_range[1])
         # Initialize unk embedding with zeros
         # to guard the model against randomized decisions based on unknown words
