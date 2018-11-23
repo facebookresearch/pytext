@@ -11,7 +11,3 @@ IF NOT EXIST %_PYTEXT_ENV_NAME_% (
 )
 
 call %_PYTEXT_ENV_NAME_%\Scripts\activate.bat
-
-
-
-
