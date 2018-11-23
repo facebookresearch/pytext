@@ -25,7 +25,7 @@ class Model(nn.Module, Component):
         sub_embs = {}
         for name, config in emb_config._asdict().items():
             if issubclass(getattr(config, "__COMPONENT__", object), EmbeddingBase):
-                sub_embs[name] = create_module(config, meta=metadata.features[name])
+                sub_embs[name] = create_module(config, metadata=metadata.features[name])
             else:
                 print(f"{name} is not a config of embedding, skipping")
         return sub_embs
@@ -80,9 +80,9 @@ class Model(nn.Module, Component):
         return self.output_layer.get_pred(logit, target, context)
 
     def forward(self, *inputs) -> List[torch.Tensor]:
-        embedding_input = inputs[: self.embedding.num_emb]
+        embedding_input = inputs[: self.embedding.num_emb_modules]
         token_emb = self.embedding(*embedding_input)
-        other_input = inputs[self.embedding.num_emb :]
+        other_input = inputs[self.embedding.num_emb_modules :]
         input_representation = self.representation(token_emb, *other_input)
         if not isinstance(input_representation, (list, tuple)):
             input_representation = [input_representation]

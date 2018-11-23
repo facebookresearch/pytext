@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Iterable
+from typing import Iterable, Tuple, Union
 
 import torch
 from torch.nn import ModuleList
@@ -10,28 +10,38 @@ from .embedding_base import EmbeddingBase
 
 class EmbeddingList(EmbeddingBase, ModuleList):
     """
-    Generate a list of sub-embeddings, concat embedding tensors to a single tensor
-    or return a tuple of tenors
+    There are more than one way to embed a token and this module provides a way
+    to generate a list of sub-embeddings, concat embedding tensors into a single
+    Tensor or return a tuple of Tensors that can be used by downstream modules.
+
+    Args:
+        embeddings (Iterable[EmbeddingBase]): A sequence of embedding modules to
+        embed a token.
+        concat (bool): Whether to concatenate the embedding vectors emitted from
+        `embeddings` modules.
+
     Attributes:
-        concat: if the embedding tensors should be concatenated
-        embeddings: tuple of EmbeddingBase class
-        num_emb: how many flattened embeddings in this list,
+        num_emb_modules (int): Number of flattened embeddings in `embeddings`,
             e.g: ((e1, e2), e3) has 3 in total
-        embedding_dim: total embedding dimension, can be a single int or tuple of
+        input_start_indices (List[int]): List of indices of the sub-embeddings
+            in the embedding list.
+        concat (bool): Whether to concatenate the embedding vectors emitted from
+            `embeddings` modules.
+        embedding_dim: Total embedding size, can be a single int or tuple of
             int depending on concat setting
     """
 
     def __init__(self, embeddings: Iterable[EmbeddingBase], concat: bool) -> None:
         EmbeddingBase.__init__(self, 0)
         embeddings = list(filter(None, embeddings))
-        self.num_emb = sum(emb.num_emb for emb in embeddings)
+        self.num_emb_modules = sum(emb.num_emb_modules for emb in embeddings)
         embeddings_list, input_start_indices = [], []
         start = 0
         for emb in embeddings:
             if emb.embedding_dim > 0:
                 embeddings_list.append(emb)
                 input_start_indices.append(start)
-            start += emb.num_emb
+            start += emb.num_emb_modules
         ModuleList.__init__(self, embeddings_list)
         self.input_start_indices = input_start_indices
         self.concat = concat
@@ -39,20 +49,33 @@ class EmbeddingList(EmbeddingBase, ModuleList):
         embedding_dims = tuple(emb.embedding_dim for emb in self)
         self.embedding_dim = sum(embedding_dims) if concat else embedding_dims
 
-    def forward(self, *emb_input) -> torch.Tensor:
-        """input should match the size of configed embeddings, each is
-        either a tensor or a tuple of tensor
+    def forward(self, *emb_input) -> Union[torch.Tensor, Tuple[torch.Tensor]]:
         """
-        # tokens dim: (bsz, max_seq_len) -> (bsz, max_seq_len, dim)
-        # or (bsz, max_num_sen, max_seq_len) -> (bsz, max_num_sen, max_seq_len, dim)
+        Get embeddings from all sub-embeddings and either concatenate them
+        into one Tensor or return them in a tuple.
+
+        Args:
+            *emb_input (type): Sequence of token level embeddings to combine.
+                The inputs should match the size of configured embeddings. Each
+                of them is either a Tensor or a tuple of Tensors.
+
+        Returns:
+            Union[torch.Tensor, Tuple[torch.Tensor]]: If `concat` is True then
+                a Tensor is returned by concatenating all embeddings. Otherwise
+                all embeddings are returned in a tuple.
+
+        """
+        # tokens dim: (bsz, max_seq_len) -> (bsz, max_seq_len, dim) OR
+        # (bsz, max_num_sen, max_seq_len) -> (bsz, max_num_sen, max_seq_len, dim)
         # for seqnn
-        if self.num_emb != len(emb_input):
+        if self.num_emb_modules != len(emb_input):
             raise Exception(
-                f"expecting {self.num_emb} embeddings, but get {len(emb_input)} input"
+                f"expecting {self.num_emb_modules} embeddings, "
+                + f"but got {len(emb_input)} input"
             )
         tensors = []
         for emb, start in zip(self, self.input_start_indices):
-            end = start + emb.num_emb
+            end = start + emb.num_emb_modules
             input = emb_input[start:end]
             # single embedding
             if len(input) == 1:

@@ -12,34 +12,63 @@ from .embedding_base import EmbeddingBase
 
 
 class CharacterEmbedding(EmbeddingBase):
-    """Implements character aware CNN embeddings for tokens.
+    """
+    Module for character aware CNN embeddings for tokens. It uses convolution
+    followed by max-pooling over character embeddings to obtain an embedding
+    vector for each token.
 
-    Implementation is loosely based on https://arxiv.org/abs/1508.06615 and
+    Implementation is loosely based on https://arxiv.org/abs/1508.06615 but,
     does not implement the Highway Network illustrated in the paper.
+
+    Args:
+        num_embeddings (int): Total number of characters (vocabulary size).
+        embed_dim (int): Size of embedding vector.
+        out_channels (int): Number of output channels.
+        kernel_sizes (List[int]): Dimension of input Tensor passed to MLP.
+
+    Attributes:
+        char_embed (nn.Embedding): Character embedding table.
+        convs (nn.ModuleList): Convolution layers that operate on character
+        embeddings.
+        embedding_dim (int): Dimension of the final token embedding produced.
+
     """
 
     Config = CharFeatConfig
 
     @classmethod
-    def from_config(cls, config: CharFeatConfig, meta: FieldMeta):
+    def from_config(cls, config: CharFeatConfig, metadata: FieldMeta):
+        """Factory method to construct an instance of CharacterEmbedding from
+        the module's config object and the field's metadata object.
+
+        Args:
+            cls (type): CharacterEmbedding type.
+            config (CharFeatConfig): Configuration object specifying all the
+                parameters of CharacterEmbedding.
+            metadata (FieldMeta): Object containing this field's metadata.
+
+        Returns:
+            type: An instance of CharacterEmbedding.
+
+        """
         return cls(
-            meta.vocab_size,
+            metadata.vocab_size,
             config.embed_dim,
             config.cnn.kernel_num,
             config.cnn.kernel_sizes,
-            sparse=config.sparse,
         )
 
     def __init__(
         self,
-        embed_num: int,
+        num_embeddings: int,
         embed_dim: int,
         out_channels: int,
         kernel_sizes: List[int],
-        sparse=False,
+        *args,
+        **kwargs,
     ) -> None:
         super().__init__(embed_dim)
-        self.char_embed = nn.Embedding(embed_num, embed_dim, sparse=sparse)
+        self.char_embed = nn.Embedding(num_embeddings, embed_dim)
         self.convs = nn.ModuleList(
             [
                 # in_channels = embed_dim because input is treated as sequence
@@ -51,10 +80,23 @@ class CharacterEmbedding(EmbeddingBase):
             ]
         )
         self.embedding_dim = out_channels * len(kernel_sizes)
-        self.sparse = sparse
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
-        # chars: (bsize, max_sent_length, max_word_length)
+        """
+        Given a batch of sentences such that tokens are broken into character ids,
+        produce token embedding vectors for each sentence in the batch.
+
+        Args:
+            chars (torch.Tensor): Batch of sentences where each token is broken
+            into characters.
+            Dimension: batch size X maximum sentence length X maximum word length
+
+        Returns:
+            torch.Tensor: Embedded batch of sentences. Dimension:
+            batch size X maximum sentence length, token embedding size.
+            Token embedding size = `out_channels * len(self.convs))`
+
+        """
         batch_size, max_sent_length, max_word_length = tuple(chars.size())
         chars = chars.view(batch_size * max_sent_length, max_word_length)
 
