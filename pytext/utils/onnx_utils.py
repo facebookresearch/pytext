@@ -11,6 +11,12 @@ from caffe2.python.onnx import backend as caffe2_backend
 CAFFE2_DB_TYPE = "minidb"
 
 
+def convert_caffe2_blob_name(blob_name):
+    # Caffe2 predictor appends the ":value" suffix to any feature that
+    # contains a string list
+    return f"{blob_name}_str:value"
+
+
 def pytorch_to_caffe2(
     model, export_input, external_input_names, output_names, export_path
 ):
@@ -77,9 +83,9 @@ def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
             final_predict_net.AddExternalInput(ext_input)
 
         for feat in vocab_map.keys():
-            # Caffe2 predictor appends the ":value" suffix to any feature that
-            # contains a string list https://fburl.com/rviadm83
-            raw_input_blob = final_predict_net.AddExternalInput(feat + "_str:value")
+            raw_input_blob = final_predict_net.AddExternalInput(
+                convert_caffe2_blob_name(feat)
+            )
             # IndexGet expects flat tensors, so flatten the batch first then
             # Resize it back after the lookup
             flattened_input_blob = final_predict_net.FlattenToVec(raw_input_blob)
@@ -87,7 +93,7 @@ def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
                 [vocab_indices[feat], flattened_input_blob]
             )
             final_predict_net.ResizeLike([flattened_ids, raw_input_blob], [feat])
-            final_input_names[input_names.index(feat)] = feat + "_str:value"
+            final_input_names[input_names.index(feat)] = convert_caffe2_blob_name(feat)
         # Copy over the other list of the ops
         final_predict_net.Proto().op.extend(predict_net.op)
         # Update predict_net and init_net

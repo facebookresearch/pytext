@@ -86,7 +86,7 @@ class DocClassificationDataHandler(DataHandler):
             ModelInput.CHAR_FEAT: features.characters,
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             # target
-            Target.DOC_LABEL: row_data[RawData.DOC_LABEL],
+            Target.DOC_LABEL: row_data.get(RawData.DOC_LABEL),
             # extra data
             ExtraField.INDEX: idx,
             ExtraField.RAW_TEXT: row_data.get(RawData.TEXT),
