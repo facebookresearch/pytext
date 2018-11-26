@@ -73,20 +73,37 @@ def run_single(rank, config_json: str, world_size: int, dist_init_method: str):
 @click.option("--config-json", default="")
 @click.pass_context
 def main(context, config_file, config_json):
+    """Configs can be passed by file or directly from json.
+    If neither --config-file or --config-json is passed,
+    attempts to read the file from stdin.
+
+    Example:
+
+      pytext train < demos/docnn.json
+    """
     context.obj = {}
-    if config_file:
-        with open(config_file) as file:
-            context.obj["config_json"] = json.load(file)
-    elif config_json:
-        context.obj["config_json"] = json.loads(config_json)
-    else:
-        context.obj["config_json"] = json.load(sys.stdin)
+
+    def load_config():
+        if "config_json" not in context.obj:
+            if config_file:
+                with open(config_file) as file:
+                    config = json.load(file)
+            elif config_json:
+                config = json.loads(config_json)
+            else:
+                click.echo("No config file specified, reading from stdin")
+                config = json.load(sys.stdin)
+        # Cache the config object so it can be accessed multiple times
+        context.obj["config_json"] = config
+        return config
+    context.obj["load_config"] = load_config
 
 
 @main.command()
 @click.pass_context
 def test(context):
-    config = parse_config(Mode.TEST, context.obj["config_json"])
+    """Test a trained model snapshot."""
+    config = parse_config(Mode.TEST, context.obj["load_config"]())
     print("\n=== Starting testing...")
     test_model(config)
 
@@ -94,7 +111,8 @@ def test(context):
 @main.command()
 @click.pass_context
 def train(context):
-    config = parse_config(Mode.TRAIN, context.obj["config_json"])
+    """Train a model and save the best snapshot."""
+    config = parse_config(Mode.TRAIN, context.obj["load_config"]())
     print("\n===Starting training...")
     if config.distributed_world_size == 1:
         train_model(config)
