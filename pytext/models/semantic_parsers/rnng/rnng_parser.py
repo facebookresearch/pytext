@@ -197,7 +197,13 @@ class RNNGParser(nn.Module, Component):
             dict_weights_rev = torch.flip(dict_weights, [len(dict_weights.size()) - 1])
             dict_lengths_rev = torch.flip(dict_lengths, [len(dict_lengths.size()) - 1])
             dict_feat_rev = (dict_ids_rev, dict_weights_rev, dict_lengths_rev)
-        tok_embeddings = self.embedding(tokens_list_rev, dict_feat_rev)
+
+        embedding_input = (
+            [tokens_list_rev, dict_feat_rev]
+            if dict_feat_rev is not None
+            else [tokens_list_rev]
+        )
+        tok_embeddings = self.embedding(*embedding_input)
 
         # Batch size is always = 1. So we squeeze the batch_size dimension.
         tok_embeddings = tok_embeddings.squeeze(0)
