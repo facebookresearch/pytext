@@ -1,0 +1,44 @@
+{
+  "config": {
+    "task": {
+      "JointTextTask": {
+        "model": {
+          "representation": {
+            "BiLSTMDocSlotAttention": {
+              "dropout": 0.3,
+              "pooling": {
+                "SelfAttention": {}
+              }
+            }
+          },
+          "output_layer": {
+            "doc_output": {
+              "loss": {
+                "CrossEntropyLoss": {}
+              }
+            },
+            "word_output": {
+              "CRFOutputLayer": {}
+            }
+          }
+        },
+        "optimizer": {
+          "type": "adam",
+          "lr": "0.001"
+        },
+        "trainer": {
+          "epochs": 100,
+          "early_stop_after": 5
+        },
+        "featurizer": {
+          "SimpleFeaturizer": {}
+        },
+        "data_handler": {
+          "train_path": "./download_dir/atis.processed.train.csv",
+          "eval_path": "./download_dir/atis.processed.val.csv",
+          "test_path": "./download_dir/atis.processed.test.csv"
+        }
+      }
+    }
+  }
+}
