@@ -160,7 +160,7 @@ class Trainer(TrainerBase):
         rank=0,
     ):
         print(f"Rank {rank} worker: Running epoch for {stage}")
-        report_metrics = stage != Stage.TRAIN or self.config.report_train_metrics
+        report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
         for batch_id, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
             logits = model(*inputs)
@@ -168,15 +168,17 @@ class Trainer(TrainerBase):
             if BatchContext.IGNORE_LOSS in context:
                 loss *= 0
             backprop(loss)
-            if report_metrics:
+            if report_metric:
                 preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
                 metric_reporter.add_batch_stats(
                     batch_id, preds, targets, scores, loss.item(), inputs, **context
                 )
 
         metrics = None
-        if report_metrics:
-            metrics = metric_reporter.report_metric(stage, epoch)
+        if report_metric:
+            metrics = metric_reporter.report_metric(
+                stage, epoch, print_to_channels=(rank == 0)
+            )
         else:
             metric_reporter._reset()
         return metrics

@@ -86,26 +86,27 @@ class MetricReporter(Component):
     def get_meta(self):
         return {}
 
-    def report_metric(self, stage, epoch, reset=True):
+    def report_metric(self, stage, epoch, reset=True, print_to_channels=True):
         self.gen_extra_context()
         self.total_loss = self.calculate_loss()
         metrics = self.calculate_metric()
         model_select_metric = self.get_model_select_metric(metrics)
 
-        for channel in self.channels:
-            if stage in channel.stages:
-                channel.report(
-                    stage,
-                    epoch,
-                    metrics,
-                    model_select_metric,
-                    self.total_loss,
-                    self.all_preds,
-                    self.all_targets,
-                    self.all_scores,
-                    self.all_context,
-                    self.get_meta(),
-                )
+        if print_to_channels:
+            for channel in self.channels:
+                if stage in channel.stages:
+                    channel.report(
+                        stage,
+                        epoch,
+                        metrics,
+                        model_select_metric,
+                        self.total_loss,
+                        self.all_preds,
+                        self.all_targets,
+                        self.all_scores,
+                        self.all_context,
+                        self.get_meta(),
+                    )
 
         if reset:
             self._reset()
