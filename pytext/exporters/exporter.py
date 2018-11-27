@@ -8,16 +8,8 @@ from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import (
-    CharFeatConfig,
-    DictFeatConfig,
-    FeatureConfig,
-    LabelConfig,
-)
+from pytext.config.field_config import FeatureConfig, LabelConfig
 from pytext.data import CommonMetadata
-from pytext.loss import BinaryCrossEntropyLoss
-from pytext.models.output_layer import ClassificationOutputLayer, CRFOutputLayer
-from pytext.models.output_layer.intent_slot_output_layer import IntentSlotOutputLayer
 from pytext.utils import onnx_utils
 
 
@@ -27,15 +19,19 @@ class ModelExporter(Component):
     __COMPONENT_TYPE__ = ComponentType.EXPORTER
 
     def __init__(self, config, input_names, output_names, dummy_model_input):
-        """Define the names and shapes of input/output
-        1 input names, names of the input variables to model forward function,
-          in a flattened way
-          e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
-               a tuple of value and length: (List[Tensor], List[Tensor]) the
-               input names should looks like ['token', 'dict_value', 'dict_length']
-        2 output names, names of output variables
-        3 dummy_model_input, dummy values to define the shape of input tensors,
-          should exactly match the shape of the model forward function
+        """
+        Model exporter exports a PyTorch model to Caffe2 model using ONNX
+
+        Attributes:
+            input_names (List[Str]): names of the input variables to model forward
+                function, in a flattened way.
+              e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
+                   a tuple of value and length: (List[Tensor], List[Tensor]) the
+                   input names should looks like ['token', 'dict_value', 'dict_length']
+            output_names (List[Str]): names of output variables
+            dummy_model_input (Tuple[torch.Tensor]): dummy values to define the
+                shape of input tensors, should exactly match the shape of the model
+                forward function
         """
         super().__init__(config)
         self.input_names = input_names
@@ -45,13 +41,16 @@ class ModelExporter(Component):
     def prepend_operators(
         self, c2_prepared: Caffe2Rep, input_names: List[str]
     ) -> Tuple[Caffe2Rep, List[str]]:
-        """Prepend operators to the converted caffe2 net, do nothing by default
-            args:
-            c2_prepared: caffe2 net rep
-            input_names: current input names to the caffe2 net
-            returns:
-            caffe2 net with prepended operators
-            list of input names for the new net
+        """
+        Prepend operators to the converted caffe2 net, do nothing by default
+
+        Args:
+            c2_prepared (Caffe2Rep): caffe2 net rep
+            input_names (List[str]): current input names to the caffe2 net
+
+        Returns:
+            c2_prepared (Caffe2Rep): caffe2 net with prepended operators
+            input_names (List[str]): list of input names for the new net
         """
         return c2_prepared, input_names
 
@@ -63,17 +62,21 @@ class ModelExporter(Component):
         output_names: List[str],
         py_model,
     ):
-        """Postprocess the model output, generate additional blobs for human readable
-            result.
-            args:
-            init_net: caffe2 init net created by the current graph
-            predict_net: caffe2 net created by the current graph
-            workspace: caffe2 current workspace
-            output_names: current output names of the caffe2 net
-            py_model: original pytorch model object
-            returns:
-            list of blobs that will be added to the caffe2 model
-            list of output names of the blobs to add
+        """
+        Postprocess the model output, generate additional blobs for human readable
+        prediction. By default it use export function of output layer from pytorch
+        model to append addtional operators to caffe2 net
+
+        Args:
+            init_net (caffe2.python.Net): caffe2 init net created by the current graph
+            predict_net (caffe2.python.Net): caffe2 net created by the current graph
+            workspace (caffe2.python.workspace): caffe2 current workspace
+            output_names (List[str]): current output names of the caffe2 net
+            py_model (Model): original pytorch model object
+
+        Returns:
+            result: list of blobs that will be added to the caffe2 model
+            final_output_names: list of output names of the blobs to add
         """
         model_out = py_model(*self.dummy_model_input)
         res = py_model.output_layer.export_to_caffe2(
@@ -94,12 +97,24 @@ class ModelExporter(Component):
 
     def get_extra_params(self) -> List[str]:
         """
-        returns:
-        list of blobs to be added as extra params to the caffe2 model
+        Returns:
+            list of blobs to be added as extra params to the caffe2 model
         """
         return []
 
     def export_to_caffe2(self, model, export_path: str) -> List[str]:
+        """
+        export pytorch model to caffe2 by first using ONNX to convert logic in forward
+        function to a caffe2 net, and then prepend/append addtional operators to
+        the caffe2 net according to the model
+
+        Args:
+            model (Model): pytorch model to export
+            export_path (str): path to save the exported caffe2 model
+
+        Returns:
+            final_output_names: list of caffe2 model output names
+        """
         c2_prepared = onnx_utils.pytorch_to_caffe2(
             model,
             self.dummy_model_input,
@@ -136,14 +151,16 @@ class ModelExporter(Component):
 
 
 class TextModelExporter(ModelExporter):
-    """Exporter for doc classifier and word tagger models
-        args:
+    """
+    Exporter for doc classificatoin and word tagging models
+
+    Args:
         label_names_list: a list of output target class names e.g:
             [
                 ["DOC1","DOC2","DOC3","DOC4"],
                 ["WORD1","WORD2","WORD3","WORD4"]
             ]
-        vocab_map: dict of input feature names to corresponding itos, e.g:
+        feature_itos_map: dict of input feature names to corresponding itos, e.g:
             {
                 "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
                 "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
