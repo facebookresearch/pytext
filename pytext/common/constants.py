@@ -65,17 +65,6 @@ class VocabMeta:
     INIT_SEQ = "<s_seq>"
 
 
-class PredictorInputNames:
-    TOKENS_IDS = "tokens_vals"
-    TOKENS_LENS = "tokens_lens"
-    DICT_FEAT_IDS = "dict_vals"
-    DICT_FEAT_WEIGHTS = "dict_weights"
-    DICT_FEAT_LENS = "dict_lens"
-    CHAR_IDS = "char_vals"
-    TOKENS_STR = "tokens_vals_str"
-    DICT_FEAT_STR = "dict_vals_str"
-
-
 class BatchContext:
     IGNORE_LOSS = "ignore_loss"
 

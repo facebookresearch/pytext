@@ -13,7 +13,7 @@ import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
 from pytext.builtin_task import DocClassificationTask, JointTextTask, WordTaggingTask
-from pytext.common.constants import DatasetFieldName, PredictorInputNames
+from pytext.common.constants import DatasetFieldName
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
@@ -558,19 +558,19 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         text_feat_meta.pad_token_idx = PAD_IDX
         text_feat_meta.vocab_size = W_VOCAB_SIZE
         text_feat_meta.vocab = w_vocab
-        text_feat_meta.vocab_export_name = PredictorInputNames.TOKENS_IDS
+        text_feat_meta.vocab_export_name = "tokens_vals"
         text_feat_meta.pretrained_embeds_weight = None
 
         dict_feat_meat = FieldMeta()
         dict_feat_meat.vocab_size = DICT_VOCAB_SIZE
         dict_feat_meat.vocab = dict_vocab
-        dict_feat_meat.vocab_export_name = PredictorInputNames.DICT_FEAT_IDS
+        dict_feat_meat.vocab_export_name = "dict_vals"
         dict_feat_meat.pretrained_embeds_weight = None
 
         char_feat_meta = FieldMeta()
         char_feat_meta.vocab_size = CHAR_VOCAB_SIZE
         char_feat_meta.vocab = c_vocab
-        char_feat_meta.vocab_export_name = PredictorInputNames.CHAR_IDS
+        char_feat_meta.vocab_export_name = "char_vals"
         char_feat_meta.pretrained_embeds_weight = None
 
         meta = CommonMetadata()
