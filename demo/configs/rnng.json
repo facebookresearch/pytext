@@ -1,0 +1,34 @@
+{
+  "config": {
+    "task": {
+      "SemanticParsingTask": {
+        "model": {
+          "RNNGConfig": {
+            "ablation": {},
+            "modeling": {},
+            "constraints": {},
+            "lstm": {}
+          }
+        },
+        "features": {
+          "word_feat": {
+            "embed_dim": 100
+          }
+        },
+        "featurizer": {
+          "SimpleFeaturizer": {}
+        },
+        "trainer": {
+          "epochs": 1,
+          "num_workers": 1
+        },
+        "data_handler": {
+          "train_path": "path_to_data_root_dir/top-dataset-semantic-parsing/train.tsv",
+          "eval_path": "path_to_data_root_dir/top-dataset-semantic-parsing/eval.tsv",
+          "test_path": "path_to_data_root_dir/top-dataset-semantic-parsing/test.tsv"
+        }
+      }
+    },
+    "use_cuda_if_available": false
+  }
+}
