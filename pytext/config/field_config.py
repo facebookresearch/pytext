@@ -23,6 +23,7 @@ class WordFeatConfig(ConfigBase):
     vocab_from_train_data: bool = True  # build vocab from train data
     vocab_from_all_data: bool = False  # build vocab from train, eval, test data
     lowercase_tokens: bool = True
+    min_freq: int = 1
 
 
 class DictFeatConfig(ConfigBase):

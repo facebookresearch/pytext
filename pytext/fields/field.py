@@ -90,6 +90,7 @@ class VocabUsingField(Field):
         vocab_size="",
         vocab_from_train_data=True,  # build vocab from train data
         vocab_from_all_data=False,  # build vocab from train, eval, test data
+        min_freq=1,
         *args,
         **kwargs,
     ):
@@ -99,6 +100,7 @@ class VocabUsingField(Field):
         self.vocab_size = vocab_size
         self.vocab_from_train_data = vocab_from_train_data
         self.vocab_from_all_data = vocab_from_all_data
+        self.min_freq = min_freq
         self.embed_dim = embed_dim
         self.embedding_init_strategy = embedding_init_strategy
 

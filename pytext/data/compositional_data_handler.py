@@ -41,7 +41,6 @@ class CompositionalDataHandler(DataHandler):
         train_batch_size: int = 1
         eval_batch_size: int = 1
         test_batch_size: int = 1
-        min_item_freq_for_vocab: int = 2
 
     FULL_FEATURES = [
         DatasetFieldName.TEXT_FIELD,
@@ -63,6 +62,7 @@ class CompositionalDataHandler(DataHandler):
                 vocab_size=word_feat_config.vocab_size,
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
                 vocab_from_all_data=word_feat_config.vocab_from_all_data,
+                min_freq=word_feat_config.min_freq,
                 pad_token=None,
             )
         }
@@ -93,7 +93,6 @@ class CompositionalDataHandler(DataHandler):
             test_batch_size=config.test_batch_size,
             shuffle=config.shuffle,
             sort_within_batch=config.sort_within_batch,
-            min_item_freq_for_vocab=config.min_item_freq_for_vocab,
             **kwargs,
         )
 

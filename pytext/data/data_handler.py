@@ -98,7 +98,6 @@ class DataHandler(Component):
         train_batch_size: int = 128
         eval_batch_size: int = 128
         test_batch_size: int = 128
-        min_item_freq_for_vocab: int = 1
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
@@ -122,7 +121,6 @@ class DataHandler(Component):
         eval_batch_size: int = 128,
         test_batch_size: int = 128,
         max_seq_len: int = -1,
-        min_item_freq_for_vocab: int = 1,
         **kwargs,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
@@ -146,8 +144,6 @@ class DataHandler(Component):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.test_batch_size = test_batch_size
-
-        self.min_item_freq_for_vocab = min_item_freq_for_vocab
 
     def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
@@ -288,7 +284,7 @@ class DataHandler(Component):
                         *self._get_data_to_build_vocab(
                             feat, train_data, eval_data, test_data
                         ),
-                        min_freq=self.min_item_freq_for_vocab,
+                        min_freq=feat.min_freq,
                     )
                 else:
                     print(f"Vocab for feature {name} has been built. Not building.")

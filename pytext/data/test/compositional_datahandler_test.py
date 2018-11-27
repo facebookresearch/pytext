@@ -82,8 +82,10 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         ]
 
         self.dh = CompositionalDataHandler.from_config(
-            CompositionalDataHandler.Config(min_item_freq_for_vocab=1),
-            FeatureConfig(word_feat=WordFeatConfig(vocab_from_all_data=True)),
+            CompositionalDataHandler.Config(),
+            FeatureConfig(
+                word_feat=WordFeatConfig(vocab_from_all_data=True, min_freq=2)
+            ),
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(lowercase_tokens=False), FeatureConfig()
             ),
