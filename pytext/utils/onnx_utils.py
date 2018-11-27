@@ -54,22 +54,28 @@ def create_vocab_index(vocab_list, net, net_workspace, index_name):
     return vocab_index
 
 
+def create_vocab_indices_map(c2_prepared, init_net, vocab_map):
+    vocab_indices = {}
+    for feat_name, vocab in vocab_map.items():
+        assert len(vocab) > 1
+        vocab_indices[feat_name] = create_vocab_index(
+            # Skip index 0 as it is reserved for unkwon tokens
+            # in Caffe2's index implementation
+            np.array(vocab[1:], dtype=str),
+            init_net,
+            c2_prepared.workspace,
+            feat_name + "_index",
+        )
+    return vocab_indices
+
+
 def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
     predict_net = c2_prepared.predict_net  # Protobuf of the predict_net
     init_net = core.Net(c2_prepared.init_net)
     final_input_names = input_names.copy()
     with c2_prepared.workspace._ctx:
-        vocab_indices = {}
-        for feat_name, vocab in vocab_map.items():
-            assert len(vocab) > 1
-            vocab_indices[feat_name] = create_vocab_index(
-                # Skip index 0 as it is reserved for unkwon tokens
-                # in Caffe2's index implementation
-                np.array(vocab[1:], dtype=str),
-                init_net,
-                c2_prepared.workspace,
-                feat_name + "_index",
-            )
+        vocab_indices = create_vocab_indices_map(c2_prepared, init_net, vocab_map)
+
         # Add operators to convert string features to ids based on the vocab
         final_predict_net = core.Net(c2_prepared.predict_net.name + "_processed")
         final_inputs = set(

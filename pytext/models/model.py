@@ -118,3 +118,12 @@ class Model(nn.Module, Component):
                 dense_grads_params[name] = param
 
         return sparse_grads_params, dense_grads_params
+
+    def prepare_for_onnx_export_(self, **kwargs):
+        """Make model exportable via ONNX trace."""
+
+        def apply_prepare_for_onnx_export_(module):
+            if module != self and hasattr(module, "prepare_for_onnx_export_"):
+                module.prepare_for_onnx_export_(**kwargs)
+
+        self.apply(apply_prepare_for_onnx_export_)
