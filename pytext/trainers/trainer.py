@@ -12,7 +12,7 @@ from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
-from pytext.optimizer import optimizer_step, optimizer_zero_grad
+from pytext.optimizer import learning_rates, optimizer_step, optimizer_zero_grad
 from pytext.utils import cuda_utils
 
 
@@ -20,13 +20,23 @@ class TrainerBase(Component):
     __COMPONENT_TYPE__ = ComponentType.TRAINER
 
 
-def learning_rates(optimizers):
-    for optimizer in optimizers:
-        for param_group in optimizer.param_groups:
-            yield param_group["lr"]
-
-
 class Trainer(TrainerBase):
+    """
+    Base Trainer class that provide ways to
+        1 Train model, compute metrics against eval set and use the metrics for
+        model selection.
+        2 Test trained model, compute and publish metrics against a blind test set.
+
+    Attributes:
+        random_seed (int): Manual random seed
+        epochs (int): Training epochs
+        early_stop_after (int): Stop after how many epochs when the eval metric
+            is not improving
+        max_clip_norm (Optional[float]): Clip gradient norm if set
+        report_train_metrics (bool): Whether metrics on training data should be
+            computed and reported.
+    """
+
     class Config(ConfigBase):
         # Manual random seed
         random_seed: int = 0
@@ -34,10 +44,6 @@ class Trainer(TrainerBase):
         epochs: int = 10
         # Stop after how many epochs when the eval metric is not improving
         early_stop_after: int = 0
-        # Print the training metrics every log_interval epochs
-        log_interval: int = 1
-        # Evaluate the model every eval_interval epochs
-        eval_interval: int = 1
         # Clip gradient norm if set
         max_clip_norm: Optional[float] = None
         # Whether metrics on training data should be computed and reported.
@@ -59,6 +65,33 @@ class Trainer(TrainerBase):
         training_result=None,  # only meaningful for Hogwild training.
         rank: int = 0,
     ):
+        """
+        Train and eval a model, the model states will be modified. This function
+        iterates epochs specified in config, and for each epoch do:
+            1 Train model using training data, aggregate and report training results
+            2 Adjust learning rate if scheduler is specified
+            3 Evaluate model using evaluation data
+            4 Calculate metrics based on evaluation results and select best model
+
+        Args:
+            train_iter (BatchIterator): batch iterator of training data
+            eval_iter (BatchIterator): batch iterator of evaluation data
+            model (Model): model to be trained
+            metric_reporter (MetricReporter): compute metric based on training
+                output and report results to console, file.. etc
+            train_config (PyTextConfig): training config
+            optimizers (List[torch.optim.Optimizer]): a list of torch optimizers, in
+                most of the case only contains one optimizer
+            scheduler (Optional[torch.optim.lr_scheduler]): learning rate scheduler,
+                default is None
+            training_result (Optional): only meaningful for Hogwild training. default
+                is None
+            rank (int): only used in distributed training, the rank of the current
+                training thread, evaluation will only be done in rank 0
+
+        Returns:
+            model, best_metric: the trained model together with the best metric
+        """
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
             if cuda_utils.DISTRIBUTED_WORLD_SIZE > 1:
