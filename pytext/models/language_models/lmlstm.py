@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -58,13 +58,6 @@ class LMLSTM(Model):
     def __init__(self, *inputs) -> None:
         super().__init__(*inputs)
         self._states: Optional[Tuple] = None
-
-    def get_model_params_for_optimizer(
-        self
-    ) -> Tuple[Dict[str, nn.Parameter], Dict[str, nn.Parameter]]:
-        if self.tied_weights:
-            return {}, self.parameters()  # Don't use SparseAdam when tying weights.
-        return super().get_model_params_for_optimizer()
 
     def forward(self, tokens, *inputs) -> List[torch.Tensor]:
         # tokens dim: (bsz, max_seq_len) -> token_emb dim: (bsz, max_seq_len, dim)

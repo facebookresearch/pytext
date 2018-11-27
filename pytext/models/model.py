@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-from typing import Dict, List, Tuple
+from typing import List
 
 import torch
 import torch.nn as nn
@@ -92,32 +92,6 @@ class Model(nn.Module, Component):
         return self.decoder(
             *input_representation
         )  # returned Tensor's dim = (batch_size, num_classes)
-
-    def get_model_params_for_optimizer(
-        self
-    ) -> Tuple[Dict[str, nn.Parameter], Dict[str, nn.Parameter]]:
-        """
-        Current implementation makes a distinction between embedding params and
-        rest of the model params because sparse gradients are supported for
-        embeddings only.
-        """
-        prefix = "embedding"  # It is the name of embedding member variable.
-        sparse_grad_embedding_param_names = set()
-        for module_name, embedding_module in self.embedding.named_children():
-            if getattr(embedding_module, "sparse", False):
-                for name, _ in embedding_module.named_parameters():
-                    param_name = "{}.{}.{}".format(prefix, module_name, name)
-                    sparse_grad_embedding_param_names.add(param_name)
-
-        sparse_grads_params: Dict[str, nn.Parameter] = {}
-        dense_grads_params: Dict[str, nn.Parameter] = {}
-        for name, param in self.named_parameters():
-            if name in sparse_grad_embedding_param_names:
-                sparse_grads_params[name] = param
-            else:
-                dense_grads_params[name] = param
-
-        return sparse_grads_params, dense_grads_params
 
     def prepare_for_onnx_export_(self, **kwargs):
         """Make model exportable via ONNX trace."""
