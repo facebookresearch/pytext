@@ -18,17 +18,18 @@ PyText is a NLU framework. Brief summary goes here.
   getting_started
 
 .. toctree::
-    :maxdepth: 1
-    :caption: Tutorials
+  :maxdepth: 1
+  :caption: Tutorials
 
-		hierarchical_intent_slot_tutorial
-		tutorial2
+	hierarchical_intent_slot_tutorial
+	tutorial2
+  atis_tutorial
 
 .. toctree::
-    :maxdepth: 3
-    :caption: Library Reference
+  :maxdepth: 3
+  :caption: Library Reference
 
-    modules/pytext
+  modules/pytext
 
 Indices and tables
 ==================
