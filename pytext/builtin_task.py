@@ -27,8 +27,7 @@ from pytext.metric_reporters import (
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
-from pytext.models.ensembles.bagging_doc_ensemble import BaggingDocEnsemble
-from pytext.models.ensembles.bagging_joint_ensemble import BaggingJointEnsemble
+from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
@@ -43,7 +42,7 @@ from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
 # TODO better to have separate Task for different ensemble model
 class EnsembleTask(Task):
     class Config(Task.Config):
-        model: Union[BaggingDocEnsemble.Config, BaggingJointEnsemble.Config]
+        model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
         labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
