@@ -9,9 +9,15 @@ from pytext.fields import FieldMeta
 from pytext.models.doc_model import DocModel
 
 
+class VocabStub:
+    def __init__(self):
+        self.itos = []
+
+
 def mock_metadata():
     meta = CommonMetadata
     field_meta = FieldMeta()
+    field_meta.vocab = VocabStub()
     field_meta.vocab_size = 10
     field_meta.pretrained_embeds_weight = None
     field_meta.unk_token_idx = 0

@@ -13,7 +13,7 @@ class FairseqOutputLayer(OutputLayerBase):
 
     @classmethod
     def from_config(cls, config, meta: FieldMeta):
-        return cls(create_loss(config.loss, meta.pad_token_idx))
+        return cls(meta.vocab.itos, create_loss(config.loss, meta.pad_token_idx))
 
     def get_loss(self, logits_tuple, targets_tuple, context, reduce=True):
         # flatten the logit from [batch_size, seq_lens, dim] to

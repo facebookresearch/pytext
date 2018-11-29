@@ -18,7 +18,12 @@ from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
 from pytext.data.joint_data_handler import SEQ_LENS
-from pytext.fields import FieldMeta
+from pytext.fields import (
+    CharFeatureField,
+    DictFeatureField,
+    FieldMeta,
+    TextFeatureField,
+)
 from pytext.utils.onnx_utils import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
@@ -260,7 +265,7 @@ CHAR_VOCAB = ["<UNK>", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
 BATCH_SIZE = 1
 
 
-class TextModelExporterTest(hu.HypothesisTestCase):
+class ModelExporterTest(hu.HypothesisTestCase):
     @given(
         export_num_words=st.integers(1, 5),
         export_num_dict_feat=st.integers(1, 6),
@@ -567,23 +572,26 @@ class TextModelExporterTest(hu.HypothesisTestCase):
         text_feat_meta.vocab = w_vocab
         text_feat_meta.vocab_export_name = "tokens_vals"
         text_feat_meta.pretrained_embeds_weight = None
+        text_feat_meta.dummy_model_input = TextFeatureField.dummy_model_input
 
-        dict_feat_meat = FieldMeta()
-        dict_feat_meat.vocab_size = DICT_VOCAB_SIZE
-        dict_feat_meat.vocab = dict_vocab
-        dict_feat_meat.vocab_export_name = "dict_vals"
-        dict_feat_meat.pretrained_embeds_weight = None
+        dict_feat_meta = FieldMeta()
+        dict_feat_meta.vocab_size = DICT_VOCAB_SIZE
+        dict_feat_meta.vocab = dict_vocab
+        dict_feat_meta.vocab_export_name = "dict_vals"
+        dict_feat_meta.pretrained_embeds_weight = None
+        dict_feat_meta.dummy_model_input = DictFeatureField.dummy_model_input
 
         char_feat_meta = FieldMeta()
         char_feat_meta.vocab_size = CHAR_VOCAB_SIZE
         char_feat_meta.vocab = c_vocab
         char_feat_meta.vocab_export_name = "char_vals"
         char_feat_meta.pretrained_embeds_weight = None
+        char_feat_meta.dummy_model_input = CharFeatureField.dummy_model_input
 
         meta = CommonMetadata()
         meta.features = {
             DatasetFieldName.TEXT_FIELD: text_feat_meta,
-            DatasetFieldName.DICT_FIELD: dict_feat_meat,
+            DatasetFieldName.DICT_FIELD: dict_feat_meta,
             DatasetFieldName.CHAR_FIELD: char_feat_meta,
         }
         meta.labels = labels

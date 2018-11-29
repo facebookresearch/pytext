@@ -18,7 +18,9 @@ class WordTaggingOutputLayer(OutputLayerBase):
 
     @classmethod
     def from_config(cls, config, meta: FieldMeta):
-        return cls(create_loss(config.loss, ignore_index=meta.pad_token_idx))
+        return cls(
+            meta.vocab.itos, create_loss(config.loss, ignore_index=meta.pad_token_idx)
+        )
 
     def get_loss(self, logit, target, context, reduce=True):
         # flatten the logit from [batch_size, seq_lens, dim] to
@@ -37,7 +39,6 @@ class WordTaggingOutputLayer(OutputLayerBase):
         predict_net: core.Net,
         model_out: torch.Tensor,
         output_name: str,
-        label_names: List[str],
     ) -> List[core.BlobReference]:
         """
         Exports the intent slot output layer to caffe2 by manually adding the
@@ -46,5 +47,5 @@ class WordTaggingOutputLayer(OutputLayerBase):
         """
         probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
         return gen_additional_blobs(
-            predict_net, probability_out, model_out, output_name, label_names
+            predict_net, probability_out, model_out, output_name, self.target_names
         )

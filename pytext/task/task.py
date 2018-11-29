@@ -19,7 +19,7 @@ from pytext.config.field_config import FeatureConfig
 from pytext.config.pytext_config import OptimizerParams
 from pytext.data import DataHandler
 from pytext.data.featurizer import Featurizer, SimpleFeaturizer
-from pytext.exporters.exporter import ModelExporter, TextModelExporter
+from pytext.exporters import ModelExporter
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.optimizer import create_optimizer
@@ -43,7 +43,7 @@ class Task(Component):
         trainer: Trainer.Config = Trainer.Config()
         optimizer: OptimizerParams = OptimizerParams()
         scheduler: Optional[Scheduler.Config] = Scheduler.Config()
-        exporter: Optional[TextModelExporter.Config] = None
+        exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
     def from_config(cls, task_config, metadata=None, model_state=None):

@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple, Union
 import torch
 from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
-from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import (
@@ -15,33 +14,99 @@ from pytext.config.field_config import (
     WordLabelConfig,
 )
 from pytext.data import CommonMetadata
+from pytext.fields import FieldMeta
 from pytext.utils import onnx_utils
 
 
 class ModelExporter(Component):
-    """Export the PyTorch model to Caffe2 model through ONNX (optional)"""
+    """
+    Model exporter exports a PyTorch model to Caffe2 model using ONNX
+
+    Attributes:
+        input_names (List[Str]): names of the input variables to model forward
+            function, in a flattened way.
+          e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
+               a tuple of value and length: (List[Tensor], List[Tensor]) the
+               input names should looks like ['token', 'dict_value', 'dict_length']
+
+        dummy_model_input (Tuple[torch.Tensor]): dummy values to define the
+            shape of input tensors, should exactly match the shape of the model
+            forward function
+        vocab_map (Dict[str, List[str]]): dict of input feature names
+            to corresponding index_to_string array, e.g:
+            {
+                "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+                "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
+        output_names (List[Str]): names of output variables
+    """
 
     __COMPONENT_TYPE__ = ComponentType.EXPORTER
 
-    def __init__(self, config, input_names, output_names, dummy_model_input):
-        """
-        Model exporter exports a PyTorch model to Caffe2 model using ONNX
+    class Config(ConfigBase):
+        export_logits: bool = False
 
-        Attributes:
-            input_names (List[Str]): names of the input variables to model forward
-                function, in a flattened way.
-              e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
-                   a tuple of value and length: (List[Tensor], List[Tensor]) the
-                   input names should looks like ['token', 'dict_value', 'dict_length']
-            output_names (List[Str]): names of output variables
-            dummy_model_input (Tuple[torch.Tensor]): dummy values to define the
-                shape of input tensors, should exactly match the shape of the model
-                forward function
+    @classmethod
+    def from_config(
+        cls,
+        config,
+        feature_config: FeatureConfig,
+        target_config: Union[ConfigBase, List[ConfigBase]],
+        meta: CommonMetadata,
+        *args,
+        **kwargs,
+    ):
         """
+            Gather all the necessary metadata from configs and global metadata to be
+            used in exporter
+        """
+        input_names, dummy_model_input, vocab_map = cls.get_feature_metadata(
+            feature_config, meta.features
+        )
+        if not isinstance(target_config, list):
+            target_config = [target_config]
+        output_names = [
+            name for target in target_config for name in target.export_output_names
+        ]
+        return cls(config, input_names, dummy_model_input, vocab_map, output_names)
+
+    @classmethod
+    def get_feature_metadata(
+        cls, feature_config: FeatureConfig, feature_meta: Dict[str, FieldMeta]
+    ):
+        # The number of names in input_names *must* be equal to the number of
+        # tensors passed in dummy_input
+        input_names: List[str] = []
+        dummy_model_input: List = []
+        feature_itos_map = {}
+
+        for name, feat_config in feature_config._asdict().items():
+            if isinstance(feat_config, ConfigBase):
+                input_names.extend(feat_config.export_input_names)
+                if getattr(feature_meta[name], "vocab", None):
+                    feature_itos_map[feat_config.export_input_names[0]] = feature_meta[
+                        name
+                    ].vocab.itos
+                dummy_model_input.append(feature_meta[name].dummy_model_input)
+
+        dummy_model_input.append(
+            torch.tensor([1, 1], dtype=torch.long)
+        )  # token lengths
+        input_names.append("tokens_lens")
+        return input_names, tuple(dummy_model_input), feature_itos_map
+
+    def __init__(self, config, input_names, dummy_model_input, vocab_map, output_names):
         super().__init__(config)
         self.input_names = input_names
         self.output_names = output_names
         self.dummy_model_input = dummy_model_input
+        self.vocab_map = vocab_map
+        # validate feature vocab
+        for name in self.vocab_map:
+            if name not in self.input_names:
+                raise ValueError(
+                    f"{name} is not found in input names {self.input_names}, \
+                    there's a mismatch"
+                )
 
     def prepend_operators(
         self, c2_prepared: Caffe2Rep, input_names: List[str]
@@ -57,7 +122,9 @@ class ModelExporter(Component):
             c2_prepared (Caffe2Rep): caffe2 net with prepended operators
             input_names (List[str]): list of input names for the new net
         """
-        return c2_prepared, input_names
+        return onnx_utils.add_feats_numericalize_ops(
+            c2_prepared, self.vocab_map, input_names
+        )
 
     def postprocess_output(
         self,
@@ -85,12 +152,7 @@ class ModelExporter(Component):
         """
         model_out = py_model(*self.dummy_model_input)
         res = py_model.output_layer.export_to_caffe2(
-            workspace,
-            init_net,
-            predict_net,
-            model_out,
-            *output_names,
-            *self.label_names_list,
+            workspace, init_net, predict_net, model_out, *output_names
         )
 
         # optionaly include the last decoder layer of pytorch model
@@ -153,116 +215,3 @@ class ModelExporter(Component):
             self.get_extra_params(),
         )
         return final_out_names
-
-
-class TextModelExporter(ModelExporter):
-    """
-    Exporter for doc classificatoin and word tagging models
-
-    Args:
-        label_names_list: a list of output target class names e.g:
-            [
-                ["DOC1","DOC2","DOC3","DOC4"],
-                ["WORD1","WORD2","WORD3","WORD4"]
-            ]
-        feature_itos_map: dict of input feature names to corresponding itos, e.g:
-            {
-                "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
-                "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
-    """
-
-    class Config(ConfigBase):
-        export_logits: bool = False
-
-    def __init__(
-        self,
-        config,
-        label_names: List[List[str]],
-        feature_itos_map: Dict[str, List[str]],
-        meta: CommonMetadata,
-        *args,
-        **kwargs,
-    ) -> None:
-        super().__init__(config, *args, **kwargs)
-        self.label_names_list = label_names
-        self.vocab_map = feature_itos_map
-        self.meta = meta
-        # validate vocab_map
-        for vocab_name in self.vocab_map:
-            if vocab_name not in self.input_names:
-                raise ValueError(
-                    f"{vocab_name} is not found in input names {self.input_names}, \
-                    there's a mismatch"
-                )
-
-    @classmethod
-    def from_config(
-        cls,
-        config,
-        feature_config: FeatureConfig,
-        label_configs: Union[DocLabelConfig, WordLabelConfig, List[TargetConfigBase]],
-        meta: CommonMetadata,
-        *args,
-        **kwargs,
-    ):
-        # The number of names in input_names *must* be equal to the number of
-        # tensors passed in dummy_input
-        input_names = list(feature_config.word_feat.export_input_names)
-        feature_itos_map = {
-            feature_config.word_feat.export_input_names[0]: meta.features[
-                DatasetFieldName.TEXT_FIELD
-            ].vocab.itos
-        }
-        dummy_model_input = [torch.tensor([[1], [1]], dtype=torch.long)]  # tokens
-
-        if feature_config.dict_feat:
-            input_names.extend(feature_config.dict_feat.export_input_names)
-            feature_itos_map[
-                feature_config.dict_feat.export_input_names[0]
-            ] = meta.features[DatasetFieldName.DICT_FIELD].vocab.itos
-            dummy_model_input.append(
-                (
-                    torch.tensor([[2], [2]], dtype=torch.long),
-                    torch.tensor([[1.5], [2.5]], dtype=torch.float),
-                    torch.tensor([1, 1], dtype=torch.long),
-                )
-            )
-
-        if feature_config.char_feat:
-            input_names.extend(feature_config.char_feat.export_input_names)
-            feature_itos_map[
-                feature_config.char_feat.export_input_names[0]
-            ] = meta.features[DatasetFieldName.CHAR_FIELD].vocab.itos
-            dummy_model_input.append(
-                torch.tensor([[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long)
-            )
-
-        dummy_model_input.append(
-            torch.tensor([1, 1], dtype=torch.long)
-        )  # token lengths
-        input_names.append("tokens_lens")
-        output_names: List[str] = []
-
-        if isinstance(label_configs, (DocLabelConfig, WordLabelConfig)):
-            label_configs = [label_configs]
-        for label_config in label_configs:
-            output_names.extend(label_config.export_output_names)
-
-        label_names = [label.vocab.itos for label in meta.labels.values()]
-
-        return cls(
-            config,
-            label_names,
-            feature_itos_map,
-            meta,
-            input_names,
-            output_names,
-            tuple(dummy_model_input),
-        )
-
-    def prepend_operators(
-        self, c2_prepared: Caffe2Rep, input_names: List[str]
-    ) -> Tuple[Caffe2Rep, List[str]]:
-        return onnx_utils.add_feats_numericalize_ops(
-            c2_prepared, self.vocab_map, input_names
-        )

@@ -15,6 +15,11 @@ from pytext.models.doc_model import DocModel
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 
 
+class VocabStub:
+    def __init__(self):
+        self.itos = []
+
+
 class ModuleLoadSaveTest(unittest.TestCase):
     def setUp(self):
         self.embedding_file, self.embedding_path = tempfile.mkstemp()
@@ -29,11 +34,13 @@ class ModuleLoadSaveTest(unittest.TestCase):
 
     def test_load_save(self):
         text_field_meta = FieldMeta()
+        text_field_meta.vocab = VocabStub()
         text_field_meta.vocab_size = 4
         text_field_meta.unk_token_idx = 1
         text_field_meta.pad_token_idx = 0
         text_field_meta.pretrained_embeds_weight = None
         label_meta = FieldMeta()
+        label_meta.vocab = VocabStub()
         label_meta.vocab_size = 3
         metadata = CommonMetadata()
         metadata.features = {DatasetFieldName.TEXT_FIELD: text_field_meta}

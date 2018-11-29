@@ -19,11 +19,12 @@ from pytext.utils.cuda_utils import FloatTensor
 class OutputLayerBase(Module):
     @classmethod
     def from_config(cls, config, meta: FieldMeta):
-        return cls(create_loss(config.loss), config)
+        return cls(meta.vocab.itos, create_loss(config.loss), config)
 
-    def __init__(self, loss_fn=None, config=None):
+    def __init__(self, target_names=None, loss_fn=None, config=None):
         super().__init__(config)
         self.loss_fn = loss_fn
+        self.target_names = target_names
 
     def get_loss(self, logit, target, context=None, reduce=True):
         return self.loss_fn(logit, target, reduce)
@@ -38,7 +39,6 @@ class OutputLayerBase(Module):
         predict_net: core.Net,
         model_out: torch.Tensor,
         output_name: str,
-        label_names: List[str],
     ) -> List[core.BlobReference]:
         """
         Exports the output layer to caffe2 by manually adding the necessary
@@ -56,7 +56,9 @@ class ClassificationOutputLayer(OutputLayerBase):
         label_weights = getattr(meta, "label_weights", None)
         if label_weights is not None:
             label_weights = FloatTensor(label_weights)
-        return cls(create_loss(config.loss, weight=label_weights), config)
+        return cls(
+            meta.vocab.itos, create_loss(config.loss, weight=label_weights), config
+        )
 
     class Config(OutputLayerBase.Config):  # noqa: T484
         loss: Union[
@@ -81,7 +83,6 @@ class ClassificationOutputLayer(OutputLayerBase):
         predict_net: core.Net,
         model_out: torch.Tensor,
         output_name: str,
-        label_names: List[str],
     ) -> List[core.BlobReference]:
         """
         Exports the doc classification layer to caffe2 by manually adding the
@@ -94,17 +95,17 @@ class ClassificationOutputLayer(OutputLayerBase):
             probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
 
         return gen_additional_blobs(
-            predict_net, probability_out, model_out, output_name, label_names
+            predict_net, probability_out, model_out, output_name, self.target_names
         )
 
 
 class CRFOutputLayer(OutputLayerBase):
     @classmethod
     def from_config(cls, config, meta: FieldMeta):
-        return cls(meta.vocab_size)
+        return cls(meta.vocab_size, meta.vocab.itos)
 
-    def __init__(self, num_tags):
-        super().__init__()
+    def __init__(self, num_tags, *args):
+        super().__init__(*args)
         self.crf = CRF(num_tags)
 
     def get_loss(self, logit, target, context, reduce=True):
@@ -123,7 +124,6 @@ class CRFOutputLayer(OutputLayerBase):
         predict_net: core.Net,
         model_out: torch.Tensor,
         output_name: str,
-        label_names: List[str],
     ) -> List[core.BlobReference]:
         """
         Exports the CRF output layer to caffe2 by manually adding the necessary
@@ -135,7 +135,7 @@ class CRFOutputLayer(OutputLayerBase):
         )
         probability_out = predict_net.Softmax(output_score, axis=model_out.dim() - 1)
         return gen_additional_blobs(
-            predict_net, probability_out, model_out, output_name, label_names
+            predict_net, probability_out, model_out, output_name, self.target_names
         )
 
 

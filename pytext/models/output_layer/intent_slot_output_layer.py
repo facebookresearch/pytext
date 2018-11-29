@@ -69,8 +69,6 @@ class IntentSlotOutputLayer(OutputLayerBase):
         model_out: List[torch.Tensor],
         doc_out_name: str,
         word_out_name: str,
-        doc_labels: List[str],
-        word_labels: List[str],
     ) -> List[core.BlobReference]:
         """
         Exports the intent slot output layer to caffe2 by manually adding the
@@ -78,7 +76,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
         list of external output blobs to be added to the model.
         """
         return self.doc_output.export_to_caffe2(
-            workspace, init_net, predict_net, model_out[0], doc_out_name, doc_labels
+            workspace, init_net, predict_net, model_out[0], doc_out_name
         ) + self.word_output.export_to_caffe2(
-            workspace, init_net, predict_net, model_out[1], word_out_name, word_labels
+            workspace, init_net, predict_net, model_out[1], word_out_name
         )

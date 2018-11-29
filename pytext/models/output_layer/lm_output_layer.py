@@ -16,12 +16,13 @@ class LMOutputLayer(OutputLayerBase):
     @classmethod
     def from_config(cls, config, meta: FieldMeta):
         return cls(
+            meta.vocab.itos,
             create_loss(config.loss, ignore_index=meta.pad_token_idx),
             pad_token_idx=meta.pad_token_idx,
         )
 
-    def __init__(self, loss_fn=None, config=None, pad_token_idx=-100):
-        super().__init__(loss_fn, config)
+    def __init__(self, target_names, loss_fn=None, config=None, pad_token_idx=-100):
+        super().__init__(target_names, loss_fn, config)
         self.pad_token_idx = pad_token_idx
 
     def get_pred(self, logit, target, context):

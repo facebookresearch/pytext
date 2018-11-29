@@ -11,6 +11,12 @@ from .field import VocabUsingField
 
 
 class DictFeatureField(VocabUsingField):
+    dummy_model_input = (
+        torch.tensor([[2], [2]], dtype=torch.long, device="cpu"),
+        torch.tensor([[1.5], [2.5]], dtype=torch.float, device="cpu"),
+        torch.tensor([1, 1], dtype=torch.long, device="cpu"),
+    )
+
     def __init__(
         self,
         pad_token=VocabMeta.PAD_TOKEN,

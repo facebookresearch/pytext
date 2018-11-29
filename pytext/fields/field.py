@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Tuple, Union
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
@@ -39,6 +39,7 @@ class FieldMeta:
     init_token_idx: int
     eos_token_idx: int
     nesting_meta: Any
+    dummy_model_input: Union[torch.Tensor, Tuple[torch.Tensor, ...], None]
 
 
 class Field(textdata.Field):
@@ -63,6 +64,8 @@ class Field(textdata.Field):
                 meta.init_token_idx = self.vocab.stoi[self.init_token]
             if self.eos_token is not None:
                 meta.eos_token_idx = self.vocab.stoi[self.eos_token]
+        if hasattr(self, "dummy_model_input"):
+            meta.dummy_model_input = self.dummy_model_input
         return meta
 
     def load_meta(self, metadata: FieldMeta):
@@ -172,6 +175,8 @@ class WordLabelField(Field):
 
 
 class TextFeatureField(VocabUsingField):
+    dummy_model_input = torch.tensor([[1], [1]], dtype=torch.long, device="cpu")
+
     def __init__(
         self,
         pretrained_embeddings_path="",
