@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import numpy
 import torch
 from pytext.utils.cuda_utils import FloatTensor

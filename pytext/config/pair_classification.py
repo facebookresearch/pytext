@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from .field_config import DocLabelConfig, WordFeatConfig
 from .module_config import ModuleConfig
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import csv
 import json
 from typing import Tuple
@@ -129,7 +130,7 @@ class TensorBoardChannel(Channel):
         scores,
         context,
         meta,
-        *args
+        *args,
     ):
         if stage == Stage.TEST:
             tag = "test"

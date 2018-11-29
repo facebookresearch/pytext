@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import caffe2.python.predictor.predictor_exporter as pe
 import numpy as np

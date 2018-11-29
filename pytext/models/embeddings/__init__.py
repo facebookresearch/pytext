@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from .char_embedding import CharacterEmbedding
 from .dict_embedding import DictEmbedding
 from .embedding_base import EmbeddingBase

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.

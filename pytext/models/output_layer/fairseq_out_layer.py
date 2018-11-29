@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.fields import FieldMeta

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .char_field import CharFeatureField
 from .dict_field import DictFeatureField

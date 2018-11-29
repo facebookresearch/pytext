@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+
 from pytext.config.component import register_tasks
 from pytext.task.disjoint_multitask import DisjointMultitask
 from pytext.task.tasks import (

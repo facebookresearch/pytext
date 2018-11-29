@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from pytext.config.contextual_intent_slot import ModelInput
 from pytext.models.embeddings import EmbeddingList

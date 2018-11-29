@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from .compositional_data_handler import CompositionalDataHandler
