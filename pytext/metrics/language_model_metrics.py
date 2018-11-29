@@ -4,10 +4,17 @@ import math
 from typing import NamedTuple
 
 
+"""
+Language model metric utilities.
+"""
+
+
 class LanguageModelMetric(NamedTuple):
     """
-    Class for Language Modeling Metrics
-    perplexity_per_word: Average perplexity per word of the dataset
+    Class for language model metrics.
+
+    Attributes:
+        perplexity_per_word: Average perplexity per word of the dataset.
     """
 
     perplexity_per_word: float

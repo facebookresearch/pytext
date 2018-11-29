@@ -1,12 +1,37 @@
 #!/usr/bin/env python3
 
 from collections import defaultdict
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    DefaultDict,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
 
+"""
+Basic metric classes and functions for single-label prediction problems.
+"""
+
+
 class LabelPrediction(NamedTuple):
+    """
+    Label predictions of an example.
+
+    Attributes:
+        label_scores: Confidence scores that each label receives.
+        predicted_label: Index of the predicted label. This is usually the label with
+            the highest confidence score in label_scores.
+        expected_label: Index of the true label.
+    """
+
     label_scores: List[float]
     predicted_label: int
     expected_label: int
@@ -14,11 +39,15 @@ class LabelPrediction(NamedTuple):
 
 class PRF1Scores(NamedTuple):
     """
-    Class for the typical precision/recall/F1 scores where
-      precision = TP / (TP + FP)
-      recall = TP / (TP + FN)
-      f1 = 2 * TP / (2 * TP + FP + FN)
-    This class is used for both micro scores and per label scores.
+    Precision/recall/F1 scores for a collection of predictions.
+
+    Attributes:
+        true_positives: Number of true positives.
+        false_positives: Number of false positives.
+        false_negatives: Number of false negatives.
+        precision: TP / (TP + FP).
+        recall: TP / (TP + FN).
+        f1: 2 * TP / (2 * TP + FP + FN).
     """
 
     true_positives: int
@@ -31,7 +60,7 @@ class PRF1Scores(NamedTuple):
 
 class SoftClassificationMetrics(NamedTuple):
     """
-    Class for non-threshold dependent classification score
+    Classification scores that are independent of thresholds.
     """
 
     average_precision: float
@@ -39,9 +68,13 @@ class SoftClassificationMetrics(NamedTuple):
 
 class MacroPRF1Scores(NamedTuple):
     """
-    The macro precision/recall/F1 scores which are averages across the per label
-    scores.
-    num_label: stores how many labels are used in the average.
+    Macro precision/recall/F1 scores (averages across each label).
+
+    Attributes:
+        num_label: Number of distinct labels.
+        precision: Equally weighted average of precisions for each label.
+        recall: Equally weighted average of recalls for each label.
+        f1: Equally weighted average of F1 scores for each label.
     """
 
     num_labels: int
@@ -52,9 +85,13 @@ class MacroPRF1Scores(NamedTuple):
 
 class MacroPRF1Metrics(NamedTuple):
     """
-    Return type of PerLabelConfusions.compute_metrics(). It contains both
-    per_label_scores and macro_scores because they are both computed on per label
-    basis.
+    Aggregated metric class for macro precision/recall/F1 scores.
+
+    Attributes:
+        per_label_scores: Mapping from label string to the corresponding
+            precision/recall/F1 scores.
+        macro_scores: Macro precision/recall/F1 scores across the labels in
+            `per_label_scores`.
     """
 
     per_label_scores: Dict[str, PRF1Scores]
@@ -88,7 +125,15 @@ class MacroPRF1Metrics(NamedTuple):
 
 class PRF1Metrics(NamedTuple):
     """
-    All kinds of precision/recall/F1 scores that we want to report.
+    Metric class for all types of precision/recall/F1 scores.
+
+    Attributes:
+        per_label_scores: Map from label string to the corresponding precision/recall/F1
+            scores.
+        macro_scores: Macro precision/recall/F1 scores across the labels in
+            `per_label_scores`.
+        micro_scores: Micro (regular) precision/recall/F1 scores for the same
+            collection of predictions.
     """
 
     per_label_scores: Dict[str, PRF1Scores]
@@ -131,8 +176,13 @@ class PRF1Metrics(NamedTuple):
 
 class ClassificationMetrics(NamedTuple):
     """
-    Class of various classification metrics, including precision/recall/F1 scores,
-    Matthews correlation coefficient and average precision.
+    Metric class for various classification metrics.
+
+    Attributes:
+        accuracy: Overall accuracy of predictions.
+        macro_prf1_metrics: Macro precision/recall/F1 scores.
+        per_label_soft_scores: Per label soft metrics.
+        mcc: Matthews correlation coefficient.
     """
 
     accuracy: float
@@ -153,9 +203,16 @@ class ClassificationMetrics(NamedTuple):
             print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
 
 
-# We need a mutable type here (instead of NamedTuple) because we want to
-# aggregate TP, FP and FN
 class Confusions:
+    """
+    Confusion information for a collection of predictions.
+
+    Attributes:
+        TP: Number of true positives.
+        FP: Number of false positives.
+        FN: Number of false negatives.
+    """
+
     __slots__ = "TP", "FP", "FN"
 
     def __init__(self, TP: int = 0, FP: int = 0, FN: int = 0) -> None:
@@ -195,6 +252,14 @@ class Confusions:
 
 
 class PerLabelConfusions:
+    """
+    Per label confusion information.
+
+    Attributes:
+        label_confusions_map: Map from label string to the corresponding confusion
+            counts.
+    """
+
     __slots__ = "label_confusions_map"
 
     def __init__(self) -> None:
@@ -203,6 +268,17 @@ class PerLabelConfusions:
         )
 
     def update(self, label: str, item: str, count: int) -> None:
+        """
+        Increase one of TP, FP or FN count for a label by certain amount.
+
+        Args:
+            label: Label to be modified.
+            item: Type of count to be modified, should be one of "TP", "FP" or "FN".
+            count: Amount to be added to the count.
+
+        Returns:
+            None
+        """
         confusions = self.label_confusions_map[label]
         setattr(confusions, item, getattr(confusions, item) + count)
 
@@ -230,7 +306,12 @@ class PerLabelConfusions:
 
 class AllConfusions:
     """
-    A class that stores per label confusions as well as the total confusion counts
+    Aggregated class for per label confusions.
+
+    Attributes:
+        per_label_confusions: Per label confusion information.
+        confusions: Overall TP, FP and FN counts across the labels in
+            `per_label_confusions`.
     """
 
     __slots__ = "per_label_confusions", "confusions"
@@ -259,16 +340,114 @@ def compute_prf1(tp: int, fp: int, fn: int) -> Tuple[float, float, float]:
     return (precision, recall, f1)
 
 
+def average_precision_score(
+    y_true_list: Sequence[bool], y_score_list: Sequence[float]
+) -> float:
+    """
+    Computes average precision, which summarizes the precision-recall curve as the
+    precisions achieved at each threshold weighted by the increase in recall since the
+    previous threshold.
+
+    Args:
+        y_true_list: List of boolean values indicating whether each prediction is
+            correct.
+        y_score_list: List of confidence scores for the predictions.
+
+    Returns:
+        Average precision score.
+    """
+    y_true = np.array(y_true_list)
+    y_score = np.array(y_score_list)
+    sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
+    y_true = y_true[sort_indices]
+    y_score = y_score[sort_indices]
+    ap = 0.0
+    tp = 0
+    threshold = y_score[0]
+    y_score = np.append(y_score[1:], np.NAN)
+    total_positive = np.sum(y_true)
+    added_positives = 0
+
+    for k, (label, score) in enumerate(zip(y_true, y_score)):
+        added_positives += label
+        if score != threshold:
+            threshold = score
+            recall_diff = added_positives / total_positive
+            tp += added_positives
+            added_positives = 0
+            p_at_tresh = tp / (k + 1)
+            ap += p_at_tresh * recall_diff
+    return float(ap)
+
+
+def compute_soft_metrics(
+    predictions: Sequence[LabelPrediction], label_names: Sequence[str]
+) -> Dict[str, SoftClassificationMetrics]:
+    """
+    Computes soft classification metrics (for now, average precision) given a list of
+    label predictions.
+
+    Args:
+        predictions: Label predictions, including the confidence score for each label.
+        label_names: Indexed label names.
+
+    Returns:
+        Dict from label strings to their corresponding soft metrics.
+    """
+    soft_metrics = {}
+    for i, label_name in enumerate(label_names):
+        y_true = []
+        y_score = []
+        for label_scores, _, expected in predictions:
+            y_true.append(expected == i)
+            y_score.append(label_scores[i])
+        ap = average_precision_score(y_true, y_score)
+        soft_metrics[label_name] = SoftClassificationMetrics(average_precision=ap)
+    return soft_metrics
+
+
+def compute_matthews_correlation_coefficients(
+    TP: int, FP: int, FN: int, TN: int
+) -> float:
+    """
+    Computes Matthews correlation coefficient, a way to summarize all four counts (TP,
+    FP, FN, TN) in the confusin matrix of binary classification.
+
+    Args:
+        TP: Number of true positives.
+        FP: Number of false positives.
+        FN: Number of false negatives.
+        TN: Number of true negatives.
+
+    Returns:
+        Matthews correlation coefficient, which is `sqrt((TP + FP) * (TP + FN) *
+        (TN + FP) * (TN + FN))`.
+    """
+    mcc = safe_division(
+        (TP * TN) - (FP * FN),
+        np.sqrt(float((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))),
+    )
+    return mcc
+
+
 def compute_classification_metrics(
-    predictions: List[LabelPrediction],
-    label_names: List[str],
+    predictions: Sequence[LabelPrediction],
+    label_names: Sequence[str],
     average_precisions: bool = True,
 ) -> ClassificationMetrics:
     """
-    A general function that computes classification metrics given a list of pairs of
-    predicted and expected labels.
-    """
+    A general function that computes classification metrics given a list of label
+    predictions.
 
+    Args:
+        predictions: Label predictions, including the confidence score for each label.
+        label_names: Indexed label names.
+        average_precisions: Whether to compute average precisions for labels or not.
+            Defaults to True.
+
+    Returns:
+        ClassificationMetrics which contains various classification metrics.
+    """
     num_correct = 0
     per_label_confusions = PerLabelConfusions()
     for _, predicted, expected in predictions:
@@ -304,69 +483,3 @@ def compute_classification_metrics(
         per_label_soft_scores=soft_metrics,
         mcc=mcc,
     )
-
-
-def compute_soft_metrics(
-    predictions: List[LabelPrediction], label_names: List[str]
-) -> Dict[str, SoftClassificationMetrics]:
-    """
-    Computes classification metrics given a list of pairs of scores and expected labels.
-    """
-
-    soft_metrics = {}
-    for i, label_name in enumerate(label_names):
-        y_true = []
-        y_score = []
-        for label_scores, _, expected in predictions:
-            y_true.append(expected == i)
-            y_score.append(label_scores[i])
-        ap = average_precision_score(y_true, y_score)
-        soft_metrics[label_name] = SoftClassificationMetrics(average_precision=ap)
-    return soft_metrics
-
-
-def compute_matthews_correlation_coefficients(
-    TP: int, FP: int, FN: int, TN: int
-) -> float:
-    """
-    Matthews correlation coefficient is a way to summarize all four values of
-    the confusin matrix for binary classification.
-    """
-
-    mcc = safe_division(
-        (TP * TN) - (FP * FN),
-        np.sqrt(float((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))),
-    )
-    return mcc
-
-
-def average_precision_score(
-    y_true_list: List[bool], y_score_list: List[float]
-) -> float:
-    """
-    summarizes the precision-recall curve, as the precisions achieved at each
-    threshold, weighted by the increase in recall since previous threshold
-    """
-
-    y_true = np.array(y_true_list)
-    y_score = np.array(y_score_list)
-    sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
-    y_true = y_true[sort_indices]
-    y_score = y_score[sort_indices]
-    ap = 0.0
-    tp = 0
-    threshold = y_score[0]
-    y_score = np.append(y_score[1:], np.NAN)
-    total_positive = np.sum(y_true)
-    added_positives = 0
-
-    for k, (label, score) in enumerate(zip(y_true, y_score)):
-        added_positives += label
-        if score != threshold:
-            threshold = score
-            recall_diff = added_positives / total_positive
-            tp += added_positives
-            added_positives = 0
-            p_at_tresh = tp / (k + 1)
-            ap += p_at_tresh * recall_diff
-    return float(ap)

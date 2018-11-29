@@ -2,7 +2,7 @@
 
 from collections import Counter as counter, defaultdict
 from copy import deepcopy
-from typing import Any, Counter, Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Any, Counter, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from . import (
     AllConfusions,
@@ -14,9 +14,18 @@ from . import (
 )
 
 
+"""
+Metric classes and functions for intent-slot prediction problems.
+"""
+
+
 class Span(NamedTuple):
     """
-    Span of a node in an utterance. Absolute positions are used here.
+    Span of a node in a text.
+
+    Attributes:
+        start: Start position of the node.
+        end: End position of the node (exclusive).
     """
 
     start: int
@@ -25,8 +34,12 @@ class Span(NamedTuple):
 
 class Node:
     """
-    A class that represents nodes in a parse tree, used for identifying the true
-    positives in both tree-based and bracketing metrics.
+    Node in an intent-slot tree, representing either an intent or a slot.
+
+    Attributes:
+        label: Label of the node.
+        span: Span of the node.
+        children: Children of the node.
     """
 
     __slots__ = "label", "span", "children"
@@ -54,31 +67,59 @@ class Node:
 
 
 class FramePredictionPair(NamedTuple):
+    """
+    Pair of predicted and gold intent frames.
+    """
+
     predicted_frame: Node
     expected_frame: Node
 
 
 class NodesPredictionPair(NamedTuple):
+    """
+    Pair of predicted and expected sets of nodes.
+    """
+
     predicted_nodes: Counter[Node]
     expected_nodes: Counter[Node]
 
 
 class IntentsAndSlots(NamedTuple):
+    """
+    Collection of intents and slots in an intent frame.
+    """
+
     intents: Counter[Node]
     slots: Counter[Node]
 
 
 class FrameAccuracy(NamedTuple):
+    """
+    Frame accuracy for a collection of intent frame predictions.
+
+    Frame accuracy means the entire tree structure of the predicted frame matches that
+    of the gold frame.
+    """
+
     num_samples: int
     frame_accuracy: float
 
 
 FrameAccuraciesByDepth = Dict[int, FrameAccuracy]
+"""
+Frame accuracies bucketized by depth of the gold tree.
+"""
 
 
 class IntentSlotMetrics(NamedTuple):
     """
-    Intent and slot metrics.
+    Precision/recall/F1 metrics for intents and slots.
+
+    Attributes:
+        intent_metrics: Precision/recall/F1 metrics for intents.
+        slot_metrics: Precision/recall/F1 metrics for slots.
+        overall_metrics: Combined precision/recall/F1 metrics for all nodes (merging
+            intents and slots).
     """
 
     intent_metrics: Optional[PRF1Metrics]
@@ -102,6 +143,21 @@ class IntentSlotMetrics(NamedTuple):
 
 
 class AllMetrics(NamedTuple):
+    """
+    Aggregated class for intent-slot related metrics.
+
+    Attributes:
+        top_intent_accuracy: Accuracy of the top-level intent.
+        frame_accuracy: Frame accuracy.
+        frame_accuracies_by_depth: Frame accuracies bucketized by depth of the gold
+            tree.
+        bracket_metrics: Bracket metrics for intents and slots. For details, see the
+            function `compute_intent_slot_metrics()`.
+        tree_metrics: Tree metrics for intents and slots. For details, see the function
+            `compute_intent_slot_metrics()`.
+        loss: Cross entropy loss.
+    """
+
     top_intent_accuracy: Optional[float]
     frame_accuracy: Optional[float]
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
@@ -121,6 +177,14 @@ class AllMetrics(NamedTuple):
 
 
 class IntentSlotConfusions(NamedTuple):
+    """
+    Aggregated class for intent and slot confusions.
+
+    Attributes:
+        intent_confusions: Confusion counts for intents.
+        slot_confusions: Confusion counts for slots.
+    """
+
     intent_confusions: Confusions
     slot_confusions: Confusions
 
@@ -175,10 +239,23 @@ def compare_frames(
     slot_per_label_confusions: Optional[PerLabelConfusions] = None,
 ) -> IntentSlotConfusions:
     """
-    Compare two frames of "Node" type and return the intent and slot TP, FP, FN counts.
-    Optionally collect the per label TP, FP, FN counts.
-    """
+    Compares two intent frames and returns TP, FP, FN counts for intents and slots.
+    Optionally collects the per label TP, FP, FN counts.
 
+    Args:
+        predicted_frame: Predicted intent frame.
+        expected_frame: Gold intent frame.
+        tree_based: Whether to get the tree-based confusions (if True) or bracket-based
+            confusions (if False). For details, see the function
+            `compute_intent_slot_metrics()`.
+        intent_per_label_confusions: If provided, update the per label confusions for
+            intents as well. Defaults to None.
+        slot_per_label_confusions: If provided, update the per label confusions for
+            slots as well. Defaults to None.
+
+    Returns:
+        IntentSlotConfusions, containing confusion counts for intents and slots.
+    """
     predicted_intents_and_slots = _get_intents_and_slots(
         predicted_frame, tree_based=tree_based
     )
@@ -200,13 +277,19 @@ def compare_frames(
 
 
 def compute_prf1_metrics(
-    nodes_pairs: List[NodesPredictionPair]
+    nodes_pairs: Sequence[NodesPredictionPair]
 ) -> Tuple[AllConfusions, PRF1Metrics]:
     """
-    Compute classification metrics given a list of pairs of predicted and expected
-    node sets.
-    """
+    Computes precision/recall/F1 metrics given a list of predicted and expected sets of
+    nodes.
 
+    Args:
+        nodes_pairs: List of predicted and expected node sets.
+
+    Returns:
+        A tuple, of which the first member contains the confusion information, and the
+        second member contains the computed precision/recall/F1 metrics.
+    """
     all_confusions = AllConfusions()
     for (predicted_nodes, expected_nodes) in nodes_pairs:
         all_confusions.confusions += _compare_nodes(
@@ -216,19 +299,39 @@ def compute_prf1_metrics(
 
 
 def compute_intent_slot_metrics(
-    frame_pairs: List[FramePredictionPair],
+    frame_pairs: Sequence[FramePredictionPair],
     tree_based: bool,
     overall_metrics: bool = True,
 ) -> IntentSlotMetrics:
     """
-    Given a list of (predicted_frame, expected_frame) tuples in Node type,
-    return IntentSlotMetrics. We take the following assumptions:
-    1. The root Node is intent.
-    2. Children of intents are always slots, and children of slots are always intents.
-    The input parameter tree_based determines whether bracket (tree_based=False) or
-    tree (tree_based=True) scores are computed.
-    """
+    Given a list of predicted and gold intent frames, computes precision, recall and F1
+    metrics for intents and slots, either in tree-based or bracket-based manner.
 
+    The following assumptions are taken on intent frames:
+    1. The root node is an intent,
+    2. Children of intents are always slots, and children of slots are always intents.
+
+    For tree-based metrics, a node (an intent or slot) in the predicted frame is
+    considered a true positive only if the subtree rooted at this node has an exact copy
+    in the gold frame, otherwise it is considered a false positive. A false negative is
+    a node in the gold frame that does not have an exact subtree match in the predicted
+    frame.
+
+    For bracket-based metrics, a node in the predicted frame is considered a true
+    positive if there is a node in the gold frame having the same label and span (but
+    not necessarily the same children). The definitions of false positives and false
+    negatives are similar to the above.
+
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+        tree_based: Whether to compute tree-based metrics (if True) or bracket-based
+            metrics (if False).
+        overall_metrics: Whether to compute overall (merging intents and slots) metrics
+            or not. Defaults to True.
+
+    Returns:
+        IntentSlotMetrics, containing precision/recall/F1 metrics for intents and slots.
+    """
     intents_pairs: List[NodesPredictionPair] = []
     slots_pairs: List[NodesPredictionPair] = []
     for (predicted_frame, expected_frame) in frame_pairs:
@@ -250,7 +353,16 @@ def compute_intent_slot_metrics(
     )
 
 
-def compute_top_intent_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
+def compute_top_intent_accuracy(frame_pairs: Sequence[FramePredictionPair]) -> float:
+    """
+    Computes accuracy of the top-level intent.
+
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+
+    Returns:
+        Prediction accuracy of the top-level intent.
+    """
     num_correct = 0
     num_samples = len(frame_pairs)
     for (predicted_frame, expected_frame) in frame_pairs:
@@ -258,7 +370,17 @@ def compute_top_intent_accuracy(frame_pairs: List[FramePredictionPair]) -> float
     return safe_division(num_correct, num_samples)
 
 
-def compute_frame_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
+def compute_frame_accuracy(frame_pairs: Sequence[FramePredictionPair]) -> float:
+    """
+    Computes frame accuracy given a list of predicted and gold intent frames.
+
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+
+    Returns:
+        Frame accuracy. For a prediction, frame accuracy is achieved if the entire tree
+        structure of the predicted frame matches that of the gold frame.
+    """
     num_correct = 0
     num_samples = len(frame_pairs)
     for (predicted_frame, expected_frame) in frame_pairs:
@@ -267,14 +389,20 @@ def compute_frame_accuracy(frame_pairs: List[FramePredictionPair]) -> float:
 
 
 def compute_frame_accuracies_by_depth(
-    frame_pairs: List[FramePredictionPair]
+    frame_pairs: Sequence[FramePredictionPair]
 ) -> FrameAccuraciesByDepth:
     """
-    Given a list of (predicted_frame, expected_frame) pairs of Node type, split the
-    prediction pairs into buckets according to the tree depth of the expected frame, and
-    compute frame accuracies for each bucket.
-    """
+    Given a list of predicted and gold intent frames, splits the predictions into
+    buckets according to the depth of the gold trees, and computes frame accuracy for
+    each bucket.
 
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+
+    Returns:
+        FrameAccuraciesByDepth, a map from depths to their corresponding frame
+        accuracies.
+    """
     frame_pairs_by_depth: Dict[int, List[FramePredictionPair]] = defaultdict(list)
     for frame_pair in frame_pairs:
         depth = frame_pair.expected_frame.get_depth()
@@ -288,7 +416,7 @@ def compute_frame_accuracies_by_depth(
 
 
 def compute_all_metrics(
-    frame_pairs: List[FramePredictionPair],
+    frame_pairs: Sequence[FramePredictionPair],
     top_intent_accuracy: bool = True,
     frame_accuracy: bool = True,
     frame_accuracies_by_depth: bool = True,
@@ -297,10 +425,25 @@ def compute_all_metrics(
     overall_metrics: bool = False,
 ) -> AllMetrics:
     """
-    Given a list of (predicted_frame, expected_frame) pairs of Node type, return both
-    bracket and tree metrics.
-    """
+    Given a list of predicted and gold intent frames, computes intent-slot related
+    metrics.
 
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+        top_intent_accuracy: Whether to compute top intent accuracy or not. Defaults to
+            True.
+        frame_accuracy: Whether to compute frame accuracy or not. Defaults to True.
+        frame_accuracies_by_depth: Whether to compute frame accuracies by depth or not.
+            Defaults to True.
+        bracket_metrics: Whether to compute bracket metrics or not. Defaults to True.
+        tree_metrics: Whether to compute tree metrics or not. Defaults to True.
+        overall_metrics: If `bracket_metrics` or `tree_metrics` is true, decides whether
+            to compute overall (merging intents and slots) metrics for them. Defaults to
+            False.
+
+    Returns:
+        AllMetrics which contains intent-slot related metrics.
+    """
     top_intent = (
         compute_top_intent_accuracy(frame_pairs) if top_intent_accuracy else None
     )
