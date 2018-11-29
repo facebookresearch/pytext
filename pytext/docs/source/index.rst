@@ -24,6 +24,7 @@ PyText is a NLU framework. Brief summary goes here.
 	hierarchical_intent_slot_tutorial
 	tutorial2
   atis_tutorial
+  disjoint_multitask_tutorial
 
 .. toctree::
   :maxdepth: 3

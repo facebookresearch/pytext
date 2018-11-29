@@ -1,0 +1,25 @@
+{
+  "config": {
+    "task": {
+      "DocClassificationTask": {
+        "model": {
+          "representation": {
+            "BiLSTMDocAttention": {}
+          }
+        },
+        "data_handler": {
+          "columns_to_read": [
+            "text",
+            "doc_label"
+          ],
+          "train_path": "base_dir/SST-2/train_processed.tsv",
+          "eval_path": "base_dir/SST-2/dev_processed.tsv",
+          "test_path": "base_dir/SST-2/dev_processed.tsv"
+        },
+        "trainer": {
+          "epochs": 15
+        }
+      }
+    }
+  }
+}
