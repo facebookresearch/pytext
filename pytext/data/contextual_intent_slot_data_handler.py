@@ -39,6 +39,33 @@ class RawData:
 
 
 class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
+    """
+    Data Handler to build pipeline to process data and generate tensors to be consumed
+    by ContextualIntentSlotModel. Columns of Input data includes:
+    1. doc label for intent classification
+    2. word label for slot tagging of the last utterance
+    3. a sequence of utterances (e.g., a dialog)
+    4. Optional dictionary feature contained in the last utterance
+    5. Optional doc weight that stands for the weight of intent task in joint loss.
+    6. Optional word weight that stands for the weight of slot task in joint loss.
+
+    Attributes:
+        raw_columns: columns to read from data source. In case of files, the order
+            should match the data stored in that file. Raw columns include
+            [
+                RawData.DOC_LABEL,
+                RawData.WORD_LABEL,
+                RawData.TEXT,
+                RawData.DICT_FEAT (Optional),
+                RawData.DOC_WEIGHT (Optional),
+                RawData.WORD_WEIGHT (Optional),
+            ]
+        labels: doc labels and word labels
+        features: embeddings generated from sequences of utterances and
+            dictionary features of the last utterance
+        extra_fields: doc weights, word weights, and etc.
+    """
+
     class Config(JointModelDataHandler.Config):
         columns_to_read: List[str] = [
             RawData.DOC_LABEL,
@@ -57,6 +84,22 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
         target_config: TargetConfig,
         **kwargs,
     ):
+        """Factory method to construct an instance of
+        ContextualIntentSlotModelDataHandler object from the module's config,
+        model input config and target config.
+
+        Args:
+            cls (type): ContextualIntentSlotModelDataHandler.
+            config (Config): Configuration object specifying all the
+                parameters of ContextualIntentSlotModelDataHandler.
+            feature_config (ModelInputConfig): Configuration object specifying
+                model input.
+            target_config (TargetConfig): Configuration object specifying target.
+
+        Returns:
+            type: An instance of ContextualIntentSlotModelDataHandler.
+
+        """
         features: Dict[str, Field] = create_fields(
             feature_config,
             {
@@ -96,6 +139,35 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
         )
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+        """Preprocess steps for a single input row: 1. apply tokenization to a
+        sequence of utterances; 2. process dictionary features to align with
+        the last utterance. 3. align word labels with the last utterance.
+
+        Args:
+            row_data (Dict[str, Any]): Dict of one row data with column names as keys.
+                Keys includes "doc_label", "word_label", "text", "dict_feat",
+                "word weight" and "doc weight".
+            idx (int): index of row data.
+
+        Returns:
+            Dict[str, Any]: Preprocessed dict of one row data includes:
+                "seq_word_feat" (list of list of string): tokenized words of
+                    sequence of utterances
+                "word_feat" (list of string): tokenized words of last utterance
+                "index_field" (int), index of row data
+                "raw_word_label" (string): raw word label
+                "token_range" (list of tuple): token ranges of word labels, each
+                    tuple contains the start position index and the end position index
+                "utterance" (list of string): raw utterances
+                "word_label" (list of string): list of labels of words in last utterance
+                "doc_label" (string): doc label for intent classification
+                "word_weight" (float): weight of word label
+                "doc_weight" (float): weight of document label
+                "dict_feat" (tuple, optional): tuple of three lists, the first is
+                    the label of each words, the second is the weight of the feature,
+                    the third is the length of the feature.
+
+        """
         sequence = data_utils.parse_json_array(row_data[RawData.TEXT])
 
         # ignore dictionary feature for context sentences other than the last one
