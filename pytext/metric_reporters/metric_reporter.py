@@ -74,6 +74,9 @@ class MetricReporter(Component):
         else:
             raise NotImplementedError()
 
+    def add_channel(self, channel):
+        self.channels.append(channel)
+
     def calculate_loss(self):
         return sum(self.all_loss) / float(len(self.all_loss))
 

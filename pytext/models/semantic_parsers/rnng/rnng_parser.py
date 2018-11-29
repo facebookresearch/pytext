@@ -482,3 +482,6 @@ class RNNGParser(nn.Module, Component):
 
     def save_modules(self, *args, **kwargs):
         pass
+
+    def contextualize(self, context):
+        self.context = context

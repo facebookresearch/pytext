@@ -31,7 +31,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
         each cell of LSTM module to produce a fixed sized word representation.
     """
 
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
         lstm: BiLSTM.Config = BiLSTM.Config()
         pooling: Optional[

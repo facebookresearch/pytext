@@ -33,14 +33,13 @@ def create_task(task_config, metadata=None, model_state=None):
 
 
 class Task(Component):
-
+    __EXPANSIBLE__ = True
     __COMPONENT_TYPE__ = ComponentType.TASK
 
     class Config(ConfigBase):
         features: FeatureConfig = FeatureConfig()
         featurizer: Featurizer.Config = SimpleFeaturizer.Config()
         data_handler: DataHandler.Config
-        model: Model.Config
         trainer: Trainer.Config = Trainer.Config()
         optimizer: OptimizerParams = OptimizerParams()
         scheduler: Optional[Scheduler.Config] = Scheduler.Config()

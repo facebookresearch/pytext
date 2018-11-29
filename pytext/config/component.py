@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import collections
 import enum
-from typing import Any, Dict, Iterable, List, Tuple, Type, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from .pytext_config import ConfigBase, PyTextConfig
 

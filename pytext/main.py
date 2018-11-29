@@ -45,6 +45,10 @@ def train_model_distributed(config):
     )
     assert (
         config.distributed_world_size == 1
+        or not config.task.__class__.__name__ == "DisjointMultitask.Config"
+    ), "Distributed training currently not supported for DisjointMultitask"
+    assert (
+        config.distributed_world_size == 1
         or config.distributed_world_size <= torch.cuda.device_count()
     ), (
         f"Only {torch.cuda.device_count()} GPUs are available, "

@@ -95,8 +95,8 @@ def _value_from_json(cls, value):
             for c, v in zip(_extend_tuple_type(cls, value), value)
         )
     elif issubclass(cls, Dict):
-        # TODO T32764840 add type check for dict type
-        return value
+        sub_cls = cls.__args__[1]
+        return {key: _value_from_json(sub_cls, v) for key, v in value.items()}
     # built in types
     return cls(value)
 
@@ -181,6 +181,9 @@ def _value_to_json(cls, value):
         return tuple(
             _value_to_json(c, v) for c, v in zip(_extend_tuple_type(cls, value), value)
         )
+    elif issubclass(cls, Dict):
+        sub_cls = cls.__args__[1]
+        return {key: _value_to_json(sub_cls, v) for key, v in value.items()}
     return value
 
 

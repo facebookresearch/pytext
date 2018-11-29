@@ -18,6 +18,7 @@ class Model(nn.Module, Component):
     embedding, representation and decoder to produce predicitons.
     """
 
+    __EXPANSIBLE__ = True
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     @classmethod
@@ -73,6 +74,9 @@ class Model(nn.Module, Component):
         self.representation = representation
         self.decoder = decoder
         self.output_layer = output_layer
+
+    def contextualize(self, context):
+        self.context = context
 
     def get_loss(self, logit, target, context):
         return self.output_layer.get_loss(logit, target, context)

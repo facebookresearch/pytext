@@ -67,6 +67,7 @@ class VocabMeta:
 
 class BatchContext:
     IGNORE_LOSS = "ignore_loss"
+    TASK_NAME = "task_name"
 
 
 class Stage(Enum):

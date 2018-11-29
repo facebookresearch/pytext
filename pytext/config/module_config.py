@@ -12,6 +12,8 @@ class ModuleConfig(ConfigBase):
     save_path: Optional[str] = None
     # Freezing a module means its parameters won't be updated during training.
     freeze: bool = False
+    # modules which have the same shared_module_key and type share parameters
+    shared_module_key: Optional[str] = None
 
 
 class CNNParams(ConfigBase):

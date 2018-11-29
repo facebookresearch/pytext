@@ -12,7 +12,7 @@ from .representation_base import RepresentationBase
 class BiLSTM(RepresentationBase):
     """Bidirectional LSTM based document representation."""
 
-    class Config(ConfigBase):
+    class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
         lstm_dim: int = 32
         num_layers: int = 1

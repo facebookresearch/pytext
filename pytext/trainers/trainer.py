@@ -196,6 +196,8 @@ class Trainer(TrainerBase):
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
         for batch_id, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
+            # pass context to model to use in forward call if needed
+            model.contextualize(context)
             logits = model(*inputs)
             loss = model.get_loss(logits, targets, context)
             if BatchContext.IGNORE_LOSS in context:

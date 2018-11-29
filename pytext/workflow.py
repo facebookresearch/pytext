@@ -106,7 +106,7 @@ def test_model(test_config: TestConfig, metrics_channel: Channel = None) -> Any:
 
     task, train_config = load(test_config.load_snapshot_path)
     if metrics_channel is not None:
-        task.metric_reporter.channels.append(metrics_channel)
+        task.metric_reporter.add_channel(metrics_channel)
 
     return (
         task.test(test_config.test_path),

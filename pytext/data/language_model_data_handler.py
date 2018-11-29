@@ -17,6 +17,8 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 class LanguageModelDataHandler(DataHandler):
     class Config(DataHandler.Config):
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
+        append_bos: bool = True
+        append_eos: bool = True
 
     @classmethod
     def from_config(
@@ -28,8 +30,8 @@ class LanguageModelDataHandler(DataHandler):
         word_feat_config = feature_config.word_feat
         features: Dict[str, Field] = {
             DatasetFieldName.TEXT_FIELD: TextFeatureField(
-                eos_token=VocabMeta.EOS_TOKEN,
-                init_token=VocabMeta.INIT_TOKEN,
+                eos_token=VocabMeta.EOS_TOKEN if config.append_eos else None,
+                init_token=VocabMeta.INIT_TOKEN if config.append_bos else None,
                 pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
                 embed_dim=word_feat_config.embed_dim,
                 embedding_init_strategy=word_feat_config.embedding_init_strategy,
