@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import torch
 from caffe2.python import core
@@ -8,7 +8,12 @@ from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import (
+    DocLabelConfig,
+    FeatureConfig,
+    TargetConfigBase,
+    WordLabelConfig,
+)
 from pytext.data import CommonMetadata
 from pytext.utils import onnx_utils
 
@@ -195,7 +200,7 @@ class TextModelExporter(ModelExporter):
         cls,
         config,
         feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        label_configs: Union[DocLabelConfig, WordLabelConfig, List[TargetConfigBase]],
         meta: CommonMetadata,
         *args,
         **kwargs,
@@ -238,11 +243,10 @@ class TextModelExporter(ModelExporter):
         input_names.append("tokens_lens")
         output_names: List[str] = []
 
-        if getattr(label_config, "doc_label", None):
-            output_names.extend(label_config.doc_label.export_output_names)
-
-        if getattr(label_config, "word_label", None):
-            output_names.extend(label_config.word_label.export_output_names)
+        if isinstance(label_configs, (DocLabelConfig, WordLabelConfig)):
+            label_configs = [label_configs]
+        for label_config in label_configs:
+            output_names.extend(label_config.export_output_names)
 
         label_names = [label.vocab.itos for label in meta.labels.values()]
 

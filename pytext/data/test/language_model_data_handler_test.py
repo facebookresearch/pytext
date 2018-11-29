@@ -5,7 +5,7 @@ from typing import Dict
 import numpy as np
 from pytext.common.constants import BatchContext, DatasetFieldName, DFColumn, VocabMeta
 from pytext.config.component import create_featurizer
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import FeatureConfig, WordLabelConfig
 from pytext.data import LanguageModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.fields import Field, TextFeatureField
@@ -111,7 +111,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         data_handler = LanguageModelDataHandler.from_config(
             LanguageModelDataHandler.Config(),
             FeatureConfig(),
-            LabelConfig(),
+            WordLabelConfig(),
             featurizer=create_featurizer(SimpleFeaturizer.Config(), FeatureConfig()),
             shuffle=False,
         )

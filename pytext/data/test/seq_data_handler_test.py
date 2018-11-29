@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 from pytext.common.constants import DFColumn
-from pytext.config.field_config import DocLabelConfig, FeatureConfig, LabelConfig
+from pytext.config.field_config import DocLabelConfig, FeatureConfig
 from pytext.data import SeqModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 
@@ -40,7 +40,7 @@ class SeqModelDataHandlerTest(unittest.TestCase):
         self.dh = SeqModelDataHandler.from_config(
             SeqModelDataHandler.Config(),
             FeatureConfig(),
-            LabelConfig(doc_label=DocLabelConfig()),
+            DocLabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), FeatureConfig()
             ),

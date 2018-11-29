@@ -2,12 +2,11 @@
 
 from typing import Any, Dict, List
 
-from pytext.config import ConfigBase
+from pytext.config.field_config import DocLabelConfig
 from pytext.config.pair_classification import (
     ExtraField,
     ModelInput,
     ModelInputConfig,
-    Target,
     TargetConfig,
 )
 from pytext.data.featurizer import InputRecord
@@ -17,6 +16,7 @@ from pytext.fields import (
     RawField,
     TextFeatureField,
     create_fields,
+    create_label_fields,
 )
 
 from .data_handler import DataHandler
@@ -51,8 +51,8 @@ class PairClassificationDataHandler(DataHandler):
         # share the processing field
         features[ModelInput.TEXT2] = features[ModelInput.TEXT1]
 
-        labels: Dict[str, Field] = create_fields(
-            target_config, {Target.DOC_LABEL: DocLabelField}
+        labels: Dict[str, Field] = create_label_fields(
+            target_config, {DocLabelConfig._name: DocLabelField}
         )
         extra_fields: Dict[str, Field] = {ExtraField.UTTERANCE_PAIR: RawField()}
         kwargs.update(config.items())
@@ -76,6 +76,6 @@ class PairClassificationDataHandler(DataHandler):
             ModelInput.TEXT2: self.featurizer.featurize(
                 InputRecord(raw_text=row_data[RawData.TEXT2])
             ).tokens,
-            Target.DOC_LABEL: row_data[RawData.DOC_LABEL],
+            DocLabelConfig._name: row_data[RawData.DOC_LABEL],
             ExtraField.UTTERANCE_PAIR: f"{row_data[RawData.TEXT1]} | {row_data[RawData.TEXT2]}",
         }

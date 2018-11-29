@@ -6,10 +6,9 @@ from pytext.config.contextual_intent_slot import (
     ExtraField,
     ModelInput,
     ModelInputConfig,
-    Target,
     TargetConfig,
 )
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import DocLabelConfig, WordLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
@@ -23,6 +22,7 @@ from pytext.fields import (
     TextFeatureField,
     WordLabelField,
     create_fields,
+    create_label_fields,
 )
 from pytext.utils import data_utils
 
@@ -68,9 +68,13 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             },
         )
 
-        labels: Dict[str, Field] = create_fields(
+        # Label fields.
+        labels: Dict[str, Field] = create_label_fields(
             target_config,
-            {Target.DOC_LABEL: DocLabelField, Target.WORD_LABEL: WordLabelField},
+            {
+                DocLabelConfig._name: DocLabelField,
+                WordLabelConfig._name: WordLabelField,
+            },
         )
 
         extra_fields: Dict[str, Field] = {
@@ -122,7 +126,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             ModelInput.CHAR: features_list[-1].characters,
             ModelInput.PRETRAINED: features_list[-1].pretrained_token_embedding,
             # labels
-            Target.DOC_LABEL: row_data[RawData.DOC_LABEL],
+            DocLabelConfig._name: row_data[RawData.DOC_LABEL],
             # extra data
             # TODO move the logic to FloatField
             ExtraField.DOC_WEIGHT: row_data.get(RawData.DOC_WEIGHT) or 1.0,
@@ -132,12 +136,12 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             ExtraField.UTTERANCE: row_data[RawData.TEXT],
             ExtraField.TOKEN_RANGE: features_list[-1].token_ranges,
         }
-        if Target.WORD_LABEL in self.labels:
+        if WordLabelConfig._name in self.labels:
             # TODO move it into word label field
-            res[Target.WORD_LABEL] = data_utils.align_slot_labels(
+            res[WordLabelConfig._name] = data_utils.align_slot_labels(
                 features_list[-1].token_ranges,
                 row_data[RawData.WORD_LABEL],
-                self.labels[Target.WORD_LABEL].use_bio_labels,
+                self.labels[WordLabelConfig._name].use_bio_labels,
             )
         return res
 

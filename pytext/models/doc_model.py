@@ -22,7 +22,7 @@ class DocModel(Model):
             BiLSTMDocAttention.Config,
             DocNNRepresentation.Config,
         ] = BiLSTMDocAttention.Config()
+        decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
-        decoder: MLPDecoder.Config = MLPDecoder.Config()

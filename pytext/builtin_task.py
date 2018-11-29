@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from pytext.config import (
     contextual_intent_slot as ContextualIntentSlot,
@@ -8,7 +8,7 @@ from pytext.config import (
     pair_classification as PairClassification,
 )
 from pytext.config.component import register_tasks
-from pytext.config.field_config import DocLabelConfig, LabelConfig, WordLabelConfig
+from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
 from pytext.data import (
     BPTTLanguageModelDataHandler,
     CompositionalDataHandler,
@@ -44,7 +44,7 @@ class EnsembleTask(Task):
     class Config(Task.Config):
         model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
-        labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+        labels: List[TargetConfigBase]
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: Union[
             ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
@@ -83,7 +83,7 @@ class WordTaggingTask(Task):
     class Config(Task.Config):
         model: WordTaggingModel.Config = WordTaggingModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: LabelConfig = LabelConfig(word_label=WordLabelConfig())
+        labels: WordLabelConfig = WordLabelConfig()
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: WordTaggingMetricReporter.Config = (
             WordTaggingMetricReporter.Config()
@@ -94,9 +94,7 @@ class JointTextTask(Task):
     class Config(Task.Config):
         model: JointModel.Config = JointModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: LabelConfig = LabelConfig(
-            doc_label=DocLabelConfig(), word_label=WordLabelConfig()
-        )
+        labels: List[TargetConfigBase]
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
@@ -110,7 +108,7 @@ class LMTask(Task):
         ] = LanguageModelDataHandler.Config()
         model: LMLSTM.Config
         trainer: Trainer.Config = Trainer.Config()
-        labels: Optional[LabelConfig] = None
+        labels: Optional[WordLabelConfig] = None
         metric_reporter: LanguageModelMetricReporter.Config = (
             LanguageModelMetricReporter.Config()
         )
@@ -136,7 +134,7 @@ class SeqNNTask(Task):
     class Config(Task.Config):
         model: SeqNNModel.Config = SeqNNModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: LabelConfig = LabelConfig(doc_label=DocLabelConfig())
+        labels: DocLabelConfig = DocLabelConfig()
         data_handler: SeqModelDataHandler.Config = SeqModelDataHandler.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
@@ -150,9 +148,7 @@ class ContextualIntentSlotTask(Task):
         )
         model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: ContextualIntentSlot.TargetConfig = (
-            ContextualIntentSlot.TargetConfig()
-        )
+        labels: ContextualIntentSlot.TargetConfig
         data_handler: ContextualIntentSlotModelDataHandler.Config = (
             ContextualIntentSlotModelDataHandler.Config()
         )
@@ -166,7 +162,7 @@ class SemanticParsingTask(Task):
         model: RNNGParser.Config = RNNGParser.Config()
         trainer: HogwildTrainer.Config = HogwildTrainer.Config()
         data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
-        labels: Optional[LabelConfig] = None
+        labels: Optional[WordLabelConfig] = None
         metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
 
 

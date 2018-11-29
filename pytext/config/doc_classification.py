@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from typing import Optional
 
 from .field_config import (
@@ -9,7 +10,6 @@ from .field_config import (
     WordFeatConfig,
 )
 from .module_config import ModuleConfig
-from .pytext_config import ConfigBase
 
 
 class ModelInputConfig(ModuleConfig):
@@ -19,8 +19,7 @@ class ModelInputConfig(ModuleConfig):
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
 
 
-class TargetConfig(ConfigBase):
-    doc_label: DocLabelConfig = DocLabelConfig()
+TargetConfig = DocLabelConfig
 
 
 class ModelInput:
@@ -29,10 +28,6 @@ class ModelInput:
     CHAR_FEAT = "char_feat"
     PRETRAINED_MODEL_EMBEDDING = "pretrained_model_embedding"
     SEQ_LENS = "seq_lens"
-
-
-class Target:
-    DOC_LABEL = "doc_label"
 
 
 class ExtraField:

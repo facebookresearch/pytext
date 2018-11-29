@@ -16,6 +16,7 @@ from .field import (
     VocabUsingNestedField,
     WordLabelField,
     create_fields,
+    create_label_fields,
 )
 from .pretrained_model_embedding_field import PretrainedModelEmbeddingField
 from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
@@ -23,6 +24,7 @@ from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
 
 __all__ = [
     "create_fields",
+    "create_label_fields",
     "ActionField",
     "CharFeatureField",
     "DictFeatureField",

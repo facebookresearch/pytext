@@ -3,7 +3,7 @@
 import unittest
 
 import numpy as np
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import FeatureConfig, WordLabelConfig
 from pytext.data import BPTTLanguageModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.test_utils import tests_module
@@ -18,7 +18,7 @@ class BPTTLanguageModelDataHandlerTest(unittest.TestCase):
         data_handler = BPTTLanguageModelDataHandler.from_config(
             BPTTLanguageModelDataHandler.Config(bptt_len=4),
             FeatureConfig(),
-            LabelConfig(),
+            WordLabelConfig(),
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), FeatureConfig()
             ),

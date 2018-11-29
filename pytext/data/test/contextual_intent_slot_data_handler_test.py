@@ -4,6 +4,7 @@ import unittest
 
 from pytext.common.constants import DFColumn
 from pytext.config.contextual_intent_slot import ModelInputConfig, TargetConfig
+from pytext.config.field_config import DocLabelConfig, WordLabelConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.test_utils import tests_module
@@ -15,7 +16,7 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         self.dh = ContextualIntentSlotModelDataHandler.from_config(
             ContextualIntentSlotModelDataHandler.Config(),
             ModelInputConfig(),
-            TargetConfig(),
+            [DocLabelConfig(), WordLabelConfig()],
             featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), ModelInputConfig()),
         )
 

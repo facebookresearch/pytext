@@ -26,10 +26,7 @@ def create_module(
 
 
 class Module(nn.Module, Component):
-    """
-    Generic model class that depends on input
-    embedding, representation and decoder to produce predictions.
-    """
+    """Generic module class that serves as base class for all PyText modules."""
 
     Config = ModuleConfig
 

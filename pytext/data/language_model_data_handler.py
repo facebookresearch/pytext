@@ -4,8 +4,7 @@ from typing import Any, Dict, List
 
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
-from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import Field, RawField, TextFeatureField
 
@@ -21,11 +20,7 @@ class LanguageModelDataHandler(DataHandler):
 
     @classmethod
     def from_config(
-        cls,
-        config: Config,
-        feature_config: FeatureConfig,
-        label_config: LabelConfig,
-        **kwargs
+        cls, config: Config, feature_config: FeatureConfig, *args, **kwargs
     ):
         # For language modeling the only input is a collection of utterances.
         # The input and the labels are created by the LangaugeModelDataHandler.

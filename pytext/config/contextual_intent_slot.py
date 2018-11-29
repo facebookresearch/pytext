@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-from typing import Optional
+from typing import List, Optional
 
 from .field_config import (
     CharFeatConfig,
     DictFeatConfig,
-    DocLabelConfig,
     PretrainedModelEmbeddingConfig,
+    TargetConfigBase,
     WordFeatConfig,
-    WordLabelConfig,
 )
 from .module_config import ModuleConfig
-from .pytext_config import ConfigBase
 
 
 class ModelInputConfig(ModuleConfig):
@@ -21,9 +19,7 @@ class ModelInputConfig(ModuleConfig):
     seq_word_feat: Optional[WordFeatConfig] = WordFeatConfig()
 
 
-class TargetConfig(ConfigBase):
-    doc_label: DocLabelConfig = DocLabelConfig()
-    word_label: WordLabelConfig = WordLabelConfig()
+TargetConfig = List[TargetConfigBase]
 
 
 class ModelInput:
@@ -32,11 +28,6 @@ class ModelInput:
     CHAR = "char_feat"
     PRETRAINED = "pretrained_model_embedding"
     SEQ = "seq_word_feat"
-
-
-class Target:
-    DOC_LABEL = "doc_label"
-    WORD_LABEL = "word_label"
 
 
 class ExtraField:

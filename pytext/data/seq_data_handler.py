@@ -4,12 +4,11 @@ from typing import Any, Dict, List
 
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import DocLabelConfig, FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
 from pytext.utils import data_utils
 
-from .data_handler import DataHandler
 from .joint_data_handler import JointModelDataHandler
 
 
@@ -17,7 +16,7 @@ SEQ_LENS = "seq_lens"
 
 
 class SeqModelDataHandler(JointModelDataHandler):
-    class Config(DataHandler.Config):
+    class Config(JointModelDataHandler.Config):
         columns_to_read: List[str] = [DFColumn.DOC_LABEL, DFColumn.UTTERANCE]
         pretrained_embeds_file: str = ""
 
@@ -28,7 +27,7 @@ class SeqModelDataHandler(JointModelDataHandler):
         cls,
         config: Config,
         feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        label_config: DocLabelConfig,
         **kwargs
     ):
         word_feat_config = feature_config.word_feat
@@ -42,10 +41,7 @@ class SeqModelDataHandler(JointModelDataHandler):
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
         }
-
-        labels: Dict[str, Field] = {}
-        if label_config.doc_label:
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = DocLabelField()
+        labels: Dict[str, Field] = {DocLabelConfig._name: DocLabelField()}
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),

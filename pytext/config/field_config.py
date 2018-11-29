@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
+
+from pytext.common.constants import DatasetFieldName
 
 from .module_config import CNNParams, ModuleConfig, PoolingType
 from .pytext_config import ConfigBase
@@ -59,13 +61,13 @@ class WordLabelConfig(ConfigBase):
     # Transform sequence labels to BIO format
     use_bio_labels: bool = False
     export_output_names: List[str] = ["word_scores"]
+    _name = DatasetFieldName.WORD_LABEL_FIELD
 
 
 class DocLabelConfig(ConfigBase):
     export_output_names: List[str] = ["doc_scores"]
     label_weights: Dict[str, float] = {}
+    _name = DatasetFieldName.DOC_LABEL_FIELD
 
 
-class LabelConfig(ConfigBase):
-    doc_label: Optional[DocLabelConfig] = None
-    word_label: Optional[WordLabelConfig] = None
+TargetConfigBase = Union[DocLabelConfig, WordLabelConfig]

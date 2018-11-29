@@ -18,8 +18,8 @@ class DecoderBase(Module):
 
     def __init__(self, config: ConfigBase):
         super().__init__(config)
-        self.in_dim = 0
-        self.out_dim = 0
+        self.input_dim = 0
+        self.target_dim = 0
 
     def forward(self, *input):
         raise NotImplementedError()

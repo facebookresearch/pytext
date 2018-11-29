@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
@@ -17,6 +17,17 @@ def create_fields(fields_config, field_cls_dict):
         for name, field_cls in field_cls_dict.items()
         if fields_config_dict[name]
     }
+
+
+def create_label_fields(label_configs, label_cls_dict):
+    if not isinstance(label_configs, list):
+        label_configs = [label_configs]
+    labels: Dict[str, Field] = {}
+    for label_config in label_configs:
+        labels[label_config._name] = label_cls_dict[label_config._name].from_config(
+            label_config
+        )
+    return labels
 
 
 class FieldMeta:

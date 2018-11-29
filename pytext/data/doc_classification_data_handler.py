@@ -6,9 +6,9 @@ from pytext.config.doc_classification import (
     ExtraField,
     ModelInput,
     ModelInputConfig,
-    Target,
     TargetConfig,
 )
+from pytext.config.field_config import DocLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
@@ -19,6 +19,7 @@ from pytext.fields import (
     RawField,
     TextFeatureField,
     create_fields,
+    create_label_fields,
 )
 from pytext.utils.python_utils import cls_vars
 
@@ -52,8 +53,8 @@ class DocClassificationDataHandler(DataHandler):
                 ModelInput.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
             },
         )
-        target_fields: Dict[str, Field] = create_fields(
-            target_config, {Target.DOC_LABEL: DocLabelField}
+        target_fields: Dict[str, Field] = create_label_fields(
+            target_config, {DocLabelConfig._name: DocLabelField}
         )
         extra_fields: Dict[str, Field] = {
             ExtraField.INDEX: RawField(),
@@ -86,7 +87,7 @@ class DocClassificationDataHandler(DataHandler):
             ModelInput.CHAR_FEAT: features.characters,
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             # target
-            Target.DOC_LABEL: row_data.get(RawData.DOC_LABEL),
+            DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
             # extra data
             ExtraField.INDEX: idx,
             ExtraField.RAW_TEXT: row_data.get(RawData.TEXT),

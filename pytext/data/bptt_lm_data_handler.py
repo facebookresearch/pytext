@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import FeatureConfig, WordLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import TextFeatureField
 from pytext.utils import cuda_utils
@@ -39,7 +39,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
         cls,
         config: Config,
         feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        label_config: WordLabelConfig,
         **kwargs
     ):
         # For language modeling the only input is a collection of utterances.

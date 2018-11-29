@@ -6,10 +6,11 @@ import unittest
 import numpy as np
 from pytext.common.constants import DatasetFieldName
 from pytext.config.field_config import (
+    DocLabelConfig,
     EmbedInitStrategy,
     FeatureConfig,
-    LabelConfig,
     WordFeatConfig,
+    WordLabelConfig,
 )
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
@@ -150,7 +151,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
         data_handler = JointModelDataHandler.from_config(
             JointModelDataHandler.Config(),
             feature_config,
-            LabelConfig(),
+            [DocLabelConfig(), WordLabelConfig()],
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), feature_config
             ),
@@ -176,7 +177,7 @@ class PretrainedEmbedsTest(unittest.TestCase):
         data_handler = JointModelDataHandler.from_config(
             JointModelDataHandler.Config(),
             feature_config,
-            LabelConfig(),
+            [DocLabelConfig(), WordLabelConfig()],
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), feature_config
             ),

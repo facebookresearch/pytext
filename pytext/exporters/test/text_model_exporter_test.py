@@ -65,6 +65,16 @@ JOINT_CONFIG = """
         }
       }
   },
+  "labels": [
+    {
+      "DocLabelConfig": {}
+    },
+    {
+      "WordLabelConfig": {
+        "use_bio_labels": true
+      }
+    }
+  ],
   "featurizer": {
     "SimpleFeaturizer": {}
   },
@@ -220,9 +230,6 @@ WORD_CONFIGS = [
     "output_layer": {
       "CRFOutputLayer": {}
     }
-  },
-  "labels": {
-    "word_label": {}
   },
   "features": {
     "word_feat": {},

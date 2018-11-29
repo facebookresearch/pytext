@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.config import ConfigBase
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import (
+    DocLabelConfig,
+    FeatureConfig,
+    TargetConfigBase,
+    WordLabelConfig,
+)
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
@@ -17,6 +21,7 @@ from pytext.fields import (
     TextFeatureField,
     WordLabelField,
     create_fields,
+    create_label_fields,
 )
 from pytext.utils import data_utils
 
@@ -43,7 +48,7 @@ class JointModelDataHandler(DataHandler):
         cls,
         config: Config,
         feature_config: FeatureConfig,
-        label_config: LabelConfig,
+        label_configs: Union[DocLabelConfig, WordLabelConfig, List[TargetConfigBase]],
         **kwargs,
     ):
         features: Dict[str, Field] = create_fields(
@@ -55,13 +60,17 @@ class JointModelDataHandler(DataHandler):
                 DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField(),
             },
         )
-        labels: Dict[str, Field] = create_fields(
-            label_config,
+
+        # Label fields.
+        labels: Dict[str, Field] = create_label_fields(
+            label_configs,
             {
-                DatasetFieldName.DOC_LABEL_FIELD: DocLabelField,
-                DatasetFieldName.WORD_LABEL_FIELD: WordLabelField,
+                DocLabelConfig._name: DocLabelField,
+                WordLabelConfig._name: WordLabelField,
             },
         )
+        has_word_label = WordLabelConfig._name in labels
+
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
@@ -69,7 +78,7 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
-        if label_config.word_label:
+        if has_word_label:
             extra_fields[DatasetFieldName.RAW_WORD_LABEL] = RawField()
 
         kwargs.update(config.items())

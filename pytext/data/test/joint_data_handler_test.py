@@ -3,7 +3,7 @@
 import unittest
 
 from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.config.field_config import FeatureConfig, LabelConfig
+from pytext.config.field_config import DocLabelConfig, FeatureConfig, WordLabelConfig
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.test_utils import tests_module
@@ -14,7 +14,7 @@ class JointDataHandlerTest(unittest.TestCase):
         self.data_handler = JointModelDataHandler.from_config(
             JointModelDataHandler.Config(),
             FeatureConfig(),
-            LabelConfig(),
+            [DocLabelConfig(), WordLabelConfig()],
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), FeatureConfig()
             ),
