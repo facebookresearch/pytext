@@ -44,7 +44,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
         label_meta.vocab_size = 3
         metadata = CommonMetadata()
         metadata.features = {DatasetFieldName.TEXT_FIELD: text_field_meta}
-        metadata.labels = {DatasetFieldName.DOC_LABEL_FIELD: label_meta}
+        metadata.target = label_meta
 
         saved_model = create_model(
             DocModel.Config(

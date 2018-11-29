@@ -22,7 +22,7 @@ def mock_metadata():
     field_meta.pretrained_embeds_weight = None
     field_meta.unk_token_idx = 0
     meta.features = {"word_feat": field_meta, "dict_feat": field_meta}
-    meta.labels = {"doc_label": field_meta}
+    meta.target = field_meta
     return meta
 
 

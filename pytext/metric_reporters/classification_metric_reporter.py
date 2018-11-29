@@ -33,7 +33,7 @@ class ClassificationMetricReporter(MetricReporter):
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        label_names = next(iter(meta.labels.values())).vocab.itos
+        label_names = meta.target.vocab.itos
         return cls(
             label_names,
             [ConsoleChannel(), IntentModelChannel((Stage.TEST,), config.output_path)],

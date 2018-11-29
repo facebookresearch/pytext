@@ -37,10 +37,9 @@ class WordTaggingMetricReporter(MetricReporter):
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        label_meta = next(iter(meta.labels.values()))
         return cls(
-            label_meta.vocab.itos,
-            label_meta.use_bio_labels,
+            meta.target.vocab.itos,
+            meta.target.use_bio_labels,
             [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
         )
 

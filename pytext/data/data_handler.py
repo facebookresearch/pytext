@@ -4,7 +4,7 @@ import csv
 import math
 import multiprocessing
 import os
-from copy import copy, deepcopy
+from copy import deepcopy
 from typing import Any, Dict, List, MutableMapping, Set, Tuple, Type, Union
 
 import torch
@@ -19,7 +19,7 @@ from torchtext import data as textdata
 
 class CommonMetadata:
     features: Dict[str, FieldMeta]
-    labels: Dict[str, FieldMeta]
+    target: FieldMeta
 
 
 class BatchIterator:
@@ -185,9 +185,12 @@ class DataHandler(Component):
         for name, field in self.features.items():
             if field.use_vocab and name in metadata.features:
                 field.load_meta(metadata.features[name])
-        for name, field in self.labels.items():
-            if field.use_vocab and name in metadata.labels:
-                field.load_meta(metadata.labels[name])
+
+        target_meta = metadata.target
+        if not isinstance(metadata.target, list):
+            target_meta = [target_meta]
+        for field, meta in zip(self.labels.values(), target_meta):
+            field.load_meta(meta)
 
     def gen_dataset_from_path(
         self, path: str, include_label_fields: bool = True, use_cache: bool = True
@@ -250,21 +253,16 @@ class DataHandler(Component):
         eval_data: textdata.Dataset,
         test_data: textdata.Dataset,
     ):
-        # build vocabs for label fields
-        for name, label in self.labels.items():
-            # Need test data to make sure we cover all of the labels in it
-            # It is particularly important when BIO is enabled as a B-[Label] can
-            # appear in train and eval but test can have B-[Label] and I-[Label]
+        self.init_feature_metadata(train_data, eval_data, test_data)
+        self.init_target_metadata(train_data, eval_data, test_data)
+        self._gen_extra_metadata()
 
-            # if vocab is already built, skip
-            if label.use_vocab and not getattr(label, "vocab", None):
-                print("Building vocab for label {}".format(name))
-                label.build_vocab(train_data, eval_data, test_data)
-                print(
-                    "{} field's vocabulary size is {}".format(
-                        name, len(label.vocab.itos)
-                    )
-                )
+    def init_feature_metadata(
+        self,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
+    ):
         # field metadata
         self.metadata.features = {}
         # build vocabs for features
@@ -274,7 +272,8 @@ class DataHandler(Component):
                 if not hasattr(feat, "vocab"):  # Don't rebuild vocab
                     if feat.vocab_from_all_data:
                         print(
-                            f"Building vocab for feature {name} from train, eval and test data."
+                            f"Building vocab for feature {name} from train, eval"
+                            + " and test data."
                         )
                     else:
                         print(
@@ -307,11 +306,30 @@ class DataHandler(Component):
             meta.pretrained_embeds_weight = weights
             self.metadata.features[name] = meta
 
-        self.metadata.labels = {
-            name: field.get_meta() for name, field in self.labels.items()
-        }
+    def init_target_metadata(
+        self,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
+    ):
+        # build vocabs for label fields
+        for name, label in self.labels.items():
+            # Need test data to make sure we cover all of the labels in it
+            # It is particularly important when BIO is enabled as a B-[Label] can
+            # appear in train and eval but test can have B-[Label] and I-[Label]
 
-        self._gen_extra_metadata()
+            if label.use_vocab:
+                print("Building vocab for label {}".format(name))
+                label.build_vocab(train_data, eval_data, test_data)
+                print(
+                    "{} field's vocabulary size is {}".format(
+                        name, len(label.vocab.itos)
+                    )
+                )
+
+        self.metadata.target = [field.get_meta() for field in self.labels.values()]
+        if len(self.metadata.target) == 1:
+            [self.metadata.target] = self.metadata.target
 
     def _get_data_to_build_vocab(
         self,

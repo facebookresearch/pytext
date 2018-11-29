@@ -540,14 +540,14 @@ class ModelExporterTest(hu.HypothesisTestCase):
             )
 
     def _get_metadata(self, num_doc_classes, num_word_classes):
-        labels = {}
+        labels = []
         if num_doc_classes:
             vocab = Vocab(Counter())
             vocab.itos = ["C_{}".format(i) for i in range(num_doc_classes)]
             label_meta = FieldMeta()
             label_meta.vocab_size = num_doc_classes
             label_meta.vocab = vocab
-            labels[DatasetFieldName.DOC_LABEL_FIELD] = label_meta
+            labels.append(label_meta)
 
         if num_word_classes:
             vocab = Vocab(Counter())
@@ -556,7 +556,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
             label_meta.vocab_size = num_word_classes
             label_meta.vocab = vocab
             label_meta.pad_token_idx = 0
-            labels[DatasetFieldName.WORD_LABEL_FIELD] = label_meta
+            labels.append(label_meta)
 
         w_vocab = Vocab(Counter())
         dict_vocab = Vocab(Counter())
@@ -594,8 +594,10 @@ class ModelExporterTest(hu.HypothesisTestCase):
             DatasetFieldName.DICT_FIELD: dict_feat_meta,
             DatasetFieldName.CHAR_FIELD: char_feat_meta,
         }
-        meta.labels = labels
-        meta.label_names = [label.vocab.itos for label in labels.values()]
+        meta.target = labels
+        if len(labels) == 1:
+            [meta.target] = meta.target
+        meta.label_names = [label.vocab.itos for label in labels]
         meta.feature_itos_map = {
             f.vocab_export_name: f.vocab.itos for _, f in meta.features.items()
         }

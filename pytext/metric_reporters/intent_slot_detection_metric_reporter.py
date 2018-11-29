@@ -104,7 +104,7 @@ class IntentSlotMetricReporter(MetricReporter):
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        doc_label_meta, word_label_meta = meta.labels.values()
+        doc_label_meta, word_label_meta = meta.target
         return cls(
             doc_label_meta.vocab.itos,
             word_label_meta.vocab.itos,

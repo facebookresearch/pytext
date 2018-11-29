@@ -56,11 +56,8 @@ class LanguageModelDataHandler(DataHandler):
             **kwargs
         )
 
-    def _gen_extra_metadata(self):
-        # a bit hacky here, the label vocab is just the word token vocab
-        self.metadata.labels = {
-            "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
-        }
+    def init_target_metadata(self, train_data, eval_data, test_data):
+        self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
         raw_input = InputRecord(raw_text=row_data[DFColumn.UTTERANCE])

@@ -6,7 +6,6 @@ from typing import Any, Dict, List
 
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
-from pytext.config import ConfigBase
 from pytext.config.field_config import FeatureConfig, WordLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import TextFeatureField
@@ -14,9 +13,6 @@ from pytext.utils import cuda_utils
 from torchtext import data as textdata
 
 from .data_handler import BatchIterator, DataHandler
-
-
-FEATURE_ITOS_MAP = "feature_itos_map"
 
 
 class BPTTLanguageModelDataHandler(DataHandler):
@@ -70,15 +66,15 @@ class BPTTLanguageModelDataHandler(DataHandler):
             **kwargs
         )
 
-    def _gen_extra_metadata(self):
+    def init_feature_metadata(self, train_data, eval_data, test_data):
+        super().init_feature_metadata(train_data, eval_data, test_data)
         # workaround the hardcoded torchtext name
         self.metadata.features[DatasetFieldName.TEXT_FIELD] = self.metadata.features[
             "text"
         ]
-        # a bit hacky here, the label vocab is just the word token vocab
-        self.metadata.labels = {
-            "label": self.metadata.features[DatasetFieldName.TEXT_FIELD]
-        }
+
+    def init_target_metadata(self, train_data, eval_data, test_data):
+        self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
     def preprocess(self, data: List[Dict[str, Any]]):
         return [{"text": list(itertools.chain.from_iterable(super().preprocess(data)))}]

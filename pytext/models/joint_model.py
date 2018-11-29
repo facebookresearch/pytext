@@ -29,8 +29,7 @@ class JointModel(Model):
         representation = create_module(
             model_config.representation, embed_dim=embedding.embedding_dim
         )
-        doc_label_meta = metadata.labels[DatasetFieldName.DOC_LABEL_FIELD]
-        word_label_meta = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD]
+        doc_label_meta, word_label_meta = metadata.target
         decoder = create_module(
             model_config.decoder,
             in_dim_doc=representation.doc_representation_dim,
