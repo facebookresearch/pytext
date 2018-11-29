@@ -4,8 +4,7 @@ from typing import List, Union
 import torch
 from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
-from pytext.config import ConfigBase
-from pytext.data import CommonMetadata
+from pytext.fields import FieldMeta
 from pytext.models.module import create_module
 
 from .output_layer import ClassificationOutputLayer, CRFOutputLayer, OutputLayerBase
@@ -22,10 +21,10 @@ class IntentSlotOutputLayer(OutputLayerBase):
         ] = WordTaggingOutputLayer.Config()
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
+    def from_config(cls, config, doc_meta: FieldMeta, word_meta: FieldMeta):
         return cls(
-            create_module(config.doc_output, meta),
-            create_module(config.word_output, meta),
+            create_module(config.doc_output, doc_meta),
+            create_module(config.word_output, word_meta),
         )
 
     def __init__(self, doc_output, word_output):

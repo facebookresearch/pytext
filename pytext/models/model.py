@@ -49,12 +49,13 @@ class Model(nn.Module, Component):
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
+        target_meta = next(iter(metadata.labels.values()))
         decoder = create_module(
             config.decoder,
             in_dim=representation.representation_dim,
-            out_dim=next(iter(metadata.labels.values())).vocab_size,
+            out_dim=target_meta.vocab_size,
         )
-        output_layer = create_module(config.output_layer, metadata)
+        output_layer = create_module(config.output_layer, target_meta)
         return cls(embedding, representation, decoder, output_layer)
 
     def save_modules(self, base_path: str = "", suffix: str = ""):

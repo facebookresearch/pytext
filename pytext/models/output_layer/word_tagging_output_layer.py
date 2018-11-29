@@ -5,10 +5,8 @@ from typing import List
 import torch
 import torch.nn.functional as F
 from caffe2.python import core
-from pytext.common.constants import DatasetFieldName
-from pytext.config import ConfigBase
 from pytext.config.component import create_loss
-from pytext.data import CommonMetadata
+from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss
 
 from .output_layer import OutputLayerBase, gen_additional_blobs
@@ -19,15 +17,8 @@ class WordTaggingOutputLayer(OutputLayerBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        return cls(
-            create_loss(
-                config.loss,
-                ignore_index=meta.labels[
-                    DatasetFieldName.WORD_LABEL_FIELD
-                ].pad_token_idx,
-            )
-        )
+    def from_config(cls, config, meta: FieldMeta):
+        return cls(create_loss(config.loss, ignore_index=meta.pad_token_idx))
 
     def get_loss(self, logit, target, context, reduce=True):
         # flatten the logit from [batch_size, seq_lens, dim] to

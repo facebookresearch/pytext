@@ -29,14 +29,16 @@ class JointModel(Model):
         representation = create_module(
             model_config.representation, embed_dim=embedding.embedding_dim
         )
-        doc_class_num = metadata.labels[DatasetFieldName.DOC_LABEL_FIELD].vocab_size
-        word_label_num = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD].vocab_size
+        doc_label_meta = metadata.labels[DatasetFieldName.DOC_LABEL_FIELD]
+        word_label_meta = metadata.labels[DatasetFieldName.WORD_LABEL_FIELD]
         decoder = create_module(
             model_config.decoder,
             in_dim_doc=representation.doc_representation_dim,
             in_dim_word=representation.word_representation_dim,
-            out_dim_doc=doc_class_num,
-            out_dim_word=word_label_num,
+            out_dim_doc=doc_label_meta.vocab_size,
+            out_dim_word=word_label_meta.vocab_size,
         )
-        output_layer = create_module(model_config.output_layer, metadata)
+        output_layer = create_module(
+            model_config.output_layer, doc_label_meta, word_label_meta
+        )
         return cls(embedding, representation, decoder, output_layer)

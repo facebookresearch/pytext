@@ -2,9 +2,8 @@
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import DatasetFieldName
-from pytext.config import ConfigBase
 from pytext.config.component import create_loss
-from pytext.data import CommonMetadata
+from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss
 
 from .output_layer import OutputLayerBase
@@ -15,13 +14,10 @@ class LMOutputLayer(OutputLayerBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
+    def from_config(cls, config, meta: FieldMeta):
         return cls(
-            create_loss(
-                config.loss,
-                ignore_index=meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx,
-            ),
-            pad_token_idx=meta.features[DatasetFieldName.TEXT_FIELD].pad_token_idx,
+            create_loss(config.loss, ignore_index=meta.pad_token_idx),
+            pad_token_idx=meta.pad_token_idx,
         )
 
     def __init__(self, loss_fn=None, config=None, pad_token_idx=-100):

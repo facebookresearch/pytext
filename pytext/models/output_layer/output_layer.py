@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
-from typing import Any, List, Union
+from typing import List, Union
 
 import torch
 import torch.nn.functional as F
 from caffe2.python import core
-from pytext.common.constants import DatasetFieldName
 from pytext.config.component import create_loss
-from pytext.data import CommonMetadata
 
 # TODO move to constant
 from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.fields import FieldMeta
 from pytext.loss import AUCPRHingeLoss, BinaryCrossEntropyLoss, CrossEntropyLoss
 from pytext.models.crf import CRF
 from pytext.models.module import Module
@@ -19,7 +18,7 @@ from pytext.utils.cuda_utils import FloatTensor
 
 class OutputLayerBase(Module):
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
+    def from_config(cls, config, meta: FieldMeta):
         return cls(create_loss(config.loss), config)
 
     def __init__(self, loss_fn=None, config=None):
@@ -53,10 +52,8 @@ class OutputLayerBase(Module):
 
 class ClassificationOutputLayer(OutputLayerBase):
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        label_weights = getattr(
-            meta.labels[DatasetFieldName.DOC_LABEL_FIELD], "label_weights", None
-        )
+    def from_config(cls, config, meta: FieldMeta):
+        label_weights = getattr(meta, "label_weights", None)
         if label_weights is not None:
             label_weights = FloatTensor(label_weights)
         return cls(create_loss(config.loss, weight=label_weights), config)
@@ -103,9 +100,8 @@ class ClassificationOutputLayer(OutputLayerBase):
 
 class CRFOutputLayer(OutputLayerBase):
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        label_meta = meta.labels[DatasetFieldName.WORD_LABEL_FIELD]
-        return cls(label_meta.vocab_size)
+    def from_config(cls, config, meta: FieldMeta):
+        return cls(meta.vocab_size)
 
     def __init__(self, num_tags):
         super().__init__()
