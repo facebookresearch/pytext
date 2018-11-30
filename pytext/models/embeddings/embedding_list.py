@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Iterable, Tuple, Union
+from typing import Dict, Iterable, List, Tuple, Union
 
 import torch
+import torch.nn as nn
 from torch.nn import ModuleList
 
 from .embedding_base import EmbeddingBase
@@ -87,3 +88,25 @@ class EmbeddingList(EmbeddingBase, ModuleList):
             tensors.append(emb_tensor)
 
         return torch.cat(tensors, 2) if self.concat else tuple(tensors)
+
+    def get_param_groups_for_optimizer(self) -> List[Dict[str, nn.Parameter]]:
+        """
+        Organize child embedding parameters into param_groups (or layers), so the
+        optimizer and / or schedulers can have custom behavior per layer. The
+        param_groups from each child embedding are aligned at the first (lowest)
+        param_group.
+        """
+        param_groups: List[Dict[str, nn.Parameter]] = []
+
+        for module_name, embedding_module in self.named_children():
+            child_params = embedding_module.get_param_groups_for_optimizer()
+
+            for i, child_param_group in enumerate(child_params):
+                if i >= len(param_groups):
+                    param_groups.append({})
+
+                for param_name, param in child_param_group.items():
+                    param_name = "%s.%s" % (module_name, param_name)
+                    param_groups[i][param_name] = param
+
+        return param_groups

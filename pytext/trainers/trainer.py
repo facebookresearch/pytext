@@ -222,7 +222,7 @@ class Trainer(TrainerBase):
     def _prepare_scheduler(self, train_iter, scheduler=None):
         if scheduler:
             for batch_based_scheduler in scheduler.batch_based_schedulers:
-                batch_based_scheduler.T_max = (
-                    train_iter.total_num_batches * self.config.epochs
-                )
+                batch_based_scheduler.num_epochs = self.config.epochs
+                batch_based_scheduler.steps_per_epoch = train_iter.total_num_batches
+            scheduler.step_batch()
         return scheduler

@@ -5,15 +5,16 @@ from typing import List
 
 import torch
 from pytext.config.pytext_config import OptimizerParams, OptimizerType
+from pytext.models.model import Model
 
 
 def create_optimizer(
-    model: torch.nn.Module, optimizer_params: OptimizerParams
+    model: Model, optimizer_params: OptimizerParams
 ) -> List[torch.optim.Optimizer]:
     if optimizer_params.type == OptimizerType.ADAM:
         return [
             torch.optim.Adam(
-                model.parameters(),
+                model.get_param_groups_for_optimizer(),
                 lr=optimizer_params.lr,
                 weight_decay=optimizer_params.weight_decay,
             )
@@ -21,7 +22,7 @@ def create_optimizer(
     elif optimizer_params.type == OptimizerType.SGD:
         return [
             torch.optim.SGD(
-                model.parameters(),
+                model.get_param_groups_for_optimizer(),
                 lr=optimizer_params.lr,
                 momentum=optimizer_params.momentum,
             )

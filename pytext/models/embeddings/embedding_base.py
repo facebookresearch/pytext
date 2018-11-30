@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing import Dict, List
+
+import torch.nn as nn
 from pytext.models.module import Module
 
 
@@ -22,3 +25,10 @@ class EmbeddingBase(Module):
         # can be greater than 1
         self.num_emb_modules = 1
         self.embedding_dim = embedding_dim
+
+    def get_param_groups_for_optimizer(self) -> List[Dict[str, nn.Parameter]]:
+        """
+        Organize module parameters into param_groups (or layers), so the optimizer
+        and / or schedulers can have custom behavior per layer.
+        """
+        return [dict(self.named_parameters())]

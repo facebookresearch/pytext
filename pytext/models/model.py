@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
-from typing import List
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
@@ -106,3 +106,34 @@ class Model(nn.Module, Component):
                 module.prepare_for_onnx_export_(**kwargs)
 
         self.apply(apply_prepare_for_onnx_export_)
+
+    def get_param_groups_for_optimizer(self) -> List[Dict[str, List[nn.Parameter]]]:
+        """
+        Returns a list of parameter groups of the format {"params": param_list}.
+        The parameter groups loosely correspond to layers and are ordered from low
+        to high. Currently, only the embedding layer can provide multiple param groups,
+        and other layers are put into one param group. The output of this method
+        is passed to the optimizer so that schedulers can change learning rates
+        by layer.
+        """
+        non_emb_params = dict(self.named_parameters())
+        model_params = [non_emb_params]
+
+        # some subclasses of Model (e.g. Ensemble) do not have embeddings
+        embedding = getattr(self, "embedding", None)
+        if embedding is not None:
+            emb_params_by_layer = self.embedding.get_param_groups_for_optimizer()
+
+            # Delete params from the embedding layers
+            for emb_params in emb_params_by_layer:
+                for name in emb_params:
+                    del non_emb_params["embedding.%s" % name]
+
+            model_params = emb_params_by_layer + model_params
+            print_str = (
+                "Model has %d param groups (%d from embedding module) for optimizer"
+            )
+            print(print_str % (len(model_params), len(emb_params_by_layer)))
+
+        model_params = [{"params": params.values()} for params in model_params]
+        return model_params
