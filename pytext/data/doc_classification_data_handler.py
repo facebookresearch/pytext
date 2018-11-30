@@ -36,6 +36,7 @@ class RawData:
 class DocClassificationDataHandler(DataHandler):
     class Config(DataHandler.Config):
         columns_to_read: List[str] = cls_vars(RawData)
+        max_seq_len: int = -1
 
     @classmethod
     def from_config(
@@ -70,6 +71,13 @@ class DocClassificationDataHandler(DataHandler):
             **kwargs,
         )
 
+    def _get_tokens(self, mode_feature):
+        if self.max_seq_len > 0:
+            # truncate tokens if max_seq_len is set
+            return mode_feature.tokens[: self.max_seq_len]
+        else:
+            return mode_feature.tokens
+
     def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
         features = self.featurizer.featurize(
             InputRecord(
@@ -79,7 +87,7 @@ class DocClassificationDataHandler(DataHandler):
         )
         res = {
             # feature
-            ModelInput.WORD_FEAT: features.tokens,
+            ModelInput.WORD_FEAT: self._get_tokens(features),
             ModelInput.DICT_FEAT: (
                 features.gazetteer_feats,
                 features.gazetteer_feat_weights,
