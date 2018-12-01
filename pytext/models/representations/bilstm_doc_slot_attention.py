@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -16,20 +16,35 @@ from .slot_attention import SlotAttention
 
 class BiLSTMDocSlotAttention(RepresentationBase):
     """
-    Multi-layer bidirectional LSTM representation with support for attention mechanisms.
+    `BiLSTMDocSlotAttention` implements a multi-layer bidirectional LSTM based
+    representation with support for various attention mechanisms.
 
-    Default:
-        In default mode when attention configuration is not provided, it
-        behaves like a multi-layer LSTM encoder.
-        It returns the output features from the last layer of the LSTM, for each t.
+    In default mode, when attention configuration is not provided, it behaves
+    like a multi-layer LSTM encoder and returns the output features from the
+    last layer of the LSTM, for each t. When document_attention configuration is
+    provided, it produces a fixed-sized document representation. When
+    slot_attention configuration is provide, it attends on output of each cell
+    of LSTM module to produce a fixed sized word representation.
 
-    Document Attention:
-        When document_attention configuration is provided, it produces
-        a fixed-sized document representation.
+    Args:
+        config (Config): Configuration object of type
+            BiLSTMDocSlotAttention.Config.
+        embed_dim (int): The number of expected features in the input.
 
-    Slot Attention:
-        When slot_attention configuration is provide, it attends on output of
-        each cell of LSTM module to produce a fixed sized word representation.
+    Attributes:
+        dropout (nn.Dropout): Dropout layer preceding the LSTM.
+        relu (nn.ReLU): An instance of the ReLU layer.
+        lstm (nn.Module): Module that implements the LSTM.
+        use_doc_attention (bool): If `True`, indicates using document attention.
+        doc_attention (nn.Module): Module that implements document attention.
+        self.projection_d (nn.Sequential): A sequence of dense layers for
+            projection over document representation.
+        use_word_attention (bool): If `True`, indicates using word attention.
+        word_attention (nn.Module): Module that implements word attention.
+        self.projection_w (nn.Sequential): A sequence of dense layers for
+            projection over word representation.
+        representation_dim (int): The calculated dimension of the output features
+            of the `BiLSTMDocAttention` representation.
     """
 
     class Config(RepresentationBase.Config, ConfigBase):
@@ -58,7 +73,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
         lstm_out_dim = self.lstm.representation_dim
 
         # Document projection and attention.
-        self.use_doc_attention = config.pooling is not None
+        self.use_doc_attention: bool = config.pooling is not None
         if config.pooling:
             self.doc_attention = (
                 create_module(config.pooling, n_input=lstm_out_dim)
@@ -103,7 +118,26 @@ class BiLSTMDocSlotAttention(RepresentationBase):
         seq_lengths: torch.Tensor,
         *args,
         states: torch.Tensor = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Any]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """
+        Given an input batch of sequential data such as word embeddings, produces
+        a bidirectional LSTM representation the appropriate attention.
+
+        Args:
+            embedded_tokens (torch.Tensor): Input tensor of shape
+                (bsize x seq_len x input_dim).
+            seq_lengths (torch.Tensor): List of sequences lengths of each batch
+                element.
+            states (Tuple[torch.Tensor, torch.Tensor]): Tuple of tensors
+                containing the initial hidden state and the cell state of each
+                element in the batch. Each of these tensors have a dimension of
+                (bsize x num_layers * num_directions x nhid). Defaults to `None`.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+                Tensors containg the document and the word representation of
+                the input.
+        """
         # Shared layers
         lstm_output, new_state = self.lstm(embedded_tokens, seq_lengths, states)
 

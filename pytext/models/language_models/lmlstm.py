@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import torch
-import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -13,18 +12,48 @@ from pytext.models.output_layers.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
 
 
-def repackage_hidden(h):
-    """Wraps hidden states in new Tensors, to detach them from their history."""
-    if isinstance(h, torch.Tensor):
-        return h.detach()
+def repackage_hidden(
+    hidden: Union[torch.Tensor, Tuple[torch.Tensor, ...]]
+) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
+    """
+    Wraps hidden states in new Tensors, to detach them from their history.
+
+    Args:
+        hidden (Union[torch.Tensor, Tuple[torch.Tensor, ...]]): Tensor or a
+            tuple of tensors to repackage.
+
+    Returns:
+        Union[torch.Tensor, Tuple[torch.Tensor, ...]]: Repackaged output
+
+    """
+    if isinstance(hidden, torch.Tensor):
+        return hidden.detach()
     else:
-        return tuple(repackage_hidden(v) for v in h)
+        return tuple(repackage_hidden(v) for v in hidden)
 
 
 class LMLSTM(Model):
-    """A word-level language model that uses LSTM to represent the document."""
+    """
+    `LMLSTM` implements a word-level language model that uses LSTMs to
+    represent the document.
+
+    """
 
     class Config(ConfigBase):
+        """
+        Configuration class for `LMLSTM`.
+
+        Attributes:
+            representation (BiLSTM.Config): Config for the BiLSTM representation.
+            decoder (MLPDecoder.Config): Config for the MLP Decoder.
+            output_layer (LMOutputLayer.Config): Config for the language model
+                output layer.
+            tied_weights (bool): If `True` use a common weights matrix between
+                the word embeddings and the decoder. Defaults to `False`.
+            stateful (bool): If `True`, do not reset hidden state of LSTM
+                across batches.
+        """
+
         representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
@@ -33,6 +62,21 @@ class LMLSTM(Model):
 
     @classmethod
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):
+        """
+        Factory method to construct an instance of LMLSTM from the module's
+        config object and the field's metadata object.
+
+        Args:
+            cls (type): LMLSTM type.
+            config (LMLSTM.Config): Configuration object specifying all the
+                parameters of LMLSTM.
+            feat_config (FeatureConfig): Configuration object specifying all the
+                parameters of all input features.
+            metadata (FieldMeta): Object containing this field's metadata.
+
+        Returns:
+            type: An instance of `LMLSTM`.
+        """
         model = super().from_config(model_config, feat_config, metadata)
         if model_config.tied_weights:
             if not feat_config.word_feat:
@@ -78,7 +122,18 @@ class LMLSTM(Model):
             self._states = repackage_hidden(states)
         return output  # (bsz, nclasses)
 
-    def init_hidden(self, bsz):
+    def init_hidden(self, bsz: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Initialize the hidden states of the LSTM if the language model is
+        stateful.
+
+        Args:
+            bsz (int): Batch size.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Initialized hidden state and
+            cell state of the LSTM.
+        """
         # TODO make hidden states initialization more generalized
         weight = next(self.parameters())
         num_layers = self.representation.num_layers

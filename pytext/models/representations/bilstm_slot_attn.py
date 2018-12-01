@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn
-from pytext.config import ConfigBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
@@ -14,7 +13,23 @@ from .slot_attention import SlotAttention
 
 
 class BiLSTMSlotAttention(RepresentationBase):
-    """Bidirectional LSTM based representation with slot attention."""
+    """
+    `BiLSTMSlotAttention` implements a multi-layer bidirectional LSTM based
+    representation with attention over slots.
+
+    Args:
+        config (Config): Configuration object of type BiLSTMSlotAttention.Config.
+        embed_dim (int): The number of expected features in the input.
+
+    Attributes:
+        dropout (nn.Dropout): Dropout layer preceding the LSTM.
+        lstm (nn.Module): Module that implements the LSTM.
+        attention (nn.Module): Module that implements the attention.
+        dense (nn.Module): Module that implements the non-linear projection over
+            attended representation.
+        representation_dim (int): The calculated dimension of the output features
+            of the `BiLSTMDocAttention` representation.
+    """
 
     class Config(RepresentationBase.Config):
         dropout: float = 0.4
@@ -26,7 +41,6 @@ class BiLSTMSlotAttention(RepresentationBase):
         super().__init__(config)
 
         self.dropout = nn.Dropout(config.dropout)
-        self.relu = nn.ReLU()
 
         # BiLSTM representation.
         self.lstm = create_module(config.lstm, embed_dim=embed_dim)
@@ -42,7 +56,7 @@ class BiLSTMSlotAttention(RepresentationBase):
 
         # Projection over attended representation.
         self.dense = None
-        self.representation_dim = self.lstm.representation_dim
+        self.representation_dim: int = self.lstm.representation_dim
         if config.mlp_decoder:
             self.dense = MLPDecoder(
                 config.mlp_decoder, in_dim=self.lstm.representation_dim
@@ -55,7 +69,27 @@ class BiLSTMSlotAttention(RepresentationBase):
         seq_lengths: torch.Tensor,
         *args,
         states: torch.Tensor = None,
+        **kwargs,
     ) -> torch.Tensor:
+        """
+        Given an input batch of sequential data such as word embeddings, produces
+        a bidirectional LSTM representation with or without Slot attention.
+
+        Args:
+            embedded_tokens (torch.Tensor): Input tensor of shape
+                (bsize x seq_len x input_dim).
+            seq_lengths (torch.Tensor): List of sequences lengths of each batch
+                element.
+            states (Tuple[torch.Tensor, torch.Tensor]): Tuple of tensors containing
+                the initial hidden state and the cell state of each element in
+                the batch. Each of these tensors have a dimension of
+                (bsize x num_layers * num_directions x nhid). Defaults to `None`.
+
+        Returns:
+            torch.Tensor: Bidirectional LSTM representation of input with or
+                without slot attention.
+
+        """
         rep = self.dropout(embedded_tokens)
 
         # LSTM representation
