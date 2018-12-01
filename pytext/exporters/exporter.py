@@ -8,12 +8,7 @@ from caffe2.python import core
 from caffe2.python.onnx.backend_rep import Caffe2Rep
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import (
-    DocLabelConfig,
-    FeatureConfig,
-    TargetConfigBase,
-    WordLabelConfig,
-)
+from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.utils import onnx_utils

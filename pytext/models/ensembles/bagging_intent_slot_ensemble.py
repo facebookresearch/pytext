@@ -5,7 +5,7 @@ from typing import List
 import torch
 from pytext.models.joint_model import JointModel
 from pytext.models.model import Model
-from pytext.models.output_layer import CRFOutputLayer
+from pytext.models.output_layers import CRFOutputLayer
 
 from .ensemble import Ensemble
 

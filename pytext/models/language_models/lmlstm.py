@@ -9,7 +9,7 @@ from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
-from pytext.models.output_layer.lm_output_layer import LMOutputLayer
+from pytext.models.output_layers.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
 
 

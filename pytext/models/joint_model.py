@@ -9,7 +9,7 @@ from pytext.models.model import Model
 from pytext.models.module import create_module
 
 from .decoders import IntentSlotModelDecoder
-from .output_layer.intent_slot_output_layer import IntentSlotOutputLayer
+from .output_layers.intent_slot_output_layer import IntentSlotOutputLayer
 from .representations.bilstm_doc_slot_attention import BiLSTMDocSlotAttention
 from .representations.jointcnn_rep import JointCNNRepresentation
 

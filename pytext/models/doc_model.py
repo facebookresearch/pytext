@@ -6,7 +6,7 @@ from typing import Union
 from pytext.config import ConfigBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import Model
-from pytext.models.output_layer import ClassificationOutputLayer
+from pytext.models.output_layers import ClassificationOutputLayer
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
