@@ -91,16 +91,17 @@ class BoundaryPool(Module):
     def forward(
         self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
     ) -> torch.Tensor:
+        max_len = inputs.size()[1]
         if self.boundary_type == "first":
             return inputs[:, 0, :]
         elif self.boundary_type == "last":
             # could only have the bos values if add_bos or add_eos as False
             # should not reach here if the eos is not added.
-            assert inputs.size()[1] > 1
-            return inputs[:, -1, :]
+            assert max_len > 1
+            return inputs[:, max_len - 1, :]
         elif self.boundary_type == "firstlast":
-            assert inputs.size()[1] > 1
+            assert max_len > 1
             # merge from embed_dim into 2*emded_dim
-            return torch.cat((inputs[:, 0, :], inputs[:, -1, :]), dim=1)
+            return torch.cat((inputs[:, 0, :], inputs[:, max_len - 1, :]), dim=1)
         else:
             raise Exception("Unknown configuration type {}".format(self.boundary_type))
