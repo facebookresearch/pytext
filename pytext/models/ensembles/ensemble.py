@@ -35,7 +35,6 @@ class Ensemble(Model):
         It creates sub-models in the ensemble using the sub-model's configuration.
 
         Args:
-            cls (type): Ensemble type.
             config (Config): Configuration object specifying all the
                 parameters of Ensemble.
             feat_config (FeatureConfig): Configuration object specifying all the

@@ -43,7 +43,6 @@ class CharacterEmbedding(EmbeddingBase):
         the module's config object and the field's metadata object.
 
         Args:
-            cls (type): CharacterEmbedding type.
             config (CharFeatConfig): Configuration object specifying all the
                 parameters of CharacterEmbedding.
             metadata (FieldMeta): Object containing this field's metadata.

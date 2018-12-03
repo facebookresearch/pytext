@@ -37,7 +37,6 @@ class WordEmbedding(EmbeddingBase, nn.Embedding):
         the module's config object and the field's metadata object.
 
         Args:
-            cls (type): WordEmbedding type.
             config (WordFeatConfig): Configuration object specifying all the
             parameters of WordEmbedding.
             metadata (FieldMeta): Object containing this field's metadata.

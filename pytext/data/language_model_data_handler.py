@@ -8,6 +8,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config.field_config import FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import Field, RawField, TextFeatureField
+from torchtext import data as textdata
 
 from .data_handler import DataHandler
 
@@ -16,7 +17,25 @@ FEATURE_ITOS_MAP = "feature_itos_map"
 
 
 class LanguageModelDataHandler(DataHandler):
+    """
+    The `LanguageModelDataHandler` reads input sentences one line at a time and
+    prepares the input and the target for language modeling. Each sentence is
+    assumed to be independent of any other sentence.
+    """
+
     class Config(DataHandler.Config):
+        """
+        Configuration class for `LanguageModelDataHandler`.
+
+        Attributes:
+            columns_to_read (List[str]): List containing the names of the
+                columns to read from the data files.
+            append_bos (bool): If `True` appends beginning of sentence marker
+                to sentences. Defaults to `True`.
+            append_eos (bool): If `True` appends end of sentence marker to
+                sentences. Defaults to `True`.
+        """
+
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
         append_bos: bool = True
         append_eos: bool = True
@@ -25,6 +44,19 @@ class LanguageModelDataHandler(DataHandler):
     def from_config(
         cls, config: Config, feature_config: FeatureConfig, *args, **kwargs
     ):
+        """
+        Factory method to construct an instance of `LanguageModelDataHandler`
+        from the module's config object and feature config object.
+
+        Args:
+            config (LanguageModelDataHandler.Config): Configuration object
+                specifying all the parameters of `LanguageModelDataHandler`.
+            feature_config (FeatureConfig): Configuration object specifying all
+                the parameters of all input features.
+
+        Returns:
+            type: An instance of `LanguageModelDataHandler`.
+        """
         # For language modeling the only input is a collection of utterances.
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
@@ -57,10 +89,29 @@ class LanguageModelDataHandler(DataHandler):
             **kwargs
         )
 
-    def init_target_metadata(self, train_data, eval_data, test_data):
+    def init_target_metadata(
+        self,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
+    ):
+        """
+        Prepares the metadata for the language model target.
+        """
         self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Preprocess steps for a single input row.
+
+        Args:
+            row_data (Dict[str, Any]): Dict representing the input row and
+                columns.
+
+        Returns:
+            Dict[str, Any]: Dictionary with feature names as keys and feature
+                values.
+        """
         raw_input = InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
 
         features = self.featurizer.featurize(raw_input)

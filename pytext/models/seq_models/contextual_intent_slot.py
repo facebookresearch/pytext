@@ -44,7 +44,6 @@ class ContextualIntentSlotModel(JointModel):
         not concatenated and passed to the model individualy.
 
         Args:
-            cls (type): ContextualIntentSlotModel.
             sub_embs (type): sub-embeddings.
 
         Returns:

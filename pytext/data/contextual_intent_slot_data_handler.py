@@ -90,7 +90,6 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
         model input config and target config.
 
         Args:
-            cls (type): ContextualIntentSlotModelDataHandler.
             config (Config): Configuration object specifying all the
                 parameters of ContextualIntentSlotModelDataHandler.
             feature_config (ModelInputConfig): Configuration object specifying

@@ -67,7 +67,6 @@ class LMLSTM(Model):
         config object and the field's metadata object.
 
         Args:
-            cls (type): LMLSTM type.
             config (LMLSTM.Config): Configuration object specifying all the
                 parameters of LMLSTM.
             feat_config (FeatureConfig): Configuration object specifying all the

@@ -34,7 +34,23 @@ class RawData:
 
 
 class DocClassificationDataHandler(DataHandler):
+    """
+    The `DocClassificationDataHandler` prepares the data for document
+    classififcation. Each sentence is read line by line with its label as the
+    target.
+    """
+
     class Config(DataHandler.Config):
+        """
+        Configuration class for `DocClassificationDataHandler`.
+
+        Attributes:
+            columns_to_read (List[str]): List containing the names of the
+                columns to read from the data files.
+            max_seq_len (int): Maximum sequence length for the input. The input
+                is trimmed after the maximum sequence length.
+        """
+
         columns_to_read: List[str] = cls_vars(RawData)
         max_seq_len: int = -1
 
@@ -46,6 +62,21 @@ class DocClassificationDataHandler(DataHandler):
         target_config: TargetConfig,
         **kwargs,
     ):
+        """
+        Factory method to construct an instance of `DocClassificationDataHandler`
+        from the module's config object and feature config object.
+
+        Args:
+            config (DocClassificationDataHandler.Config): Configuration object
+                specifying all the parameters of `DocClassificationDataHandler`.
+            model_input_config (ModelInputConfig): Configuration object
+                specifying all the parameters of the model config.
+            target_config (TargetConfig): Configuration object specifying all
+                the parameters of the target.
+
+        Returns:
+            type: An instance of `DocClassificationDataHandler`.
+        """
         model_input_fields: Dict[str, Field] = create_fields(
             model_input_config,
             {

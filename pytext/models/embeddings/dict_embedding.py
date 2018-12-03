@@ -49,7 +49,6 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         the module's config object and the field's metadata object.
 
         Args:
-            cls (type): DictEmbedding type.
             config (DictFeatConfig): Configuration object specifying all the
             parameters of DictEmbedding.
             metadata (FieldMeta): Object containing this field's metadata.

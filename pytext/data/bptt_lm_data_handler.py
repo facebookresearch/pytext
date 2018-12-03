@@ -17,13 +17,26 @@ from .data_handler import BatchIterator, DataHandler
 
 
 class BPTTLanguageModelDataHandler(DataHandler):
-    """ BPTTLanguageModelDataHandler treats data as a single document, concatenating
-    all tokens together. BPTTIterator arranges the dataset into columns of batch size
-    and subdivides the source data into chunks of length bptt_len. It enables
-    hidden state of ith batch carried over to (i+1)th batch.
+    """
+    `BPTTLanguageModelDataHandler` treats data as a single document, concatenating
+    all tokens together. BPTTIterator arranges the dataset into columns of
+    batch size and subdivides the source data into chunks of length bptt_len.
+    It enables hidden state of ith batch carried over to (i+1)th batch.
+
+    Args:
+        bptt_len (int) : Input sequence length to backpropagate to.
     """
 
     class Config(DataHandler.Config):
+        """
+        Configuration class for `BPTTLanguageModelDataHandler`.
+
+        Attributes:
+            columns_to_read (List[str]): List containing the names of the
+                columns to read from the data files.
+            bptt_len (int): Input sequence length to backpropagate to.
+        """
+
         columns_to_read: List[str] = [DFColumn.UTTERANCE]
         bptt_len: int = 35
 
@@ -39,6 +52,19 @@ class BPTTLanguageModelDataHandler(DataHandler):
         label_config: WordLabelConfig,
         **kwargs
     ):
+        """
+        Factory method to construct an instance of `BPTTLanguageModelDataHandler`
+        from the module's config object and feature config object.
+
+        Args:
+            config (LanguageModelDataHandler.Config): Configuration object
+                specifying all the parameters of `BPTTLanguageModelDataHandler`.
+            feature_config (FeatureConfig): Configuration object specifying all
+                the parameters of all input features.
+
+        Returns:
+            type: An instance of `BPTTLanguageModelDataHandler`.
+        """
         # For language modeling the only input is a collection of utterances.
         # The input and the labels are created by the LangaugeModelDataHandler.
         # The input at time step t+1 becomes a label for the input at time step t.
@@ -68,14 +94,30 @@ class BPTTLanguageModelDataHandler(DataHandler):
             **kwargs
         )
 
-    def init_feature_metadata(self, train_data, eval_data, test_data):
+    def init_feature_metadata(
+        self,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
+    ):
+        """
+        Prepares the metadata for the language model features.
+        """
         super().init_feature_metadata(train_data, eval_data, test_data)
         # workaround the hardcoded torchtext name
         self.metadata.features[DatasetFieldName.TEXT_FIELD] = self.metadata.features[
             "text"
         ]
 
-    def init_target_metadata(self, train_data, eval_data, test_data):
+    def init_target_metadata(
+        self,
+        train_data: textdata.Dataset,
+        eval_data: textdata.Dataset,
+        test_data: textdata.Dataset,
+    ):
+        """
+        Prepares the metadata for the language model target.
+        """
         self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
     def preprocess(self, data: List[Dict[str, Any]]):
@@ -85,6 +127,16 @@ class BPTTLanguageModelDataHandler(DataHandler):
         return [{"text": tokens}]
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> List[str]:
+        """
+        Preprocess steps for a single input row.
+
+        Args:
+            row_data (Dict[str, Any]): Dict representing the input row and
+                columns.
+
+        Returns:
+            List[str]: List of tokens.
+        """
         return self.featurizer.featurize(
             InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
         ).tokens
@@ -131,6 +183,17 @@ class BPTTLanguageModelDataHandler(DataHandler):
         return (batch.target.t().contiguous(),)
 
     def get_test_iter(self, file_path: str, batch_size: int) -> BatchIterator:
+        """
+        Get test data iterator from test data file.
+
+        Args:
+            file_path (str): Path to test data file.
+            batch_size (int): Batch size
+
+        Returns:
+            BatchIterator: An instance of BatchIterator to iterate over the
+                supplied test data file.
+        """
         test_data = self.gen_dataset_from_path(file_path)
         return BatchIterator(
             textdata.BPTTIterator(
