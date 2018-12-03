@@ -13,7 +13,7 @@ from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
-from pytext.fields import Field, FieldMeta, VocabUsingField
+from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
 from pytext.utils import cuda_utils, embeddings_utils
 from torchtext import data as textdata
 
@@ -102,9 +102,6 @@ class DataHandler(Component):
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
-    # special df index field to record initial position of examples
-    DF_INDEX = "__df_index"
-
     def __init__(
         self,
         raw_columns: List[str],
@@ -122,6 +119,7 @@ class DataHandler(Component):
         eval_batch_size: int = 128,
         test_batch_size: int = 128,
         max_seq_len: int = -1,
+        pass_index: bool = True,
         **kwargs,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
@@ -129,6 +127,8 @@ class DataHandler(Component):
         self.features: Dict[str, Field] = features or {}
         self.featurizer = featurizer
         self.extra_fields: Dict[str, Field] = extra_fields or {}
+        if pass_index:
+            self.extra_fields[BatchContext.INDEX] = RawField()
         self.text_feature_name: str = text_feature_name
 
         self.metadata_cls: Type = CommonMetadata
@@ -223,11 +223,12 @@ class DataHandler(Component):
 
     def preprocess(self, data: List[Dict[str, Any]]):
         for idx, row in enumerate(data):
-            preprocessed_row = self.preprocess_row(row, idx)
+            preprocessed_row = self.preprocess_row(row)
             if preprocessed_row:
+                preprocessed_row[BatchContext.INDEX] = idx
                 yield preprocessed_row
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         preprocess steps for a single input row
         """

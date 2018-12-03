@@ -64,6 +64,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
             train_batch_size=config.train_batch_size,
             eval_batch_size=config.eval_batch_size,
             test_batch_size=config.test_batch_size,
+            pass_index=False,
             **kwargs
         )
 
@@ -78,9 +79,12 @@ class BPTTLanguageModelDataHandler(DataHandler):
         self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
     def preprocess(self, data: List[Dict[str, Any]]):
-        return [{"text": list(itertools.chain.from_iterable(super().preprocess(data)))}]
+        tokens = []
+        for row in data:
+            tokens.extend(self.preprocess_row(row))
+        return [{"text": tokens}]
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> List[str]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> List[str]:
         return self.featurizer.featurize(
             InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
         ).tokens

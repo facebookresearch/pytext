@@ -77,7 +77,6 @@ class CompositionalDataHandler(DataHandler):
 
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.TOKENS: RawField(),
-            DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
 
@@ -140,7 +139,7 @@ class CompositionalDataHandler(DataHandler):
             m_inputs.append(input)
         return m_inputs
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         utterance = row_data.get(DFColumn.UTTERANCE, "")
         features = self.featurizer.featurize(
             InputRecord(
@@ -185,7 +184,6 @@ class CompositionalDataHandler(DataHandler):
                 ACTION_FEATURE_FIELD: actions,
                 ACTION_LABEL_FIELD: copy.deepcopy(actions),
                 DatasetFieldName.TOKENS: features.tokens,
-                DatasetFieldName.INDEX_FIELD: idx,
                 DatasetFieldName.UTTERANCE_FIELD: utterance,
             }
             if is_valid

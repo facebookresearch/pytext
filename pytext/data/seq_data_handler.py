@@ -43,10 +43,7 @@ class SeqModelDataHandler(JointModelDataHandler):
             )
         }
         labels: Dict[str, Field] = {DocLabelConfig._name: DocLabelField()}
-        extra_fields: Dict[str, Field] = {
-            DatasetFieldName.INDEX_FIELD: RawField(),
-            DatasetFieldName.UTTERANCE_FIELD: RawField(),
-        }
+        extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
 
         return cls(
             raw_columns=config.columns_to_read,
@@ -63,7 +60,7 @@ class SeqModelDataHandler(JointModelDataHandler):
             **kwargs
         )
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
 
         features_list = [
@@ -78,6 +75,5 @@ class SeqModelDataHandler(JointModelDataHandler):
             ],
             # labels
             DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
-            DatasetFieldName.INDEX_FIELD: idx,
             DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
         }

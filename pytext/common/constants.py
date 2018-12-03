@@ -19,7 +19,6 @@ class DatasetFieldName:
     RAW_WORD_LABEL = "raw_word_label"
     TOKEN_RANGE = "token_range"
     TOKENS = "tokens"
-    INDEX_FIELD = "index_field"
     LANGUAGE_ID_FIELD = "lang"
     SEQ_LENS = "seq_lens"
     TARGET_SEQ_LENS = "target_seq_lens"
@@ -68,6 +67,7 @@ class VocabMeta:
 
 class BatchContext:
     IGNORE_LOSS = "ignore_loss"
+    INDEX = "index"
     TASK_NAME = "task_name"
 
 

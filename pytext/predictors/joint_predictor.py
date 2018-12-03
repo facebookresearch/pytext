@@ -3,7 +3,7 @@
 
 from typing import Any, Dict, List
 
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import BatchContext, DatasetFieldName
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.predictors.classifier_predictor import ClassifierPredictor
 from pytext.predictors.predictor import Predictor
@@ -24,16 +24,13 @@ class JointPredictor(Predictor):
         word_predictions = TaggerPredictor.fill_tagger_predictions(
             word_label_names,
             model_output[1],
-            context[DatasetFieldName.INDEX_FIELD],
+            context[BatchContext.INDEX],
             context[DatasetFieldName.TOKEN_RANGE],
             context[SEQ_LENS],
             "word_scores",
         )
         doc_predictions = ClassifierPredictor.fill_classifier_predictions(
-            doc_label_names,
-            model_output[0],
-            context[DatasetFieldName.INDEX_FIELD],
-            "doc_scores",
+            doc_label_names, model_output[0], context[BatchContext.INDEX], "doc_scores"
         )
         # Merge word and doc predictions into one joint list
         joint_predictions = [

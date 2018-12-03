@@ -33,4 +33,3 @@ class ModelInput:
 
 class ExtraField:
     RAW_TEXT = "utterance"
-    INDEX = "index"

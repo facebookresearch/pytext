@@ -36,5 +36,4 @@ class ExtraField:
     WORD_WEIGHT = "word_weight"
     RAW_WORD_LABEL = "raw_word_label"
     TOKEN_RANGE = "token_range"
-    INDEX_FIELD = "index_field"
     UTTERANCE = "utterance"

@@ -76,7 +76,6 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.DOC_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.WORD_WEIGHT_FIELD: FloatField(),
             DatasetFieldName.TOKEN_RANGE: RawField(),
-            DatasetFieldName.INDEX_FIELD: RawField(),
             DatasetFieldName.UTTERANCE_FIELD: RawField(),
         }
         if has_word_label:
@@ -106,7 +105,7 @@ class JointModelDataHandler(DataHandler):
             )
         )
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         features = self.featurize(row_data)
         res = {
             # feature field
@@ -124,7 +123,6 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,
             DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
             or 1.0,
-            DatasetFieldName.INDEX_FIELD: idx,
             DatasetFieldName.UTTERANCE_FIELD: row_data.get(DFColumn.UTTERANCE),
             DatasetFieldName.TOKEN_RANGE: features.token_ranges,
         }

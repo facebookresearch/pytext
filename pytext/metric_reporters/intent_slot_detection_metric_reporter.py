@@ -3,7 +3,7 @@
 
 from typing import Dict, List, Tuple
 
-from pytext.common.constants import DatasetFieldName, Stage
+from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data import CommonMetadata
 from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
 from pytext.metrics.intent_slot_metrics import (
@@ -35,7 +35,7 @@ class IntentSlotChannel(FileChannel):
             slots_pred_label,
             slots_target_label,
         ) in zip(
-            context[DatasetFieldName.INDEX_FIELD],
+            context[BatchContext.INDEX],
             context[DatasetFieldName.UTTERANCE_FIELD],
             preds[0],
             targets[0],

@@ -3,7 +3,7 @@
 
 from typing import List, Set, Union
 
-from pytext.common.constants import DatasetFieldName, Stage
+from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data import CommonMetadata
 from pytext.data.data_structures.annotation import (
     REDUCE,
@@ -34,7 +34,7 @@ class CompositionalFileChannel(FileChannel):
 
     def gen_content(self, metrics, loss, preds, targets, scores, context):
         for index, utterance, (pred_tree, target_tree) in zip(
-            context[DatasetFieldName.INDEX_FIELD],
+            context[BatchContext.INDEX],
             context[DatasetFieldName.UTTERANCE_FIELD],
             context[PRED_TARGET_TREES],
         ):

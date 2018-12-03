@@ -126,7 +126,6 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             ExtraField.WORD_WEIGHT: FloatField(),
             ExtraField.RAW_WORD_LABEL: RawField(),
             ExtraField.TOKEN_RANGE: RawField(),
-            ExtraField.INDEX_FIELD: RawField(),
             ExtraField.UTTERANCE: RawField(),
         }
 
@@ -139,7 +138,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             **kwargs,
         )
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         """Preprocess steps for a single input row: 1. apply tokenization to a
         sequence of utterances; 2. process dictionary features to align with
         the last utterance. 3. align word labels with the last utterance.
@@ -148,14 +147,12 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             row_data (Dict[str, Any]): Dict of one row data with column names as keys.
                 Keys includes "doc_label", "word_label", "text", "dict_feat",
                 "word weight" and "doc weight".
-            idx (int): index of row data.
 
         Returns:
             Dict[str, Any]: Preprocessed dict of one row data includes:
                 "seq_word_feat" (list of list of string): tokenized words of
                     sequence of utterances
                 "word_feat" (list of string): tokenized words of last utterance
-                "index_field" (int), index of row data
                 "raw_word_label" (string): raw word label
                 "token_range" (list of tuple): token ranges of word labels, each
                     tuple contains the start position index and the end position index
@@ -205,7 +202,6 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             ExtraField.DOC_WEIGHT: row_data.get(RawData.DOC_WEIGHT) or 1.0,
             ExtraField.WORD_WEIGHT: row_data.get(RawData.WORD_WEIGHT) or 1.0,
             ExtraField.RAW_WORD_LABEL: row_data[RawData.WORD_LABEL],
-            ExtraField.INDEX_FIELD: idx,
             ExtraField.UTTERANCE: row_data[RawData.TEXT],
             ExtraField.TOKEN_RANGE: features_list[-1].token_ranges,
         }

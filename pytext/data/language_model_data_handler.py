@@ -60,7 +60,7 @@ class LanguageModelDataHandler(DataHandler):
     def init_target_metadata(self, train_data, eval_data, test_data):
         self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         raw_input = InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
 
         features = self.featurizer.featurize(raw_input)

@@ -4,7 +4,7 @@
 from typing import Any, Dict, List
 
 import torch.nn.functional as F
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import BatchContext
 from pytext.predictors.predictor import Predictor
 from pytext.utils.cuda_utils import Variable
 
@@ -15,9 +15,7 @@ class ClassifierPredictor(Predictor):
     ) -> List[Any]:
         [label_meta] = self.data_handler.metadata.labels.values()
         return ClassifierPredictor.fill_classifier_predictions(
-            label_meta.vocab.itos,
-            model_output[0],
-            context[DatasetFieldName.INDEX_FIELD],
+            label_meta.vocab.itos, model_output[0], context[BatchContext.INDEX]
         )
 
     @staticmethod

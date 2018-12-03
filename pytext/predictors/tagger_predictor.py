@@ -4,7 +4,7 @@
 from typing import Any, Dict, List, Tuple
 
 import torch.nn.functional as F
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import BatchContext, DatasetFieldName
 from pytext.data.joint_data_handler import SEQ_LENS
 from pytext.predictors.predictor import Predictor
 
@@ -17,7 +17,7 @@ class TaggerPredictor(Predictor):
         return TaggerPredictor.fill_tagger_predictions(
             label_meta.vocab.itos,
             model_output[0],
-            context[DatasetFieldName.INDEX_FIELD],
+            context[BatchContext.INDEX],
             context[DatasetFieldName.TOKEN_RANGE],
             context[SEQ_LENS],
         )

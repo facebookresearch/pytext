@@ -58,10 +58,7 @@ class DocClassificationDataHandler(DataHandler):
         target_fields: Dict[str, Field] = create_label_fields(
             target_config, {DocLabelConfig._name: DocLabelField}
         )
-        extra_fields: Dict[str, Field] = {
-            ExtraField.INDEX: RawField(),
-            ExtraField.RAW_TEXT: RawField(),
-        }
+        extra_fields: Dict[str, Field] = {ExtraField.RAW_TEXT: RawField()}
         kwargs.update(config.items())
         return cls(
             raw_columns=config.columns_to_read,
@@ -78,7 +75,7 @@ class DocClassificationDataHandler(DataHandler):
         else:
             return mode_feature.tokens
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         features = self.featurizer.featurize(
             InputRecord(
                 raw_text=row_data.get(RawData.TEXT, ""),
@@ -98,7 +95,6 @@ class DocClassificationDataHandler(DataHandler):
             # target
             DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
             # extra data
-            ExtraField.INDEX: idx,
             ExtraField.RAW_TEXT: row_data.get(RawData.TEXT),
         }
         return res

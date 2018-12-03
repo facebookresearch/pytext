@@ -69,7 +69,7 @@ class PairClassificationDataHandler(DataHandler):
         # token1, token2, seq_len1, seq_len2
         return batch.text1[0], batch.text2[0], batch.text1[1], batch.text2[1]
 
-    def preprocess_row(self, row_data: Dict[str, Any], idx: int) -> Dict[str, Any]:
+    def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         return {
             ModelInput.TEXT1: self.featurizer.featurize(
                 InputRecord(raw_text=row_data[RawData.TEXT1])
