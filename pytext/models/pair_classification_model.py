@@ -9,7 +9,7 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingList
 from pytext.models.model import Model
 from pytext.models.output_layers import ClassificationOutputLayer
-from pytext.models.representations.tuple_rep import TupleRepresentation
+from pytext.models.representations.pair_rep import PairRepresentation
 
 
 class PairClassificationModel(Model):
@@ -24,7 +24,7 @@ class PairClassificationModel(Model):
     """
 
     class Config(ConfigBase):
-        representation: TupleRepresentation.Config = TupleRepresentation.Config()
+        representation: PairRepresentation.Config = PairRepresentation.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         # TODO: will need to support different output layer for contrastive loss
         output_layer: ClassificationOutputLayer.Config = (
@@ -39,9 +39,9 @@ class PairClassificationModel(Model):
         super().save_modules(base_path, suffix)
 
         # Special case to also save the sub-representations separately, if needed.
-        for i, subrep in enumerate(self.representation.subrepresentations):
+        for subrep in self.representation.subrepresentations:
             if getattr(subrep.config, "save_path", None):
-                path = subrep.config.save_path + "-" + str(i) + suffix
+                path = subrep.config.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(
