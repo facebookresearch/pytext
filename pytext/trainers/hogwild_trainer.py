@@ -41,6 +41,8 @@ class HogwildTrainer(Trainer):
         optimizers: List[torch.optim.Optimizer],
         pytext_config: PyTextConfig,
         scheduler=None,
+        *args,
+        **kwargs
     ):
         print("Num of workers for Hogwild Training is {}".format(self.num_workers))
 

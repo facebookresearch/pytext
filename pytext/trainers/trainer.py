@@ -116,11 +116,17 @@ class Trainer(TrainerBase):
             loss.backward()
             if scheduler:
                 scheduler.step_batch()
+
             if self.config.max_clip_norm is not None:
-                torch.nn.utils.clip_grad_norm_(
+                grad_norm = torch.nn.utils.clip_grad_norm_(
                     model.parameters(), self.config.max_clip_norm
                 )
+            else:
+                grad_norm = None
+
             optimizer_step(optimizers)
+            # grad_norm could be used to check grads sync in distributed training
+            return grad_norm
 
         for epoch in range(1, self.config.epochs + 1):
             print(f"Rank {rank} worker: Starting epoch #{epoch}")

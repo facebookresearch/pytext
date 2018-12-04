@@ -26,7 +26,11 @@ def dist_init(
 def suppress_output():
     import builtins as __builtin__
 
+    builtin_print = __builtin__.print
+
     def print(*args, **kwargs):
-        pass
+        # force print the result when kwargs contains force and value is True
+        if kwargs.pop("force", False):
+            builtin_print(*args, **kwargs)
 
     __builtin__.print = print
