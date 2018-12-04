@@ -1,35 +1,25 @@
 Getting started guide
 =====================
 
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
+To get started, run the following commands in a terminal::
 
-Subsection 1
-============
+		git clone git@github.com:facebookresearch/pytext.git
+		cd pytext
 
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
+		source activation_venv
+		./install_deps
+		./run_tests
 
-Subsection 2
-============
+To resume development in an already checked-out repo::
 
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
+		cd pytext
+		source activation_venv
 
-Subsection 3
-============
+To exit the virtual environment::
 
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
-Lorem ipsum lorem ipsum lorem ipsum
+		deactivate
+
+
+Alternatively, if you don't want to run in a virtual env, you can install the dependencies globally with `sudo ./install_deps`.
+
+For additional information, please read INSTALL.md
