@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import torch
 import torch.nn as nn
+from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
 from pytext.models.module import create_module
@@ -17,6 +18,10 @@ class Model(nn.Module, Component):
     """
     Generic model class that depends on input
     embedding, representation and decoder to produce predicitons.
+
+    Model also have a stage flag to indictate it's in Train, eval, or test stage.
+    This is because the builtin train/evel flag in PyTorch can't distinguish evel
+    and test, which is required to support some use cases
     """
 
     __EXPANSIBLE__ = True
@@ -68,12 +73,30 @@ class Model(nn.Module, Component):
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
                 torch.save(module.state_dict(), path)
 
-    def __init__(self, embedding, representation, decoder, output_layer) -> None:
+    def __init__(
+        self, embedding, representation, decoder, output_layer, stage=Stage.TRAIN
+    ) -> None:
         nn.Module.__init__(self)
+
         self.embedding = embedding
         self.representation = representation
         self.decoder = decoder
         self.output_layer = output_layer
+        self.stage = stage
+
+    def train(self):
+        """
+        Override to set stage
+        """
+        super().train()
+        self.stage = Stage.TRAIN
+
+    def eval(self, stage=Stage.TEST):
+        """
+        Override to set stage
+        """
+        super().eval()
+        self.stage = stage
 
     def contextualize(self, context):
         self.context = context

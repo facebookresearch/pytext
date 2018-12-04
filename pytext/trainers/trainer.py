@@ -139,7 +139,7 @@ class Trainer(TrainerBase):
                 rank=rank,
             )
 
-            model.eval()
+            model.eval(Stage.EVAL)
             eval_metric = self._run_epoch(
                 Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
             )
