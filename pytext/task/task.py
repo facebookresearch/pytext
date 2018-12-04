@@ -123,6 +123,7 @@ class Task(Component):
             train_config,
             self.optimizers,
             self.lr_scheduler,
+            rank=rank,
         )
 
     def test(self, test_path):

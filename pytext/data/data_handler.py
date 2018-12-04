@@ -417,13 +417,15 @@ class DataHandler(Component):
         rank: int = 0,
         world_size: int = 1,
     ) -> BatchIterator:
-        dataset_shard = self._get_dataset_shard(train_dataset, rank, world_size)
+        dataset_shard, max_num_examples = self._get_dataset_shard(
+            train_dataset, rank, world_size
+        )
         # Compute the per-worker batch size
         assert (
             batch_size >= world_size
         ), "batch size needs to be >= the distributed world size"
         batch_size = batch_size // world_size
-        num_all_batches = math.ceil(len(train_dataset) / float(batch_size))
+
         return BatchIterator(
             textdata.BucketIterator(
                 dataset_shard,
@@ -437,7 +439,7 @@ class DataHandler(Component):
                 shuffle=self.shuffle,
             ),
             self._postprocess_batch,
-            num_batches=math.ceil(num_all_batches / float(world_size)),
+            num_batches=math.ceil(max_num_examples / float(batch_size)),
         )
 
     def _get_test_iter(
@@ -484,13 +486,18 @@ class DataHandler(Component):
     @staticmethod
     def _get_dataset_shard(
         dataset: textdata.Dataset, rank: int, world_size: int
-    ) -> textdata.Dataset:
+    ) -> Tuple[textdata.Dataset, int]:
         assert rank > -1 and world_size > 0
-        shard_len = len(dataset) // world_size
+        dataset_size = len(dataset)
+        shard_len = dataset_size // world_size
         shard_offset = rank * shard_len
-        shard_end = len(dataset) if rank == world_size - 1 else shard_offset + shard_len
-        return textdata.Dataset(
-            dataset.examples[shard_offset:shard_end], dataset.fields
+        shard_end = dataset_size if rank == world_size - 1 else shard_offset + shard_len
+        # last shard has the most examples because we use Floor Division to
+        # compute shard_len, all fraction are contributed to the last shard
+        max_num_examples = dataset_size - shard_len * (world_size - 1)
+        return (
+            textdata.Dataset(dataset.examples[shard_offset:shard_end], dataset.fields),
+            max_num_examples,
         )
 
     @staticmethod
