@@ -84,11 +84,11 @@ class Model(nn.Module, Component):
         self.output_layer = output_layer
         self.stage = stage
 
-    def train(self):
+    def train(self, mode=True):
         """
         Override to set stage
         """
-        super().train()
+        super().train(mode)
         self.stage = Stage.TRAIN
 
     def eval(self, stage=Stage.TEST):

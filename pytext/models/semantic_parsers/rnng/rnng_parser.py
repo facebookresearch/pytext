@@ -13,7 +13,6 @@ from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
 from pytext.models import Model
-from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     CompositionalNN,
@@ -41,7 +40,7 @@ class RNNGConstraints(ConfigBase):
     no_slots_inside_unsupported: bool = True
 
 
-class RNNGParser(nn.Module, Component):
+class RNNGParser(Model, Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     class Config(ConfigBase):
