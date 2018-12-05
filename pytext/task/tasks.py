@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from typing import List, Optional, Union
 
+from pytext.common.constants import DatasetFieldName
 from pytext.config import (
     contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
@@ -76,6 +77,16 @@ class DocClassificationTask(Task):
             ClassificationMetricReporter.Config()
         )
 
+    @classmethod
+    def format_prediction(cls, predictions, scores, context, target_meta):
+        target_names = target_meta.vocab.itos
+        for prediction, score in zip(predictions, scores):
+            score_with_name = {n: s for n, s in zip(target_names, score.tolist())}
+            yield {
+                "prediction": target_names[prediction.data],
+                "score": score_with_name,
+            }
+
 
 class WordTaggingTask(Task):
     class Config(Task.Config):
@@ -87,6 +98,23 @@ class WordTaggingTask(Task):
             WordTaggingMetricReporter.Config()
         )
 
+    @classmethod
+    def format_prediction(cls, predictions, scores, context, target_meta):
+        target_names = target_meta.vocab.itos
+        for prediction, score, token_ranges in zip(
+            predictions, scores, context[DatasetFieldName.TOKEN_RANGE]
+        ):
+            yield [
+                {
+                    "prediction": target_names[word_pred.data],
+                    "score": {n: s for n, s in zip(target_names, word_score.tolist())},
+                    "token_range": token_range,
+                }
+                for word_pred, word_score, token_range in zip(
+                    prediction, score, token_ranges
+                )
+            ]
+
 
 class JointTextTask(Task):
     class Config(Task.Config):
@@ -97,6 +125,22 @@ class JointTextTask(Task):
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
         )
+
+    @classmethod
+    def format_prediction(cls, predictions, scores, context, target_meta):
+        doc_preds, word_preds = predictions
+        doc_scores, word_scores = scores
+        doc_target_meta, word_target_meta = target_meta
+
+        for intent, slot in zip(
+            DocClassificationTask.format_prediction(
+                doc_preds, doc_scores, context, doc_target_meta
+            ),
+            WordTaggingTask.format_prediction(
+                word_preds, word_scores, context, word_target_meta
+            ),
+        ):
+            yield {"intent": intent, "slot": slot}
 
 
 class LMTask(Task):

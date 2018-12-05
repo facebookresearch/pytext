@@ -4,6 +4,7 @@ from pprint import pprint
 from typing import List, Optional
 
 import torch
+from pytext.common.constants import BatchContext
 from pytext.config import ConfigBase, config_to_json
 from pytext.config.component import (
     Component,
@@ -141,3 +142,27 @@ class Task(Component):
                 summary_writer.add_graph(model, self.exporter.dummy_model_input)
             print("Saving caffe2 model to: " + export_path)
             self.exporter.export_to_caffe2(model, export_path)
+
+    @classmethod
+    def format_prediction(cls, predictions, scores, context, target_meta):
+        """
+        Format the prediction and score from model output, by default just return
+        them in a dict
+        """
+        for prediction, score in zip(predictions, scores):
+            yield {"prediction": prediction, "score": score}
+
+    def predict(self, examples):
+        self.model.eval()
+        model_inputs, context = self.data_handler.get_predict_iter(examples)
+        predictions, scores = self.model.get_pred(self.model(*model_inputs))
+        results: List = [None] * len(predictions)
+        # rearrange to orignal order
+        for idx, result in zip(
+            context[BatchContext.INDEX],
+            self.format_prediction(
+                predictions, scores, context, self.data_handler.metadata.target
+            ),
+        ):
+            results[idx] = result
+        return results
