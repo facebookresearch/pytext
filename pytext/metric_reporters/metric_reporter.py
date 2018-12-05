@@ -8,10 +8,24 @@ from pytext.config.pytext_config import ConfigBase
 
 
 class MetricReporter(Component):
+    """
+    MetricReporter is responsible of three things:
+        1 Aggregate output from trainer, which includes model inputs, predictions,
+        targets, scores, and loss.
+        2 Calculate metrics using the aggregated output, and define how the metric
+        is used to find best model
+        3 Optionally report the metrics and aggregated output to various channels
+    Attributes:
+        lower_is_better (bool): Whether a lower metric indicates better performance.
+            Set to True for e.g. perplexity, and False for e.g. accuracy. Default
+            is False
+        channels (List[Channel]): A list of Channel that will receive metrics and
+            the aggregated trainer output then format and report them in any customized
+            way.
+    """
+
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
-    # Whether a lower metric indicates better performance. Set to True for e.g.
-    # perplexity, and False for e.g. accuracy.
     lower_is_better: bool = False
 
     class Config(ConfigBase):
@@ -33,6 +47,20 @@ class MetricReporter(Component):
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
+        """
+        Aggregates a batch of output data (predictions, scores, targets/true labels and loss).
+
+        Args:
+            n_batches (int): number of current batch
+            preds (torch.Tensor): predictions of current batch
+            targets (torch.Tensor): targets of current batch
+            scores (torch.Tensor): scores of current batch
+            loss (double): average loss of current batch
+            m_input (Tuple[torch.Tensor, ...]): model inputs of current batch
+            context (Dict[str, Any]): any additional context data, it could be
+                either a list of data which maps to each example, or a single value
+                for the batch
+        """
         self.n_batches = n_batches
         self.aggregate_preds(preds)
         self.aggregate_targets(targets)
@@ -57,6 +85,10 @@ class MetricReporter(Component):
 
     @classmethod
     def aggregate_data(cls, all_data, new_batch):
+        """
+        Aggregate a batch of data, bascically just convert tensors to list of native
+        python data
+        """
         if new_batch is None:
             return
         simple_list = cls._make_simple_list(new_batch)
@@ -79,18 +111,41 @@ class MetricReporter(Component):
         self.channels.append(channel)
 
     def calculate_loss(self):
+        """
+        Calculate the average loss for all aggregated batch
+        """
         return sum(self.all_loss) / float(len(self.all_loss))
 
     def calculate_metric(self):
+        """
+        Calculate metrics, each sub class should implement it
+        """
         raise NotImplementedError()
 
     def gen_extra_context(self):
+        """
+        Generate any extra intermediate context data for metric calculation
+        """
         pass
 
+    # TODO this method can be removed by moving Channel construction to Task
     def get_meta(self):
+        """
+        Get global meta data that is not specific to any batch, the data will be
+        pass along to channels
+        """
         return {}
 
     def report_metric(self, stage, epoch, reset=True, print_to_channels=True):
+        """
+        Calculate metrics and average loss, report all statistic data to channels
+
+        Args:
+            stage (Stage): training, evaluation or test
+            epoch (int): current epoch
+            reset (bool): if all data should be reset after report, default is True
+            print_to_channels (bool): if report data to channels, default is True
+        """
         self.gen_extra_context()
         self.total_loss = self.calculate_loss()
         metrics = self.calculate_metric()
@@ -118,11 +173,20 @@ class MetricReporter(Component):
 
     @staticmethod
     def get_model_select_metric(metrics):
+        """
+        Return a single numeric metric value that is used for model selection, returns
+        the metric itself by default, but usually metrics will be more complicated
+        data structures
+        """
         return metrics
 
     @classmethod
     def compare_metric(cls, new_metric, old_metric):
-        """return True if new metric indicates better model performance
+        """
+        Check if new metric indicates better model performance
+
+        Returns:
+            bool, true if model with new_metric performs better
         """
         if not old_metric:
             return True
