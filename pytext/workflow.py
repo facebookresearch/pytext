@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import os
-from typing import Any, Tuple, get_type_hints
+from typing import Any, Dict, List, Tuple, get_type_hints
 
 import torch
 from pytext.config import PyTextConfig, TestConfig
@@ -113,3 +113,8 @@ def test_model(test_config: TestConfig, metrics_channel: Channel = None) -> Any:
         task.test(test_config.test_path),
         train_config.task.metric_reporter.output_path,
     )
+
+
+def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
+    task, train_config = load(model_file)
+    return task.predict(examples)

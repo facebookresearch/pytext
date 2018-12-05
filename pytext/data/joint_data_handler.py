@@ -127,15 +127,15 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.TOKEN_RANGE: features.token_ranges,
         }
         if DatasetFieldName.DOC_LABEL_FIELD in self.labels:
-            res[DatasetFieldName.DOC_LABEL_FIELD] = row_data[DFColumn.DOC_LABEL]
+            res[DatasetFieldName.DOC_LABEL_FIELD] = row_data.get(DFColumn.DOC_LABEL)
         if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
             # TODO move it into word label field
             res[DatasetFieldName.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
                 features.token_ranges,
-                row_data[DFColumn.WORD_LABEL],
+                row_data.get(DFColumn.WORD_LABEL),
                 self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,
             )
-            res[DatasetFieldName.RAW_WORD_LABEL] = row_data[DFColumn.WORD_LABEL]
+            res[DatasetFieldName.RAW_WORD_LABEL] = row_data.get(DFColumn.WORD_LABEL)
         return res
 
     def _train_input_from_batch(self, batch):

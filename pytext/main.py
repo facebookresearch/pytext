@@ -12,7 +12,12 @@ import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
-from pytext.workflow import export_saved_model_to_caffe2, test_model, train_model
+from pytext.workflow import (
+    batch_predict,
+    export_saved_model_to_caffe2,
+    test_model,
+    train_model,
+)
 from torch.multiprocessing.spawn import spawn
 
 
@@ -154,7 +159,7 @@ def export(context, model, output_path):
 
 
 @main.command()
-@click.option("--exported-model", help="where to save the exported model")
+@click.option("--exported-model", help="where to load the exported model")
 @click.pass_context
 def predict(context, exported_model):
     """Start a repl executing examples against a caffe2 model."""
@@ -167,6 +172,17 @@ def predict(context, exported_model):
         input = json.loads(line)
         predictions = predictor(input)
         pprint.pprint(predictions)
+
+
+@main.command()
+@click.option("--model-file", help="where to load the pytorch model")
+@click.pass_context
+def predict_py(context, model_file):
+    """Start a repl executing examples against a PyTorch model."""
+    print("Reading example JSON from stdin")
+    examples = [json.loads(line) for line in sys.stdin.readlines()]
+    result = batch_predict(model_file, examples)
+    pprint.pprint(result)
 
 
 if __name__ == "__main__":
