@@ -8,10 +8,13 @@ from pytext.common.constants import Stage
 
 
 class Channel:
-    """Channel defines a way to report the result of a PyText job
-        Attributes:
-            stages: in which stages the report will be triggered, default is all
-                stages, which includes train, eval, test
+    """
+    Channel defines how to format and report the result of a PyText job to an output
+    stream.
+
+    Attributes:
+        stages: in which stages the report will be triggered, default is all
+            stages, which includes train, eval, test
     """
 
     def __init__(
@@ -33,10 +36,29 @@ class Channel:
         meta,
         *args,
     ):
+        """
+        Defines how to format and report data to the output channel.
+        Args:
+            stage (Stage): train, eval or test
+            epoch (int): current epoch
+            metrics (Any): all metrics
+            model_select_metric (double): a single numeric metric to pick best model
+            loss (double): average loss
+            preds (List[Any]): list of predictions
+            targets (List[Any]): list of targets
+            scores (List[Any]): list of scores
+            context (Dict[str, List[Any]]): dict of any additional context data,
+                each context is a list of data that maps to each example
+            meta (Dict[str, Any]): global metadata, such as target names
+        """
         raise NotImplementedError()
 
 
 class ConsoleChannel(Channel):
+    """
+    Simple Channel that prints results to console.
+    """
+
     def report(
         self,
         stage,
@@ -61,6 +83,10 @@ class ConsoleChannel(Channel):
 
 
 class FileChannel(Channel):
+    """
+    Simple Channel that writes results to a TSV file.
+    """
+
     def __init__(self, stages, file_path) -> None:
         super().__init__(stages)
         self.file_path = file_path
@@ -113,6 +139,10 @@ class FileChannel(Channel):
 
 
 class TensorBoardChannel(Channel):
+    """
+    Report the results to TensorBoard
+    """
+
     def __init__(self, summary_writer, metric_name="accuracy"):
         super().__init__()
         self.summary_writer = summary_writer
