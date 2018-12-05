@@ -26,7 +26,6 @@ class IntentModelChannel(FileChannel):
 
 
 class ClassificationMetricReporter(MetricReporter):
-    model_select_metric_name = "f1"
 
     def __init__(self, label_names: List[str], channels: List[Channel]) -> None:
         super().__init__(channels)

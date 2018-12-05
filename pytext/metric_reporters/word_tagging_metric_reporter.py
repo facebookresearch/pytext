@@ -27,7 +27,6 @@ def get_slots(word_names):
 
 
 class WordTaggingMetricReporter(MetricReporter):
-    model_select_metric_name = "f1"
 
     def __init__(
         self, label_names: List[str], use_bio_labels: bool, channels: List[Channel]

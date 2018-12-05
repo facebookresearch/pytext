@@ -89,7 +89,6 @@ def create_frame(intent_label, slot_names_str, utterance):
 
 
 class IntentSlotMetricReporter(MetricReporter):
-    model_select_metric_name = "frame_accuracy"
 
     def __init__(
         self,
