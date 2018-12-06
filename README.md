@@ -70,3 +70,6 @@ You can use the exported caffe2 model to predict the class of raw utterances lik
 ```
 pytext --config-file config.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
+
+# License
+PyText is BSD-licensed, as found in the LICENSE file.
