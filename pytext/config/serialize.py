@@ -68,7 +68,7 @@ def _enum_from_json(enum_cls, json_obj):
     for e in enum_cls:
         if e.value == json_obj:
             return e
-    raise EnumTypeError("invalid enum value {json_obj} for {enum_cls}")
+    raise EnumTypeError(f"invalid enum value {json_obj} for {enum_cls}")
 
 
 def _value_from_json(cls, value):

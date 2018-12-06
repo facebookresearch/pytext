@@ -12,6 +12,11 @@ import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
+from pytext.utils.documentation_helper import (
+    ROOT_CONFIG,
+    find_config_class,
+    pretty_print_config_class,
+)
 from pytext.workflow import (
     batch_predict,
     export_saved_model_to_caffe2,
@@ -117,11 +122,29 @@ def main(context, config_file, config_json):
     context.obj.load_config = load_config
 
 
+@main.command(help="Print help information on a config parameter")
+@click.argument("class_name", default=ROOT_CONFIG)
+@click.pass_context
+def help_config(context, class_name):
+    """
+        Find all the classes matching `class_name`, and
+        pretty-print each matching class field members (non-recursively).
+    """
+    found_classes = find_config_class(class_name)
+    if found_classes:
+        for obj in found_classes:
+            pretty_print_config_class(obj)
+            print()
+    else:
+        raise Exception(f"Unknown component name: {class_name}")
+
+
 @main.command()
 @click.pass_context
 def test(context):
     """Test a trained model snapshot."""
-    config = parse_config(Mode.TEST, context.obj.load_config())
+    config_json = context.obj.load_config()
+    config = parse_config(Mode.TEST, config_json)
     print("\n=== Starting testing...")
     test_model(config)
 
@@ -130,7 +153,8 @@ def test(context):
 @click.pass_context
 def train(context):
     """Train a model and save the best snapshot."""
-    config = parse_config(Mode.TRAIN, context.obj.load_config())
+    config_json = context.obj.load_config()
+    config = parse_config(Mode.TRAIN, config_json)
     print("\n===Starting training...")
     if config.distributed_world_size == 1:
         train_model(config)
