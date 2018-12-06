@@ -140,7 +140,15 @@ class FileChannel(Channel):
 
 class TensorBoardChannel(Channel):
     """
-    Report the results to TensorBoard
+    TensorBoardChannel defines how to format and report the result of a PyText
+    job to TensorBoard.
+
+    Attributes:
+        summary_writer: An instance of the TensorBoardX SummaryWriter class, or
+            an object that implements the same interface.
+            https://tensorboardx.readthedocs.io/en/latest/tensorboard.html
+        metric_name: The name of the default metric to display on the
+            TensorBoard dashboard, defaults to "accuracy"
     """
 
     def __init__(self, summary_writer, metric_name="accuracy"):
@@ -162,6 +170,24 @@ class TensorBoardChannel(Channel):
         meta,
         *args,
     ):
+        """
+        Defines how to format and report data to TensorBoard using the summary
+        writer. In the current implementation, during the train/eval phase we
+        recursively report each metric field as scalars, and during the test
+        phase we report the final metrics to be displayed as texts.
+        Args:
+            stage (Stage): train, eval or test
+            epoch (int): current epoch
+            metrics (Any): all metrics
+            model_select_metric (double): a single numeric metric to pick best model
+            loss (double): average loss
+            preds (List[Any]): list of predictions
+            targets (List[Any]): list of targets
+            scores (List[Any]): list of scores
+            context (Dict[str, List[Any]]): dict of any additional context data,
+                each context is a list of data that maps to each example
+            meta (Dict[str, Any]): global metadata, such as target names
+        """
         if stage == Stage.TEST:
             tag = "test"
             self.summary_writer.add_text(tag, f"loss={loss}")
@@ -180,6 +206,19 @@ class TensorBoardChannel(Channel):
                 self.add_scalars(prefix, metrics, epoch)
 
     def add_texts(self, tag, metrics):
+        """
+        Recursively flattens the metrics object and adds each field name and
+        value as a text using the summary writer. For example, if tag = "test",
+        and metrics = { accuracy: 0.7, scores: { precision: 0.8, recall: 0.6 } },
+        then under "tag=test" we will display "accuracy=0.7", and under
+        "tag=test/scores" we will display "precision=0.8" and "recall=0.6" in
+        TensorBoard.
+        Args:
+            tag (str): The tag name for the metric. If a field needs to be
+                flattened further, it will be prepended as a prefix to the field
+                name.
+            metrics (Any): The metrics object.
+        """
         for field_name, field_value in metrics._asdict().items():
             if isinstance(field_value, (int, float)):
                 self.summary_writer.add_text(tag, f"{field_name}={field_value}")
@@ -187,6 +226,14 @@ class TensorBoardChannel(Channel):
                 self.add_texts(f"{tag}/{field_name}", field_value)
 
     def add_scalars(self, prefix, metrics, epoch):
+        """
+        Recursively flattens the metrics object and adds each field name and
+        value as a scalar for the corresponding epoch using the summary writer.
+        Args:
+            prefix (str): The tag prefix for the metric. Each field name in the
+                metrics object will be prepended with the prefix.
+            metrics (Any): The metrics object.
+        """
         for field_name, field_value in metrics._asdict().items():
             if isinstance(field_value, (int, float)):
                 self.summary_writer.add_scalar(
