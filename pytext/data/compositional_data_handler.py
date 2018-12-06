@@ -126,7 +126,7 @@ class CompositionalDataHandler(DataHandler):
             if is_slot_nonterminal(nt)
         ]
 
-    def _input_from_batch(self, batch, is_train):
+    def _train_input_from_batch(self, batch):
         # text_input[0] is contains numericalized tokens.
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         m_inputs = [text_input[0], text_input[1]]
@@ -139,6 +139,15 @@ class CompositionalDataHandler(DataHandler):
             m_inputs.append(input)
         return m_inputs
 
+    def _test_input_from_batch(self, batch):
+        text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
+        return [
+            text_input[0],
+            text_input[1],
+            getattr(batch, DatasetFieldName.DICT_FIELD, None),
+            None,
+        ]
+
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         utterance = row_data.get(DFColumn.UTTERANCE, "")
         features = self.featurizer.featurize(
@@ -147,45 +156,43 @@ class CompositionalDataHandler(DataHandler):
                 raw_gazetteer_feats=row_data.get(DFColumn.DICT_FEAT, ""),
             )
         )
-        annotation = Annotation(row_data[DFColumn.SEQLOGICAL])
-        actions = annotation.tree.to_actions()
+        actions = ""
+        # training time
+        if DFColumn.SEQLOGICAL in row_data:
+            annotation = Annotation(row_data[DFColumn.SEQLOGICAL])
+            actions = annotation.tree.to_actions()
 
-        # Seqlogical format is required for building the tree representation of
-        # compositional utterances and, it depends on tokenization.
-        # Here during preprocessing, if the tokens produced from Featurizer
-        # and those from the seqlogical format are not consistent, then it leads
-        # to inconsistent non terminals and actions which in turn leads to
-        # the model's forward method throwing an exception.
-        # This should NOT happen but the check below is to make sure the
-        # model training doesn't fail just in case there's inconsistency.
-        tokens_from_seqlogical = annotation.tree.list_tokens()
-        is_valid = True
-        try:
-            assert len(features.tokens) == len(tokens_from_seqlogical)
-            for t1, t2 in zip(features.tokens, tokens_from_seqlogical):
-                assert t1.lower() == t2.lower()
-        except AssertionError:
-            print(
-                "\nTokens from Featurizer and Seqlogical format are not same "
-                + f'for the utterance "{utterance}"'
-            )
-            print(f"Tokens from Featurizer: {features.tokens}")
-            print(f"Tokens from Seqlogical format: {tokens_from_seqlogical}")
-            is_valid = False
+            # Seqlogical format is required for building the tree representation of
+            # compositional utterances and, it depends on tokenization.
+            # Here during preprocessing, if the tokens produced from Featurizer
+            # and those from the seqlogical format are not consistent, then it leads
+            # to inconsistent non terminals and actions which in turn leads to
+            # the model's forward method throwing an exception.
+            # This should NOT happen but the check below is to make sure the
+            # model training doesn't fail just in case there's inconsistency.
+            tokens_from_seqlogical = annotation.tree.list_tokens()
+            try:
+                assert len(features.tokens) == len(tokens_from_seqlogical)
+                for t1, t2 in zip(features.tokens, tokens_from_seqlogical):
+                    assert t1.lower() == t2.lower()
+            except AssertionError:
+                print(
+                    "\nTokens from Featurizer and Seqlogical format are not same "
+                    + f'for the utterance "{utterance}"'
+                )
+                print(f"Tokens from Featurizer: {features.tokens}")
+                print(f"Tokens from Seqlogical format: {tokens_from_seqlogical}")
+                return {}
 
-        return (
-            {
-                DatasetFieldName.TEXT_FIELD: features.tokens,
-                DatasetFieldName.DICT_FIELD: (
-                    features.gazetteer_feats,
-                    features.gazetteer_feat_weights,
-                    features.gazetteer_feat_lengths,
-                ),
-                ACTION_FEATURE_FIELD: actions,
-                ACTION_LABEL_FIELD: copy.deepcopy(actions),
-                DatasetFieldName.TOKENS: features.tokens,
-                DatasetFieldName.UTTERANCE_FIELD: utterance,
-            }
-            if is_valid
-            else {}
-        )
+        return {
+            DatasetFieldName.TEXT_FIELD: features.tokens,
+            DatasetFieldName.DICT_FIELD: (
+                features.gazetteer_feats,
+                features.gazetteer_feat_weights,
+                features.gazetteer_feat_lengths,
+            ),
+            ACTION_FEATURE_FIELD: actions,
+            ACTION_LABEL_FIELD: copy.deepcopy(actions),
+            DatasetFieldName.TOKENS: features.tokens,
+            DatasetFieldName.UTTERANCE_FIELD: utterance,
+        }
