@@ -29,6 +29,10 @@ cd pytext
 
 source activation_venv
 ./install_deps
+```
+[Install PyTorch Preview Using Pip](https://pytorch.org/) make sure to get the correct version for your OS and GPU Situation.
+Once that is installed, you can run the unit tests with:
+```
 ./run_tests
 ```
 
