@@ -50,7 +50,7 @@ def get_config_fields(obj):
     for k in typed_members:
         if k not in members:
             members[k] = None
-    if issubclass(obj, Enum):
+    if issubclass(obj.__class__, Enum):
         opt = members["_member_names_"]
         typing = obj.__name__
         ret[typing] = (opt[0], typing, set(opt))
@@ -147,3 +147,27 @@ def find_config_class(class_name):
                 if not module_part or obj.__module__ == module_part:
                     ret.add(obj)
     return ret
+
+
+def replace_components(root, component, base_class):
+    """
+        Recusively look at all fields in config to find where `component` would fit.
+        This is used to change configs so that they don't use default values.
+        Return the chain of field names, from child to parent.
+    """
+    for k, v in get_config_fields(root).items():
+        default, _, options = v
+        if options and component in options:
+            return [k]
+        else:
+            v_comp_name = get_component_name(default)
+            v_comp_obj = next(iter(find_config_class(v_comp_name)), None)
+            if v_comp_obj:
+                found = replace_components(v_comp_obj, component, base_class)
+                if found:
+                    found.append(k)
+                    return found
+
+                # Not found in options, try to match base classes
+                if base_class & set(v_comp_obj.__bases__):
+                    return [k]
