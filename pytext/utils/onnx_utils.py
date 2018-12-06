@@ -70,19 +70,19 @@ def create_vocab_indices_map(c2_prepared, init_net, vocab_map):
     return vocab_indices
 
 
-def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
-    predict_net = c2_prepared.predict_net  # Protobuf of the predict_net
+def get_numericalize_net(c2_prepared, vocab_map, input_names):
+    predict_net = c2_prepared.predict_net
     init_net = core.Net(c2_prepared.init_net)
     final_input_names = input_names.copy()
     with c2_prepared.workspace._ctx:
         vocab_indices = create_vocab_indices_map(c2_prepared, init_net, vocab_map)
 
         # Add operators to convert string features to ids based on the vocab
-        final_predict_net = core.Net(c2_prepared.predict_net.name + "_processed")
+        final_predict_net = core.Net(predict_net.name + "_processed")
         final_inputs = set(
             {
                 ext_input
-                for ext_input in predict_net.external_input
+                for ext_input in input_names
                 if ext_input not in vocab_map.keys()
             }
         )
@@ -101,6 +101,15 @@ def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
             )
             final_predict_net.ResizeLike([flattened_ids, raw_input_blob], [feat])
             final_input_names[input_names.index(feat)] = convert_caffe2_blob_name(feat)
+    return final_predict_net, init_net, final_input_names
+
+
+def add_feats_numericalize_ops(c2_prepared, vocab_map, input_names):
+    predict_net = c2_prepared.predict_net  # Protobuf of the predict_net
+    final_predict_net, init_net, final_input_names = get_numericalize_net(
+        c2_prepared, vocab_map, input_names
+    )
+    with c2_prepared.workspace._ctx:
         # Copy over the other list of the ops
         final_predict_net.Proto().op.extend(predict_net.op)
         # Update predict_net and init_net
@@ -126,7 +135,11 @@ def export_nets_to_predictor_file(
         if blob not in produced:
             actual_external_inputs.add(blob)
 
-    param_names = [blob for blob in actual_external_inputs if blob not in input_names]
+    param_names = [
+        blob
+        for blob in actual_external_inputs
+        if blob not in input_names and blob not in output_names
+    ]
     if extra_params is not None:
         param_names += extra_params
 
