@@ -42,8 +42,6 @@ class CompositionalFileChannel(FileChannel):
 
 
 class CompositionalMetricReporter(MetricReporter):
-    model_select_metric_name = "frame_accuracy"
-
     def __init__(self, actions_vocab, channels: List[Channel]) -> None:
         super().__init__(channels)
         self.actions_vocab = actions_vocab
