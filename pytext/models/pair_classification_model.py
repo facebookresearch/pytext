@@ -13,14 +13,20 @@ from pytext.models.representations.pair_rep import PairRepresentation
 
 
 class PairClassificationModel(Model):
-    """Pair classification model
-
-    The model takes two sets of tokens (left and right), calculates their
-    representations, and passes them to the decoder along with their
-    absolute difference and elementwise product, all concatenated. Used for e.g.
+    """
+    A classification model that scores a pair of texts, for example, a model for
     natural language inference.
 
-    See e.g. <https://arxiv.org/pdf/1705.02364.pdf>.
+    The model shares embedding space (so it doesn't support
+    pairs of texts where left and right are in different languages). It uses
+    bidirectional LSTM or CNN to represent the two documents, and concatenates
+    them along with their absolute difference and elementwise product. This
+    concatenated pair representation is passed to a multi-layer perceptron to
+    decode to label/target space.
+
+    See https://arxiv.org/pdf/1705.02364.pdf for more details.
+
+    It can be instantiated just like any other :class:`~Model`.
     """
 
     class Config(ConfigBase):

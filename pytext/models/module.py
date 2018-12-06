@@ -19,6 +19,22 @@ def _create_module_from_registry(module_config, *args, **kwargs):
 def create_module(
     module_config, *args, create_fn=_create_module_from_registry, **kwargs
 ):
+    """Create module object given the module's config object. It depends on the
+    global shared module registry. Hence, your module must be available for the
+    registry. This entails that your module must be imported somewhere in the
+    code path during module creation (ideally in your model class) for the module
+    to be visible for registry.
+
+    Args:
+        module_config (type): Module config object.
+        create_fn (type): The function to use for creating the module. Use this
+            parameter if your module creation requries custom code and pass your
+            function here. Defaults to `_create_module_from_registry()`.
+
+    Returns:
+        type: Description of returned object.
+
+    """
     # the first module with a given shared_module_key and type is saved in
     # SHARED_MODULE_REGISTRY.  The rest will reuse the saved module and thus
     # share parameters.
@@ -41,7 +57,13 @@ def create_module(
 
 
 class Module(nn.Module, Component):
-    """Generic module class that serves as base class for all PyText modules."""
+    """Generic module class that serves as base class for all PyText modules.
+
+    Args:
+        config (type): Module's `config` object. Specific contents of this object
+            depends on the module. Defaults to None.
+
+    """
 
     Config = ModuleConfig
 
