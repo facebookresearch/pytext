@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from pytext.common.constants import BatchContext
 
 from .metric_reporter import MetricReporter
