@@ -5,4 +5,7 @@ jobs:
       - image: circleci/python:3.6
     steps:
       - checkout
-      - run: source .circleci/setup_circleimg.sh && ./run_tests
+      - run: source .circleci/setup_circleimg.sh && ./run_tests && ./run_coverage
+      - store_artifacts:
+          path: htmlcov
+          destination: coverage
