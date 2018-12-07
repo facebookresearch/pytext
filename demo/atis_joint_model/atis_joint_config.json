@@ -56,13 +56,13 @@
         "labels": [
           {
             "DocLabelConfig": {}
-	      },
-	      {
-		  "WordLabelConfig": {
-		      "use_bio_labels": true
-		  }
-	      }
-	],
+          },
+          {
+            "WordLabelConfig": {
+               "use_bio_labels": true
+            }
+          }
+        ],
         "data_handler": {
           "columns_to_read": [
             "doc_label",

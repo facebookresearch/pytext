@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import copy
+import sys
 from typing import List, Optional
 
 import torch
@@ -180,6 +181,7 @@ class Trainer(TrainerBase):
                     + f"{self.config.early_stop_after} epochs. Stopping now."
                 )
                 break
+            sys.stdout.flush()
 
         model.load_state_dict(best_model_state)
 

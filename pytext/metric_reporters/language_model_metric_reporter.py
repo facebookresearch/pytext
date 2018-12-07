@@ -22,7 +22,6 @@ class LanguageModelChannel(FileChannel):
 
 
 class LanguageModelMetricReporter(MetricReporter):
-    model_select_metric_name = "perplexity_per_word"
     lower_is_better = True
 
     @classmethod

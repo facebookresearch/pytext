@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import unittest
 
 from pytext.models.embeddings.char_embedding import CharacterEmbedding
@@ -15,6 +15,7 @@ class EmbeddingListTest(unittest.TestCase):
             embeddings_weight=None,
             init_range=[-1, 1],
             unk_token_idx=4,
+            mlp_layer_dims=[],
         )
         char_embedding = CharacterEmbedding(
             num_embeddings=5, embed_dim=4, out_channels=2, kernel_sizes=[1, 2]
