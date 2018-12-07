@@ -102,27 +102,31 @@ class DataHandler(Component):
     """
     DataHandler is the central place to prepare data for model training/testing.
     The class is responsible of:
-        1 Define pipeline to process data and generate batch of tensors to be
-        consumed by model. Each batch is a (input, target, extra_data) tuple, in
-        which input can be feed directly into model.
-        2 Initilize global context, such as build vocab, load pretrained embeddings.
-        Store the context as metadata, and provide function to serialize/deserialize
-        the metadata
+
+    * Define pipeline to process data and generate batch of tensors to be
+      consumed by model. Each batch is a (input, target, extra_data) tuple, in
+      which input can be feed directly into model.
+    * Initilize global context, such as build vocab, load pretrained embeddings.
+      Store the context as metadata, and provide function to serialize/deserialize
+      the metadata
 
     The data processing pipeline contains the following steps:
-        1 Read data from file into a list of raw data examples
-        2 Convert each row of row data to a TorchText Example. This logic happens
-        in process_row function and will:
-            2.1 Invoke featurizer, which contains data processing steps to apply
-            for both training and inference time, e.g: tokenization
-            2.2 Use the raw data and results from featurizer to do any prepross
-        3 Generate a TorchText.Dataset that contains the list of Example, the Dataset
-        also has a list of TorchText.Field, which defines how to do padding and
-        numericalization while batching data.
-        4 Return a BatchIterator which will give a tuple of (input, target, context)
-        tensors for each iteration. By default the tensors have a 1:1 mapping to
-        the TorchText.Field fields, but this behavior can be overwritten by
-        _input_from_batch, _target_from_batch, _context_from_batch functions.
+
+    * Read data from file into a list of raw data examples
+    * Convert each row of row data to a TorchText Example. This logic happens
+      in process_row function and will:
+
+      * Invoke featurizer, which contains data processing steps to apply
+        for both training and inference time, e.g: tokenization
+      * Use the raw data and results from featurizer to do any prepross
+
+    * Generate a TorchText.Dataset that contains the list of Example, the Dataset
+      also has a list of TorchText.Field, which defines how to do padding and
+      numericalization while batching data.
+    * Return a BatchIterator which will give a tuple of (input, target, context)
+      tensors for each iteration. By default the tensors have a 1:1 mapping to
+      the TorchText.Field fields, but this behavior can be overwritten by
+      _input_from_batch, _target_from_batch, _context_from_batch functions.
 
     Attributes:
         raw_columns (List[str]): columns to read from data source. The order should

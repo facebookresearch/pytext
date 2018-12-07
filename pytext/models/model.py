@@ -22,6 +22,7 @@ from .representations.representation_base import RepresentationBase
 class Model(nn.Module, Component):
     """
     Generic single-task model class that expects four components:
+
     1. `Embedding`
     2. `Representation`
     3. `Decoder`
@@ -55,24 +56,25 @@ class Model(nn.Module, Component):
     Let us discuss the joint intent-slot model as a case to go over these layers.
     The model predicts intent of input utterance and the slots in the utterance.
     (Refer to :doc:`atis_tutorial` for details about intent-slot model.)
+
     1. :class:`~EmbeddingList` layer is tasked with representing tokens. To do so we
-    can use learnable word embedding table in conjunction with learnable character
-    embedding table that are distilled to token level repesentation using CNN and
-    pooling.
-    Note: This class is meant to be reused by all models. It acts as a container
-    of all the different ways of representing a token/word.
+       can use learnable word embedding table in conjunction with learnable character
+       embedding table that are distilled to token level repesentation using CNN and
+       pooling.
+       Note: This class is meant to be reused by all models. It acts as a container
+       of all the different ways of representing a token/word.
     2. :class:`~BiLSTMDocSlotAttention` is tasked with encoding the embedded input
-    string for intent classification and slot filling. In order to do that it has a
-    shared bidirectional LSTM layer followed by sperate attention layers for
-    document level attention and word level attention. Finally it produces two
-    vectors per utterance.
+       string for intent classification and slot filling. In order to do that it has a
+       shared bidirectional LSTM layer followed by sperate attention layers for
+       document level attention and word level attention. Finally it produces two
+       vectors per utterance.
     3. :class:`~IntentSlotModelDecoder` accepts the two input vectors from
-    `BiLSTMDocSlotAttention` and prodces logits for intent classification and
-    slot filling. Conditioned on a flag it can also use the probabilities from
-    intent classification for slot filling.
+       `BiLSTMDocSlotAttention` and prodces logits for intent classification and
+       slot filling. Conditioned on a flag it can also use the probabilities from
+       intent classification for slot filling.
     4. :class:`~IntentSlotOutputLayer` implements the logic behind computing loss and
-    prediction, as well as, how to export this layer to export to Caffe2. This is
-    used by model exporter as a post-processing Caffe2 operator.
+       prediction, as well as, how to export this layer to export to Caffe2. This is
+       used by model exporter as a post-processing Caffe2 operator.
 
 
     Args:
