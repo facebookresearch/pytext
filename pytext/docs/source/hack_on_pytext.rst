@@ -9,7 +9,7 @@ To get started, run the following commands in a terminal::
 		$ source activation_venv
 		(pytext) $ ./install_deps
 
-Next Install the PyTorch Preview using Pip using the instructions on https://pytorch.org, making sure to match your OS and GPU situation
+Next Install the PyTorch using Pip using the instructions on https://pytorch.org, making sure to match your OS and GPU situation
 Once you're done with that, you can run the tests with::
   
 		(pytext) $ ./run_tests
