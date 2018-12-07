@@ -9,5 +9,4 @@ pandas
 requests
 scipy
 torchtext
-torch_nightly
 tensorboardX

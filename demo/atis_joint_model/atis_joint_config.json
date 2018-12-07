@@ -53,6 +53,14 @@
         "featurizer": {
           "SimpleFeaturizer": {}
         },
+        "labels": [
+          {
+            "DocLabelConfig": {}
+          },
+          {
+            "WordLabelConfig": {}
+          }
+        ],
         "data_handler": {
           "columns_to_read": [
             "doc_label",
@@ -62,7 +70,6 @@
           "train_batch_size": 86,
           "eval_batch_size": 128,
           "test_batch_size": 128,
-          "min_item_freq_for_vocab": 1,
           "train_path": "demo/atis_joint_model/atis.processed.train.csv",
           "eval_path": "demo/atis_joint_model/atis.processed.val.csv",
           "test_path": "demo/atis_joint_model/atis.processed.test.csv"
