@@ -196,10 +196,11 @@ class TextFeatureField(VocabUsingField):
         unk_token=VocabMeta.UNK_TOKEN,
         init_token=None,
         eos_token=None,
-        lower=True,
+        lower=False,
         tokenize=data_utils.no_tokenize,
         fix_length=None,
         pad_first=None,
+        min_freq=1,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -223,6 +224,7 @@ class TextFeatureField(VocabUsingField):
             tokenize=tokenize,
             fix_length=fix_length,
             pad_first=pad_first,
+            min_freq=min_freq,
         )
 
 

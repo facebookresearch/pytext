@@ -17,13 +17,13 @@ class CompositionalDataHandlerTest(unittest.TestCase):
                 DFColumn.WORD_LABEL: [
                     {
                         "id": "SL:DATE_TIME",
-                        "span": {"start": 21, "end": 28},
-                        "text": "tonight",
+                        "span": {"start": 21, "end": 26},
+                        "text": "today",
                     }
                 ],
-                DFColumn.UTTERANCE: "What events can I go tonight",
+                DFColumn.UTTERANCE: "What EVENTS can I go today",
                 DFColumn.DICT_FEAT: "",
-                DFColumn.SEQLOGICAL: "[IN:GET_EVENT What events can I go [SL:DATE_TIME tonight ] ]",
+                DFColumn.SEQLOGICAL: "[IN:GET_EVENT What EVENTS can I go [SL:DATE_TIME today ] ]",
             }
         ]
 
@@ -85,10 +85,10 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         self.dh = CompositionalDataHandler.from_config(
             CompositionalDataHandler.Config(),
             FeatureConfig(
-                word_feat=WordFeatConfig(vocab_from_all_data=True, min_freq=2)
+                word_feat=WordFeatConfig(vocab_from_all_data=True, min_freq=1)
             ),
             featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(lowercase_tokens=False), FeatureConfig()
+                SimpleFeaturizer.Config(lowercase_tokens=True), FeatureConfig()
             ),
         )
 
@@ -107,7 +107,7 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             "REDUCE",
         ]
         self.assertListEqual(
-            data.examples[0].word_feat, ["what", "events", "can", "i", "go", "tonight"]
+            data.examples[0].word_feat, ["what", "events", "can", "i", "go", "today"]
         )
         self.assertListEqual(data.examples[0].action_idx_feature, actions_expected)
         self.assertListEqual(data.examples[0].action_idx_label, actions_expected)
@@ -115,6 +115,24 @@ class CompositionalDataHandlerTest(unittest.TestCase):
     def test_train_tensors(self):
         self.dh.init_metadata_from_raw_data(
             self.train_data, self.eval_data, self.test_data
+        )
+        self.assertSetEqual(
+            set(self.dh.features["word_feat"].vocab.stoi),
+            {
+                "<unk>",
+                "what",
+                "events",
+                "can",
+                "i",
+                "go",
+                "today",
+                "are",
+                "there",
+                "any",
+                "adult",
+                "this",
+                "weekend",
+            },
         )
         print(self.dh.features["action_idx_feature"].vocab.stoi)
         for input, _, _ in self.dh.get_train_iter_from_raw_data(
@@ -151,3 +169,62 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             np.testing.assert_array_almost_equal(
                 target.numpy(), [[2, 0, 0, 0, 4, 0, 1, 0, 3, 0, 0, 1, 1]]
             )  # actions target
+
+    def test_min_freq(self):
+        """
+        Test that UNKification is triggered when min_freq is 2.
+        """
+        custom_dh = CompositionalDataHandler.from_config(
+            CompositionalDataHandler.Config(),
+            FeatureConfig(
+                word_feat=WordFeatConfig(vocab_from_all_data=True, min_freq=2)
+            ),
+            featurizer=SimpleFeaturizer.from_config(
+                SimpleFeaturizer.Config(lowercase_tokens=True), FeatureConfig()
+            ),
+        )
+        custom_dh.init_metadata_from_raw_data(
+            self.train_data, self.eval_data, self.test_data
+        )
+        # <unk>-LC = <unk> for lower-cased tokens
+        # <unk>-LC-y = <unk> for lower-cased tokens with suffix "y" ("today")
+        self.assertSetEqual(
+            set(custom_dh.features["word_feat"].vocab.stoi),
+            {"<unk>", "<unk>-LC", "<unk>-LC-y", "events"},
+        )
+
+    def test_uppercase_tokens(self):
+        """
+        Test that the text is not lower-cased when lowercase_tokens is False.
+        """
+        custom_dh = CompositionalDataHandler.from_config(
+            CompositionalDataHandler.Config(),
+            FeatureConfig(
+                word_feat=WordFeatConfig(vocab_from_all_data=True, min_freq=1)
+            ),
+            featurizer=SimpleFeaturizer.from_config(
+                SimpleFeaturizer.Config(lowercase_tokens=False), FeatureConfig()
+            ),
+        )
+        custom_dh.init_metadata_from_raw_data(
+            self.train_data, self.eval_data, self.test_data
+        )
+        self.assertSetEqual(
+            set(custom_dh.features["word_feat"].vocab.stoi),
+            {
+                "<unk>",
+                "What",
+                "EVENTS",
+                "can",
+                "I",
+                "go",
+                "today",
+                "Are",
+                "there",
+                "any",
+                "adult",
+                "events",
+                "this",
+                "weekend",
+            },
+        )
