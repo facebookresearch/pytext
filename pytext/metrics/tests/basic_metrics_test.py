@@ -63,12 +63,20 @@ class BasicMetricsTest(MetricsTestBase):
             ),
         )
 
-    def test_compute_average_precisions(self) -> None:
+    def test_soft_metrics_computation(self) -> None:
+        recall_at_precision_dict_l1 = {0.9: 0.0, 0.8: 0.0, 0.6: 1.0, 0.4: 1.0, 0.2: 1.0}
+        recall_at_precision_dict_l2 = {0.9: 0.5, 0.8: 0.5, 0.6: 0.5, 0.4: 1.0, 0.2: 1.0}
         self.assertMetricsAlmostEqual(
             compute_soft_metrics(PREDICTIONS2, LABEL_NAMES2),
             {
-                "label1": SoftClassificationMetrics(average_precision=8.0 / 15),
-                "label2": SoftClassificationMetrics(average_precision=0.7),
+                "label1": SoftClassificationMetrics(
+                    average_precision=8.0 / 15,
+                    recall_at_precision=recall_at_precision_dict_l1,
+                ),
+                "label2": SoftClassificationMetrics(
+                    average_precision=0.7,
+                    recall_at_precision=recall_at_precision_dict_l2,
+                ),
             },
         )
 

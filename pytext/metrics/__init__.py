@@ -17,6 +17,8 @@ from typing import (
 import numpy as np
 
 
+RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
+
 """
 Basic metric classes and functions for single-label prediction problems.
 """
@@ -65,6 +67,7 @@ class SoftClassificationMetrics(NamedTuple):
     """
 
     average_precision: float
+    recall_at_precision: Dict[float, float]
 
 
 class MacroPRF1Scores(NamedTuple):
@@ -200,6 +203,10 @@ class ClassificationMetrics(NamedTuple):
             print(f"\t{'Label':<10}\t{'Average precision':<10}")
             for label, label_metrics in self.per_label_soft_scores.items():
                 print(f"\t{label:<10}\t{label_metrics.average_precision * 100:<10.2f}")
+            for label, label_metrics in self.per_label_soft_scores.items():
+                for threshold, recall in label_metrics.recall_at_precision.items():
+                    print(f"\t{'Label':<10}\tRecall at precision {threshold}")
+                    print(f"\t{label:<10}\t{recall * 100:<10.2f}")
         if self.mcc:
             print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
 
@@ -342,7 +349,7 @@ def compute_prf1(tp: int, fp: int, fn: int) -> Tuple[float, float, float]:
 
 
 def average_precision_score(
-    y_true_list: Sequence[bool], y_score_list: Sequence[float]
+    y_true_sorted: np.ndarray, y_score_sorted: np.ndarray
 ) -> float:
     """
     Computes average precision, which summarizes the precision-recall curve as the
@@ -350,26 +357,22 @@ def average_precision_score(
     previous threshold.
 
     Args:
-        y_true_list: List of boolean values indicating whether each prediction is
-            correct.
-        y_score_list: List of confidence scores for the predictions.
+        y_true_sorted: Numpy array sorted according to decreasing condifence scores
+            indicating whether each prediction is correct.
+        y_score_sorted Numpy array of confidence scores for the predictions in
+            decreasing order.
 
     Returns:
         Average precision score.
     """
-    y_true = np.array(y_true_list)
-    y_score = np.array(y_score_list)
-    sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
-    y_true = y_true[sort_indices]
-    y_score = y_score[sort_indices]
     ap = 0.0
     tp = 0
-    threshold = y_score[0]
-    y_score = np.append(y_score[1:], np.NAN)
-    total_positive = np.sum(y_true)
+    threshold = y_score_sorted[0]
+    y_score_sorted = np.append(y_score_sorted[1:], np.NAN)
+    total_positive = np.sum(y_true_sorted)
     added_positives = 0
 
-    for k, (label, score) in enumerate(zip(y_true, y_score)):
+    for k, (label, score) in enumerate(zip(y_true_sorted, y_score_sorted)):
         added_positives += label
         if score != threshold:
             threshold = score
@@ -381,8 +384,53 @@ def average_precision_score(
     return float(ap)
 
 
+def sort_by_score(y_true_list: Sequence[bool], y_score_list: Sequence[float]):
+    y_true = np.array(y_true_list)
+    y_score = np.array(y_score_list)
+    sort_indices = np.argsort(y_score, kind="mergesort")[::-1]
+    y_true = y_true[sort_indices]
+    y_score = y_score[sort_indices]
+    return y_true, y_score
+
+
+def recall_at_precision(
+    y_true_sorted: np.ndarray, y_score_sorted: np.ndarray, thresholds: Sequence[float]
+) -> Dict[float, float]:
+    """
+    Computes recall at various precision levels
+
+    Args:
+        y_true_sorted: Numpy array sorted according to decreasing condifence scores
+            indicating whether each prediction is correct.
+        y_score_sorted: Numpy array of confidence scores for the predictions in
+            decreasing order.
+        thresholds: Sequence of floats indicating the requested precision thresholds
+
+    Returns:
+        Dictionary of maximum recall at requested precision thresholds.
+    """
+    y_score_shift = np.append(y_score_sorted[1:], np.nan)
+    score_change = (y_score_sorted - y_score_shift) != 0
+    cum_sum = np.cumsum(y_true_sorted)
+    recall_at_precision_dict = {t: 0.0 for t in thresholds}
+    sum_y_true = y_true_sorted.sum()
+    if sum_y_true == 0:
+        return recall_at_precision_dict
+    recall = cum_sum / sum_y_true
+    precision = cum_sum / np.array(range(1, len(y_true_sorted) + 1))
+    for threshold in thresholds:
+        meets_requirements = np.logical_and(precision >= threshold, score_change)
+        r = 0.0
+        if np.any(meets_requirements):
+            r = float(max(np.extract(meets_requirements, recall)))
+        recall_at_precision_dict[threshold] = r
+    return recall_at_precision_dict
+
+
 def compute_soft_metrics(
-    predictions: Sequence[LabelPrediction], label_names: Sequence[str]
+    predictions: Sequence[LabelPrediction],
+    label_names: Sequence[str],
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
 ) -> Dict[str, SoftClassificationMetrics]:
     """
     Computes soft classification metrics (for now, average precision) given a list of
@@ -391,6 +439,9 @@ def compute_soft_metrics(
     Args:
         predictions: Label predictions, including the confidence score for each label.
         label_names: Indexed label names.
+        recall_at_precision_thresholds: precision thresholds at which to calculate
+            recall
+
 
     Returns:
         Dict from label strings to their corresponding soft metrics.
@@ -402,8 +453,14 @@ def compute_soft_metrics(
         for label_scores, _, expected in predictions:
             y_true.append(expected == i)
             y_score.append(label_scores[i])
-        ap = average_precision_score(y_true, y_score)
-        soft_metrics[label_name] = SoftClassificationMetrics(average_precision=ap)
+        y_true_sorted, y_score_sorted = sort_by_score(y_true, y_score)
+        ap = average_precision_score(y_true_sorted, y_score_sorted)
+        recall_at_precision_dict = recall_at_precision(
+            y_true_sorted, y_score_sorted, recall_at_precision_thresholds
+        )
+        soft_metrics[label_name] = SoftClassificationMetrics(
+            average_precision=ap, recall_at_precision=recall_at_precision_dict
+        )
     return soft_metrics
 
 
@@ -435,6 +492,7 @@ def compute_classification_metrics(
     predictions: Sequence[LabelPrediction],
     label_names: Sequence[str],
     average_precisions: bool = True,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of label
@@ -445,6 +503,8 @@ def compute_classification_metrics(
         label_names: Indexed label names.
         average_precisions: Whether to compute average precisions for labels or not.
             Defaults to True.
+        recall_at_precision_thresholds: precision thresholds at which to calculate recall
+
 
     Returns:
         ClassificationMetrics which contains various classification metrics.
@@ -464,7 +524,9 @@ def compute_classification_metrics(
     macro_prf1_metrics = per_label_confusions.compute_metrics()
 
     soft_metrics = (
-        compute_soft_metrics(predictions, label_names) if average_precisions else None
+        compute_soft_metrics(predictions, label_names, recall_at_precision_thresholds)
+        if average_precisions
+        else None
     )
 
     if len(label_names) == 2:
