@@ -85,6 +85,11 @@ class WordEmbedding(EmbeddingBase):
             self.mlp_layers.append(nn.Linear(embedding_dim, next_dim))
             embedding_dim = next_dim
 
+    def __getattr__(self, name):
+        if name == "weight":
+            return self.word_embedding.weight
+        return super().__getattr__(name)
+
     def forward(self, input):
         embedding = self.word_embedding(input)
 
