@@ -2,7 +2,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Union
 
-from pytext.common.constants import DatasetFieldName
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
@@ -15,6 +14,16 @@ from .representations.jointcnn_rep import JointCNNRepresentation
 
 
 class JointModel(Model):
+    """
+    A joint intent-slot model. This is framed as a model to do document
+    classification model and word tagging tasks where the embedding and text
+    representation layers are shared for both tasks.
+
+    The supported representation layers are based on bidirectional LSTM or CNN.
+
+    It can be instantiated just like any other :class:`~Model`.
+    """
+
     class Config(ConfigBase):
         representation: Union[
             BiLSTMDocSlotAttention.Config, JointCNNRepresentation.Config

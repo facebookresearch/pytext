@@ -178,3 +178,26 @@ def create_metric_reporter(module_config, *args, **kwargs):
     return create_component(
         ComponentType.METRIC_REPORTER, module_config, *args, **kwargs
     )
+
+
+def get_component_name(obj):
+    """
+        Return the human-readable name of the class of `obj`.
+        Document the type of a config field and can be used as a Union value
+        in a json config.
+    """
+    if obj is type(None):
+        return None
+    if not hasattr(obj, "__module__"):  # builtins
+        return obj.__class__.__name__
+    if obj.__module__ == "typing":
+        return str(obj)[7:]
+    if hasattr(obj, "__qualname__"):  # Class name unaltered by meta
+        ret = obj.__qualname__
+    elif hasattr(obj, "__name__"):
+        ret = obj.__name__
+    else:
+        ret = obj.__class__.__name__
+    if ret.endswith(".Config"):
+        return obj.__COMPONENT__.__name__
+    return ret

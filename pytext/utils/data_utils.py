@@ -78,8 +78,7 @@ def parse_json_array(json_text: str) -> List[str]:
 def align_slot_labels(
     token_ranges: List[Tuple[int, int]], slots_field: str, use_bio_labels: bool = False
 ):
-    if not slots_field:
-        return ""
+    slots_field = slots_field or ""
     slot_list = parse_slot_string(slots_field)
 
     token_labels = []

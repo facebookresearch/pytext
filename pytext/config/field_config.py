@@ -27,6 +27,7 @@ class WordFeatConfig(ConfigBase):
     vocab_from_all_data: bool = False  # build vocab from train, eval, test data
     lowercase_tokens: bool = True
     min_freq: int = 1
+    mlp_layer_dims: Optional[List[int]] = []
 
 
 class DictFeatConfig(ConfigBase):
