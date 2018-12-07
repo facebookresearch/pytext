@@ -59,7 +59,6 @@
           },
           {
             "WordLabelConfig": {
-               "use_bio_labels": true
             }
           }
         ],
