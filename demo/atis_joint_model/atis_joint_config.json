@@ -58,8 +58,7 @@
             "DocLabelConfig": {}
           },
           {
-            "WordLabelConfig": {
-            }
+            "WordLabelConfig": {}
           }
         ],
         "data_handler": {
