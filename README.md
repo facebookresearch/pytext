@@ -21,6 +21,8 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
 # Installing PyText
 
+## WARNING: PyText currently only supports Python 3.6. Support for 3.7 is coming soon!
+
 To get started, run the following commands in a terminal:
 
 ```
