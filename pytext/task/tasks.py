@@ -121,7 +121,10 @@ class JointTextTask(Task):
     class Config(Task.Config):
         model: JointModel.Config = JointModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: List[TargetConfigBase]
+        labels: List[TargetConfigBase] = [
+            DocLabelConfig(),
+            WordLabelConfig(),
+        ]
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
