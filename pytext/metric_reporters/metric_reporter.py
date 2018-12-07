@@ -10,11 +10,13 @@ from pytext.config.pytext_config import ConfigBase
 class MetricReporter(Component):
     """
     MetricReporter is responsible of three things:
-        1 Aggregate output from trainer, which includes model inputs, predictions,
-        targets, scores, and loss.
-        2 Calculate metrics using the aggregated output, and define how the metric
-        is used to find best model
-        3 Optionally report the metrics and aggregated output to various channels
+
+    #. Aggregate output from trainer, which includes model inputs, predictions,
+       targets, scores, and loss.
+    #. Calculate metrics using the aggregated output, and define how the metric
+       is used to find best model
+    #. Optionally report the metrics and aggregated output to various channels
+
     Attributes:
         lower_is_better (bool): Whether a lower metric indicates better performance.
             Set to True for e.g. perplexity, and False for e.g. accuracy. Default
@@ -48,7 +50,8 @@ class MetricReporter(Component):
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
         """
-        Aggregates a batch of output data (predictions, scores, targets/true labels and loss).
+        Aggregates a batch of output data (predictions, scores, targets/true labels
+        and loss).
 
         Args:
             n_batches (int): number of current batch

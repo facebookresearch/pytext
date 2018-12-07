@@ -38,6 +38,7 @@ class Channel:
     ):
         """
         Defines how to format and report data to the output channel.
+
         Args:
             stage (Stage): train, eval or test
             epoch (int): current epoch
