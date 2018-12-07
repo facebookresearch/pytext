@@ -42,4 +42,7 @@ class SeqRepresentation(RepresentationBase):
         (bsz, max_num_sen, max_seq_len, dim) = embedded_seqs.size()
         rep = self.doc_rep(embedded_seqs.reshape((bsz * max_num_sen, max_seq_len, dim)))
         sentence_reps = rep.reshape((bsz, max_num_sen, self.doc_representation_dim))
-        return self.seq_rep(embedded_tokens=sentence_reps, seq_lengths=seq_lengths)
+        if isinstance(self.seq_rep, BiLSTMDocAttention):
+            return self.seq_rep(embedded_tokens=sentence_reps, seq_lengths=seq_lengths)
+        else:
+            return self.seq_rep(embedded_tokens=sentence_reps)
