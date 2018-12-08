@@ -28,3 +28,6 @@ venv.bak/
 
 # Backups
 *~
+
+# Coverage Files
+.coverage

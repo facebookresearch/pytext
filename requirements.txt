@@ -1,5 +1,4 @@
 click
-coverage
 future
 hypothesis
 joblib

@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-coverage erase
-rm -rf htmlcov
-find pytext tests -name \*test\*.py | sort | uniq | sed 's/\.py//' | tr / . | xargs -n1 -I % sh -c 'echo; echo ---- % --------; coverage run -a -m %;'
-coverage combine
-coverage report
-coverage html
