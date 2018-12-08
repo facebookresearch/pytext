@@ -21,7 +21,7 @@ from pytext.metrics.intent_slot_metrics import (
     compute_top_intent_accuracy,
 )
 
-from .metrics_test_base import MetricsTestBase
+from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 
 
 TEST_EXAMPLES: List[Dict[str, Any]] = [

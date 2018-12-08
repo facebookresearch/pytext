@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-find pytext tests -name \*test\*.py -depth  -exec python3 -m unittest -b {} +
