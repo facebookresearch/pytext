@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-find -sd pytext tests -name \*test\*.py  -exec python3 -m unittest -b {} +
+find -d pytext tests -name \*test\*.py  -exec python3 -m unittest -b {} +
