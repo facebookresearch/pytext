@@ -16,6 +16,7 @@ from pytext.fields import (
     DictFeatureField,
     DocLabelField,
     Field,
+    FloatVectorField,
     PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
@@ -84,6 +85,7 @@ class DocClassificationDataHandler(DataHandler):
                 ModelInput.DICT_FEAT: DictFeatureField,
                 ModelInput.CHAR_FEAT: CharFeatureField,
                 ModelInput.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
+                ModelInput.DENSE_FEAT: FloatVectorField,
             },
         )
         target_fields: Dict[str, Field] = create_label_fields(
@@ -123,6 +125,7 @@ class DocClassificationDataHandler(DataHandler):
             ),
             ModelInput.CHAR_FEAT: features.characters,
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            ModelInput.DENSE_FEAT: row_data.get(ModelInput.DENSE_FEAT),
             # target
             DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
             # extra data
@@ -132,12 +135,16 @@ class DocClassificationDataHandler(DataHandler):
 
     def _train_input_from_batch(self, batch):
         word_feat_input = getattr(batch, ModelInput.WORD_FEAT)
-        return (
+        result = [
             word_feat_input[0],  # token indices
             *(
                 getattr(batch, name, None)
                 for name in self.features
-                if name != ModelInput.WORD_FEAT
+                if name not in {ModelInput.WORD_FEAT, ModelInput.DENSE_FEAT}
             ),
             word_feat_input[1],  # seq lens
-        )
+        ]
+        # Append any inputs to decoder layer at the end. (Only 1 right now)
+        if ModelInput.DENSE_FEAT in self.features:
+            result.append(getattr(batch, ModelInput.DENSE_FEAT))
+        return tuple(result)

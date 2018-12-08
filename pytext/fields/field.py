@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import re
 from typing import Any, Dict, Mapping, Tuple, Union
 
 import torch
@@ -279,6 +280,32 @@ class FloatField(Field):
             dtype=torch.float,
             unk_token=None,
         )
+
+
+class FloatVectorField(Field):
+    def __init__(self, dim=0, **kwargs):
+        super().__init__(
+            use_vocab=False,
+            batch_first=True,
+            tokenize=FloatVectorField._parse_vector,
+            dtype=torch.float,
+            preprocessing=textdata.Pipeline(
+                float
+            ),  # Convert each string to float. float() takes care of whitespace.
+            fix_length=dim,
+            pad_token=0,  # For irregular sized vectors, pad the missing units with 0s.
+        )
+
+    @classmethod
+    def _parse_vector(cls, s):
+        if not s:
+            return None
+        if s[0] == "[":
+            s = s[1:]  # Remove '['
+        if s[-1] == "]":
+            s = s[:-1]  # Remove ']'
+        s_array = re.split("[, ]", s)  # Split on ',' or ' '
+        return [s for s in s_array if s]  # Filter non strings
 
 
 class ActionField(VocabUsingField):

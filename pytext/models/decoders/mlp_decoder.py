@@ -50,8 +50,8 @@ class MLPDecoder(DecoderBase):
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return self.mlp(input)
+    def forward(self, *input: torch.Tensor) -> torch.Tensor:
+        return self.mlp(torch.cat(input, 1))
 
     def get_decoder(self) -> List[nn.Module]:
         """Returns the MLP module that is used as a decoder.

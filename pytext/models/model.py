@@ -9,6 +9,7 @@ import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
+from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.models.module import create_module
@@ -162,11 +163,17 @@ class Model(nn.Module, Component):
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
+        # Find all inputs for the decoder layer
+        decoder_in_dim = representation.representation_dim
+        decoder_input_features_count = 0
+        for decoder_feat in (ModelInput.DENSE_FEAT,):  # Only 1 right now.
+            if getattr(feat_config, decoder_feat, False):
+                decoder_input_features_count += 1
+                decoder_in_dim += getattr(feat_config, ModelInput.DENSE_FEAT).dim
         decoder = create_module(
-            config.decoder,
-            in_dim=representation.representation_dim,
-            out_dim=metadata.target.vocab_size,
+            config.decoder, in_dim=decoder_in_dim, out_dim=metadata.target.vocab_size
         )
+        decoder.num_decoder_modules = decoder_input_features_count
         output_layer = create_module(config.output_layer, metadata.target)
         return cls(embedding, representation, decoder, output_layer)
 
@@ -189,15 +196,21 @@ class Model(nn.Module, Component):
     def forward(self, *inputs) -> List[torch.Tensor]:
         embedding_input = inputs[: self.embedding.num_emb_modules]
         token_emb = self.embedding(*embedding_input)
-        other_input = inputs[self.embedding.num_emb_modules :]
+        other_input = inputs[
+            self.embedding.num_emb_modules : len(inputs)
+            - self.decoder.num_decoder_modules
+        ]
         input_representation = self.representation(token_emb, *other_input)
         if not isinstance(input_representation, (list, tuple)):
             input_representation = [input_representation]
         elif isinstance(input_representation[-1], tuple):
             # since some lstm based representations return states as (h0, c0)
             input_representation = input_representation[:-1]
+        decoder_inputs: tuple = ()
+        if self.decoder.num_decoder_modules:
+            decoder_inputs = inputs[-self.decoder.num_decoder_modules :]
         return self.decoder(
-            *input_representation
+            *input_representation, *decoder_inputs
         )  # returned Tensor's dim = (batch_size, num_classes)
 
     def train(self, mode=True):
