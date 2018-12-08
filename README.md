@@ -22,7 +22,7 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 # Installing PyText
 
 ## WARNING: PyText currently only supports Python 3.6. Support for 3.7 is coming soon!
-
+*To get started on a Cloud VM, checkout [our guide](CLOUDS.md)*
 To get started, run the following commands in a terminal:
 
 ```
@@ -50,7 +50,7 @@ To resume development in an already checked-out repo:
 cd pytext
 source activation_venv
 ```
-
+do
 To exit the virtual environment:
 
 ```
@@ -66,7 +66,7 @@ For additional information, please read INSTALL.md
 For this first example, we'll train a CNN-based text-classifier that classifies text utterances, using the examples in `tests/data/train_data_tiny.tsv`.
 
 ```
-python3 pytext/main.py train < demo/configs/docnn.json
+pytext train < demo/configs/docnn.json
 ```
 
 By default, the model is created in `/tmp/model.pt`
