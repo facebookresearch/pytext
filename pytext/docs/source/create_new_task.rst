@@ -236,7 +236,60 @@ setting the value if the corresponding config::
 5. Write MetricReporter
 --------------------------
 
-Content goes here. Content goes here. Content goes here. Content goes here.
+Next we need to write a MetricReporter to calculate metrics and report model training/test
+results.::
+
+	class WordTaggingMetricReporter(MetricReporter):
+	    def __init__(self, channels, label_names, pad_index):
+	        super().__init__(channels)
+	        self.label_names = label_names
+	        self.pad_index = pad_index
+
+	    def calculate_metric(self):
+	        return compute_classification_metrics(
+	            list(
+	                itertools.chain.from_iterable(
+	                    (
+	                        LabelPrediction(s, p, e)
+	                        for s, p, e in zip(scores, pred, expect)
+	                        if e != self.pad_index
+	                    )
+	                    for scores, pred, expect in zip(
+	                        self.all_scores, self.all_preds, self.all_targets
+	                    )
+	                )
+	            ),
+	            self.label_names,
+	        )
+
+	    @staticmethod
+	    def get_model_select_metric(metrics):
+	        return metrics.accuracy
+
+The MetricReporter base class already aggregates all the output from Trainer,
+including predictions, scores, targets. The default aggregation behavior is
+concatenating the tensors from each batch and converting it to list. If you
+want different aggregation behavior, you can override it with your own
+implementation. Here we use a ``compute_classification_metrics`` function provided in ``pytext.metrics`` Module to get the precision/recall/f1 score.
+PyText is shipped with a bunch of common metric calculation methods, but you
+can always use methods from other open source libraries, such as sklearn.
+
+Notice we also have to override the ``get_model_select_metric`` method to tell
+Trainer how to select best model.
+
+In the ``__init__(...)`` function, we can pass a list of *Channel* to report
+the results to any output stream. We use a simple ConsoleChannel that prints
+everything to stdout and a TensorBoardChannel that output metrics to
+TensorBoard for our task::
+
+	class WordTaggingTask(Task):
+	    # ... rest of the code
+	    def create_metric_reporter(self):
+	        return WordTaggingMetricReporter(
+	            channels=[ConsoleChannel(), TensorBoardChannel()],
+	            label_names=self.metadata.target.vocab.itos, # metadata is processed in DataHandler
+	            pad_index=self.metadata.target.pad_index,
+	        )
 
 6. Write Exporter
 --------------------------
@@ -246,4 +299,9 @@ Content goes here. Content goes here. Content goes here. Content goes here.
 7. Generate sample config and run the task
 --------------------------
 
+TBD
 
+8 Write predict function
+--------------------------
+
+TBD
