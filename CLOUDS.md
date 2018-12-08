@@ -18,7 +18,7 @@ This guide uses [Google's Deep Learning VM](https://console.cloud.google.com/mar
   * For Framework, select one of the Base images, rather than one with a framework pre-installed. Note which version of CUDA you choose for later.
   * When you're ready, click "Deploy"
   * When your VM is done loading, you can SSH into it from the GCE Console
-* Install Python 3.6 (based on [this RoseHosting blog post](https://www.rosehosting.com/blog/how-to-install-python-3-6-4-on-debian-9/):
+* Install Python 3.6 (based on [this RoseHosting blog post](https://www.rosehosting.com/blog/how-to-install-python-3-6-4-on-debian-9/)):
   * `$ sudo nano /etc/apt/sources.list`
   * add `deb http://ftp.de.debian.org/debian testing main` to the list
   * `$ echo 'APT::Default-Release "stable";' | sudo tee -a /etc/apt/apt.conf.d/00local`
