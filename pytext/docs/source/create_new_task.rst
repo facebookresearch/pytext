@@ -55,7 +55,87 @@ create the first model layer: the **Embedding** layer
 
 3. Write DataHandler
 --------------------------
-TBD
+PyText is using the open source library `TorchText <https://github.com/pytorch/text>`_
+for part of data preprocessing, including padding, numericalization and batching.
+On top of TorchText, PyText incorporates a Featurizer concept, which provides data
+process steps that are shared in both training and inference time. Tokenization is
+a typical step in Featurizer. So the general pipeline of data handler is:
+
+  1. Read data from file into a list of raw data examples
+  2. Convert each row of row data to a TorchText Example.
+  3. Generate a TorchText.Dataset by using the list of Example from step 2 and a
+  list of predefined TorchText.Field
+  4 Return a BatchIterator which will generate a tuple of (input, target, context)
+  tensors for each iteration.
+
+The base DataHandler class already covers most of the content of these steps, what
+we have to do is:
+
+  1. Define the fields in from_config class method of our sub class, from_config
+  is a factory method to create component using config::
+
+	@classmethod
+	def from_config(cls, config: Config, model_input_config, target_config, **kwargs):
+	    model_input_fields: Dict[str, Field] = create_fields(
+	      model_input_config,
+	        {
+	            ModelInput.WORD_FEAT: TextFeatureField,
+	            ModelInput.DICT_FEAT: DictFeatureField,
+	            ModelInput.CHAR_FEAT: CharFeatureField,
+	        },
+	    )
+	    target_fields: Dict[str, Field] = {WordLabelConfig._name: WordLabelField.from_config(target_config)}
+	    extra_fields: Dict[str, Field] = {ExtraField.TOKEN_RANGE: RawField()}
+	    kwargs.update(config.items())
+	    return cls(
+	        raw_columns=config.columns_to_read,
+	        targets=target_fields,
+	        features=model_input_fields,
+	        extra_fields=extra_fields,
+	        **kwargs,
+	    )
+
+  We created several feature Fields by using the create_fields function which automatically
+  aligns Field class/config and creates Field using it's from_config function. Also
+  created a single WordLabelField and an extra field token_range. Extra fields will
+  process and pass along data as batch context, which will not directly used by model,
+  in this case it will be used later to merge predicted word labels into slots.
+
+  2. Override the preprocess_row row function to convert a row of raw data to TorchText.Example::
+
+	def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
+	      features = self.featurizer.featurize(
+	          InputRecord(
+	              raw_text=row_data.get(RawData.TEXT, ""),
+	              raw_gazetteer_feats=row_data.get(RawData.DICT_FEAT, ""),
+	          )
+	      )
+	      res = {
+	          # features
+	          ModelInput.WORD_FEAT: features.tokens,
+	          ModelInput.DICT_FEAT: (
+	              features.gazetteer_feats,
+	              features.gazetteer_feat_weights,
+	              features.gazetteer_feat_lengths,
+	          ),
+	          ModelInput.CHAR_FEAT: features.characters,
+	          # target
+	          [Target.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
+	              features.token_ranges,
+	              row_data[RawData.WORD_LABEL],
+	              self.targets[WordLabelConfig._name].use_bio_labels,
+	          )
+	          # extra data
+	          BatchContext.TOKEN_RANGE: features.token_ranges,
+	      }
+	      return res
+
+  It basically invokes Featurizer and maps the data to TorchText Field names to
+  create TorchText Dataset later. Please notice the ``data_utils.align_slot_labels``
+  function here, it breaks the slot label that spans multiple words into labels
+  for each word, the function requires two inputs, word labels and token ranges.
+  We're doing the processing here instead of in TorchText.Field because TorchText
+  assumes a 1:1 mapping between raw input and Field.
 
 4. Write Model
 --------------------------
