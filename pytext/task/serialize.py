@@ -18,6 +18,9 @@ MODEL_STATE = "model_state"
 
 
 def save(config: PyTextConfig, model: Model, meta: CommonMetadata) -> None:
+    """
+    Save a task, will save the original config, model state and metadata
+    """
     save_path = config.save_snapshot_path
     print(f"Saving pytorch model to: {save_path}")
     model.save_modules(base_path=config.modules_save_dir)
@@ -32,6 +35,10 @@ def save(config: PyTextConfig, model: Model, meta: CommonMetadata) -> None:
 
 
 def load(load_path: str):
+    """
+    Load task, will construct the task using the saved config then load metadata
+    and model state.
+    """
     if not (load_path and os.path.isfile(load_path)):
         raise ValueError(f"Invalid snapshot path{load_path}")
     print(f"Loading model from {load_path}...")
