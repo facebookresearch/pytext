@@ -1,4 +1,4 @@
-Create A New Task
+Tutorial: Create A New Task
 ======================================================
 
 PyText uses a Task class as a central place to define components for data processing,
@@ -7,7 +7,7 @@ to replace some components in existing Task classes by just inheriting from the 
 and drop in your own components. Let's use WordTagging Task as an example to demonstrate
 how to create a new task and make it end to end work.
 
-1. Define the task class
+1. Define the Task Class
 -------------------------
 
 First let's write the WordTaggingTask class, usually features, targets, data_handler,
@@ -285,17 +285,84 @@ stdout and a TensorBoardChannel that output metrics to TensorBoard for our task:
 	            pad_index=self.metadata.target.pad_index,
 	        )
 
-6. Write Exporter
+6. Write Predict Function
 --------------------------
 
-Content goes here. Content goes here. Content goes here. Content goes here.
+With the code we wrote above, we are able to train and test the model. Next, we
+need to add one more function in our ``WordTaggingTask`` to format prediction results.
+The base Task class comes with a generic batch predict function that gets predictions
+and scores from model and restores the order of input examples. By default it only returns
+the raw numeric predictions, so we will override the format_prediction function to make it
+more human readable::
 
-7. Generate sample config and run the task
+	@classmethod
+	def format_prediction(cls, predictions, scores, context, target_meta):
+	    label_names = target_meta.vocab.itos
+	    for prediction, score, token_ranges in zip(
+	        predictions, scores, context[BatchContext.TOKEN_RANGE]
+	    ):
+	        yield [
+	            {
+	                "prediction": label_names[word_pred.data],
+	                "score": {n: s for n, s in zip(label_names, word_score.tolist())},
+	                "token_range": token_range,
+	            }
+	            for word_pred, word_score, token_range in zip(
+	                prediction, score, token_ranges
+	            )
+	        ]
+
+Notice the ``context[BatchContext.TOKEN_RANGE]`` we're using here, that's what we
+created earlier in the DataHandler as "extra field".
+
+7. Write Exporter
 --------------------------
 
-TBD
+The predict function is only used when experimenting with the model in PyTorch. If we wish to run our model in Caffe2, in order to get higher
+performance in production, we have to create an  Exporter. Exporters work
+by first exporting PyTorch model to Caffe2 using
+`ONNX <https://pytorch.org/docs/stable/onnx.html>`_,
+which does a forward run on our PyTorch model to convert PyTorch operators
+to Caffe2 operators. After that, we prepend/append additional Caffe2 operators
+to the exported Caffe2 net. The default behavior in the base Exporter class
+is prepending a string to vector operator for vocabulary lookup and
+appending a operator from model's output layer to format prediction results. In this exercise, that is all we need, so we don't have to create a new
+Exporter here.
+All that we need to do is implement the ``export_to_caffe2`` function in the output layer we created in
+the previous step::
 
-8 Write predict function
+	Class WordTaggingOutputLayer(OutputLayerBase):
+	  def export_to_caffe2(
+	      self, workspace, init_net, predict_net, model_out, output_name
+	  ) -> List[core.BlobReference]:
+	      scores = predict_net.Log(predict_net.Softmax(output_name, axis=2))
+	      label_scores = predict_net.Split(scores, self.target_names, axis=2)
+	      return [
+	          predict_net.Copy(label_score, "{}:{}".format(output_name, name))
+	          for name, label_score in zip(self.target_names, label_scores)
+	      ]
+
+
+8. Generate Sample Config and Run the Task
 --------------------------
 
-TBD
+Now we have a fully functional Task class. In order to get started with
+training, we can generate a default json config for it by using the pytext
+cli tool::
+
+    > pytext gen_default_config WordTaggingTask > task_config.json
+
+Tweak the config as you like, and train the model via::
+
+    > pytext train < task_config.json
+
+Run predictions using the trained PyTorch model::
+
+    > pytext predict_py --model-file="YOUR_PY_MODEL_FILE" < test.json
+
+Run predictions using the exported Caffe2 model::
+
+    > pytext --config-file="task_config.json" predict --exported-model="YOUR_C2_MODEL_FILE" < test.json
+
+Please refer to other tutorials in :doc:`index` for end to end working examples of training/predicting.
+The full code of this example is also available in ``pytext.task``
