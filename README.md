@@ -38,6 +38,11 @@ Once that is installed, you can run the unit tests. We reccomend using pytest as
 pip install -U pytest
 pytest
 ```
+If you want to measure test coverage, we reccomend `pytest-cov`
+```
+pip install -U pytest-cov
+pytest --cov=pytext
+```
 
 To resume development in an already checked-out repo:
 
