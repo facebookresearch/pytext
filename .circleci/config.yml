@@ -5,7 +5,19 @@ jobs:
       - image: circleci/python:3.6
     steps:
       - checkout
-      - run: source .circleci/setup_circleimg.sh && pytest && ./run_coverage
+      - run: 
+          name: setup
+          command: source .circleci/setup_circleimg.sh 
+      - run:
+          name: run tests
+          command: pytest --junitxml=test-reports/junit.xml
+      - store_test_results:
+          path: test-reports
+      - store_artifacts:
+          path: test-reports      
+      - run:
+          name: collect coverage
+          command: ./run_coverage
       - store_artifacts:
           path: htmlcov
           destination: coverage
