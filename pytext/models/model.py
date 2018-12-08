@@ -9,6 +9,7 @@ import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
+from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.models.module import create_module
@@ -153,6 +154,19 @@ class Model(nn.Module, Component):
         return emb_module
 
     @classmethod
+    def create_decoder(cls, feat_config, module_config, in_dim, out_dim):
+        input_feat = 0
+        decoder_input_len = 0
+        for decoder_feat in (ModelInput.DENSE_FEAT,):  # Only 1 right now.
+            if getattr(feat_config, decoder_feat, False):
+                input_feat += 1
+                decoder_input_len += getattr(feat_config, ModelInput.DENSE_FEAT).dim
+        in_dim += decoder_input_len  # Make room for direct features.
+        decoder_layer = create_module(module_config, in_dim=in_dim, out_dim=out_dim)
+        decoder_layer.num_decoder_modules = input_feat
+        return decoder_layer
+
+    @classmethod
     def from_config(
         cls, config: Config, feat_config: FeatureConfig, metadata: CommonMetadata
     ):
@@ -162,7 +176,8 @@ class Model(nn.Module, Component):
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
-        decoder = create_module(
+        decoder = cls.create_decoder(
+            feat_config,
             config.decoder,
             in_dim=representation.representation_dim,
             out_dim=metadata.target.vocab_size,
@@ -185,20 +200,6 @@ class Model(nn.Module, Component):
         self.decoder = decoder
         self.output_layer = output_layer
         self.stage = stage
-
-    def forward(self, *inputs) -> List[torch.Tensor]:
-        embedding_input = inputs[: self.embedding.num_emb_modules]
-        token_emb = self.embedding(*embedding_input)
-        other_input = inputs[self.embedding.num_emb_modules :]
-        input_representation = self.representation(token_emb, *other_input)
-        if not isinstance(input_representation, (list, tuple)):
-            input_representation = [input_representation]
-        elif isinstance(input_representation[-1], tuple):
-            # since some lstm based representations return states as (h0, c0)
-            input_representation = input_representation[:-1]
-        return self.decoder(
-            *input_representation
-        )  # returned Tensor's dim = (batch_size, num_classes)
 
     def train(self, mode=True):
         """Override to explicitly maintain the stage (train, eval, test)."""
@@ -233,6 +234,26 @@ class Model(nn.Module, Component):
                     path = os.path.join(base_path, path)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
                 torch.save(module.state_dict(), path)
+
+    def forward(self, *inputs) -> List[torch.Tensor]:
+        embedding_input = inputs[: self.embedding.num_emb_modules]
+        token_emb = self.embedding(*embedding_input)
+        other_input = inputs[
+            self.embedding.num_emb_modules : len(inputs)
+            - self.decoder.num_decoder_modules
+        ]
+        input_representation = self.representation(token_emb, *other_input)
+        if not isinstance(input_representation, (list, tuple)):
+            input_representation = [input_representation]
+        elif isinstance(input_representation[-1], tuple):
+            # since some lstm based representations return states as (h0, c0)
+            input_representation = input_representation[:-1]
+        decoder_inputs: tuple = ()
+        if self.decoder.num_decoder_modules:
+            decoder_inputs = inputs[-self.decoder.num_decoder_modules :]
+        return self.decoder(
+            *input_representation, *decoder_inputs
+        )  # returned Tensor's dim = (batch_size, num_classes)
 
     def prepare_for_onnx_export_(self, **kwargs):
         """Make model exportable via ONNX trace."""

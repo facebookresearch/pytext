@@ -7,6 +7,7 @@ from .field_config import (
     CharFeatConfig,
     DictFeatConfig,
     DocLabelConfig,
+    FloatVectorConfig,
     PretrainedModelEmbeddingConfig,
     WordFeatConfig,
 )
@@ -18,6 +19,7 @@ class ModelInputConfig(ModuleConfig):
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
+    dense_feat: Optional[FloatVectorConfig] = None
 
 
 TargetConfig = DocLabelConfig
@@ -29,6 +31,7 @@ class ModelInput:
     CHAR_FEAT = "char_feat"
     PRETRAINED_MODEL_EMBEDDING = "pretrained_model_embedding"
     SEQ_LENS = "seq_lens"
+    DENSE_FEAT = "dense_feat"
 
 
 class ExtraField:

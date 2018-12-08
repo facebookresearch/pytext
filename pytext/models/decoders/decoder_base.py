@@ -21,6 +21,7 @@ class DecoderBase(Module):
         super().__init__(config)
         self.input_dim = 0
         self.target_dim = 0
+        self.num_decoder_modules = 0
 
     def forward(self, *input):
         raise NotImplementedError()

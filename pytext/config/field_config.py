@@ -51,6 +51,10 @@ class PretrainedModelEmbeddingConfig(ConfigBase):
     model_paths: Optional[Dict[str, str]] = None
 
 
+class FloatVectorConfig(ConfigBase):
+    dim: int = 0  # Dimension of the vector in the dataset.
+
+
 class FeatureConfig(ModuleConfig):  # type: ignore
     word_feat: WordFeatConfig = WordFeatConfig()
     seq_word_feat: Optional[WordFeatConfig] = None
