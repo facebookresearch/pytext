@@ -1,4 +1,4 @@
-Tutorial: Hierarchical intent and slot filling.
+Hierarchical intent and slot filling.
 ===============================================
 
 In this tutorial, we will train a semantic parser for task oriented dialog by modeling hierarchical intent and slots (`Gupta et al.`_, Semantic Parsing for Task Oriented Dialog using Hierarchical Representations, EMNLP 2018). The model we will use is Recurrent Neural Network Grammar (`Dyer et al.`_, Recurrent Neural Network Grammar, NAACL 2016) or RNNG for this. RNNG is a neural constituency parsing algorithm that explicitly models compositional structure of a sentence. It is able to learn about hierarchical relationship among the words and phrases in a given sentence thereby learning the underlying tree structure. The paper proposes generative as well as discriminative approaches. In this tutorial, we have implemented the discriminative approach.
