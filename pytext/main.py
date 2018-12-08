@@ -12,6 +12,7 @@ import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.serialize import config_from_json, config_to_json
+from pytext.task import load
 from pytext.utils.documentation_helper import (
     ROOT_CONFIG,
     find_config_class,
@@ -202,11 +203,22 @@ def predict(context, exported_model):
 @click.option("--model-file", help="where to load the pytorch model")
 @click.pass_context
 def predict_py(context, model_file):
-    """Start a repl executing examples against a PyTorch model."""
-    print("Reading example JSON from stdin")
-    examples = [json.loads(line) for line in sys.stdin.readlines()]
-    result = batch_predict(model_file, examples)
-    pprint.pprint(result)
+    """
+    Start a repl executing examples against a PyTorch model.
+    Example is in json format with names being the same with column_to_read
+    in model training config
+    """
+    task, train_config = load(model_file)
+    while True:
+        try:
+            line = input(
+                "please input a json example, the names should be the same with "
+                + "column_to_read in model training config: \n"
+            )
+            if line:
+                pprint.pprint(task.predict([json.loads(line)])[0])
+        except EOFError:
+            break
 
 
 if __name__ == "__main__":

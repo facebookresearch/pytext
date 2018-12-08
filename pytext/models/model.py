@@ -221,7 +221,7 @@ class Model(nn.Module, Component):
     def get_loss(self, logit, target, context):
         return self.output_layer.get_loss(logit, target, context)
 
-    def get_pred(self, logit, target, context, *args):
+    def get_pred(self, logit, target=None, context=None, *args):
         return self.output_layer.get_pred(logit, target, context)
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
