@@ -1,7 +1,7 @@
 Tutorial: Hierarchical intent and slot filling.
 ===============================================
 
-In this tutorial we will train a hierarchical intent and slot filling model for task-oriented dialogue system. The model we will use is Recurrent Neural Network Grammar (`Dyer et al.`_) or RNNG for this. RNNG is a neural constituency parsing algorithm that explicitly models compositional structure of a sentence. It is able to learn about hierarchical relationship among the words and phrases in a given sentence thereby learning the underlying tree structure. The paper proposes generative as well as discriminative approaches. In PyText we have implemented the discriminative approach.
+In this tutorial, we will train a semantic parser for task oriented dialog by modeling hierarchical intent and slots (`Gupta et al.`_, Semantic Parsing for Task Oriented Dialog using Hierarchical Representations, EMNLP 2018). The model we will use is Recurrent Neural Network Grammar (`Dyer et al.`_, Recurrent Neural Network Grammar, NAACL 2016) or RNNG for this. RNNG is a neural constituency parsing algorithm that explicitly models compositional structure of a sentence. It is able to learn about hierarchical relationship among the words and phrases in a given sentence thereby learning the underlying tree structure. The paper proposes generative as well as discriminative approaches. In this tutorial, we have implemented the discriminative approach.
 
 This tutorial covers:
 
@@ -36,7 +36,12 @@ For this tutorial, please change the following in the file.
 Train the model using the command below
 ::
 	$ cd <pytext_root_directory>
-	$ pytext train < pytext/oss_root/demo/configs/rnng.json
+	$ pytext train < demo/configs/rnng.json
+
+The output will look like:
+::
+	Merged Intent and Slot Metrics
+	P = 24.03 R = 31.90, F1 = 27.41.
 
 
 4. Test the model interactively against input utterances.
@@ -44,8 +49,7 @@ Train the model using the command below
 
 Load the model using the command below
 ::
-	$ pytext predict_py_interactive < pytext/oss_root/demo/configs/rnng.json
-::
+	$ pytext predict-py --model-file=/tmp/model.pt
 
 This will give you REPL prompt. You can enter an utterance to get back the model's prediction repeatedly. Once done press Ctrl+C.
 
