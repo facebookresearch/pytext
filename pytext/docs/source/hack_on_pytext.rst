@@ -10,9 +10,10 @@ To get started, run the following commands in a terminal::
 		(pytext) $ ./install_deps
 
 Next Install the PyTorch using Pip using the instructions on https://pytorch.org, making sure to match your OS and GPU situation
-Once you're done with that, you can run the tests with::
-  
-		(pytext) $ ./run_tests
+Once you're done with that, you can run the tests. We recommend using pytest::
+     
+		(pytext) $ pip install -U pytest
+		(pytext) $ pytest
 
 To resume development in an already checked-out repo::
 

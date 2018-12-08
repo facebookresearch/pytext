@@ -1,2 +1,0 @@
-#!/usr/bin/env bash
-find pytext tests -name \*test\*.py | sort | uniq | sed 's/\.py//' | tr / . | xargs -n1 -I % sh -c 'echo; echo ---- % --------; python3 -m unittest -v %;'

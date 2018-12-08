@@ -11,8 +11,7 @@ from pytext.metrics import (
     compute_classification_metrics,
     compute_soft_metrics,
 )
-
-from .metrics_test_base import MetricsTestBase
+from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 
 
 LABEL_NAMES1 = ["label1", "label2", "label3"]
