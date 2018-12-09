@@ -1,4 +1,4 @@
-Tutorial: Multitask training with disjoint datasets
+Multitask training with disjoint datasets
 ===============================================
 
 In this tutorial will jointly train a classification task with a language modeling task in a multitask setting. The models will share the embedding and representation layers.
