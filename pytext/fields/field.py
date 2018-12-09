@@ -317,4 +317,5 @@ class ActionField(VocabUsingField):
             tokenize=data_utils.no_tokenize,
             unk_token=None,  # Don't include UNK in the list of labels
             pad_token=None,  # Don't include PAD in the list of labels
+            vocab_from_all_data=True,  # Actions must be built from all data.
         )
