@@ -17,7 +17,7 @@ TODO
 For ubuntu/debian distros, you might need to run the following command:
 
 ```
-sudo apt-get install protobuf-compiler libprotoc-dev python3-venv
+sudo apt-get install protobuf-compiler libprotoc-dev
 ```
 
 For rpm-based distros, you might need to run the following command:
