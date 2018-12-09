@@ -36,7 +36,7 @@ Remove empty lines from WikiText:
 2. Training the base model
 -----------------------------
 
-The base model is a simple document classification model, the config for which you can find under ``<pytext_root_directory>/demo/configs/sst2.json``. If you haven't set up PyText, please follow :doc:`getting_started`.
+The base model is a simple document classification model, the config for which you can find under ``<pytext_root_directory>/demo/configs/sst2.json``. If you haven't set up PyText, please follow :doc:`installation`.
 For this tutorial, please change the following in the file.
 
 - Set ``train_path`` to ``base_dir/SST-2/train.tsv``

@@ -63,7 +63,6 @@ Load the model using the command below
 	$ pytext predict-py --model-file=/tmp/model.pt
 	"please input a json example, the names should be the same with column_to_read in model training config:
 
-
 This will give you REPL prompt. You can enter an utterance to get back the model's prediction repeatedly. You should enter in a json format shown below. Once done press Ctrl+D.
 ::
 	{"text": "order coffee from starbucks"}
@@ -71,16 +70,17 @@ This will give you REPL prompt. You can enter an utterance to get back the model
 You should see an output like:
 ::
 	[{'prediction': [7, 0, 5, 0, 1, 0, 3, 0, 1, 1],
-	'score': [0.44425372408062447,
-						0.8018286800064633,
-						0.6880680051949267,
-						0.9891564979506277,
-						0.9999506231665385,
-						0.9992705616574005,
-						0.34512090135492923,
-						0.9999979545618913,
-						0.9999998668826438,
-						0.9999998686418744]}]
+	'score': [
+		0.44425372408062447,
+		0.8018286800064633,
+		0.6880680051949267,
+		0.9891564979506277,
+		0.9999506231665385,
+		0.9992705616574005,
+		0.34512090135492923,
+		0.9999979545618913,
+		0.9999998668826438,
+		0.9999998686418744]}]
 
 You can keep entering utterances to see the output.
 
