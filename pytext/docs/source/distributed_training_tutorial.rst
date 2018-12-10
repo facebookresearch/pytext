@@ -52,7 +52,7 @@ this as ``base_dir`` in the next section.
 
 Prepare the configuration file for training. A sample config file can be found in your PyText
 repository at ``demo/configs/distributed_docnn.json``. If you haven't set up PyText,
-please follow :doc:`getting_started`.
+please follow :doc:`installation`.
 
 Here are two parameters that used for distributed training:
 
