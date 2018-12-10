@@ -47,13 +47,21 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
   :maxdepth: 1
   :caption: Tutorials
 
-  hierarchical_intent_slot_tutorial
+  train_your_first_model
+  execute_your_first_model
   atis_tutorial
+  pytext_models_in_your_app
+  serving_models_in_production
+
+.. toctree::
+  :maxdepth: 1
+  :caption: Advanced Tutorials
+
+  hierarchical_intent_slot_tutorial
   disjoint_multitask_tutorial
   distributed_training_tutorial
-  serving_models_in_production
   create_new_task
-  pytext_models_in_your_app
+
 
 .. toctree::
   :maxdepth: 3
