@@ -395,7 +395,7 @@ class DataHandler(Component):
                         min_freq=feat.min_freq,
                     )
                 else:
-                    print(f"Vocab for feature {name} has been built. Not building.")
+                    print(f"Vocab for feature {name} has been built. Not rebuilding.")
                 print("{} field's vocabulary size is {}".format(name, len(feat.vocab)))
 
                 # Initialize pretrained embedding weights.
@@ -428,13 +428,16 @@ class DataHandler(Component):
             # appear in train and eval but test can have B-[Label] and I-[Label]
 
             if label.use_vocab:
-                print("Building vocab for label {}".format(name))
-                label.build_vocab(train_data, eval_data, test_data)
-                print(
-                    "{} field's vocabulary size is {}".format(
-                        name, len(label.vocab.itos)
+                if not hasattr(label, "vocab"):  # Don't rebuild vocab
+                    print("Building vocab for label {}".format(name))
+                    label.build_vocab(train_data, eval_data, test_data)
+                    print(
+                        "{} field's vocabulary size is {}".format(
+                            name, len(label.vocab.itos)
+                        )
                     )
-                )
+                else:
+                    print(f"Vocab for label {name} has been built. Not rebuilding.")
 
         self.metadata.target = [field.get_meta() for field in self.labels.values()]
         if len(self.metadata.target) == 1:

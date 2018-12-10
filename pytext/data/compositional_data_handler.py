@@ -180,8 +180,13 @@ class CompositionalDataHandler(DataHandler):
                     "\nTokens from Featurizer and Seqlogical format are not same "
                     + f'for the utterance "{utterance}"'
                 )
-                print(f"Tokens from Featurizer: {features.tokens}")
-                print(f"Tokens from Seqlogical format: {tokens_from_seqlogical}")
+                print(
+                    f"{len(features.tokens)} tokens from Featurizer: {features.tokens}"
+                )
+                print(
+                    f"{len(tokens_from_seqlogical)} tokens from Seqlogical format: "
+                    + f"{tokens_from_seqlogical}"
+                )
                 return {}
 
         return {
