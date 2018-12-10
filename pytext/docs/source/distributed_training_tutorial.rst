@@ -1,4 +1,4 @@
-Data Parallel Distributed Training.
+Data Parallel Distributed Training
 ===============================================
 
 Distributed training enables people to easily parallelize computations across processes

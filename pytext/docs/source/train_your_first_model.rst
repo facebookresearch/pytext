@@ -31,13 +31,15 @@ You can use PyText as a library either in your own scripts or in a Jupyter noteb
 Right away you're presented with all of the most important parts of using PyText.
 
 Background
-==========
+----------
+
 Fundamentally, machine learning is learning a function. Your training, evaluation, and test datasets are examples of inputs and their corresponding outputs showing how that function behaves. A **model** is an implementation of that function. To **train** a **model** means to make a statistical machine-learned implementation of that function that using the training data examples as a rubrik. To **predict** using a **model** means to take a trained implementation and apply it to new inputs, and predict what the result of the idealized function would be on those inputs.
 
 More examples to train on generally corresponds to more accurate and better-generalizing models. This can mean thousands to millions or billions of examples depending on the task (function) you're trying to learn.
 
 PyText Configs
-==============
+---------------
+
 Creating a state-of-the-art model is mainly about configuration. Picking your training dataset, your model parameters, your training parameters, and so on, is a central part of building high-quality text models.
 
 Configuration is a central part of every component within PyText, and the config system that we built allows for all of these configurations to be serialized and deserialized to JSON.
@@ -45,7 +47,8 @@ Configuration is a central part of every component within PyText, and the config
 There are a number of example configurations that can train simple models provided with PyText, and we have a system for automatically documenting the default configurations and possible configuration values.
 
 PyText Modes
-============
+-------------
+
 - **train**
   - Using a configuration, initialize a model and train it. Save the best model found as a model snapshot. This snapshot is something that can be loaded back in to PyText and trained more, tested, or exported.
 - **test**
@@ -56,7 +59,8 @@ PyText Modes
   - This is an example of how your deployed code should interact with a model. In this case this is a simple REPL that will let you execute examples against your exported pytorch caffe2 model and get a tangible sense for how your model behaves.
 
 Training your first model
-=========================
+-------------------------
+
 To get our feet wet, let's run one of the demo configurations included with PyText.::
 
   (pytext) $ cat demo/configs/docnn.json
@@ -87,7 +91,7 @@ Let's try training the model!
 
   (pytext) $ pytext train < demo/configs/docnn.json
   ... [snip]
-    
+
   Stage.TEST
   loss: 2.072155
   Accuracy: 20.00
