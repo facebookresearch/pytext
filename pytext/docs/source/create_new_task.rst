@@ -1,4 +1,4 @@
-Tutorial: Create A New Task
+Create A New Task
 ======================================================
 
 PyText uses a Task class as a central place to define components for data processing,
