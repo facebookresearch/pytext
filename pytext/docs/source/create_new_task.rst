@@ -1,18 +1,17 @@
-Create A New Task
+Creating A New Task
 ======================================================
 
-PyText uses a Task class as a central place to define components for data processing,
-model training, metric reporting, etc, and wire up these components. It's very easy
-to replace some components in existing Task classes by just inheriting from the Task
-and drop in your own components. Let's use WordTagging Task as an example to demonstrate
-how to create a new task and make it end to end work.
+PyText uses a :class:`~Task` class as a central place to define components for data processing,
+model training, metric reporting etc. and wire up those components. One can easily inherit from
+an existing task and replace some (or all) components.
 
-1. Define the Task Class
+In this tutorial, we'll write a :class:`~WordTaggingTask`, and its associated components.
+
+1. Define the :class:`~Task`
 -------------------------
 
-First let's write the WordTaggingTask class, usually features, targets, data_handler,
-model and metric_reporter are the parts subject to change, and we can reuse the other
-general components, like the trainer, optimizer, exporter::
+Usually features, targets, data_handler, model and metric_reporter are the components
+subject to change, and we can reuse the other more general ones e.g trainer, optimizer and exporter ::
 
 	from word_tagging import ModelInputConfig, TargetConfig
 
@@ -28,17 +27,16 @@ general components, like the trainer, optimizer, exporter::
 	    metric_reporter: WordTaggingMetricReporter.Config = WordTaggingMetricReporter.Config()
 	    exporter: Optional[TextModelExporter.Config] = TextModelExporter.Config()
 
-Every Task class has a embedded Config class, which defines the config of it's
-components in a nested way. The base Task class has a from_config method that will
-create every components and wire them up.
+Every :class:`~Task` has an embedded :class:`~Config`, which defines the config of it's
+components in a nested way. The base :class:`~Task` has a `from_config` method that creates every component and wires them up.
 
-2. Define ModelInput and Target
+2. Define :class:`~ModelInput` and :class:`~Target`
 --------------------------
 
-The first two configs in the Config class are model inputs(features) and targets
-(expected outputs), which basically define the interface between data processing
-and model training.::
-	# word_tagging.py file
+The first two configs in the :class:`~Config` are model inputs (features) and targets
+(expected outputs), which define the interface between data processing and model training. ::
+
+	# word_tagging.py
 
 	class ModelInputConfig(ModuleConfig):
 	  word_feat: WordFeatConfig = WordFeatConfig()
@@ -49,30 +47,29 @@ and model training.::
 	  # Transform sequence labels to BIO format
 	  use_bio_labels: bool = False
 
-The ModelInputConfig defines all the possible input to our model, and will be used
-in DataHandler class to create Field to process raw data and also in Model class to
-create the first model layer: the **Embedding** layer
+:class:`~ModelInputConfig` defines all the possible input to our model, and will be used
+in :class:`~DataHandler` to create TorchText :class:`~Field` to process raw data and also
+in :class:`~Model` to create the first model layer: the **Embedding**.
 
-3. Write DataHandler
+3. Implement :class:`~DataHandler`
 --------------------------
-PyText is using the open source library `TorchText <https://github.com/pytorch/text>`_
+
+PyText uses the open source library `TorchText <https://github.com/pytorch/text>`_
 for part of data preprocessing, including padding, numericalization and batching.
-On top of TorchText, PyText incorporates a Featurizer concept, which provides data
-process steps that are shared in both training and inference time. Tokenization is
-a typical step in Featurizer. So the general pipeline of data handler is:
+On top of TorchText, PyText incorporates a :class:`~Featurizer`, which provides data
+processing steps that are shared in both training and inference time. Tokenization is
+a typical step in Featurizer.
 
-  1. Read data from file into a list of raw data examples
-  2. Convert each row of row data to a TorchText Example.
-  3. Generate a TorchText.Dataset by using the list of Example from step 2 and a
-  list of predefined TorchText.Field
-  4 Return a BatchIterator which will generate a tuple of (input, target, context)
-  tensors for each iteration.
+The general pipeline of a data handler is:
 
-The base DataHandler class already covers most of the content of these steps, what
-we have to do is:
+  1. Read data from a file into a list of raw data examples.
+  2. Convert each row of row data to a TorchText :class:`~Example`.
+  3. Generate a TorchText :class:`~Dataset` from the examples and a list of predefined TorchText :class:`~Field`
+  4. Return a :class:`~BatchIterator` which will generate a tuple of (input, target, context) tensors for each iteration.
 
-  1. Define the fields in from_config class method of our sub class, from_config
-  is a factory method to create component using config::
+The base :class:`~DataHandler` already implements most of these steps, all we need to do is:
+
+  1. Define the fields in `from_config` classmethod, a factory method to create a component from a config::
 
 	@classmethod
 	def from_config(cls, config: Config, model_input_config, target_config, **kwargs):
@@ -95,19 +92,18 @@ we have to do is:
 	        **kwargs,
 	    )
 
-  We create input Fields by using the create_fields function which
-  combines the input config (first argument) with the provided map of name
-  to Class (second argument). Each Field is constructed using its
-  from_config function with the matching config from the input_config
-  (first argument). Since this is a word labeling task, we need a Field
-  for the expected labels, so we pass a single WordLabelField into
-  ``target_fields`` alogn with its column name. Finally, we specify an extra
-  field ``token_range`` which will be used later to merge predicted word
-  labels into the slots. Extra fields are processed but not used directly by
-  the model. They are passed along as batch context, which, as mentioned
-  above, will be used later in the process.
+We create input :class:`Field` by using the `create_fields` method which
+combines the input config (first argument) with the provided map of name
+to Class (second argument). Each :class:`Field` is constructed using its
+`from_config` method with the matching config from the `input_config`.
+Since this is a word labeling task, we need a :class:`Field` for the expected labels,
+so we pass a single :class:`WordLabelField` into `target_fields` along with its column
+name. Finally, we specify an extra field `token_range` which will be used later
+to merge predicted word labels into the slots. Extra fields are processed but not
+used directly by the model. They are passed along as batch context, which, as mentioned
+above, will be used later in the process.
 
-  2. Override the preprocess_row row function to convert a row of raw data to TorchText.Example::
+  2. Override the `preprocess_row` method to convert a row of raw data into a TorchText :class:`Example`::
 
 	def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
 	      features = self.featurizer.featurize(
@@ -136,46 +132,41 @@ we have to do is:
 	      }
 	      return res
 
-  Here we invoke Featurizer and map the data to TorchText Field names to
-  create a TorchText Dataset later. Please notice the ``data_utils.align_slot_labels``
-  function here, it breaks the slot label that spans multiple words into labels
-  for each word, this function requires two inputs, word labels and token ranges.
-  We're doing the processing here instead of in TorchText.Field because TorchText
-  assumes a 1:1 mapping between raw input and Field.
+Here we invoke the :class:`Featurizer` and map the data to TorchText :class:`Field` names to
+create a TorchText :class:`Dataset` later. Note the `data_utils.align_slot_labels`
+method here, which breaks the slot labels that span multiple words into labels
+for each word (with word labels and token ranges as inputs). We do the processing here because TorchText
+assumes a 1:1 mapping between raw input and :class:`Field`.
 
-4. Write Model
+4. Implement :class:`~Model`
 --------------------------
 
-A typical model in PyText is organized in four layers: **Embedding** Layer, **Representation**
-layer, **Decode** layer and **Output** layer. For any new model that conforms to this architecture,
-writing the model is no more than just define the config of each layer since the
-construction and forward functions are already well defined in base Model.::
+A typical model in PyText is organized in four layers: **Embedding**, **Representation**,
+**Decode** and **Output**. For any new model that conforms to this architecture,
+writing the model is no more than just defining the config of each layer, since the
+constructor and forward methods are already well defined in base :class:`~Model`.::
 
 	class WordTaggingModel(Model):
 	  class Config(ConfigBase):
-	    representation: Union[
-	      BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config
-	    ] = BiLSTMSlotAttention.Config()
+	    representation: Union[BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config] = BiLSTMSlotAttention.Config()
 	    decoder: MLPDecoder.Config = MLPDecoder.Config()
-	    output_layer: Union[
-	      WordTaggingOutputLayer.Config, CRFOutputLayer.Config
-	    ] = WordTaggingOutputLayer.Config()
+	    output_layer: Union[WordTaggingOutputLayer.Config, CRFOutputLayer.Config] = WordTaggingOutputLayer.Config()
 
-You may notice there's no config for embedding layer here, it's because embedding
-layer uses ModelInputConfig as it's config, which is already defined in the Task
-Config class. By default, embedding layer use EmbeddingList class which creates a
-list of sub embedding modules according to the ModelInputConfig, and concat the
-embedding vectors of them in forward function. We don't have to override anything in
-this example since the default behavior in base Model class already did this::
+You may notice that there's no config for the embedding layer here, because it
+directly uses :class:`~ModelInputConfig`, already defined in the Task's :class:`~Config`.
+By default, the embedding layer use :class:`~EmbeddingList` which creates a
+list of sub embedding modules according to the :class:`~ModelInputConfig`, and concatenates their
+vectors in the forward method. We don't need to override anything in
+this example since the default behavior in base :class:`~Model` already does this::
 
 	@classmethod
 	def compose_embedding(cls, sub_embs):
 	  return EmbeddingList(sub_embs.values(), concat=True)
 
-the sub_embs parameter contains the embeddings we previously defined in the ModelInputConfig
+the `sub_embs` parameter contains the embeddings we previously defined in the :class:`~ModelInputConfig`
 (word_feat, dict_feat, char_feat).
 
-if you're creating more complicated models, e.g pairNN, you can override this function
+If you're creating more complicated models, e.g PairNN, you can override this function
 to reflect the embedding structure::
 
 	@classmethod
@@ -187,11 +178,11 @@ to reflect the embedding structure::
 	  )
 
 
-Each layer can be either a single Module class or a Union of different Module. In
-this example, we give the user the option of two different approaches to the representation
-layer, which can be configured in config json file, by default it's BiLSTMSlotAttention,
-if not specified in json.
-An example config of changing it to BSeqCNNRepresentation looks like::
+Each layer can be either a single :class:`~Module` or a :class:`~Union` of multiple. In
+this example, we give the user the choosing between two different types of representation
+layers, which can be configured in config JSON file, with the default set to :class:`~BiLSTMSlotAttention`.
+
+An example config of changing it to :class:`~BSeqCNNRepresentation` looks like::
 
 	{
 	  "model": {
@@ -201,25 +192,26 @@ An example config of changing it to BSeqCNNRepresentation looks like::
 	  }
 	}
 
-Decoder layer is just a simple MLPDecoder.
+The Decoder layer is a simple :class:`~MLPDecoder`.
 
-Output layer is a special layer that do three things:
-  1) compute loss
-  2) get prediction
-  3) export to caffe2 model
+The Output layer does three things -
 
-Here we provide two options in this model: WordTaggingOutputLayer and CRFOutputLayer.
-WordTaggingOutputLayer calculates a cross entropy loss and applies log softmax to
-get prediction, while CRFOutputLayer uses CRF(Conditional Random Fields) algorithm
-to get both. The source code of both classes can be found in PyText codebase. We'll
-explain more about 3) in following section.
+  1) Computes loss
+  2) Gets the prediction
+  3) Exports to a Caffe2 net
+
+Here we provide two options in this model: :class:`~WordTaggingOutputLayer` and :class:`~CRFOutputLayer`.
+The former calculates a cross entropy loss and applies log softmax to get the prediction,
+while the latter uses CRF (Conditional Random Fields) algorithm
+to get both. The source code of both classes can be found in the PyText codebase. We'll
+explain 3) in more detail in a following section.
 
 **What if I have a completely different model structure?**
-Then you can completely override both the from_config and forward function in your
-model class. However please inherit your model class from base Model class and use
-create_module function to construct modules in your model, by doing that you can
-get the feature of freeze/save/load any part of the model for free. It's as easy as
-setting the value if the corresponding config::
+Then you can completely override both the `from_config` and `forward` methods in your
+model class. However please inherit your model class from the base :class:`~Model` and use the
+`create_module` method to construct modules. Doing so will give you the features of
+freezing / saving / loading any part of the model for free. It's as easy as
+setting the value in the corresponding config::
 	{
 	  "model": {
 	    "representation": {
@@ -233,10 +225,10 @@ setting the value if the corresponding config::
 	}
 
 
-5. Write MetricReporter
+5. Implement :class:`~MetricReporter`
 --------------------------
 
-Next we need to write a MetricReporter to calculate metrics and report model training/test
+Next we need to write a :class:`~MetricReporter` to calculate metrics and report model training/test
 results.::
 
 	class WordTaggingMetricReporter(MetricReporter):
@@ -266,21 +258,21 @@ results.::
 	    def get_model_select_metric(metrics):
 	        return metrics.accuracy
 
-The MetricReporter base class already aggregates all the output from Trainer,
-including predictions, scores, targets. The default aggregation behavior is
+The :class:`~MetricReporter` base class already aggregates all the output from :class:`~Trainer`,
+including predictions, scores and targets. The default aggregation behavior is
 concatenating the tensors from each batch and converting it to list. If you
 want different aggregation behavior, you can override it with your own
-implementation. Here we use a ``compute_classification_metrics`` function provided in ``pytext.metrics`` Module to get the precision/recall/f1 score.
-PyText is shipped with a bunch of common metric calculation methods, but you
-can always use methods from other open source libraries, such as sklearn.
+implementation. Here we use the `compute_classification_metrics` method provided in `pytext.metrics` to get the precision/recall/F1 scores.
+PyText ships with a few common metric calculation methods, but you
+can easily incorporate other libraries, such as sklearn.
 
-Notice we also have to override the ``get_model_select_metric`` method to tell
-Trainer how to select best model.
+Note that we also have to override the `get_model_select_metric` method to tell the
+:class:`~Trainer`, how to select best model.
 
-In the ``__init__(...)`` function, we can pass a list of *Channel* to report
-the results to any output stream. We use a simple ConsoleChannel that prints
-everything to stdout and a TensorBoardChannel that output metrics to
-TensorBoard for our task::
+In the `__init__` method, we can pass a list of *Channel* to report
+the results to any output stream. We use a simple :class:`~ConsoleChannel` that prints
+everything to stdout and a :class:`~TensorBoardChannel` that outputs metrics to
+`TensorBoard <https://www.tensorflow.org/guide/summaries_and_tensorboard>`_::
 
 	class WordTaggingTask(Task):
 	    # ... rest of the code
@@ -291,14 +283,14 @@ TensorBoard for our task::
 	            pad_index=self.metadata.target.pad_index,
 	        )
 
-6. Write Predict Function
+6. Implement the predict method
 --------------------------
 
-With the code we wrote above, we are able to train and test the model. Next, we
-need to add one more function in our ``WordTaggingTask`` to format prediction results.
-The base Task class comes with a generic batch predict function that gets predictions
+With the code above, we can train and test the model. Next, we
+need to add one more method in our :class:`~Trainer` to format the prediction results.
+The base :class:`~Task` comes with a generic batch predict function that gets predictions
 and scores from model and restores the order of input examples. By default it only returns
-the raw numeric predictions, so we will override the format_prediction function to make it
+the raw numeric predictions, so we will override the `format_prediction` method and make it
 more human readable::
 
 	@classmethod
@@ -318,26 +310,24 @@ more human readable::
 	            )
 	        ]
 
-Notice the ``context[BatchContext.TOKEN_RANGE]`` we're using here, that's what we
-created earlier in the DataHandler as "extra field".
+Note that we had created the `context[BatchContext.TOKEN_RANGE]` earlier as an extra field.
 
-7. Write Exporter
+7. Implement :class:`~Exporter`
 --------------------------
 
-The predict function is only used when experimenting with the model in PyTorch. If we wish to run our model in Caffe2, in order to get higher
-performance in production, we have to create an  Exporter. Exporters work
-by first exporting PyTorch model to Caffe2 using
-`ONNX <https://pytorch.org/docs/stable/onnx.html>`_,
-which does a forward run on our PyTorch model to convert PyTorch operators
-to Caffe2 operators. After that, we prepend/append additional Caffe2 operators
-to the exported Caffe2 net. The default behavior in the base Exporter class
-is prepending a string to vector operator for vocabulary lookup and
-appending a operator from model's output layer to format prediction results. In this exercise, that is all we need, so we don't have to create a new
-Exporter here.
-All that we need to do is implement the ``export_to_caffe2`` function in the output layer we created in
-the previous step::
+The predict method is only used when experimenting with the model in PyTorch.
+If we wish to run our model in the production-optimized Caffe2 environment, we'll have to create an :class:`~Exporter`.
 
-	Class WordTaggingOutputLayer(OutputLayerBase):
+An :class:`~Exporter` uses `ONNX <https://pytorch.org/docs/stable/onnx.html>`_ to
+translate a PyTorch model to a Caffe2 net. After that, we prepend/append any additional
+Caffe2 operators to the exported net. The default behavior in the base :class:`~Exporter` class
+is to prepend a string-to-vector operator for vocabulary lookup and appending a operator
+from model's output layer to format prediction results. In this exercise, that is all we
+need, so we don't have to create a new :class:`~Exporter` here.
+
+All that we need to do is implement the `export_to_caffe2` method in the output layer: ::
+
+	class WordTaggingOutputLayer(OutputLayerBase):
 	  def export_to_caffe2(
 	      self, workspace, init_net, predict_net, model_out, output_name
 	  ) -> List[core.BlobReference]:
@@ -349,26 +339,32 @@ the previous step::
 	      ]
 
 
-8. Generate Sample Config and Run the Task
+8. Generate sample config and run the task
 --------------------------
 
-Now we have a fully functional Task class. In order to get started with
-training, we can generate a default json config for it by using the pytext
-cli tool::
+Now that we have a fully functional class:`~Task`, we can generate a default JSON config for it by using the pytext cli tool
 
-    > pytext gen_default_config WordTaggingTask > task_config.json
+.. code-block:: console
 
-Tweak the config as you like, and train the model via::
+	(pytext) $ pytext gen_default_config WordTaggingTask > task_config.json
 
-    > pytext train < task_config.json
+Tweak the config as you like, and then train the model via
 
-Run predictions using the trained PyTorch model::
+.. code-block:: console
 
-    > pytext predict_py --model-file="YOUR_PY_MODEL_FILE" < test.json
+	(pytext) $ pytext train < task_config.json
 
-Run predictions using the exported Caffe2 model::
+Run predictions using the trained PyTorch model
 
-    > pytext --config-file="task_config.json" predict --exported-model="YOUR_C2_MODEL_FILE" < test.json
+.. code-block:: console
+
+	(pytext) $ pytext predict_py --model-file="YOUR_PY_MODEL_FILE" < test.json
+
+Run predictions using the exported Caffe2 model
+
+.. code-block:: console
+
+	(pytext) $ pytext --config-file="task_config.json" predict --exported-model="YOUR_C2_MODEL_FILE" < test.json
 
 Please refer to other tutorials in :doc:`index` for end to end working examples of training/predicting.
 The full code of this example is also available in ``pytext.task``
