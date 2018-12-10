@@ -34,12 +34,12 @@ source activation_venv
 ./install_deps
 ```
 [Install PyTorch Using Pip](https://pytorch.org/) make sure to get the correct version for your OS and GPU Situation.
-Once that is installed, you can run the unit tests. We reccomend using pytest as a runner.
+Once that is installed, you can run the unit tests. We recommend using pytest as a runner.
 ```
 pip install -U pytest
 pytest
 ```
-If you want to measure test coverage, we reccomend `pytest-cov`
+If you want to measure test coverage, we recommend `pytest-cov`
 ```
 pip install -U pytest-cov
 pytest --cov=pytext
