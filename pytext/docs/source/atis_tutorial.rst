@@ -1,45 +1,46 @@
-Training Joint Intent-Slot on ATIS Dataset
+Train Intent-Slot model on ATIS Dataset
 ======================================================
 
-Intent detection and Slot filling are two common tasks in Natural Language Understanding. In intent detection, we try to find the objective that the utterance is trying to achieve. Get Directions and Set Alarm are two examples. In slot filling, we assign words different labels based on their purpose. For example, if the intent is Get Direction, Source_Location and Target_Location can be considered as two valid slots. While intent detection is a semantic classification task, slot filling is a sequence labeling task, where you assign labels to different tokens in the utterance. These two models can be either trained separately or they can be trained together. Training a joint model has been generally preferred over two different models.
+Intent detection and Slot filling are two common tasks in Natural Language Understanding for personal assistants. Given a user's "utterance" (e.g. Set an alarm for 10 pm), we detect its intent (set_alarm) and tag the slots required to fulfill the intent (10 pm).
 
-In this tutorial, we will train an intent-slot model in PyText using the
-`ATIS (Airline Travel Information System) dataset <https://www.kaggle.com/siddhadev/ms-cntk-atis/downloads/atis.zip/3>`_. Note that to download the dataset, you will need a `Kaggle <https://www.kaggle.com/>`_ account which you can signup for free.
+The two tasks can be modeled as text classification and sequence labeling, respectively. We can train two separate models, but training a joint model has been shown to perfrom better.
+
+In this tutorial, we will train a joint intent-slot model in PyText on the
+`ATIS (Airline Travel Information System) dataset <https://www.kaggle.com/siddhadev/ms-cntk-atis/downloads/atis.zip/3>`_. Note that to download the dataset, you will need a `Kaggle <https://www.kaggle.com/>`_ account for which you can sign up for free.
 
 
-1. Preparing the data.
+1. Prepare the data
 -------------------------
 
-The builtin PyText data-handler expects the data to be stored in a tab-separated file that
-contains the intent label, slot label and the raw utterance.
-The first step is to download the data locally and you can use the below
-script to preprocess the data to the PyText format::
+The in-built PyText data-handler expects the data to be stored in a tab-separated file that contains the intent label, slot label and the raw utterance.
 
-    > python3 demo/atis_joint_model/data_processor.py
+Download the data locally and use the script below to preprocess it into format PyText expects
+
+.. code-block:: console
+
+    $ python3 demo/atis_joint_model/data_processor.py
       --download-folder ./download_dir --output-directory demo/atis_joint_model/
 
-The script will also randomly split the train data into train and validation. All the pre-processed data will be written to output-directory parameter that is specified in the command.
+The script will also randomly split the training data into training and validation sets. All the pre-processed data will be written to the output-directory argument specified in the command.
 
-Another alternative approach here is to write a custom data-handler for your custom data format. We won't be using this method in this tutorial.
+An alternative approach here would be to write a custom data-handler for your custom data format, but that is beyond the scope of this tutorial.
 
 2. Download Pre-trained word embeddings
 ---------------------------------------------
 
-Pre-trained word embeddings can help improve accuracy of your model because they are trained on vast amounts of data. In this tutorial, we will be using `GloVe embeddings <https://nlp.stanford.edu/projects/glove/>`_.
-GloVe embeddings can be downloaded locally using below commands. Downloaded file size is approximately 800MB::
+Word embeddings are the vector representations of the different words understood by your model. Pre-trained word embeddings can significantly improve the accuracy of your model, since they have been trained on vast amounts of data. In this tutorial, we'll use `GloVe embeddings <https://nlp.stanford.edu/projects/glove/>`_, which can be downloaded by:
 
-    > wget http://nlp.stanford.edu/data/wordvecs/glove.6B.zip -P demo/atis_joint_model/
-    > unzip demo/atis_joint_model/glove.6B.zip -d demo/atis_joint_model
+.. code-block:: console
 
-These pre-trained word embeddings are used in the model to get the vector representation for different tokens in the utterances.
+    $ wget http://nlp.stanford.edu/data/wordvecs/glove.6B.zip -P demo/atis_joint_model/
+    $ unzip demo/atis_joint_model/glove.6B.zip -d demo/atis_joint_model
 
-3. Training the model.
+The downloaded file size is ~800 MB.
+
+3. Train the model
 --------------------------
 
-To train a PyText model, you need to pick the right task and model architecture
-among other parameters. Default values are available for many parameters and can
-give reasonable results in most cases. Below is a simple config which can help
-you train a joint intent-slot model::
+To train a PyText model, you need to pick the right task and model architecture, among other parameters. Default values are available for many parameters and can give reasonable results in most cases. The following is a sample config which can train a joint intent-slot model ::
 
     {
       "config": {
@@ -90,49 +91,47 @@ you train a joint intent-slot model::
       }
     }
 
+We explain some of the parameters involved:
 
-Explanation for some parameters can be found below
+- :class:`~JointTextTask` trains a joint model for document classification and word tagging.
+- The :class:`~Model` has multiple layers -
+  - We use BiLSTM model with attention as the representation layer. The pooling attribute decides the attention technique used.
+  - We use different loss functions for document classification (Cross Entropy Loss) and slot filling (CRF layer)
+- Pre-trained word embeddings are provided within the `word_feat` attribute inside `features`.
+- The `featurizer` (:class:`~SimpleFeaturizer`) splits the utterance into tokens on whitespace.
 
-- JointTextTask is used to train the joint model for document classification and word tagging.
-- For the representation layer, we use a BiLSTM model. It has options to enable attention for both intent classification as well as slot filling.
+To train the PyText model,
 
-    - pooling attribute decides the attention technique used for document classification.
-- For the output layer, we use different loss functions for document classification and slot filling
+.. code-block:: console
 
-    - CrossEntropyLoss is used for intent detection.
-    - CRF layer on top of different slot probabilities is used for the slot filling task.
-- Pre-trained word embeddings can be provided using `word_feat` attribute inside `features`.
-- For featurizer, we use SimpleFeaturizer to do space based tokenization of the utterance.
+    (pytext) $ pytext train < sample_config.json
 
 
-To train the PyText model::
-
-    > pytext train < sample_config.json
-
-Note that config referenced in the next section can help you train a model which gives you an accuracy very close to the SOTA model.
-
-3. Model tuning and final results.
+3. Tune the model and get final results
 -----------------------------------------
 
-Tuning the model parameters is key to obtaining the best model accuracy. Using parameter sweep on different parameters like learning rate and, number of layers, dimension and dropout of BiLSTM,
-we can achieve an F1 score of around 95% on slot labels which is very close to the SOTA F1 score. Fined tuned model config is available at ``demos/atis_intent_slot/atis_joint_config.json``
+Tuning the model's hyper-parameters is key to obtaining the best model accuracy. Using hyper-parameter sweeps on learning rate, number of layers, dimension and dropout of BiLSTM etc., we can achieve a F1 score of ~95% on slot labels which is close to the state-of-the-art. The fine-tuned model config is available at ``demos/atis_intent_slot/atis_joint_config.json``
 
-To train the model using fine tuned model config::
+To train the model using fine tuned model config,
 
-    > pytext train < demo/atis_joint_model/atis_joint_config.json
+.. code-block:: console
+
+    (pytext) $ pytext train < demo/atis_joint_model/atis_joint_config.json
 
 
-4. Generating predictions.
+4. Generate predictions
 -----------------------------------------
 
-Once you have trained and exported your model, it is very easy to make predictions using the model. You need to pass your utterance as a json to the model ::
+Lets make the model run on some sample utterances! You can input one by running
 
-    > pytext --config-file demo/atis_joint_model/atis_joint_config.json \
+.. code-block:: console
+
+    (pytext) $ pytext --config-file demo/atis_joint_model/atis_joint_config.json \
       predict --exported-model /tmp/atis_joint_model.c2 <<< '{"raw_text": "flights from colorado"}'
 
-Response from the model will be log of probabilities for different intents and slots. Below is part of the model response. It can be seen that correct intent and slot has the highest probability.
+The response from the model is log of probabilities for different intents and slots, with the correct intent and slot hopefully having the highest.
 
-It can be seen that intent `doc_scores:flight` and slot `word_scores:fromloc.city_name` for third word have the highest predictions.::
+In the following snippet of the model's response, we see that the intent `doc_scores:flight` and slot `word_scores:fromloc.city_name` for third word "colorado" have the highest predictions. ::
 
     {
      ....

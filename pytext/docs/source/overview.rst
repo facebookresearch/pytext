@@ -1,37 +1,37 @@
 Overview
 =============
 
-PyText framework is designed to help users build end to end pipelines for training or inference. Users are free to implement one or more of these components and can expect the entire pipeline to work out of the box. A number of default pipelines are implemented for popular tasks which can be used as-is.
+PyText is designed to help users build end to end pipelines for training and inference. A number of default pipelines are implemented for popular tasks which can be used as-is. Users are free to implement one or more of the pipeline's components.
 
-We will now go over the major components of PyText with the help of the figure below. The figure gives a high level relationship between
+The following figure describes the relationship between the major components of PyText:
+
+.. image:: _static/img/pytext_design.png
 
 - **Task** combines various components required for a training or inference task into a pipeline. Conceptually, it is the central place to describe the components that are required for the given task and how to configure them.
 
-- **Data Handler** processes raw input data and prepare batches of tensors to feed to the model. PyText provides a number of data handlers for some tasks. However if for a given task, input data requires custom processing then this is a component that a user must implement.
+- **Data Handler** processes raw input data and prepare batches of tensors to feed to the model. PyText provides a number of data handlers for different tasks. However if the input data requires custom processing for a task, then this is a component that the user must implement.
 
-- **Model** defines the neural network architecture. PyText provides models for some tasks. For new models, users would need implement this component. Read :class:`~Model` class's documentation for more details on how to compose a new model.
+- **Model** defines the neural network architecture. PyText provides models for common tasks. For new models, users would need implement this component. Read the documentation of the class :class:`~Model` for more details on how to compose a new model.
 
-- **Loss** defines how loss should be computed given model logit and true label/target. Making `Loss` as a separate component allows us to change play with loss functions without touching any other parts of the pipeline.
+- **Loss** defines how the loss should be computed for a given model logit and the true label/target. Making :class:`~Loss` a separate component allows us to swap loss functions without touching any other parts of the pipeline.
 
 - **Optimizer** and **Scheduler** are responsible for model parameter optimization and learning rate scheduling. Typical users wouldn't need to implement this component. They should only configure these components to control the training process.
 
-- **Metric Reporter** implements the relevant metric computation and reporting for the models. Just like `Model` and `Data Handler` if the current set of metric reporters don't work for a user then a new metric reporter with custom logic should be implemened.
+- **Metric Reporter** implements the relevant metric computation and reporting for the models. Just like :class:`~Model` and :class:`~Data Handler` if the current set of metric reporters don't work for a user then a new metric reporter with custom logic should be implemened.
 
 - **Trainer** uses the data handler, model, loss, optimizer and scheduler to train a model and perform model selection by validating against a holdout set.
 
 - **Predictor** uses the data handler and model for inference against given a test dataset.
 
-- **Exporter** exports a trained PyTorch model to a Caffe2 graph using `ONNX`_.
-
-.. image:: images/pytext_design.png
+- **Exporter** exports a trained PyTorch model to a Caffe2 net using `ONNX <https://onnx.ai/>`_.
 
 Training Flow
 -----------------------------
 
-Let us now go over the major steps that happens during training.
+1. The `Task` is prepared by composing all the required components, and then training job is launched.
 
-1. Task preparation takes care of composing all the required component required for training. Then training is launched.
-::
+.. code-block:: python
+
 	def train_model(
 		config: PyTextConfig,
 		dist_init_url: str = None,
@@ -46,15 +46,19 @@ Let us now go over the major steps that happens during training.
 			save_and_export(config, task)
 		return trained_model, best_metric
 
-Task is a component itself and can be created using the factory function provided by PyText.
-::
+The `Task` is a component itself and can be created using the factory function provided by PyText.
+
+.. code-block:: python
+
 	def create_task(task_config, metadata=None, model_state=None):
 		return create_component(ComponentType.TASK, task_config, metadata, model_state)
 
-2. Training phase is split into two distinct phases. They are shown at a high level below.
+2. The Training phase is split into two distinct parts:
 
 Model training
-::
+
+.. code-block:: python
+
 	for epoch in range(1, self.config.epochs + 1):
 		print(f"Rank {rank} worker: Starting epoch #{epoch}")
 		model.train()
@@ -73,7 +77,9 @@ Model training
 		)
 
 Model selection
-::
+
+.. code-block:: python
+
 	for epoch in range(1, self.config.epochs + 1):
 		# ...continuing from above above
 
@@ -107,7 +113,3 @@ Model selection
 				)
 			# Save best model's state.
 			best_model_state = copy.deepcopy(model.state_dict())
-
-Given a task definition, all components are composed by task and passed to the trainer for going through the training flow.
-
-.. _`ONNX`: https://onnx.ai/

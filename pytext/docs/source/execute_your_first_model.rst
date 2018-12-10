@@ -1,24 +1,24 @@
-Execute your first model (part 2)
+Execute your first model
 =================================
 
-In _`train_your_first_model` we trained a test model. You can continue this document with that model, but the results won't be very compelling because the model hasn't learned anything. I'm going to continue with the model trained in _`atis_tutorial`, but you can follow along just as easily from the test model. To make it easier to write these commands for either, I recommend setting a shell variable to the config you're using in either case.
+In :doc:`train_your_first_model`, we learnt how to train a very small, simple model. You can easily continue this tutorial with that model, but the results won't be very compelling. Here we'll use the much more powerful model from :doc:`atis_tutorial`. To make the commands below compatible with either, we recommend setting a shell variable to the config you're using.
 
-If you want to quickly run through this with the test model trained in part 1, do
+If you want to quickly run through this with the test model trained in the previous tutorial, do
 
 .. code-block:: console
 
     (pytext) $ CONFIG=demo/configs/docnn.json
 
-If you're following along with the atis tutorial, use this config
+If you're following along with the ATIS tutorial, use this config
 
 .. code-block:: console
 
     (pytext) $ CONFIG=demo/atis_joint_model/atis_joint_config.json
 
-Evaluating the model
+Evaluate the model
 --------------------
 
-We want to run our model on our test dataset and see how well it performs. I'm abbreviating some of the results for clarity.
+We want to run the model on our test dataset and see how well it performs. Some results have been abbreviated for clarity.
 
 .. code-block:: console
 
@@ -53,12 +53,12 @@ We want to run our model on our test dataset and see how well it performs. I'm a
 
 Not bad!
 
-Exporting the model
+Export the model
 -------------------
 
-Now we want to export the model to a PyTorch caffe2 serialized model. There are other ways to deploy models depending on your needs, but this one has some important advantages. The biggest thing it gives you is backwards compatibility. The caffe2 serialized format is standardized and has good guarantees about backwards compatibility. That means once you export your model, it's saved in a way such that PyTorch will know how to execute it correctly forever. No matter what changes you make to your code, or what changes are made to PyText, this exported model will continue to work properly in a production environment. By contrast for instance, the snapshots that are saved for evaluation before exporting use pickle, which means that various types of simple code changes, or say if you update the word embeddings you're using, can make your model break or even worse, silently behave incorrectly.
+When you save a PyTorch model, the snapshot uses `pickle` for serialization. This means that simple code changes (e.g. a word embedding update) can cause backward incompatibilites with your deployed model. To combat this, you can export your model into the `Caffe2 <https://caffe2.ai/>`_ format using in-built `ONNX <https://onnx.ai/>`_ integration. The exported Caffe2 model would have the same behavior regardless of changes in PyText or in your development code.
 
-Exporting a model is pretty simple.
+Exporting a model is pretty simple:
 
 .. code-block:: console
 
@@ -80,11 +80,11 @@ You can also pass in a configuration to infer some of these options. In this cas
     ...[snip]
     Saving caffe2 model to: exported_model.c2
 
-This model file now contains all of the information needed to run your model.
+This file now contains all of the information needed to run your model.
 
-There's an important distinction that needs to be made between what a model does and what happens before/after a model is called, ie. the preprocessing and postprocessing steps. PyText tries to do as little preprocessing as possible, but one thing that it always needs to do (for word-level models at least) is to tokenize the input text. This will happen automatically with our prediction interface, and if this behavior ever changes, we'll make sure that old models are still supported. The model file you export will always work, and you don't necessarily need PyText to use it! Depending on your use case you can implement preprocessing yourself and call the model directly with torch, but that's outside the scope of this tutorial.
+There's an important distinction between what a model does and what happens before/after the model is called, i.e. the preprocessing and postprocessing steps. PyText strives to do as little preprocessing as possible, but one step that is very often needed is tokenization of the input text. This will happen automatically with our prediction interface, and if this behavior ever changes, we'll make sure that old models are still supported. The model file you export will always work, and you don't necessarily need PyText to use it! Depending on your use case you can implement preprocessing yourself and call the model directly, but that's outside the scope of this tutorial.
 
-Making a simple app
+Make a simple app
 -------------------
 
 Let's put this all into practice! How might we make a simple web app that loads an exported model and does something meaningful with it?
@@ -95,9 +95,9 @@ To run the following code, you should
 
     (pytext) $ pip install flask
 
-I have this code in a file called flask_app.py.
+Then we implement a minimal `Flask <http://flask.pocoo.org/>`_ web server.
 
-::
+.. code-block:: python
 
     import sys
     import flask
@@ -149,14 +149,13 @@ Execute the app
       Use a production WSGI server instead.
     * Debug mode: on
 
-Then in a separate terminal
-
+Then in a separate terminal window
 
 .. code-block:: console
 
     $ function ask_about() { curl http://localhost:8080/get_flight_info -H "Content-Type: text/plain" -d "$1" }
 
-    $ ask_about 'I am looking for flights from San Francisco to Minneapolis
+    $ ask_about 'I am looking for flights from San Francisco to Minneapolis'
     {
       "question": "Are you asking about flight?"
     }

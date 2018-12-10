@@ -1,16 +1,18 @@
-Serving Models in Production
+Serve Models in Production
 ======================================================
 
-We have seen how to use PyText models in an app using Flask in the previous tutorial, but the server implementation still requires a Python runtime. Caffe2 models are designed to perform well even in production scenarios with high requirements for performance and scalability. In this tutorial, we will explore how we can serve our intent-slot model on a Thrift server which we will implement using C++, in order to get the most performance out of our exported Caffe2 intent-slot model that we trained using the ATIS dataset. We will also prepare a Docker image which can be deployed to your cloud provider of choice.
+We have seen how to use PyText models in an app using Flask in the `previous tutorial <pytext_models_in_your_app.html>`_, but the server implementation still requires a Python runtime. Caffe2 models are designed to perform well even in production scenarios with high requirements for performance and scalability.
 
-The full source code for the fully implemented server in this tutorial can be found in https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service.
+In this tutorial, we will implement a Thrift server in C++, in order to extract the maximum performance from our exported Caffe2 intent-slot model trained on the ATIS dataset. We will also prepare a Docker image which can be deployed to your cloud provider of choice.
+
+The full source code for the implemented server in this tutorial can be found in the `demos directory <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service>`_.
 
 To complete this tutorial, you will need to have `Docker <https://www.docker.com/products/docker-desktop>`_ installed.
 
 1. Create a Dockerfile and install dependencies
 ------------------------------------------------------
 
-The first step is to prepare our Docker image with the necessary dependencies. In an empty, folder, `create a *Dockerfile* with the following contents <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/Dockerfile>`:
+The first step is to prepare our Docker image with the necessary dependencies. In an empty, folder, create a *Dockerfile* with the `following contents <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/Dockerfile>`_:
 
 **Dockerfile**
 
@@ -72,12 +74,11 @@ The first step is to prepare our Docker image with the necessary dependencies. I
 2. Add Thrift API
 ---------------------------------------------
 
-`Thrift <https://thrift.apache.org/>`_ is a software library for developing scalable cross-language services. It comes with a client code generation engine enabling services to be interfaced across the network on multiple languages or devices. We will be using Thrift to create a service to serve our model.
+`Thrift <https://thrift.apache.org/>`_ is a software library for developing scalable cross-language services. It comes with a client code generation engine enabling services to be interfaced across the network on multiple languages or devices. We will use Thrift to create a service which serves our model.
 
-Our C++ server will expose a very simple API that receives an sentence/utterance as a string, and return a map of label names(string) -> scores(list<double>). For document scores, the list will only contain one score, and for word scores, the list will contain one score per word. The corresponding thrift spec fo the API is below:
+Our C++ server will expose a very simple API that receives an sentence/utterance as a string, and return a map of label names(`string`) -> scores(`list<double>`). For document scores, the list will only contain one score, and for word scores, the list will contain one score per word. The corresponding thrift spec fo the API is below:
 
 **predictor.thrift**
-
 
 .. code-block:: thrift
 
@@ -91,7 +92,7 @@ Our C++ server will expose a very simple API that receives an sentence/utterance
 3. Implement server code
 --------------------------
 
-Now, we will begin writing our server code. The first thing our server needs to be able to do is to load the model from a file path into the Caffe2 workspace and initialize it. We do that in the constructor of our ``PredictorHandler`` thrift server class:
+Now, we will write our server's code. The first thing our server needs to be able to do is to load the model from a file path into the Caffe2 workspace and initialize it. We do that in the constructor of our ``PredictorHandler`` thrift server class:
 
 **server.cpp**
 
@@ -128,7 +129,7 @@ Now, we will begin writing our server code. The first thing our server needs to 
   }
 
 
-Now that our model is loaded, we need to implement the ``predict(map<string, vector<double>>& _return, const string& doc) `` API method which is our main interface to clients. The implementation needs to do the following:
+Now that our model is loaded, we need to implement the `predict` API method which is our main interface to clients. The implementation needs to do the following:
 
 1. Pre-process the input sentence into tokens
 2. Feed the input as tensors to the model
@@ -177,9 +178,9 @@ Now that our model is loaded, we need to implement the ``predict(map<string, vec
   ...
   }
 
-Full source code for *server.cpp*: https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/server.cpp.
+The full source code for *server.cpp* can be found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/server.cpp>`_.
 
-Note: The source code in the demo also implements a REST proxy for the Thrift server to make it easy to test and make calls over simple HTTP, however it is not covered in the scope of this tutorial since the Thrift protocol would be what is used in production.
+Note: The source code in the demo also implements a REST proxy for the Thrift server to make it easy to test and make calls over simple HTTP, however it is not covered in the scope of this tutorial since the Thrift protocol is what we'll use in production.
 
 4. Build and compile scripts
 ------------------------------
@@ -198,7 +199,7 @@ To build our server, we need to provide necessary headers during compile time an
   CLIENT_LDFLAGS += -lthrift
   SERVER_LDFLAGS += -L/pytorch/build/lib -lthrift -lcaffe2 -lprotobuf -lc10
 
-  ...
+  # ...
 
   server: server.o gen-cpp/Predictor.o
   	g++ $^ $(SERVER_LDFLAGS) -o $@
@@ -228,38 +229,39 @@ In our *Dockerfile*, we also add some steps to copy our local files into the doc
 5. Test/Run the server
 -------------------------
 
-This section assumes that your local files match the one found in https://github.com/facebookresearch/pytext/tree/master/demo/predictor.
+This section assumes that your local files match the one found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor>`_.
 
 Now that you have implemented your server, we will run the following commands to take it for a test run. In your server folder:
 
 1. Build the image:
 
-``docker build -t predictor_service .``
+.. code-block:: console
+
+  $ docker build -t predictor_service .
 
 If successful, you should see the message "Successfully tagged predictor_service:latest".
 
 2. Run the server. We use *models/atis_joint_model.c2* as the local path to our model file (add your trained model there):
 
-``docker run -it -p 8080:8080 predictor_service:latest ./server models/atis_joint_model.c2``
+.. code-block:: console
+
+  $ docker run -it -p 8080:8080 predictor_service:latest ./server models/atis_joint_model.c2
 
 If successful, you should see the message "Server running. Thrift port: 9090, REST port: 8080"
 
 3. Test our server by sending a test utterance "Flight from Seattle to San Francisco":
 
-``curl -G "http://localhost:8080" --data-urlencode "doc=Flights from Seattle to San Francisco"``
+.. code-block:: console
 
-| If successful, you should see the scores printed out on the console. On further inspection,
-| the doc score for "flight",
-| the 3rd word score for "B-fromloc.city_name" corresponding to "Seattle",
-| the 5th word score for "B-toloc.city_name" corresponding to "San",
-| and the 6th word score for "I-toloc.city_name" corresponding to "Francisco"
-| should be close to 0.
+  $ curl -G "http://localhost:8080" --data-urlencode "doc=Flights from Seattle to San Francisco"
 
-  | ``doc_scores:flight:-2.07426e-05``
-  | ``word_scores:B-fromloc.city_name:-14.5363 -12.8977 -0.000172928 -12.9868 -9.94603 -16.0366``
-  | ``word_scores:B-toloc.city_name:-15.2309 -15.9051 -9.89932 -12.077 -0.000134 -8.52712``
-  | ``word_scores:I-toloc.city_name:-13.1989 -16.8094 -15.9375 -12.5332 -10.7318 -0.000501401``
+If successful, you should see the scores printed out on the console. On further inspection, the doc score for "flight", the 3rd word score for "B-fromloc.city_name" corresponding to "Seattle", the 5th word score for "B-toloc.city_name" corresponding to "San", and the 6th word score for "I-toloc.city_name" corresponding to "Francisco" should be close to 0. ::
 
-Congratualations! You have now built your own server that can serve your PyText models in production!
+  doc_scores:flight:-2.07426e-05
+  word_scores:B-fromloc.city_name:-14.5363 -12.8977 -0.000172928 -12.9868 -9.94603 -16.0366
+  word_scores:B-toloc.city_name:-15.2309 -15.9051 -9.89932 -12.077 -0.000134 -8.52712
+  word_scores:I-toloc.city_name:-13.1989 -16.8094 -15.9375 -12.5332 -10.7318 -0.000501401
 
-We have also hosted a `Docker image on Docker Hub <https://hub.docker.com/r/pytext/predictor_service>`_ with this example, which you may feel free to use and adapt to your needs.
+Congratulations! You have now built your own server that can serve your PyText models in production!
+
+We also provide a `Docker image on Docker Hub <https://hub.docker.com/r/pytext/predictor_service>`_ with this example, which you can freely use and adapt to your needs.

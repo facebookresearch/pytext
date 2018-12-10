@@ -9,7 +9,7 @@
 PyText documentation
 =====================
 
-PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText addresses the often-conflicting requirements of enabling rapid experimentation and of serving models at scale. It achieves this by providing simple and extensible interfaces and abstractions for model components, and by using PyTorch’s capabilities of exporting models for inference via the optimized Caffe2 execution engine. We are using PyText in Facebook to iterate quickly on new modeling ideas and then seamlessly ship them at scale.
+PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText addresses the often-conflicting requirements of enabling rapid experimentation and of serving models at scale. It achieves this by providing simple and extensible interfaces and abstractions for model components, and by using PyTorch’s capabilities of exporting models for inference via the optimized Caffe2 execution engine. We use PyText at Facebook to iterate quickly on new modeling ideas and then seamlessly ship them at scale.
 
 **Core PyText features:**
 
@@ -17,23 +17,23 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
   - Text classifiers
 
-    - [Yoon Kim (2014): Convolutional Neural Networks for Sentence Classification](https://arxiv.org/abs/1408.5882)
-    - [Lin et al. (2017): A Structured Self-attentive Sentence Embedding](https://arxiv.org/abs/1703.03130)
+    - `Yoon Kim (2014): Convolutional Neural Networks for Sentence Classification <https://arxiv.org/abs/1408.5882>`_
+    - `Lin et al. (2017): A Structured Self-attentive Sentence Embedding <https://arxiv.org/abs/1703.03130>`_
 
   - Sequence taggers
 
-    - [Lample et al. (2016): Neural Architectures for Named Entity Recognition](https://www.aclweb.org/anthology/N16-1030)
+    - `Lample et al. (2016): Neural Architectures for Named Entity Recognition <https://www.aclweb.org/anthology/N16-1030>`_
 
   - Joint intent-slot model
 
-    - [Zhang et al. (2016): A Joint Model of Intent Determination and Slot Filling for Spoken Language Understanding](https://www.ijcai.org/Proceedings/16/Papers/425.pdf)
+    - `Zhang et al. (2016): A Joint Model of Intent Determination and Slot Filling for Spoken Language Understanding <https://www.ijcai.org/Proceedings/16/Papers/425.pdf>`_
 
   - Contextual intent-slot models
 
-- Distributed-training support built on the new C10d backend in PyTorch 1.0
-- Extensible components that allows easy creation of new models and tasks
-- Reference implementation and a pretrained model for the paper: [Gupta et al. (2018): Semantic Parsing for Task Oriented Dialog using Hierarchical Representations](http://aclweb.org/anthology/D18-1300)
+- Extensible components that allow easy creation of new models and tasks
 - Ensemble training support
+- Distributed-training support (using the new C10d backend in PyTorch 1.0)
+- Reference implementation and a pre-trained model for the paper: `Gupta et al. (2018): Semantic Parsing for Task Oriented Dialog using Hierarchical Representations <http://aclweb.org/anthology/D18-1300>`_
 
 .. toctree::
   :maxdepth: 1
