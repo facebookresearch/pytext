@@ -74,9 +74,14 @@ class StackLSTM(Sized):
         return other
 
 
-class CompositionalNN(nn.Module):
+class CompositionFunction(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class CompositionalNN(CompositionFunction):
     def __init__(self, lstm_dim):
-        super(CompositionalNN, self).__init__()
+        super().__init__()
         self.lstm_dim = lstm_dim
         self.lstm_fwd = nn.LSTM(lstm_dim, lstm_dim, 1)
         self.lstm_rev = nn.LSTM(lstm_dim, lstm_dim, 1)
@@ -114,9 +119,9 @@ class CompositionalNN(nn.Module):
         return subtree_embedding
 
 
-class CompositionalSummationNN(nn.Module):
+class CompositionalSummationNN(CompositionFunction):
     def __init__(self, lstm_dim):
-        super(CompositionalSummationNN, self).__init__()
+        super().__init__()
         self.lstm_dim = lstm_dim
 
         self.linear_seq = nn.Sequential(nn.Linear(lstm_dim, lstm_dim), nn.Tanh())

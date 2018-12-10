@@ -13,21 +13,36 @@ from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
 from pytext.models import Model
+from pytext.models.embeddings import EmbeddingList
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     CompositionalNN,
     CompositionalSummationNN,
+    CompositionFunction,
     Element,
     ParserState,
 )
 
 
 class CompositionalType(Enum):
+    """Whether to use summation of the vectors or a BiLSTM based composition to
+     generate embedding for a subtree"""
+
     BLSTM = "blstm"
     SUM = "sum"
 
 
 class AblationParams(ConfigBase):
+    """Different ablation parameters.
+    use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
+    when computing representation for the action classifier
+
+    Attributes:
+    use_buffer: whether to use the buffer LSTM
+    use_stack: whether to use the stack LSTM
+    use_action: whether to use the action LSTM
+    """
+
     use_buffer: bool = True
     use_stack: bool = True
     use_action: bool = True
@@ -35,12 +50,39 @@ class AblationParams(ConfigBase):
 
 
 class RNNGConstraints(ConfigBase):
+    """Constraints when computing valid actions.
+
+    intent_slot_nesting: for the intent slot models, the top level non-terminal
+    has to be an intent, an intent can only have slot non-terminals as
+    children and vice-versa.
+
+    ignore_loss_for_unsupported and no_slots_inside_unsupported:
+    if the data has "unsupported" label, that is if the label has a substring
+    "unsupported" in it, these flags control whether or not to compute loss or
+    predict slots in side the unsupported intent
+    """
+
     intent_slot_nesting: bool = True
     ignore_loss_for_unsupported: bool = False
     no_slots_inside_unsupported: bool = True
 
 
 class RNNGParser(Model, Component):
+    """
+    The Recurrent Neural Network Grammar (RNNG) parser from
+    Dyer et al.: https://arxiv.org/abs/1602.07776 and
+    Gupta et al.: https://arxiv.org/abs/1810.07942d.
+    RNNG is a neural constituency parsing algorithm that
+    explicitly models compositional structure of a sentence.
+    It is able to learn about hierarchical relationship among the words and
+    phrases in a given sentence thereby learning the underlying tree structure.
+    The paper proposes generative as well as discriminative approaches.
+    In PyText we have implemented the discriminative approach for modeling
+    intent slot models.
+    It is a top-down shift-reduce parser than can output
+    trees with non-terminals (intent and slot labels) and terminals (tokens)
+    """
+
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     class Config(ConfigBase):
@@ -87,22 +129,65 @@ class RNNGParser(Model, Component):
 
     def __init__(
         self,
-        ablation,
-        constraints,
-        lstm_num_layers,
-        lstm_dim,
-        max_open_NT,
-        dropout,
+        ablation: AblationParams,
+        constraints: RNNGConstraints,
+        lstm_num_layers: int,
+        lstm_dim: int,
+        max_open_NT: int,
+        dropout: float,
         actions_vocab,
-        shift_idx,
-        reduce_idx,
-        ignore_subNTs_roots,
-        valid_NT_idxs,
-        valid_IN_idxs,
-        valid_SL_idxs,
-        embedding,
-        p_compositional,
+        shift_idx: int,
+        reduce_idx: int,
+        ignore_subNTs_roots: List[int],
+        valid_NT_idxs: List[int],
+        valid_IN_idxs: List[int],
+        valid_SL_idxs: List[int],
+        embedding: EmbeddingList,
+        p_compositional: CompositionFunction,
     ) -> None:
+        """
+        Initialize the model
+
+        Args:
+        ablation : AblationParams
+            Features/RNNs to use
+        constraints : RNNGConstraints
+            Constraints to use when computing valid actions
+        lstm_num_layers : int
+            number of layers in the LSTMs
+        lstm_dim : int
+            size of LSTM
+        max_open_NT : int
+            number of maximum open non-terminals allowed on the stack.
+            After that, the only valid actions are SHIFT and REDUCE
+        dropout : float
+            dropout parameter
+        actions_vocab : Vocab (right now torchtext.vocab.Vocab)
+            dictionary of actions
+        shift_idx : int
+            index of shift action
+        reduce_idx : int
+            index of reduce action
+        ignore_subNTs_roots : List[int]
+            for these top non-terminals, ignore loss for all subsequent actions
+        valid_NT_idxs : List[int]
+            indices of all non-terminals
+        valid_IN_idxs : List[int]
+            indices of intent non-terminals
+        valid_SL_idxs : List[int]
+            indices of slot non-terminals
+        embedding : EmbeddingList
+            embeddings for the tokens
+        p_compositional : CompositionFunction
+            Composition function to use to get embedding of a sub-tree
+
+
+        Returns:
+        None
+
+
+        """
+
         nn.Module.__init__(self)
 
         self.embedding = embedding
@@ -139,7 +224,7 @@ class RNNGParser(Model, Component):
         num_actions = len(actions_vocab)
         lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
         if lstm_count == 0:
-            raise ValueError("Need atleast one of the Parser ablation flags to be True")
+            raise ValueError("Need atleast one of the LSTMs to be true")
 
         self.action_linear = nn.Sequential(
             nn.Linear(
@@ -179,6 +264,32 @@ class RNNGParser(Model, Component):
         beam_size: int = 1,
         topk: int = 1,
     ):
+        """RNNG forward function.
+
+        Args:
+        tokens : torch.Tensor
+            list of tokens
+        seq_lens : torch.Tensor
+            list of sequence lengths
+        dict_feat : Optional[Tuple[torch.Tensor, ...]]
+            dictionary or gazetter features for each token
+        actions : Optional[List[List[int]]]
+            Used only during training. Oracle actions for the instances.
+        beam_size : int
+            Beam size; used only during inference
+        topk : int
+            Number of top results from the method. if beam_size is 1 this is 1.
+
+
+        Returns:
+        if topk == 1
+            tuple of list of predicted actions and list of corresponding scores
+        else
+            returns
+            list of tuple of list of predicted actions and list of corresponding scores
+
+
+        """
         if self.training:
             assert beam_size == 1, "beam_size must be 1 during training"
             assert actions is not None, "actions must be provided for training"
@@ -270,7 +381,7 @@ class RNNGParser(Model, Component):
 
                 log_probs = F.log_softmax(action_p, dim=1)[0]
 
-                for action in self._valid_actions(state):
+                for action in self.valid_actions(state):
                     plans.append((state.neg_prob - log_probs[action], state, action))
 
             beam = []
@@ -391,7 +502,18 @@ class RNNGParser(Model, Component):
             torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
         )
 
-    def _valid_actions(self, state: ParserState) -> List[int]:
+    def valid_actions(self, state: ParserState) -> List[int]:
+        """Used for restricting the set of possible action predictions
+
+        Args:
+        state : ParserState
+            The state of the stack, buffer and action
+
+        Returns:
+        List[int]
+            indices of the valid actions
+
+        """
         valid_actions: List[int] = []
         is_open_NT = state.is_open_NT
         num_open_NT = state.num_open_NT
