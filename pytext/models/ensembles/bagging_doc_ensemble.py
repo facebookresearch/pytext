@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List
+from typing import List, Tuple
 
 import torch
 from pytext.models.doc_model import DocModel
 
 from .ensemble import Ensemble
+from .same_model_bag import SameModelBag
+
+
+class SameDocModelBag(SameModelBag):
+    """Class representing a bag of duplicate doc models with the same config.
+    Attributes:
+        count (int): Size of the bag/number of models.
+        model (DocModel.Config): The config for each doc model.
+    """
+
+    model: DocModel.Config
 
 
 class BaggingDocEnsemble(Ensemble):
@@ -24,7 +35,7 @@ class BaggingDocEnsemble(Ensemble):
 
         """
 
-        models: List[DocModel.Config]
+        models: List[SameDocModelBag]
 
     def forward(self, *args, **kwargs) -> torch.Tensor:
         """Call `forward()` method of each document classification sub-model by

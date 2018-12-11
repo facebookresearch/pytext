@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List
+from typing import List, Tuple
 
 import torch
 from pytext.models.joint_model import JointModel
@@ -8,6 +8,17 @@ from pytext.models.model import Model
 from pytext.models.output_layers import CRFOutputLayer
 
 from .ensemble import Ensemble
+from .same_model_bag import SameModelBag
+
+
+class SameJointModelBag(SameModelBag):
+    """Class representing a bag of duplicate joint models with the same config.
+    Attributes:
+        count (int): Size of the bag/number of models.
+        model (JointModel.Config): The config for each joint model.
+    """
+
+    model: JointModel.Config
 
 
 class BaggingIntentSlotEnsemble(Ensemble):
@@ -37,7 +48,7 @@ class BaggingIntentSlotEnsemble(Ensemble):
 
         """
 
-        models: List[JointModel.Config]
+        models: List[SameJointModelBag]
         use_crf: bool = False
 
     def __init__(self, config: Config, models: List[Model], *args, **kwargs) -> None:

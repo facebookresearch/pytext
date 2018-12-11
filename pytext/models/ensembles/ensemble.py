@@ -9,6 +9,8 @@ from pytext.config.component import create_model
 from pytext.config.field_config import FeatureConfig
 from pytext.models.model import Model
 
+from .same_model_bag import SameModelBag
+
 
 class Ensemble(Model):
     """Base class for ensemble models.
@@ -25,7 +27,7 @@ class Ensemble(Model):
     """
 
     class Config(ConfigBase):
-        models: List[Any]
+        models: List[SameModelBag]
         sample_rate: float = 1.0
 
     @classmethod
@@ -45,8 +47,9 @@ class Ensemble(Model):
 
         """
         sub_models = [
-            create_model(sub_model_config, feat_config, *args, **kwargs)
-            for sub_model_config in config.models
+            create_model(sub_model_config_bag.model, feat_config, *args, **kwargs)
+            for sub_model_config_bag in config.models
+            for i in range(sub_model_config_bag.count)
         ]
         return cls(config, sub_models, *args, **kwargs)
 
