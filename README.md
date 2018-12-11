@@ -21,53 +21,24 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
 # Installing PyText
 
-## WARNING: PyText currently only supports Python 3.6. Support for 3.7 is coming soon!
 *To get started on a Cloud VM, checkout [our guide](CLOUDS.md)*
 
-To get started, run the following commands in a terminal:
+We recommend using a virtualenv:
 
 ```
-git clone git@github.com:facebookresearch/pytext.git
-cd pytext
-
-source activation_venv
-./install_deps
-```
-[Install PyTorch Using Pip](https://pytorch.org/) make sure to get the correct version for your OS and GPU Situation.
-Once that is installed, you can run the unit tests. We recommend using pytest as a runner.
-```
-pip install -U pytest
-pytest
-```
-If you want to measure test coverage, we recommend `pytest-cov`
-```
-pip install -U pytest-cov
-pytest --cov=pytext
+  $ python3.6 -m virtualenv venv
+  $ source pytext/bin/activate
+  (venv) $ pip install pytext
 ```
 
-To resume development in an already checked-out repo:
-
-```
-cd pytext
-source activation_venv
-```
-do
-To exit the virtual environment:
-
-```
-deactivate
-```
-
-Alternatively, if you don't want to run in a virtual env, you can install the dependencies globally with `sudo ./install_deps`.
-
-For additional information, please read INSTALL.md
+Detailed instructions can be found in our [Documentation](https://pytext.readthedocs.io/installation.html)
 
 # Train your first text classifier
 
 For this first example, we'll train a CNN-based text-classifier that classifies text utterances, using the examples in `tests/data/train_data_tiny.tsv`.
 
 ```
-pytext train < demo/configs/docnn.json
+  (venv) $ pytext train < demo/configs/docnn.json
 ```
 
 By default, the model is created in `/tmp/model.pt`
@@ -75,13 +46,13 @@ By default, the model is created in `/tmp/model.pt`
 Now you can export your model as a caffe2 net:
 
 ```
-pytext export < config.json
+  (venv) $ pytext export < config.json
 ```
 
 You can use the exported caffe2 model to predict the class of raw utterances like this:
 
 ```
-pytext --config-file config.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
+  (venv) $ pytext --config-file config.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
 
 # License
