@@ -5,6 +5,7 @@ import unittest
 
 from pytext.common.constants import DFColumn
 from pytext.data.data_handler import DataHandler
+from pytext.fields import RawField
 from pytext.utils.test_utils import tests_module
 
 
@@ -41,3 +42,28 @@ class DataHandlerTest(unittest.TestCase):
             "change my alarm tomorrow to wake me up 30 minutes earlier",
             data[0][DFColumn.UTTERANCE],
         )
+
+    def test_sort_iter(self):
+        file_name = tests_module.test_file("test_data_tiny.tsv")
+        columns = [
+            DFColumn.DOC_LABEL,
+            DFColumn.WORD_LABEL,
+            DFColumn.UTTERANCE,
+            DFColumn.DICT_FEAT,
+        ]
+        data_handler = DataHandler(
+            raw_columns=columns,
+            labels={},
+            features={DFColumn.UTTERANCE: RawField()},
+            featurizer=None,
+            text_feature_name=DFColumn.UTTERANCE,
+            test_path=file_name,
+        )
+        data_handler.sort_within_batch = True
+        test_iter = data_handler.get_test_iter()
+        _, _, context = next(test_iter.__iter__())
+        self.assertListEqual([4, 1, 2, 0, 3], context["index"])
+        data_handler.sort_within_batch = False
+        test_iter = data_handler.get_test_iter()
+        _, _, context = next(test_iter.__iter__())
+        self.assertListEqual([0, 1, 2, 3, 4], context["index"])

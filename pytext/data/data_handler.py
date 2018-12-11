@@ -586,7 +586,7 @@ class DataHandler(Component):
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
                 else "cpu",
-                sort=True,
+                sort_within_batch=self.sort_within_batch,
                 repeat=False,
                 train=False,
                 sort_key=self.sort_key,
@@ -604,7 +604,7 @@ class DataHandler(Component):
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
                 else "cpu",
-                sort=True,
+                sort_within_batch=self.sort_within_batch,
                 repeat=False,
                 train=False,
                 sort_key=self.sort_key,
