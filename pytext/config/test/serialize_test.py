@@ -6,7 +6,7 @@ import unittest
 
 from pytext.config import serialize
 
-SAMPLE_INT_JSON = {'int': 6}
+SAMPLE_INT_JSON = {"int": 6}
 SAMPLE_UNION_CLS = Union[str, int]
 
 
