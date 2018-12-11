@@ -8,6 +8,7 @@ from pytext.models.model import Model
 from pytext.models.output_layers import CRFOutputLayer, WordTaggingOutputLayer
 from pytext.models.representations.bilstm_slot_attn import BiLSTMSlotAttention
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
+from pytext.models.representations.pass_through import PassThroughRepresentation
 
 
 class WordTaggingModel(Model):
@@ -24,7 +25,9 @@ class WordTaggingModel(Model):
 
     class Config(Model.Config):
         representation: Union[
-            BiLSTMSlotAttention.Config, BSeqCNNRepresentation.Config
+            BiLSTMSlotAttention.Config,
+            BSeqCNNRepresentation.Config,
+            PassThroughRepresentation.Config,
         ] = BiLSTMSlotAttention.Config()
         output_layer: Union[
             WordTaggingOutputLayer.Config, CRFOutputLayer.Config
