@@ -49,8 +49,7 @@ def create_module(
         module.load_state_dict(torch.load(module_config.load_path))
     if getattr(module_config, "freeze", False):
         print(f"Freezing the parameters of module {name} ...")
-        for param in module.parameters():
-            param.requires_grad = False
+        module.freeze()
     if shared_module_key:
         SHARED_MODULE_REGISTRY[(shared_module_key, type(module_config))] = module
     return module
@@ -72,3 +71,7 @@ class Module(nn.Module, Component):
     def __init__(self, config=None) -> None:
         nn.Module.__init__(self)
         Component.__init__(self, config)
+
+    def freeze(self) -> None:
+        for param in self.parameters():
+            param.requires_grad = False
