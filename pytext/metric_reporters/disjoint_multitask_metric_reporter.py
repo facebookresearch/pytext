@@ -23,10 +23,12 @@ class DisjointMultitaskMetricReporter(MetricReporter):
             reporter.add_channel(channel)
 
     def report_metric(self, stage, epoch, reset=True, print_to_channels=True):
-        metrics_dict = {
-            name: reporter.report_metric(stage, epoch, reset, print_to_channels)
-            for name, reporter in self.reporters.items()
-        }
+        metrics_dict = {}
+        for name, reporter in self.reporters.items():
+            print(f"Reporting on task: {name}")
+            metrics_dict[name] = reporter.report_metric(
+                stage, epoch, reset, print_to_channels
+            )
         return metrics_dict
 
     def compare_metric(self, new_metric, old_metric):
