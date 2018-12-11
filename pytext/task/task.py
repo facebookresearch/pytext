@@ -38,14 +38,13 @@ def create_task(task_config, metadata=None, model_state=None):
     return create_component(ComponentType.TASK, task_config, metadata, model_state)
 
 
-class Task(Component):
+class TaskBase(Component):
     """
     Task is the central place to define and wire up components for data processing,
     model training, metric reporting, etc. Task class has a Config class containing
     the config of each component in a descriptive way.
     """
 
-    __EXPANSIBLE__ = True
     __COMPONENT_TYPE__ = ComponentType.TASK
 
     class Config(ConfigBase):
@@ -220,3 +219,7 @@ class Task(Component):
         ):
             results[idx] = result
         return results
+
+
+class Task(TaskBase):
+    __EXPANSIBLE__ = True

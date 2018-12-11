@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
 from pprint import pprint
-from typing import Dict, Union
+from typing import Dict
 
 from pytext.config import config_to_json
 from pytext.config.component import (
@@ -21,34 +21,16 @@ from pytext.optimizer import create_optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda_utils
 
-from . import Task
-from .tasks import (
-    ContextualIntentSlotTask,
-    DocClassificationTask,
-    LMTask,
-    SemanticParsingTask,
-    SeqNNTask,
-    WordTaggingTask,
-)
+from . import Task, TaskBase
 
 
-class DisjointMultitask(Task):
+class DisjointMultitask(TaskBase):
     """Modules which have the same shared_module_key and type share parameters.
        Only the first instance of such module should be configured in tasks list.
     """
 
-    class Config(Task.Config):
-        tasks: Dict[
-            str,
-            Union[
-                DocClassificationTask.Config,
-                WordTaggingTask.Config,
-                LMTask.Config,
-                SeqNNTask.Config,
-                ContextualIntentSlotTask.Config,
-                SemanticParsingTask.Config,
-            ],
-        ]
+    class Config(TaskBase.Config):
+        tasks: Dict[str, Task.Config]
         data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
         metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
 

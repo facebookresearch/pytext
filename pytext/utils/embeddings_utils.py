@@ -31,7 +31,7 @@ class PretrainedEmbedding(object):
                 raw_embeddings_path = embeddings_path
             else:
                 raise FileNotFoundError(
-                    "f{embeddings_path} not found. Can't load pretrained embeddings."
+                    f"{embeddings_path} not found. Can't load pretrained embeddings."
                 )
 
             if os.path.isfile(serialized_embed_path):
