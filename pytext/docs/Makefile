@@ -14,11 +14,13 @@ help:
 
 doc-html:
 	sphinx-apidoc -f -o source/modules ../
+	python make_config_docs.py
 	make html
 
 clean-all:
 	make clean
 	rm -r source/modules
+	rm -r source/configs
 
 .PHONY: help Makefile
 
