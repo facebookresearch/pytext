@@ -61,7 +61,7 @@ def _union_from_json(subclasses, json_obj):
 
 
 def _is_optional(cls):
-    return type(cls) is type(Union) and type(None) in cls.__args__
+    return _get_class_type(cls) == Union and type(None) in cls.__args__
 
 
 def _enum_from_json(enum_cls, json_obj):
@@ -72,6 +72,7 @@ def _enum_from_json(enum_cls, json_obj):
 
 
 def _value_from_json(cls, value):
+    cls_type = _get_class_type(cls)
     if value is None:
         return value
     # Unions must be first because Union explicitly doesn't
@@ -83,19 +84,19 @@ def _value_from_json(cls, value):
     # nested config
     elif hasattr(cls, "_fields"):
         return config_from_json(cls, value)
-    elif type(cls) is type(Union):
+    elif type(cls_type) is type(Union):
         return _union_from_json(cls.__args__, value)
-    elif issubclass(cls, Enum):
+    elif issubclass(cls_type, Enum):
         return _enum_from_json(cls, value)
-    elif issubclass(cls, List):
+    elif issubclass(cls_type, List):
         sub_cls = cls.__args__[0]
         return [_value_from_json(sub_cls, v) for v in value]
-    elif issubclass(cls, Tuple):
+    elif issubclass(cls_type, Tuple):
         return tuple(
             _value_from_json(c, v)
             for c, v in zip(_extend_tuple_type(cls, value), value)
         )
-    elif issubclass(cls, Dict):
+    elif issubclass(cls_type, Dict):
         sub_cls = cls.__args__[1]
         return {key: _value_from_json(sub_cls, v) for key, v in value.items()}
     # built in types
@@ -158,6 +159,7 @@ def config_from_json(cls, json_obj, ignore_fields=()):
 
 
 def _value_to_json(cls, value):
+    cls_type = _get_class_type(cls)
     assert _is_optional(cls) or value is not None
     if value is None:
         return value
@@ -165,7 +167,7 @@ def _value_to_json(cls, value):
     elif _is_optional(cls) and len(cls.__args__) == 2:
         sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
         return _value_to_json(sub_cls, value)
-    elif type(cls) is type(Union) or getattr(cls, "__EXPANSIBLE__", False):
+    elif type(cls_type) is type(Union) or getattr(cls, "__EXPANSIBLE__", False):
         real_cls = type(value)
         if hasattr(real_cls, "_fields"):
             value = config_to_json(real_cls, value)
@@ -173,16 +175,16 @@ def _value_to_json(cls, value):
     # nested config
     elif hasattr(cls, "_fields"):
         return config_to_json(cls, value)
-    elif issubclass(cls, Enum):
+    elif issubclass(cls_type, Enum):
         return value.value
-    elif issubclass(cls, List):
+    elif issubclass(cls_type, List):
         sub_cls = cls.__args__[0]
         return [_value_to_json(sub_cls, v) for v in value]
-    elif issubclass(cls, Tuple):
+    elif issubclass(cls_type, Tuple):
         return tuple(
             _value_to_json(c, v) for c, v in zip(_extend_tuple_type(cls, value), value)
         )
-    elif issubclass(cls, Dict):
+    elif issubclass(cls_type, Dict):
         sub_cls = cls.__args__[1]
         return {key: _value_to_json(sub_cls, v) for key, v in value.items()}
     return value
@@ -196,3 +198,14 @@ def config_to_json(cls, config_obj):
         value = getattr(config_obj, field)
         json_result[field] = _value_to_json(f_cls, value)
     return json_result
+
+
+def _get_class_type(cls):
+    """
+    type(cls) has an inconsistent behavior between 3.6 and 3.7 because of changes in the typing module. We therefore
+    rely on __origin__, present only in classes from typing to extract the origin of the class for comparison, otherwise
+    default to the type sent directly
+    :param cls: class to infer
+    :return: class or in the case of classes from typing module, the real type (Union, List) of the created object
+    """
+    return cls.__origin__ if hasattr(cls, '__origin__') else cls
