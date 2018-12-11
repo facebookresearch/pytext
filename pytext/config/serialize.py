@@ -4,6 +4,12 @@ from enum import Enum
 from typing import Dict, List, Tuple, Union
 
 from .component import Registry
+from .pytext_config import PyTextConfig, TestConfig
+
+
+class Mode(Enum):
+    TRAIN = "train"
+    TEST = "test"
 
 
 class ConfigParseError(Exception):
@@ -211,3 +217,15 @@ def _get_class_type(cls):
     (Union, List) of the created object
     """
     return cls.__origin__ if hasattr(cls, "__origin__") else cls
+
+
+def parse_config(mode, config_json):
+    """
+    Parse PyTextConfig object from parameter string or parameter file
+    """
+    config_cls = {Mode.TRAIN: PyTextConfig, Mode.TEST: TestConfig}[mode]
+    # TODO T32608471 should assume the entire json is PyTextConfig later, right
+    # now we're matching the file format for pytext trainer.py inside fbl
+    if "config" not in config_json:
+        return config_from_json(config_cls, config_json)
+    return config_from_json(config_cls, config_json["config"])

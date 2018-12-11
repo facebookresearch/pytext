@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import enum
 import json
 import pprint
 import sys
@@ -11,7 +10,7 @@ import click
 import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig, TestConfig
-from pytext.config.serialize import config_from_json, config_to_json
+from pytext.config.serialize import Mode, config_from_json, config_to_json, parse_config
 from pytext.task import load
 from pytext.utils.documentation_helper import (
     ROOT_CONFIG,
@@ -27,26 +26,9 @@ from pytext.workflow import (
 from torch.multiprocessing.spawn import spawn
 
 
-class Mode(enum.Enum):
-    TRAIN = "train"
-    TEST = "test"
-
-
 class Attrs:
     def __repr__(self):
         return f"Attrs({', '.join(f'{k}={v}' for k, v in vars(self).items())})"
-
-
-def parse_config(mode, config_json):
-    """
-    Parse PyTextConfig object from parameter string or parameter file
-    """
-    config_cls = {Mode.TRAIN: PyTextConfig, Mode.TEST: TestConfig}[mode]
-    # TODO T32608471 should assume the entire json is PyTextConfig later, right
-    # now we're matching the file format for pytext trainer.py inside fbl
-    if "config" not in config_json:
-        return config_from_json(config_cls, config_json)
-    return config_from_json(config_cls, config_json["config"])
 
 
 def train_model_distributed(config):
