@@ -6,7 +6,7 @@ from typing import List
 import torch
 from pytext.utils import data_utils
 
-from .field import Field
+from .field import Field, TextFeatureField
 
 
 class PretrainedModelEmbeddingField(Field):
@@ -19,6 +19,11 @@ class PretrainedModelEmbeddingField(Field):
             dtype=torch.float,
             unk_token=None,
             pad_token=None,
+        )
+        embed_dim = kwargs.get("embed_dim")
+        num_tokens = TextFeatureField.dummy_model_input.size(0)
+        self.dummy_model_input = torch.tensor(
+            [[[1.0] * embed_dim]] * num_tokens, dtype=torch.float, device="cpu"
         )
 
     def pad(self, minibatch: List[List[List[float]]]) -> List[List[List[float]]]:

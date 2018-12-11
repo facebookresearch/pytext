@@ -49,6 +49,7 @@ class CharFeatConfig(ConfigBase):
 class PretrainedModelEmbeddingConfig(ConfigBase):
     embed_dim: int = 0
     model_paths: Optional[Dict[str, str]] = None
+    export_input_names: List[str] = ["pretrained_embeds"]
 
 
 class FloatVectorConfig(ConfigBase):
