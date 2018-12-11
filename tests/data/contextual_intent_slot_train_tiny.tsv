@@ -1,0 +1,10 @@
+cu:other		["Hey", "Youd love this"]	{"tokenFeatList": [{"tokenIdx": 1, "features": {"b_ozlo_ner_category:content_reaction": 0.12}}]}	0.2	0.5
+cu:address_Person	0:4:person	["this is crazy still to me"]	{"tokenFeatList": [{"tokenIdx": 5, "features": {"b_uce_contacts": 1.0, "uce_contacts": 1.0}}]}	0.2	0.5
+cu:other		["Whats up. How are you doing"]		0.2	0.5
+cu:other		["Hey", "Hey"]		0.2	0.5
+cu:other		["Dinner tonight?", "yup"]		0.2	0.5
+cu:other		["wanna hangout?", "maybe"]		0.2	0.5
+cu:other		["wya?", "home"]		0.2	0.5
+cu:other		["tommi sushi again?", "why not"]	{"tokenFeatList": [{"tokenIdx": 0, "features": {"b_ozlo_ner_category:poi": 0.9}}, {"tokenIdx": 1, "features": {"b_ozlo_ner_category:poi": 1.0}}]}	0.2	0.5
+cu:other		["going out?"]		0.2	0.5
+cu:other		["I like this!!"]		0.2	0.5

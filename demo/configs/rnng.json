@@ -1,0 +1,83 @@
+{
+  "config": {
+    "task": {
+      "SemanticParsingTask": {
+        "model": {
+          "lstm": {
+            "dropout": 0.34,
+            "lstm_dim": 164,
+            "num_layers": 2,
+            "bidirectional": true
+          },
+          "ablation": {
+            "use_buffer": true,
+            "use_stack": true,
+            "use_action": true,
+            "use_last_open_NT_feature": false
+          },
+          "constraints": {
+            "intent_slot_nesting": true,
+            "ignore_loss_for_unsupported": false,
+            "no_slots_inside_unsupported": true
+          },
+          "max_open_NT": 10,
+          "dropout": 0.34,
+          "compositional_type": "sum"
+        },
+        "features": {
+          "word_feat": {
+            "embed_dim": 200,
+            "freeze": false,
+            "embedding_init_strategy": "random",
+            "embedding_init_range": null,
+            "export_input_names": [
+              "tokens_vals"
+            ],
+            "vocab_file": "",
+            "vocab_size": 0,
+            "vocab_from_train_data": true,
+            "lowercase_tokens": true,
+            "min_freq": 2
+          }
+        },
+        "featurizer": {
+          "SimpleFeaturizer": {}
+        },
+        "trainer": {
+          "real_trainer": {
+            "random_seed": 0,
+            "epochs": 1,
+            "early_stop_after": 0,
+            "max_clip_norm": null,
+            "report_train_metrics": false
+          },
+          "num_workers": 12
+        },
+        "optimizer": {
+          "type": "adam",
+          "lr": 0.0004,
+          "weight_decay": 0.000004,
+          "momentum": 0
+        },
+        "data_handler": {
+          "columns_to_read": [
+            "raw_text",
+            "text",
+            "seqlogical"
+          ],
+          "train_path": "base_dir/top-dataset-semantic-parsing/train.tsv",
+          "eval_path": "base_dir/top-dataset-semantic-parsing/eval.tsv",
+          "test_path": "base_dir/top-dataset-semantic-parsing/test.tsv",
+          "train_batch_size": 1,
+          "eval_batch_size": 1,
+          "test_batch_size": 1,
+          "shuffle": true,
+          "sort_within_batch": true
+        }
+      }
+    },
+    "distributed_world_size": 1,
+    "use_cuda_if_available": false,
+    "use_tensorboard": false
+  }
+}

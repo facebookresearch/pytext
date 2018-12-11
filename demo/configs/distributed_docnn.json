@@ -1,0 +1,19 @@
+{
+  "config": {
+    "task": {
+      "DocClassificationTask": {
+        "data_handler": {
+          "columns_to_read": [
+            "text",
+            "doc_label"
+          ],
+          "train_path": "base_dir/train_tiny.tsv",
+          "eval_path": "base_dir/test_tiny.tsv",
+          "test_path": "base_dir/test_tiny.tsv"
+        }
+      }
+    },
+    "use_cuda_if_available": true,
+    "distributed_world_size": 8
+  }
+}

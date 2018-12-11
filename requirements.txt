@@ -1,0 +1,11 @@
+click
+future
+hypothesis
+joblib
+numpy
+onnx
+pandas
+requests
+scipy
+torchtext
+tensorboardX

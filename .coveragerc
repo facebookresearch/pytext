@@ -1,0 +1,4 @@
+[run]
+branch = True
+concurrency = multiprocessing
+include = pytext/*

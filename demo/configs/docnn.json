@@ -1,0 +1,11 @@
+{
+  "task": {
+    "DocClassificationTask": {
+      "data_handler": {
+        "train_path": "tests/data/train_data_tiny.tsv",
+        "eval_path": "tests/data/test_data_tiny.tsv",
+        "test_path": "tests/data/test_data_tiny.tsv"
+      }
+    }
+  }
+}

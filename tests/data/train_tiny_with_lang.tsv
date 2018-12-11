@@ -1,0 +1,10 @@
+alarm/modify_alarm	16:24:datetime,39:57:datetime	change my alarm tomorrow to wake me up 30 minutes earlier	1-1:1|2-2:1				en
+alarm/set_alarm		Turn on all my alarms	1-1:1|2-2:1				en
+alarm/set_alarm	12:27:datetime	sound alarm every 8 minutes	1-1:1|2-2:1				en
+alarm/set_alarm	7:17:datetime	repeat yesterdays alarm	1-1:1|2-2:1				en
+alarm/snooze_alarm		continue my alarm	1-1:1|2-2:1				en
+alarm/time_left_on_alarm		Do I have anymore time on the alarm	1-1:1|2-2:1				en
+reminder/show_reminders	8:15:datetime,18:27:reminder/noun	display Tuesday's reminders	1-1:1|2-2:1				en
+weather/find	12:19:weather/noun,20:28:datetime	what is the weather tomorrow	1-1:1|2-2:1				en
+weather/find	13:17:weather/attribute	When will it snow	1-1:1|2-2:1				en
+alarm/set_alarm	21:35:datetime	Configurar mi alarma por 60 minutos 1-1:1|2-2:1					es

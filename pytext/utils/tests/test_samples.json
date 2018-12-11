@@ -1,0 +1,166 @@
+[
+  {
+    "output": "12:17:music/type",
+    "labels": [
+      "NoLabel",
+      "B-music/type",
+      "NoLabel"
+    ],
+    "token_ranges": [
+      [
+        8,
+        11
+      ],
+      [
+        12,
+        17
+      ],
+      [
+        18,
+        22
+      ]
+    ]
+  },
+  {
+    "output": "12:23:music/type",
+    "labels": [
+      "NoLabel",
+      "B-music/type",
+      "I-music/type"
+    ],
+    "token_ranges": [
+      [
+        8,
+        11
+      ],
+      [
+        12,
+        17
+      ],
+      [
+        18,
+        23
+      ]
+    ]
+  },
+  {
+    "output": "0:4:music/type,12:17:music/type",
+    "labels": [
+      "B-music/type",
+      "NoLabel",
+      "NoLabel",
+      "B-music/type"
+    ],
+    "token_ranges": [
+      [
+        0,
+        4
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        8,
+        11
+      ],
+      [
+        12,
+        17
+      ]
+    ]
+  },
+  {
+    "output": "0:8:music/type",
+    "labels": [
+      "B-music/type",
+      "I-music/type",
+      "NoLabel"
+    ],
+    "token_ranges": [
+      [
+        0,
+        4
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        9,
+        11
+      ]
+    ]
+  },
+  {
+    "output": "0:12:music/type",
+    "labels": [
+      "B-music/type",
+      "I-music/type",
+      "I-music/type",
+      "NoLabel"
+    ],
+    "token_ranges": [
+      [
+        0,
+        4
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        9,
+        12
+      ],
+      [
+        13,
+        15
+      ]
+    ]
+  },
+  {
+    "output": "0:4:music/type",
+    "labels": [
+      "B-music/type",
+      "NoLabel",
+      "NoLabel"
+    ],
+    "token_ranges": [
+      [
+        0,
+        4
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        8,
+        11
+      ]
+    ]
+  },
+  {
+    "output": "0:12:music/type",
+    "labels": [
+      "B-music/type",
+      "I-music/type",
+      "I-music/type"
+    ],
+    "token_ranges": [
+      [
+        0,
+        4
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        9,
+        12
+      ]
+    ]
+  }
+]

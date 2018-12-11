@@ -1,0 +1,78 @@
+{
+  "config": {
+    "task": {
+      "DisjointMultitask": {
+        "data_handler": {
+          "epoch_size": 2000
+        },
+        "trainer": {
+          "epochs": 15
+        },
+        "tasks": {
+          "SST2": {
+            "DocClassificationTask": {
+              "features": {
+                "shared_module_key": "SHARED_EMBEDDING",
+                "word_feat": {
+                  "vocab_file": "base_dir/SST-2/sst_vocab.txt",
+                  "vocab_size": 15000,
+                  "vocab_from_train_data": false
+                }
+              },
+              "data_handler": {
+                "columns_to_read": [
+                  "text",
+                  "doc_label"
+                ],
+                "train_path": "base_dir/SST-2/train.tsv",
+                "eval_path": "base_dir/SST-2/dev.tsv",
+                "test_path": "base_dir/SST-2/dev.tsv"
+              },
+              "model": {
+                "representation": {
+                  "BiLSTMDocAttention": {
+                    "lstm": {
+                      "shared_module_key": "SHARED_LSTM"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "LM": {
+            "LMTask": {
+              "features": {
+                "shared_module_key": "SHARED_EMBEDDING",
+                "word_feat": {
+                  "vocab_file": "base_dir/SST-2/sst_vocab.txt",
+                  "vocab_size": 15000,
+                  "vocab_from_train_data": false
+                }
+              },
+              "data_handler": {
+                "LanguageModelDataHandler": {
+                  "train_path": "base_dir/wikitext2/train.txt",
+                  "eval_path": "base_dir/wikitext2/valid.txt",
+                  "test_path": "base_dir/wikitext2/test.txt",
+                  "train_batch_size": 16,
+                  "eval_batch_size": 16,
+                  "test_batch_size": 16
+                }
+              },
+              "model": {
+                "representation": {
+                  "shared_module_key": "SHARED_LSTM"
+                },
+                "decoder": {
+                  "hidden_dims": [
+                    10
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

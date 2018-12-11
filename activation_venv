@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+VENV_NAME=${1:-venv}
+
+if [ ! -d "$VENV_NAME" ]
+then
+    python3 -m venv "$VENV_NAME"
+fi
+# shellcheck source=/dev/null
+source "$VENV_NAME/bin/activate"
