@@ -32,13 +32,17 @@ class ModuleTest(unittest.TestCase):
         model = create_model(
             DocModel.Config(),
             FeatureConfig(
-                word_feat=WordFeatConfig(freeze=True), dict_feat=DictFeatConfig()
+                word_feat=WordFeatConfig(freeze=True, mlp_layers=[4]),
+                dict_feat=DictFeatConfig(),
             ),
             metadata=mock_metadata(),
         )
         # word embedding
-        for param in model.embedding[0].parameters():
+        for param in model.embedding[0].word_embedding.parameters():
             self.assertFalse(param.requires_grad)
+        for param in model.embedding[0].mlp_layers.parameters():
+            self.assertTrue(param.requires_grad)
+
         # dict feat embedding
         for param in model.embedding[1].parameters():
             self.assertTrue(param.requires_grad)

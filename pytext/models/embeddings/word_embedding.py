@@ -82,6 +82,7 @@ class WordEmbedding(EmbeddingBase):
         # Create MLP layers
         self.mlp_layers = nn.ModuleList([])
         for next_dim in mlp_layer_dims or []:
+            assert next_dim > 0
             self.mlp_layers.append(nn.Linear(embedding_dim, next_dim))
             embedding_dim = next_dim
 
@@ -98,3 +99,7 @@ class WordEmbedding(EmbeddingBase):
             embedding = F.relu(embedding)
 
         return embedding
+
+    def freeze(self):
+        for param in self.word_embedding.parameters():
+            param.requires_grad = False

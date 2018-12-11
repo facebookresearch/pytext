@@ -16,7 +16,7 @@ class EmbedInitStrategy(Enum):
 
 class WordFeatConfig(ConfigBase):
     embed_dim: int = 100
-    freeze: bool = False
+    freeze: bool = False  # only freezes embedding lookup, not MLP layers
     embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
     embedding_init_range: Optional[List[float]] = None
     export_input_names: List[str] = ["tokens_vals"]
