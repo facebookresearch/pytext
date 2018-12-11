@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  build3.6:
+  build_Py3.6:
     docker:
       - image: circleci/python:3.6
     steps:
@@ -8,6 +8,9 @@ jobs:
       - run:
           name: setup
           command: source .circleci/setup_circleimg.sh
+      - run:
+          name: install_pytorch
+          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl
       - run:
           name: run tests and gather coverage
           command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
@@ -18,7 +21,7 @@ jobs:
       - store_artifacts:
           path: htmlcov
           destination: coverage
-  build3.7:
+  build_Py3.7:
     docker:
       - image: circleci/python:3.7
     steps:
@@ -26,6 +29,9 @@ jobs:
       - run:
           name: setup
           command: source .circleci/setup_circleimg.sh
+      - run:
+          name: install_pytorch
+          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp37-cp37m-linux_x86_64.whl
       - run:
           name: run tests and gather coverage
           command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
