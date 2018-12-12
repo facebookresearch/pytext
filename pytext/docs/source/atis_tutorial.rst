@@ -18,8 +18,9 @@ Download the data locally and use the script below to preprocess it into format 
 
 .. code-block:: console
 
+    $ unzip <download_dir>/atis.zip -d <download_dir>/atis
     $ python3 demo/atis_joint_model/data_processor.py
-      --download-folder ./download_dir --output-directory demo/atis_joint_model/
+      --download-folder <download_dir>/atis --output-directory demo/atis_joint_model/
 
 The script will also randomly split the training data into training and validation sets. All the pre-processed data will be written to the output-directory argument specified in the command.
 
@@ -32,7 +33,7 @@ Word embeddings are the vector representations of the different words understood
 
 .. code-block:: console
 
-    $ wget http://nlp.stanford.edu/data/wordvecs/glove.6B.zip -P demo/atis_joint_model/
+    $ curl https://nlp.stanford.edu/data/wordvecs/glove.6B.zip > demo/atis_joint_model/glove.6B.zip
     $ unzip demo/atis_joint_model/glove.6B.zip -d demo/atis_joint_model
 
 The downloaded file size is ~800 MB.
