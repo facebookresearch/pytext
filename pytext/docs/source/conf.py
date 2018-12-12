@@ -19,7 +19,9 @@ import sys
 
 
 # source code directory, relative to this file, for sphinx-autobuild
-sys.path.insert(0, os.path.abspath("../../../"))
+RST_SOURCE_DIR = os.path.abspath(".")
+PROJECT_ROOT = os.path.abspath("../../..")
+sys.path.insert(0, PROJECT_ROOT)
 
 
 # -- Project information -----------------------------------------------------
@@ -165,3 +167,21 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+
+# -- Manual doc generation ---------------------------------------------------
+
+
+def run_apidoc(_):
+    ignore_paths = [os.path.join(PROJECT_ROOT, "setup.py")]
+    modules = os.path.join(RST_SOURCE_DIR, "modules")
+
+    argv = ["-f", "-o", modules, PROJECT_ROOT] + ignore_paths
+
+    from sphinx.ext import apidoc
+
+    apidoc.main(argv)
+
+
+def setup(app):
+    app.connect("builder-inited", run_apidoc)
