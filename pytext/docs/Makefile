@@ -13,7 +13,6 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 doc-html:
-	sphinx-apidoc -f -o source/modules ../
 	make html
 
 clean-all:
