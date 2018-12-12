@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Union
 import unittest
+from typing import Union
 
 from pytext.config import serialize
+
 
 SAMPLE_INT_JSON = {"int": 6}
 SAMPLE_UNION_CLS = Union[str, int]
