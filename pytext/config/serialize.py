@@ -90,7 +90,7 @@ def _value_from_json(cls, value):
     # nested config
     elif hasattr(cls, "_fields"):
         return config_from_json(cls, value)
-    elif type(cls_type) is type(Union):
+    elif cls_type == Union:
         return _union_from_json(cls.__args__, value)
     elif issubclass(cls_type, Enum):
         return _enum_from_json(cls, value)
@@ -173,7 +173,7 @@ def _value_to_json(cls, value):
     elif _is_optional(cls) and len(cls.__args__) == 2:
         sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
         return _value_to_json(sub_cls, value)
-    elif type(cls_type) is type(Union) or getattr(cls, "__EXPANSIBLE__", False):
+    elif cls_type == Union or getattr(cls, "__EXPANSIBLE__", False):
         real_cls = type(value)
         if hasattr(real_cls, "_fields"):
             value = config_to_json(real_cls, value)

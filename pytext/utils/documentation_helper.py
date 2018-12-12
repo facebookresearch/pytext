@@ -65,7 +65,8 @@ def get_config_fields(obj):
         elif not typing:
             if not isfunction(v):
                 ret[k] = (v, None, None)
-        elif type(typing) is type(Union):
+        # type(Union) changed from Py3.6 to 3.7
+        elif hasattr(typing, "__origin__") and typing.__origin__ == Union:
             options = set()
             for t in typing.__args__:
                 options.add(get_component_name(t))
