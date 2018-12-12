@@ -58,7 +58,7 @@ class JointModelDataHandler(DataHandler):
                 DatasetFieldName.TEXT_FIELD: TextFeatureField,
                 DatasetFieldName.DICT_FIELD: DictFeatureField,
                 DatasetFieldName.CHAR_FIELD: CharFeatureField,
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField(),
+                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
             },
         )
 
