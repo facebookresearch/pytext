@@ -45,9 +45,7 @@ class RoundRobinBatchIterator(BatchIterator):
     def __iter__(self):
         iterators = {
             name: iter(
-                itertools.cycle(iterator)
-                if (self.epoch_size < float("inf"))
-                else iterator
+                self.cycle(iterator) if (self.epoch_size < float("inf")) else iterator
             )
             for name, iterator in self.iterators.items()
         }
@@ -73,6 +71,12 @@ class RoundRobinBatchIterator(BatchIterator):
                 return
             context[BatchContext.TASK_NAME] = name
             yield input, target, context
+
+    @classmethod
+    def cycle(cls, iterator):
+        while True:
+            for item in iterator:
+                yield item
 
 
 class DisjointMultitaskDataHandler(DataHandler):
