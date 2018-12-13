@@ -16,9 +16,10 @@ from pytext.config.field_config import (
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.embeddings_utils import PretrainedEmbedding
-from pytext.utils.test_utils import tests_module
+from pytext.utils.test_utils import import_tests_module
 
 
+tests_module = import_tests_module()
 TRAIN_FILE = tests_module.test_file("train_data_tiny.tsv")
 EVAL_FILE = tests_module.test_file("test_data_tiny.tsv")
 TEST_FILE = tests_module.test_file("test_data_tiny.tsv")

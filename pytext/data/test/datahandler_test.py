@@ -5,7 +5,10 @@ import unittest
 
 from pytext.common.constants import DFColumn
 from pytext.data.data_handler import DataHandler
-from pytext.utils.test_utils import tests_module
+from pytext.utils.test_utils import import_tests_module
+
+
+tests_module = import_tests_module()
 
 
 class DataHandlerTest(unittest.TestCase):
