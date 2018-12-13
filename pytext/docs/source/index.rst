@@ -6,12 +6,12 @@
 :github_url: https://github.com/facebookresearch/pytext
 
 
-PyText documentation
+PyText Documentation
 =====================
 
 PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText addresses the often-conflicting requirements of enabling rapid experimentation and of serving models at scale. It achieves this by providing simple and extensible interfaces and abstractions for model components, and by using PyTorch’s capabilities of exporting models for inference via the optimized Caffe2 execution engine. We use PyText at Facebook to iterate quickly on new modeling ideas and then seamlessly ship them at scale.
 
-**Core PyText features:**
+**Core PyText Features:**
 
 - Production ready models for various NLP/NLU tasks:
 
@@ -35,30 +35,40 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 - Distributed-training support (using the new C10d backend in PyTorch 1.0)
 - Reference implementation and a pre-trained model for the paper: `Gupta et al. (2018): Semantic Parsing for Task Oriented Dialog using Hierarchical Representations <http://aclweb.org/anthology/D18-1300>`_
 
+How To Use
+============
+
+Please follow the tutorial series in **Getting Started** to get a sense of how to train a basic model and deploy to production.
+
+After that, you can explore more options of builtin models and training methods in **Training More Advanced Models**
+
+If you want to use PyText as a library and build your own models, please check the tutorial in **Extending PyText**
+
 .. toctree::
   :maxdepth: 1
   :caption: Getting Started
 
   installation
-  overview
-
-.. toctree::
-  :maxdepth: 1
-  :caption: Tutorials
-
   train_your_first_model
   execute_your_first_model
-  atis_tutorial
+
   pytext_models_in_your_app
   serving_models_in_production
 
 .. toctree::
   :maxdepth: 1
-  :caption: Advanced Tutorials
+  :caption: Training More Advanced Models
 
+  atis_tutorial
   hierarchical_intent_slot_tutorial
   disjoint_multitask_tutorial
   distributed_training_tutorial
+
+.. toctree::
+  :maxdepth: 1
+  :caption: Extending PyText
+
+  overview
   create_new_task
 
 
