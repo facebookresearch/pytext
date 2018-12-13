@@ -54,6 +54,6 @@ class DisjointMultitaskModel(Model):
         self.current_model = None
         super().load_state_dict(state_dict, strict)
 
-    def save_modules(self, base_path):
-        for _, model in self.models.items():
-            model.save_modules(base_path)
+    def save_modules(self, base_path, suffix=""):
+        for name, model in self.models.items():
+            model.save_modules(base_path, f"-{name}{suffix}")
