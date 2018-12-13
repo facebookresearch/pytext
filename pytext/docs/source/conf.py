@@ -20,7 +20,7 @@ import sys
 
 # source code directory, relative to this file, for sphinx-autobuild
 RST_SOURCE_DIR = os.path.abspath(".")
-PROJECT_ROOT = os.path.abspath("../../..")
+PROJECT_ROOT = os.path.abspath("../..")
 sys.path.insert(0, PROJECT_ROOT)
 
 
@@ -173,10 +173,9 @@ texinfo_documents = [
 
 
 def run_apidoc(_):
-    ignore_paths = [os.path.join(PROJECT_ROOT, "setup.py")]
     modules = os.path.join(RST_SOURCE_DIR, "modules")
 
-    argv = ["-f", "-o", modules, PROJECT_ROOT] + ignore_paths
+    argv = ["-f", "-o", modules, PROJECT_ROOT]
 
     from sphinx.ext import apidoc
 
