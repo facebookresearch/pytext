@@ -7,7 +7,7 @@ PyText is available in the Python Package Index via
 
 .. code-block:: console
 
-  $ pip install pytext
+  $ pip install pytext-nlp
 
 
 The easiest way to get started on most systems is to create a `virtualenv`
@@ -16,7 +16,7 @@ The easiest way to get started on most systems is to create a `virtualenv`
 
   $ python3 -m virtualenv venv
   $ source pytext/bin/activate
-  (venv) $ pip install pytext
+  (venv) $ pip install pytext-nlp
 
 This will install a version of PyTorch depending on your system. See `PyTorch <https://pytorch.org>`_ for more information. If you are using MacOS or Windows, this likely will not include GPU support by default; if you are using Linux, you should automatically get a version of PyTorch compatible with CUDA 9.0.
 
