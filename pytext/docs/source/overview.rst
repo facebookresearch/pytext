@@ -1,5 +1,5 @@
-Overview
-=============
+Architecture Overview
+======================
 
 PyText is designed to help users build end to end pipelines for training and inference. A number of default pipelines are implemented for popular tasks which can be used as-is. Users are free to implement one or more of the pipeline's components.
 

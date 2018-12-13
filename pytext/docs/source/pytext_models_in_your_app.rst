@@ -3,7 +3,7 @@ Use PyText models in your app
 
 Once you have a PyText model exported to Caffe2, you can host it on a simple web server in the cloud. Then your applications (web/mobile) can make requests to this server and use the returned predictions from the model.
 
-In this tutorial, we'll take the intent-slot model that we trained `previously <atis_tutorial.html>`_ using the ATIS dataset, and host it on a `Flask <http://flask.pocoo.org/>`_ server running on an `Amazon EC2 <https://aws.amazon.com/ec2/>`_ instance. Then we'll write an iOS app which can identify city names in users' messages by querying the server.
+In this tutorial, we'll take the intent-slot model trained in :doc:`atis_tutorial`, and host it on a `Flask <http://flask.pocoo.org/>`_ server running on an `Amazon EC2 <https://aws.amazon.com/ec2/>`_ instance. Then we'll write an iOS app which can identify city names in users' messages by querying the server.
 
 
 1. Setup an EC2 instance

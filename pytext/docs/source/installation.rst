@@ -23,12 +23,12 @@ This will install a version of PyTorch depending on your system. See `PyTorch <h
 If you need a different version of PyTorch, follow the instructions on the `PyTorch website <https://pytorch.org>`_ to install the appropriate version of PyTorch before installing PyText
 
 OS Dependencies
-===============
+---------------
 
 *if you're having issues getting things to run, these guides might help*
 
 On MacOS
---------
+^^^^^^^^^
 
 Install `brew <https://brew.sh>`_, then run the command:
 
@@ -37,12 +37,12 @@ Install `brew <https://brew.sh>`_, then run the command:
   $ brew install cmake protobuf
 
 On Windows
-----------
+^^^^^^^^^^^
 
 Coming Soon!
 
 On Linux
---------
+^^^^^^^^^
 
 For Ubuntu/Debian distros, you might need to run the following command:
 
@@ -58,8 +58,8 @@ For rpm-based distros, you might need to run the following command:
   $ sudo yum install protobuf-devel
 
 
-Install From Source 
-====================
+Install From Source
+--------------------
 
 .. code-block:: console
 
@@ -94,7 +94,7 @@ To exit the virtual environment:
 
 
 Cloud VM Setup
-==============
+---------------
 
 This guide will cover all the setup work you have to do in order to be able to easily install PyText on a cloud VM
 .
@@ -103,11 +103,11 @@ This guide will cover all the setup work you have to do in order to be able to e
 After following these instructions, you should be good to either follow the `Installation`_ instructions or the `Install From Source`_ instructions
 
 Amazon Web Services
--------------------
+^^^^^^^^^^^^^^^^^^^^
 **Coming Soon**
 
 Google Cloud Engine
--------------------
+^^^^^^^^^^^^^^^^^^^^
 
 *If you have problems launching your VM, make sure you have a non-zero gpu quota,* `click here to learn about quotas <https://cloud.google.com/compute/quotas#requesting_additional_quota>`_
 
@@ -134,7 +134,7 @@ This guide uses `Google's Deep Learning VM <https://console.cloud.google.com/mar
 
 
 Microsoft Azure
----------------
+^^^^^^^^^^^^^^^^^
 
 This guide uses the Azure Ubuntu Server 18.04 LTS image as a base
 

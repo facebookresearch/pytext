@@ -8,7 +8,7 @@ an existing task and replace some (or all) components.
 In this tutorial, we'll write a :class:`~WordTaggingTask`, and its associated components.
 
 1. Define the :class:`~Task`
--------------------------
+------------------------------
 
 Usually features, targets, data_handler, model and metric_reporter are the components
 subject to change, and we can reuse the other more general ones e.g trainer, optimizer and exporter ::
@@ -31,7 +31,7 @@ Every :class:`~Task` has an embedded :class:`~Config`, which defines the config 
 components in a nested way. The base :class:`~Task` has a `from_config` method that creates every component and wires them up.
 
 2. Define :class:`~ModelInput` and :class:`~Target`
---------------------------
+----------------------------------------------------
 
 The first two configs in the :class:`~Config` are model inputs (features) and targets
 (expected outputs), which define the interface between data processing and model training. ::
@@ -52,7 +52,7 @@ in :class:`~DataHandler` to create TorchText :class:`~Field` to process raw data
 in :class:`~Model` to create the first model layer: the **Embedding**.
 
 3. Implement :class:`~DataHandler`
---------------------------
+-----------------------------------
 
 PyText uses the open source library `TorchText <https://github.com/pytorch/text>`_
 for part of data preprocessing, including padding, numericalization and batching.
@@ -139,7 +139,7 @@ for each word (with word labels and token ranges as inputs). We do the processin
 assumes a 1:1 mapping between raw input and :class:`Field`.
 
 4. Implement :class:`~Model`
---------------------------
+------------------------------
 
 A typical model in PyText is organized in four layers: **Embedding**, **Representation**,
 **Decode** and **Output**. For any new model that conforms to this architecture,
@@ -226,7 +226,7 @@ setting the value in the corresponding config::
 
 
 5. Implement :class:`~MetricReporter`
---------------------------
+--------------------------------------
 
 Next we need to write a :class:`~MetricReporter` to calculate metrics and report model training/test
 results.::
@@ -284,7 +284,7 @@ everything to stdout and a :class:`~TensorBoardChannel` that outputs metrics to
 	        )
 
 6. Implement the predict method
---------------------------
+---------------------------------
 
 With the code above, we can train and test the model. Next, we
 need to add one more method in our :class:`~Trainer` to format the prediction results.
@@ -313,7 +313,7 @@ more human readable::
 Note that we had created the `context[BatchContext.TOKEN_RANGE]` earlier as an extra field.
 
 7. Implement :class:`~Exporter`
---------------------------
+----------------------------------
 
 The predict method is only used when experimenting with the model in PyTorch.
 If we wish to run our model in the production-optimized Caffe2 environment, we'll have to create an :class:`~Exporter`.
@@ -340,7 +340,7 @@ All that we need to do is implement the `export_to_caffe2` method in the output 
 
 
 8. Generate sample config and run the task
---------------------------
+--------------------------------------------
 
 Now that we have a fully functional class:`~Task`, we can generate a default JSON config for it by using the pytext cli tool
 
