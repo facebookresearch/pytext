@@ -3,7 +3,7 @@
 
 import os
 
-from setuptools import setup
+import setuptools
 
 
 DIR = os.path.dirname(__file__)
@@ -13,14 +13,14 @@ REQUIREMENTS = os.path.join(DIR, "requirements.txt")
 with open(REQUIREMENTS) as f:
     reqs = f.read()
 
-setup(
+setuptools.setup(
     name="pytext-nlp",
     version="0.1.1",
     description="pytorch modeling framework and model zoo for text models",
     url="https://github.com/facebookresearch/PyText",
     author="Facebook",
     license="BSD",
-    packages=["pytext"],
+    packages=setuptools.find_packages(),
     install_requires=reqs.strip().split("\n"),
     entry_points={"console_scripts": ["pytext = pytext.main:main"]},
 )
