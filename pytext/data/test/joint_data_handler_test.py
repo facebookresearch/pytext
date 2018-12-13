@@ -7,7 +7,10 @@ from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config.field_config import DocLabelConfig, FeatureConfig, WordLabelConfig
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
-from pytext.utils.test_utils import tests_module
+from pytext.utils.test_utils import import_tests_module
+
+
+tests_module = import_tests_module()
 
 
 class JointDataHandlerTest(unittest.TestCase):
