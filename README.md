@@ -28,7 +28,7 @@ We recommend using a virtualenv:
 ```
   $ python3 -m virtualenv venv
   $ source pytext/bin/activate
-  (venv) $ pip install pytext
+  (venv) $ pip install pytext-nlp
 ```
 
 Detailed instructions can be found in our [Documentation](https://pytext.readthedocs.io/installation.html)
