@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import os
-from typing import Any, Dict, List, Tuple, get_type_hints
+from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 
 import torch
 from pytext.config import PyTextConfig, TestConfig
@@ -103,16 +103,28 @@ def export_saved_model_to_caffe2(
 
 
 def test_model(test_config: TestConfig, metrics_channel: Channel = None) -> Any:
-    _set_cuda(test_config.use_cuda_if_available)
+    return test_model_from_snapshot_path(
+        test_config.load_snapshot_path,
+        test_config.use_cuda_if_available,
+        test_config.test_path,
+        metrics_channel,
+    )
 
-    task, train_config = load(test_config.load_snapshot_path)
+
+def test_model_from_snapshot_path(
+    snapshot_path: str,
+    use_cuda_if_available: bool,
+    test_path: Optional[str] = None,
+    metrics_channel: Optional[Channel] = None,
+):
+    _set_cuda(use_cuda_if_available)
+    task, train_config = load(snapshot_path)
+    if not test_path:
+        test_path = train_config.task.data_handler.test_path
     if metrics_channel is not None:
         task.metric_reporter.add_channel(metrics_channel)
 
-    return (
-        task.test(test_config.test_path),
-        train_config.task.metric_reporter.output_path,
-    )
+    return (task.test(test_path), train_config.task.metric_reporter.output_path)
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):

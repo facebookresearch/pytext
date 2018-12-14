@@ -10,7 +10,7 @@ import click
 import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig, TestConfig
-from pytext.config.serialize import Mode, config_from_json, config_to_json, parse_config
+from pytext.config.serialize import config_from_json, config_to_json, parse_config
 from pytext.task import load
 from pytext.utils.documentation_helper import (
     ROOT_CONFIG,
@@ -22,7 +22,7 @@ from pytext.utils.documentation_helper import (
 from pytext.workflow import (
     batch_predict,
     export_saved_model_to_caffe2,
-    test_model,
+    test_model_from_snapshot_path,
     train_model,
 )
 from torch.multiprocessing.spawn import spawn
@@ -180,33 +180,57 @@ def gen_default_config(context, task_name, options):
 
 
 @main.command()
+@click.option(
+    "--model-snapshot",
+    default="",
+    help="load model snapshot and test configuration from this file",
+)
+@click.option("--test-path", default="", help="path to test data")
+@click.option(
+    "--use-cuda/--no-cuda",
+    default=None,
+    help="Run supported parts of the model on GPU if available.",
+)
 @click.pass_context
-def test(context):
-    """Test a trained model snapshot."""
-    config_json = context.obj.load_config()
-    config = parse_config(Mode.TEST, config_json)
+def test(context, model_snapshot, test_path, use_cuda):
+    """Test a trained model snapshot.
+
+    If model-snapshot is provided, the models and configuration will then be loaded from
+    the snapshot rather than any passed config file.
+    Otherwise, a config file will be loaded.
+    """
+    if model_snapshot:
+        print(f"Loading model snapshot and config from {model_snapshot}")
+        if use_cuda is None:
+            raise Exception(
+                "if --model-snapshot is set --use-cuda/--no-cuda must be set"
+            )
+    else:
+        print(f"No model snapshot provided, loading from config")
+        config = parse_config(context.obj.load_config())
+        model_snapshot = config.save_snapshot_path
+        use_cuda = config.use_cuda_if_available
+        print(f"Configured model snapshot {model_snapshot}")
     print("\n=== Starting testing...")
-    test_model(config)
+    test_model_from_snapshot_path(model_snapshot, use_cuda, test_path)
 
 
 @main.command()
 @click.pass_context
 def train(context):
     """Train a model and save the best snapshot."""
-    config_json = context.obj.load_config()
-    config = parse_config(Mode.TRAIN, config_json)
+    config = parse_config(context.obj.load_config())
     print("\n===Starting training...")
     if config.distributed_world_size == 1:
         train_model(config)
     else:
         train_model_distributed(config)
     print("\n=== Starting testing...")
-    test_config = TestConfig(
-        load_snapshot_path=config.save_snapshot_path,
-        test_path=config.task.data_handler.test_path,
-        use_cuda_if_available=config.use_cuda_if_available,
+    test_model_from_snapshot_path(
+        config.save_snapshot_path,
+        config.use_cuda_if_available,
+        config.task.data_handler.test_path,
     )
-    test_model(test_config)
 
 
 @main.command()
@@ -215,7 +239,7 @@ def train(context):
 @click.pass_context
 def export(context, model, output_path):
     """Convert a pytext model snapshot to a caffe2 model."""
-    config = parse_config(Mode.TRAIN, context.obj.load_config())
+    config = parse_config(context.obj.load_config())
     model = model or config.save_snapshot_path
     output_path = output_path or config.export_caffe2_path
     print(f"Exporting {model} to {output_path}")
@@ -227,7 +251,7 @@ def export(context, model, output_path):
 @click.pass_context
 def predict(context, exported_model):
     """Start a repl executing examples against a caffe2 model."""
-    config = parse_config(Mode.TRAIN, context.obj.load_config())
+    config = parse_config(context.obj.load_config())
     print(f"Loading model from {exported_model or config.export_caffe2_path}")
     predictor = create_predictor(config, exported_model)
 

@@ -6,7 +6,7 @@ import json
 import unittest
 
 from pytext.builtin_task import register_builtin_tasks
-from pytext.config.serialize import Mode, parse_config
+from pytext.config.serialize import parse_config
 
 
 register_builtin_tasks()
@@ -32,6 +32,5 @@ class LoadAllConfigTest(unittest.TestCase):
             print("--- loading:", filename)
             with open(filename) as file:
                 config_json = json.load(file)
-                # Most configs don't work in Mode.TEST
-                config = parse_config(Mode.TRAIN, config_json)
+                config = parse_config(config_json)
                 self.assertIsNotNone(config)
