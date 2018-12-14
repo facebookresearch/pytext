@@ -49,7 +49,7 @@ Download the `SST dataset (The Stanford Sentiment Treebank) <https://gluebenchma
 3. Prepare configuration file
 -----------------------------
 
-Prepare the configuration file for training. A sample config file can be found in your PyText repository at ``demo/configs/rndistributed_docnn.json``. If you haven't set up PyText, please follow :doc:`installation`.
+Prepare the configuration file for training. A sample config file can be found in your PyText repository at ``demo/configs/distributed_docnn.json``. If you haven't set up PyText, please follow :doc:`installation`.
 
 The two parameters that are used for distributed training are:
 
