@@ -26,16 +26,16 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 We recommend using a virtualenv:
 
 ```
-  $ python3 -m virtualenv venv
-  $ source pytext/bin/activate
-  (venv) $ pip install pytext-nlp
+  $ python3 -m venv myvenv
+  $ source myvenv/bin/activate
+  (myvenv) $ pip install pytext-nlp
 ```
 
-Detailed instructions can be found in our [Documentation](https://pytext.readthedocs.io/installation.html)
+Detailed instructions can be found in our [Documentation](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html). If you encounter issues with missing dependencies during installation, please refer to [OS Dependencies](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#os-dependencies).
 
 # Train your first text classifier
 
-For this first example, we'll train a CNN-based text-classifier that classifies text utterances, using the examples in `tests/data/train_data_tiny.tsv`.
+For this first example, we'll train a CNN-based text-classifier that classifies text utterances, using the examples in `tests/data/train_data_tiny.tsv`. The data and configs files can be obtained either by cloning the repository or by downloading the files manually from GitHub.
 
 ```
   (venv) $ pytext train < demo/configs/docnn.json
@@ -54,6 +54,8 @@ You can use the exported caffe2 model to predict the class of raw utterances lik
 ```
   (venv) $ pytext --config-file config.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
+
+More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com)
 
 # License
 PyText is BSD-licensed, as found in the LICENSE file.
