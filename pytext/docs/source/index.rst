@@ -71,6 +71,11 @@ If you want to use PyText as a library and build your own models, please check t
   overview
   create_new_task
 
+.. toctree::
+  :maxdepth: 2
+  :caption: Config Reference
+
+  configs/pytext
 
 .. toctree::
   :maxdepth: 3

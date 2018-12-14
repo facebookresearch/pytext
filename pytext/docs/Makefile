@@ -18,6 +18,7 @@ doc-html:
 clean-all:
 	make clean
 	rm -r source/modules
+	rm -r source/configs
 
 .PHONY: help Makefile
 
