@@ -84,3 +84,5 @@ You should see an output like:
 		0.9999979545618913,
 		0.9999998668826438,
 		0.9999998686418744]}]
+
+We have also provided a pre-trained model which you may download `here <https://download.pytorch.org/data/rnng_topv1.1_release.pt>`_
