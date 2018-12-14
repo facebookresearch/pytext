@@ -69,7 +69,7 @@ To train a PyText model, you need to pick the right task and model architecture,
             "features": {
               "word_feat": {
                 "embed_dim": 100,
-                "pretrained_embeddings_path": "demo/atis_joint_model/glove.6B.100d.txt",
+                "pretrained_embeddings_path": "demo/atis_joint_model/glove.6B.100d.txt"
               }
             },
             "optimizer": {
@@ -82,10 +82,18 @@ To train a PyText model, you need to pick the right task and model architecture,
             "featurizer": {
               "SimpleFeaturizer": {}
             },
+	    "labels": [
+              {
+                "DocLabelConfig": {}
+              },
+              {
+                "WordLabelConfig": {}
+              }
+            ],
             "data_handler": {
-              "train_path": "demos/atis_joint_model/atis.processed.train.csv",
-              "eval_path": "demos/atis_joint_model/atis.processed.val.csv",
-              "test_path": "demos/atis_joint_model/atis.processed.test.csv"
+              "train_path": "demo/atis_joint_model/atis.processed.train.csv",
+              "eval_path": "demo/atis_joint_model/atis.processed.val.csv",
+              "test_path": "demo/atis_joint_model/atis.processed.test.csv"
             }
           }
         }
