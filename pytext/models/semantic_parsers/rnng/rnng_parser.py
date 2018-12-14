@@ -224,7 +224,7 @@ class RNNGParser(Model, Component):
         num_actions = len(actions_vocab)
         lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
         if lstm_count == 0:
-            raise ValueError("Need atleast one of the LSTMs to be true")
+            raise ValueError("Need at least one of the LSTMs to be true")
 
         self.action_linear = nn.Sequential(
             nn.Linear(
@@ -272,7 +272,7 @@ class RNNGParser(Model, Component):
         seq_lens : torch.Tensor
             list of sequence lengths
         dict_feat : Optional[Tuple[torch.Tensor, ...]]
-            dictionary or gazetter features for each token
+            dictionary or gazetteer features for each token
         actions : Optional[List[List[int]]]
             Used only during training. Oracle actions for the instances.
         beam_size : int

@@ -153,7 +153,7 @@ def find_config_class(class_name):
 
 def replace_components(root, component, base_class):
     """
-        Recusively look at all fields in config to find where `component` would fit.
+        Recursively look at all fields in config to find where `component` would fit.
         This is used to change configs so that they don't use default values.
         Return the chain of field names, from child to parent.
     """

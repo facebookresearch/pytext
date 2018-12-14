@@ -147,9 +147,9 @@ This guide uses the Azure Ubuntu Server 18.04 LTS image as a base
 * For this tutorial, you should select "Ubuntu Server 18.04 LTS" as your image
 * Click "Change size" in order to select a GPU server.
 
-  * Note that the default filters won't show GPU servers, we recommend clearning all filters except "family" and setting "family" to GPU
+  * Note that the default filters won't show GPU servers, we recommend clearing all filters except "family" and setting "family" to GPU
   * For this tutorial, we will use the NC6 VM Size, but this should work on the larger and faster VMs as well
-* Make sure you set up SSH access, we reccomend using a public key rather than a password.
+* Make sure you set up SSH access, we recommend using a public key rather than a password.
   * don't forget to "allow selected ports" and select SSH
 
 * install Nvidia driver and CUDA, (based on  https://askubuntu.com/a/1036265)

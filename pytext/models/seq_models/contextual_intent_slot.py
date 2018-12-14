@@ -12,7 +12,7 @@ from pytext.models.representations.contextual_intent_slot_rep import (
 class ContextualIntentSlotModel(JointModel):
     """
     Joint Model for Intent classification and slot tagging with inputs of contextual
-    information (sequence of utternaces) and dictionary feature of the last utterance.
+    information (sequence of utterances) and dictionary feature of the last utterance.
 
     Training data should includes:
     doc_label (string): intent classification label of either the sequence of
@@ -38,10 +38,10 @@ class ContextualIntentSlotModel(JointModel):
     @classmethod
     def compose_embedding(cls, sub_embs):
         """Compose embedding list for ContextualIntentSlot model training.
-        The first is the word embedding of the last utterance concated with the
+        The first is the word embedding of the last utterance concatenated with the
         word level dictionary feature. The second is the word embedding of a
-        sequence of utternaces (includes the last utterance). Two embeddings are
-        not concatenated and passed to the model individualy.
+        sequence of utterances (includes the last utterance). Two embeddings are
+        not concatenated and passed to the model individually.
 
         Args:
             sub_embs (type): sub-embeddings.

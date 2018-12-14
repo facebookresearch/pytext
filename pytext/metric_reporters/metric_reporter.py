@@ -89,7 +89,7 @@ class MetricReporter(Component):
     @classmethod
     def aggregate_data(cls, all_data, new_batch):
         """
-        Aggregate a batch of data, bascically just convert tensors to list of native
+        Aggregate a batch of data, basically just convert tensors to list of native
         python data
         """
         if new_batch is None:

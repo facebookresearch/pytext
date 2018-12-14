@@ -92,10 +92,10 @@ class CRF(nn.Module):
         seq_len = emissions.shape[1]
 
         # Log-likelihood for a given input is calculated by using the known
-        # correct tag for each timestep and its repsective emission value.
+        # correct tag for each timestep and its respective emission value.
         # Since actual tags for each time step is also known, sum of transition
         # probabilities is also calculated.
-        # Sum of emission and transition probablities gives the final score for
+        # Sum of emission and transition probabilities gives the final score for
         # the input.
         llh = self.transitions[self.start_tag, tags[:, 0]].unsqueeze(1)
         llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * mask[

@@ -133,7 +133,7 @@ class ModelExporter(Component):
         """
         Postprocess the model output, generate additional blobs for human readable
         prediction. By default it use export function of output layer from pytorch
-        model to append addtional operators to caffe2 net
+        model to append additional operators to caffe2 net
 
         Args:
             init_net (caffe2.python.Net): caffe2 init net created by the current graph
@@ -151,7 +151,7 @@ class ModelExporter(Component):
             workspace, init_net, predict_net, model_out, *output_names
         )
 
-        # optionaly include the last decoder layer of pytorch model
+        # optionally include the last decoder layer of pytorch model
         final_output_names = [str(output) for output in res] + (
             output_names if self.config.export_logits else []
         )
@@ -168,7 +168,7 @@ class ModelExporter(Component):
     def export_to_caffe2(self, model, export_path: str) -> List[str]:
         """
         export pytorch model to caffe2 by first using ONNX to convert logic in forward
-        function to a caffe2 net, and then prepend/append addtional operators to
+        function to a caffe2 net, and then prepend/append additional operators to
         the caffe2 net according to the model
 
         Args:

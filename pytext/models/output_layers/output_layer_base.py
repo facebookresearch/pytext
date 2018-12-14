@@ -13,7 +13,7 @@ from pytext.models.module import Module
 
 class OutputLayerBase(Module):
     """
-    Base class for all output layers in PyText. The reponsiblity of this layer are
+    Base class for all output layers in PyText. The responsibilities of this layer are
     1. Implement how loss is computed from logits and targets.
     2. Implement how to get predictions from logits.
     3. Implement the Caffe2 operator for performing the above tasks. This is

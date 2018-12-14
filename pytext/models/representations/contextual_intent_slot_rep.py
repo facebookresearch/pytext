@@ -19,7 +19,7 @@ class ContextualIntentSlotRepresentation(RepresentationBase):
 
     The inputs are two embeddings: word level embedding containing dictionary features,
     sequence (contexts) level embedding. See following diagram for the representation
-    implementaion that combine the two embeddings. Seq_representation is concatenated
+    implementation that combines the two embeddings. Seq_representation is concatenated
     with word_embeddings.
 
     +-----------+

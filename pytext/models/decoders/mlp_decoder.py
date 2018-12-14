@@ -11,7 +11,7 @@ from .decoder_base import DecoderBase
 
 class MLPDecoder(DecoderBase):
     """
-    `MLPDecoder` implementes a fully connected network and uses ReLU as the
+    `MLPDecoder` implements a fully connected network and uses ReLU as the
     activation function. The module projects an input tensor to `out_dim`.
 
     Args:

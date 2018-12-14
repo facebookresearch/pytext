@@ -29,8 +29,8 @@ class Model(nn.Module, Component):
     3. `Decoder`
     4. `Output Layer`
 
-    Model also have a stage flag to indictate it's in `train`, `eval`, or `test` stage.
-    This is because the built-in train/evel flag in PyTorch can't distinguish eval
+    Model also have a stage flag to indicate it's in `train`, `eval`, or `test` stage.
+    This is because the built-in train/eval flag in PyTorch can't distinguish eval
     and test, which is required to support some use cases.
 
     Forward pass: `embedding -> representation -> decoder -> output_layer`
@@ -60,17 +60,17 @@ class Model(nn.Module, Component):
 
     1. :class:`~EmbeddingList` layer is tasked with representing tokens. To do so we
        can use learnable word embedding table in conjunction with learnable character
-       embedding table that are distilled to token level repesentation using CNN and
+       embedding table that are distilled to token level representation using CNN and
        pooling.
        Note: This class is meant to be reused by all models. It acts as a container
        of all the different ways of representing a token/word.
     2. :class:`~BiLSTMDocSlotAttention` is tasked with encoding the embedded input
        string for intent classification and slot filling. In order to do that it has a
-       shared bidirectional LSTM layer followed by sperate attention layers for
+       shared bidirectional LSTM layer followed by separate attention layers for
        document level attention and word level attention. Finally it produces two
        vectors per utterance.
     3. :class:`~IntentSlotModelDecoder` accepts the two input vectors from
-       `BiLSTMDocSlotAttention` and prodces logits for intent classification and
+       `BiLSTMDocSlotAttention` and produces logits for intent classification and
        slot filling. Conditioned on a flag it can also use the probabilities from
        intent classification for slot filling.
     4. :class:`~IntentSlotOutputLayer` implements the logic behind computing loss and

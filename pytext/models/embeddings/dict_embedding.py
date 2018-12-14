@@ -75,7 +75,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
     def forward(
         self, feats: torch.Tensor, weights: torch.Tensor, lengths: torch.Tensor
     ) -> torch.Tensor:
-        """Given a batch of sentences such contiaining dictionary feature ids per
+        """Given a batch of sentences such containing dictionary feature ids per
         token, produce token embedding vectors for each sentence in the batch.
 
         Args:

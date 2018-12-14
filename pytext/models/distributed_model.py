@@ -19,7 +19,7 @@ class DistributedModel(nn.parallel.DistributedDataParallel):
 
 
     where, `model` is the object of the actual model class you want to train in
-    distibuted manner.
+    distributed manner.
     """
 
     def __init__(self, *args, **kwargs):

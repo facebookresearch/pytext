@@ -21,7 +21,7 @@ class RoundRobinBatchIterator(BatchIterator):
     Case 1, epoch size is set:
         Output: [A, a, B, b, C, a, D, b, A, ...]
         Here, tasks with less data are effectively upsampled and data is
-        balanced accross tasks.
+        balanced across tasks.
     Case 2, epoch size not set:
         Output: [A, a, B, b, C, D, A, a, B, b, ...]
 
@@ -100,7 +100,7 @@ class DisjointMultitaskDataHandler(DataHandler):
     """
 
     class Config(DataHandler.Config):
-        """Configuaration class for `DisjointMultitaskDataHandler`.
+        """Configuration class for `DisjointMultitaskDataHandler`.
 
         Attributes:
             epoch_size (Optional[int]): Size of epoch in number of batches.  If not set,

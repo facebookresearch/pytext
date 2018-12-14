@@ -29,7 +29,7 @@ class OutputRecord(NamedTuple):
 class Featurizer(Component):
     """
     Featurizer is tasked with performing data preprocessing that should be shared
-    between training and inference, namely, tokenization and gaztteer features
+    between training and inference, namely, tokenization and gazetteer features
     alignment.
 
     This is an interface whose featurize() method must be implemented so that
