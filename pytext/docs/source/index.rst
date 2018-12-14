@@ -44,6 +44,9 @@ After that, you can explore more options of builtin models and training methods 
 
 If you want to use PyText as a library and build your own models, please check the tutorial in **Extending PyText**
 
+.. note::
+  All the demo configs and test data for the tutorials can be found in source code. You can either install PyText from source or download the files manually from GitHub.
+
 .. toctree::
   :maxdepth: 1
   :caption: Getting Started

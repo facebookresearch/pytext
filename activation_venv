@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-VENV_NAME=${1:-venv}
+VENV_NAME=${1:-pytext_venv}
 
 if [ ! -d "$VENV_NAME" ]
 then
