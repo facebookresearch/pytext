@@ -16,9 +16,9 @@ Download the dataset in a local directory. We will refer to this as `base_dir` i
 
 .. code-block:: console
 
-	$ wget https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-v1.zip
+	$ curl "https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-v1.zip" -o wikitext-2-v1.zip
 	$ unzip wikitext-2-v1.zip
-	$ wget https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSST-2.zip?alt=media&token=aabc5f6b-e466-44a2-b9b4-cf6337f84ac8
+	$ curl "https://firebasestorage.googleapis.com/v0/b/mtl-sentence-representations.appspot.com/o/data%2FSST-2.zip?alt=media&token=aabc5f6b-e466-44a2-b9b4-cf6337f84ac8" -o SST-2.zip
 	$ unzip SST-2.zip
 
 Remove headers from SST-2 data:
