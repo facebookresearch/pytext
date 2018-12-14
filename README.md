@@ -26,12 +26,12 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 We recommend using a virtualenv:
 
 ```
-  $ python3 -m venv myvenv
-  $ source myvenv/bin/activate
-  (myvenv) $ pip install pytext-nlp
+  $ python3 -m venv pytext_venv
+  $ source pytext_venv/bin/activate
+  (pytext_venv) $ pip install pytext-nlp
 ```
 
-Detailed instructions can be found in our [Documentation](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html). If you encounter issues with missing dependencies during installation, please refer to [OS Dependencies](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#os-dependencies).
+Detailed instructions and more installation options can be found in our [Documentation](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html). If you encounter issues with missing dependencies during installation, please refer to [OS Dependencies](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#os-dependencies).
 
 # Train your first text classifier
 

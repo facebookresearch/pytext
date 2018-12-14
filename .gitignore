@@ -20,6 +20,7 @@ eggs/
 # Environments
 .env
 .venv
+pytext_venv/
 env/
 venv/
 ENV/
