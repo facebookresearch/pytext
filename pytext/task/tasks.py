@@ -149,7 +149,7 @@ class LMTask(Task):
         data_handler: Union[
             LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
         ] = LanguageModelDataHandler.Config()
-        model: LMLSTM.Config
+        model: LMLSTM.Config = LMLSTM.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: Optional[WordLabelConfig] = None
         metric_reporter: LanguageModelMetricReporter.Config = (
