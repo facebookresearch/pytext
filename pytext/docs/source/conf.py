@@ -22,6 +22,7 @@ import sys
 RST_SOURCE_DIR = os.path.abspath(".")
 PROJECT_ROOT = os.path.abspath("../..")
 sys.path.insert(0, os.path.abspath("../../../"))
+sys.path.insert(0, os.path.abspath("../"))
 
 
 # -- Project information -----------------------------------------------------
@@ -180,6 +181,10 @@ def run_apidoc(_):
     from sphinx.ext import apidoc
 
     apidoc.main(argv)
+
+    from make_config_docs import main
+
+    main()
 
 
 def setup(app):
