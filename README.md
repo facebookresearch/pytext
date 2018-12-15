@@ -57,5 +57,9 @@ You can use the exported caffe2 model to predict the class of raw utterances lik
 
 More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com)
 
+# Join the community
+
+* Facebook group: https://www.facebook.com/groups/pytext/ 
+
 # License
 PyText is BSD-licensed, as found in the LICENSE file.
