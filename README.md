@@ -59,7 +59,7 @@ More examples and tutorials can be found in [Full Documentation](https://pytext-
 
 # Join the community
 
-* Ask questions, engage on our Facebook group: https://www.facebook.com/groups/pytext/ 
+* Facebook group: https://www.facebook.com/groups/pytext/ 
 
 # License
 PyText is BSD-licensed, as found in the LICENSE file.
