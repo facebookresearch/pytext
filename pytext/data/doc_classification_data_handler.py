@@ -37,7 +37,7 @@ class RawData:
 class DocClassificationDataHandler(DataHandler):
     """
     The `DocClassificationDataHandler` prepares the data for document
-    classififcation. Each sentence is read line by line with its label as the
+    classification. Each sentence is read line by line with its label as the
     target.
     """
 

@@ -18,7 +18,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
     """
     Output layer for joint intent classification and slot-filling models.
     Intent classification is a document classification problem and slot filling
-    is a word tagging problem. Thus terms these can be used interchangably in the
+    is a word tagging problem. Thus terms these can be used interchangeably in the
     documentation.
 
     Args:

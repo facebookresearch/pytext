@@ -28,7 +28,7 @@ def create_module(
     Args:
         module_config (type): Module config object.
         create_fn (type): The function to use for creating the module. Use this
-            parameter if your module creation requries custom code and pass your
+            parameter if your module creation requires custom code and pass your
             function here. Defaults to `_create_module_from_registry()`.
 
     Returns:

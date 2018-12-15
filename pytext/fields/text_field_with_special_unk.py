@@ -81,7 +81,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
         call to self._get_idx(x) instead of self.vocab.stoi[x] for getting the
         index of an item from vocab.
         This is needed because torchtext doesn't allow custom UNKification.
-        So, TextFeatureFieldWithSpecialUnk field's constructor accepts a fucntion
+        So, TextFeatureFieldWithSpecialUnk field's constructor accepts a function
         unkify_func() that can be used to UNKifying instead of assigning all UNKs
         a default value.
         """
@@ -112,7 +112,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
                     "https://github.com/pytorch/text/issues".format(self.dtype)
                 )
             numericalization_func = self.dtypes[self.dtype]
-            # It doesn't make sense to explictly coerce to a numeric type if
+            # It doesn't make sense to explicitly coerce to a numeric type if
             # the data is sequential, since it's unclear how to coerce padding tokens
             # to a numeric type.
             if not self.sequential:

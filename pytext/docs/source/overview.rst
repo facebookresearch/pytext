@@ -17,7 +17,7 @@ The following figure describes the relationship between the major components of 
 
 - **Optimizer** and **Scheduler** are responsible for model parameter optimization and learning rate scheduling. Typical users wouldn't need to implement this component. They should only configure these components to control the training process.
 
-- **Metric Reporter** implements the relevant metric computation and reporting for the models. Just like :class:`~Model` and :class:`~Data Handler` if the current set of metric reporters don't work for a user then a new metric reporter with custom logic should be implemened.
+- **Metric Reporter** implements the relevant metric computation and reporting for the models. Just like :class:`~Model` and :class:`~Data Handler` if the current set of metric reporters don't work for a user then a new metric reporter with custom logic should be implemented.
 
 - **Trainer** uses the data handler, model, loss, optimizer and scheduler to train a model and perform model selection by validating against a holdout set.
 

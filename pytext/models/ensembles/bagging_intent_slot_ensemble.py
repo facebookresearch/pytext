@@ -21,7 +21,7 @@ class BaggingIntentSlotEnsemble(Ensemble):
     Attributes:
         use_crf (bool): Whether to use CRF for word tagging task.
         output_layer (IntentSlotOutputLayer): Output layer of intent-slot
-            model reponsible for computing loss and predictions.
+            model responsible for computing loss and predictions.
 
     """
 
@@ -33,7 +33,7 @@ class BaggingIntentSlotEnsemble(Ensemble):
         Attributes:
             models (List[JointModel.Config]): List of intent-slot model configurations.
             output_layer (IntentSlotOutputLayer): Output layer of intent-slot
-                model reponsible for computing loss and predictions.
+                model responsible for computing loss and predictions.
 
         """
 
@@ -65,7 +65,7 @@ class BaggingIntentSlotEnsemble(Ensemble):
         self.output_layer.word_output.crf.set_transitions(transition_matrix)
 
     def forward(self, *args, **kwargs) -> torch.Tensor:
-        """Call `forward()` method of each inetnt-slot sub-model by passing all
+        """Call `forward()` method of each intent-slot sub-model by passing all
         arguments and named arguments to the sub-models, collect the logits from
         them and average their values.
 

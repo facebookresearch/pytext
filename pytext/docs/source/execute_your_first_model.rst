@@ -56,7 +56,7 @@ Not bad!
 Export the model
 -------------------
 
-When you save a PyTorch model, the snapshot uses `pickle` for serialization. This means that simple code changes (e.g. a word embedding update) can cause backward incompatibilites with your deployed model. To combat this, you can export your model into the `Caffe2 <https://caffe2.ai/>`_ format using in-built `ONNX <https://onnx.ai/>`_ integration. The exported Caffe2 model would have the same behavior regardless of changes in PyText or in your development code.
+When you save a PyTorch model, the snapshot uses `pickle` for serialization. This means that simple code changes (e.g. a word embedding update) can cause backward incompatibilities with your deployed model. To combat this, you can export your model into the `Caffe2 <https://caffe2.ai/>`_ format using in-built `ONNX <https://onnx.ai/>`_ integration. The exported Caffe2 model would have the same behavior regardless of changes in PyText or in your development code.
 
 Exporting a model is pretty simple:
 

@@ -135,7 +135,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-                Tensors containg the document and the word representation of
+                Tensors containing the document and the word representation of
                 the input.
         """
         # Shared layers

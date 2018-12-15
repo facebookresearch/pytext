@@ -90,7 +90,7 @@ class LMLSTM(Model):
                 print(model.representation.representation_dim)
                 raise ValueError(
                     "Embedding dimension must be same as representation "
-                    "dimesnions when using tied weights"
+                    "dimensions when using tied weights"
                 )
             model.decoder.get_decoder()[0].weight = model.embedding[0].weight
 

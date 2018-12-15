@@ -25,7 +25,7 @@ class CommonMetadata:
 
 class BatchIterator:
     """
-    BatchIterator is a wrapper of TorchText. Iterator that provide flexiblity to
+    BatchIterator is a wrapper of TorchText. Iterator that provide flexibility to
     map batched data to a tuple of (input, target, context) and other additional
     steps such as dealing with distributed training.
 
@@ -70,7 +70,7 @@ class BatchIterator:
         tuple and generate dummy batches for distributed training
 
         Returns:
-            input: tuple of tensors that can be feeded directly into model forward
+            input: tuple of tensors that can be fed directly into model forward
                 function
             target: tensor or tuple of tensors as the model target for computing
                 loss
@@ -106,7 +106,7 @@ class DataHandler(Component):
     * Define pipeline to process data and generate batch of tensors to be
       consumed by model. Each batch is a (input, target, extra_data) tuple, in
       which input can be feed directly into model.
-    * Initilize global context, such as build vocab, load pretrained embeddings.
+    * Initialize global context, such as build vocab, load pretrained embeddings.
       Store the context as metadata, and provide function to serialize/deserialize
       the metadata
 
@@ -118,7 +118,7 @@ class DataHandler(Component):
 
       * Invoke featurizer, which contains data processing steps to apply
         for both training and inference time, e.g: tokenization
-      * Use the raw data and results from featurizer to do any prepross
+      * Use the raw data and results from featurizer to do any preprocessing
 
     * Generate a TorchText.Dataset that contains the list of Example, the Dataset
       also has a list of TorchText.Field, which defines how to do padding and
@@ -131,7 +131,7 @@ class DataHandler(Component):
     Attributes:
         raw_columns (List[str]): columns to read from data source. The order should
             match the data stored in that file.
-        featurizer (Featurizer): performe data preprocessing that should be shared
+        featurizer (Featurizer): perform data preprocessing that should be shared
             between training and inference
         features (Dict[str, Field]): a dict of name -> field that used to process data
             as model input
@@ -151,7 +151,7 @@ class DataHandler(Component):
         eval_batch_size (int): evaluation batch size, 128 by default
         test_batch_size (int): test batch size, 128 by default
         max_seq_len (int): maximum length of tokens to keep in sequence
-        pass_index (bool): if the orignal index of data in the batch should be
+        pass_index (bool): if the original index of data in the batch should be
             passed along to downstream steps, default is true
     """
 
@@ -222,7 +222,7 @@ class DataHandler(Component):
         Args:
             vocab_file (str): vocab file to load
             vocab_size (int): maximum tokens to load, will only load the first n if
-                the acutal vocab size is larger than this parameter
+                the actual vocab size is larger than this parameter
             lowercase_tokens (bool): if the tokens should be lowercased
         """
         vocab: Set[str] = set()
@@ -334,7 +334,7 @@ class DataHandler(Component):
 
     def init_metadata_from_path(self, train_path, eval_path, test_path):
         """
-        Initilize metadata using data from file
+        Initialize metadata using data from file
         """
         # get data sets
         self._init_metadata(
@@ -346,13 +346,13 @@ class DataHandler(Component):
 
     def init_metadata(self):
         """
-        Initilize metadata using data from configured path
+        Initialize metadata using data from configured path
         """
         self.init_metadata_from_path(self.train_path, self.eval_path, self.test_path)
 
     def init_metadata_from_raw_data(self, *data):
         """
-        Initilize metadata using in memory data
+        Initialize metadata using in memory data
         """
         self._init_metadata(*[self.gen_dataset(d) for d in data])
 

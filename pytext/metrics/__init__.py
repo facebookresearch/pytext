@@ -357,7 +357,7 @@ def average_precision_score(
     previous threshold.
 
     Args:
-        y_true_sorted: Numpy array sorted according to decreasing condifence scores
+        y_true_sorted: Numpy array sorted according to decreasing confidence scores
             indicating whether each prediction is correct.
         y_score_sorted Numpy array of confidence scores for the predictions in
             decreasing order.
@@ -469,7 +469,7 @@ def compute_matthews_correlation_coefficients(
 ) -> float:
     """
     Computes Matthews correlation coefficient, a way to summarize all four counts (TP,
-    FP, FN, TN) in the confusin matrix of binary classification.
+    FP, FN, TN) in the confusion matrix of binary classification.
 
     Args:
         TP: Number of true positives.

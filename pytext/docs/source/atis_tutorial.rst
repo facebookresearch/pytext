@@ -3,7 +3,7 @@ Train Intent-Slot model on ATIS Dataset
 
 Intent detection and Slot filling are two common tasks in Natural Language Understanding for personal assistants. Given a user's "utterance" (e.g. Set an alarm for 10 pm), we detect its intent (set_alarm) and tag the slots required to fulfill the intent (10 pm).
 
-The two tasks can be modeled as text classification and sequence labeling, respectively. We can train two separate models, but training a joint model has been shown to perfrom better.
+The two tasks can be modeled as text classification and sequence labeling, respectively. We can train two separate models, but training a joint model has been shown to perform better.
 
 In this tutorial, we will train a joint intent-slot model in PyText on the
 `ATIS (Airline Travel Information System) dataset <https://www.kaggle.com/siddhadev/ms-cntk-atis/downloads/atis.zip/3>`_. Note that to download the dataset, you will need a `Kaggle <https://www.kaggle.com/>`_ account for which you can sign up for free.
