@@ -54,6 +54,7 @@ class WordEmbedding(EmbeddingBase):
             embeddings_weight=metadata.pretrained_embeds_weight,
             init_range=config.embedding_init_range,
             unk_token_idx=metadata.unk_token_idx,
+            pad_token_idx=metadata.pad_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
         )
 
@@ -64,6 +65,7 @@ class WordEmbedding(EmbeddingBase):
         embeddings_weight: torch.Tensor,
         init_range: Tuple[float, float],
         unk_token_idx: int,
+        pad_token_idx: int,
         mlp_layer_dims: List[int],
     ) -> None:
         output_embedding_dim = mlp_layer_dims[-1] if mlp_layer_dims else embedding_dim
@@ -71,7 +73,8 @@ class WordEmbedding(EmbeddingBase):
 
         # Create word embedding
         self.word_embedding = nn.Embedding(
-            num_embeddings, embedding_dim, _weight=embeddings_weight
+            num_embeddings, embedding_dim,
+            padding_idx=pad_token_idx, _weight=embeddings_weight
         )
         if embeddings_weight is None and init_range:
             self.word_embedding.weight.data.uniform_(init_range[0], init_range[1])

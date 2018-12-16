@@ -22,6 +22,7 @@ def mock_metadata():
     field_meta.vocab_size = 10
     field_meta.pretrained_embeds_weight = None
     field_meta.unk_token_idx = 0
+    field_meta.pad_token_idx = 1
     meta.features = {"word_feat": field_meta, "dict_feat": field_meta}
     meta.target = field_meta
     return meta

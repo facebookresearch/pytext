@@ -13,8 +13,9 @@ class EmbeddingListTest(unittest.TestCase):
             num_embeddings=5,
             embedding_dim=4,
             embeddings_weight=None,
-            init_range=[-1, 1],
+            init_range=(-1, 1),
             unk_token_idx=4,
+            pad_token_idx=3,
             mlp_layer_dims=[],
         )
         char_embedding = CharacterEmbedding(

@@ -17,6 +17,7 @@ class WordEmbeddingTest(unittest.TestCase):
             embeddings_weight=None,
             init_range=[-1, 1],
             unk_token_idx=4,
+            pad_token_idx=3,
             mlp_layer_dims=[3, output_dim],
         )
         self.assertEqual(embedding_module.embedding_dim, output_dim)
