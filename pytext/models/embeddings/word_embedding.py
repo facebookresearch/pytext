@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -62,7 +62,7 @@ class WordEmbedding(EmbeddingBase):
         num_embeddings: int,
         embedding_dim: int,
         embeddings_weight: torch.Tensor,
-        init_range: List[int],
+        init_range: Tuple[float, float],
         unk_token_idx: int,
         mlp_layer_dims: List[int],
     ) -> None:

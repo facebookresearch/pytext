@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from pytext.common.constants import DatasetFieldName
 
@@ -18,7 +18,7 @@ class WordFeatConfig(ConfigBase):
     embed_dim: int = 100
     freeze: bool = False  # only freezes embedding lookup, not MLP layers
     embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
-    embedding_init_range: Optional[List[float]] = None
+    embedding_init_range: Optional[Tuple[float, float]] = None
     export_input_names: List[str] = ["tokens_vals"]
     pretrained_embeddings_path: str = ""
     vocab_file: str = ""
