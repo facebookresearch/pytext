@@ -8,6 +8,18 @@ from pytext.models.model import Model
 from pytext.models.output_layers import CRFOutputLayer
 
 from .ensemble import Ensemble
+from .same_model_bag_config import SameModelBagConfig
+
+
+class SameJointModelBagConfig(SameModelBagConfig):
+    """Class representing a bag of duplicate joint models with the same config.
+    Attributes:
+        count (int): Size of the bag/number of models.
+        model (JointModel.Config): The config for each joint model.
+    """
+
+    count: int = 1
+    model: JointModel.Config
 
 
 class BaggingIntentSlotEnsemble(Ensemble):
@@ -31,13 +43,13 @@ class BaggingIntentSlotEnsemble(Ensemble):
         `BaggingIntentSlotEnsemble`.
 
         Attributes:
-            models (List[JointModel.Config]): List of intent-slot model configurations.
+            models (List[SameJointModelBag]): List of intent-slot model configurations.
             output_layer (IntentSlotOutputLayer): Output layer of intent-slot
                 model responsible for computing loss and predictions.
 
         """
 
-        models: List[JointModel.Config]
+        models: List[SameJointModelBagConfig]
         use_crf: bool = False
 
     def __init__(self, config: Config, models: List[Model], *args, **kwargs) -> None:
