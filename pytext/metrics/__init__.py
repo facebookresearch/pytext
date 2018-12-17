@@ -187,12 +187,14 @@ class ClassificationMetrics(NamedTuple):
         macro_prf1_metrics: Macro precision/recall/F1 scores.
         per_label_soft_scores: Per label soft metrics.
         mcc: Matthews correlation coefficient.
+        roc_auc: Area under the Receiver Operating Characteristic curve.
     """
 
     accuracy: float
     macro_prf1_metrics: MacroPRF1Metrics
     per_label_soft_scores: Optional[Dict[str, SoftClassificationMetrics]]
     mcc: Optional[float]
+    roc_auc: Optional[float]
 
     def print_metrics(self) -> None:
         print(f"Accuracy: {self.accuracy * 100:.2f}\n")
@@ -209,6 +211,8 @@ class ClassificationMetrics(NamedTuple):
                     print(f"\t{label:<10}\t{recall * 100:<10.2f}")
         if self.mcc:
             print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
+        if self.roc_auc:
+            print(f"\nROC AUC: {self.roc_auc:.3f}")
 
 
 class Confusions:
@@ -488,6 +492,33 @@ def compute_matthews_correlation_coefficients(
     return mcc
 
 
+def compute_roc_auc(predictions: Sequence[LabelPrediction]) -> Optional[float]:
+    """
+    Computes area under the Receiver Operating Characteristic curve, for binary
+    classification. Implementation based off of (and explained at)
+    https://www.ibm.com/developerworks/community/blogs/jfp/entry/Fast_Computation_of_AUC_ROC_score?lang=en.
+    """
+    # Collect scores - arbitrarily select class 0 as positive, as metric is symmetric
+    y_true = [expected == 0 for _, _, expected in predictions]
+    y_score = [label_scores[0] for label_scores, _, _ in predictions]
+    y_true_sorted, _ = sort_by_score(y_true, y_score)
+
+    # Compute auc as probability that a positive example is scored higher than
+    # a negative example.
+    n_false = 0
+    n_correct_pair_order = 0
+
+    for y in reversed(y_true_sorted):  # want low predicted to high predicted
+        n_false += 1 - y
+        n_correct_pair_order += y * n_false
+
+    n_true = len(y_true) - n_false
+    if n_true == 0 or n_false == 0:
+        return None
+
+    return n_correct_pair_order / (n_true * n_false)
+
+
 def compute_classification_metrics(
     predictions: Sequence[LabelPrediction],
     label_names: Sequence[str],
@@ -537,12 +568,15 @@ def compute_classification_metrics(
         FN = confusion_dict[label_names[0]].FN
         TN = confusion_dict[label_names[1]].TP
         mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
+        roc_auc: Optional[float] = compute_roc_auc(predictions)
     else:
         mcc = None
+        roc_auc = None
 
     return ClassificationMetrics(
         accuracy=accuracy,
         macro_prf1_metrics=macro_prf1_metrics,
         per_label_soft_scores=soft_metrics,
         mcc=mcc,
+        roc_auc=roc_auc,
     )

@@ -59,6 +59,7 @@ class BasicMetricsTest(MetricsTestBase):
                 ),
                 per_label_soft_scores=None,
                 mcc=None,
+                roc_auc=None,
             ),
         )
 
@@ -84,3 +85,7 @@ class BasicMetricsTest(MetricsTestBase):
         self.assertAlmostEqual(metrics.mcc, 1.0 / 6)
         # Just to test the metrics print without errors
         metrics.print_metrics()
+
+    def test_compute_roc_auc(self) -> None:
+        metrics = compute_classification_metrics(PREDICTIONS2, LABEL_NAMES2)
+        self.assertAlmostEqual(metrics.roc_auc, 1.0 / 6)
