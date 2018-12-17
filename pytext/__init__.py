@@ -4,6 +4,7 @@ import json
 import uuid
 from typing import Callable, Mapping, Optional
 
+import libfb.py.mkl  # noqa
 import numpy as np
 from caffe2.python import workspace
 from caffe2.python.predictor import predictor_exporter
