@@ -28,7 +28,7 @@ class BiLSTMSlotAttention(RepresentationBase):
         dense (nn.Module): Module that implements the non-linear projection over
             attended representation.
         representation_dim (int): The calculated dimension of the output features
-            of the `BiLSTMDocAttention` representation.
+            of the `SlotAttention` representation.
     """
 
     class Config(RepresentationBase.Config):
@@ -93,7 +93,7 @@ class BiLSTMSlotAttention(RepresentationBase):
         rep = self.dropout(embedded_tokens)
 
         # LSTM representation
-        rep, _ = self.lstm(embedded_tokens, seq_lengths, states)
+        rep, _ = self.lstm(rep, seq_lengths, states)
 
         # Attention
         if self.attention:
