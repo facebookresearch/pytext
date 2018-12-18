@@ -43,16 +43,13 @@ class PretrainedEmbeddingTest(unittest.TestCase):
         self.assertEqual(pretrained_emb.embedding_vectors.size()[0], VOCAB_SIZE)
         self.assertEqual(pretrained_emb.embedding_vectors.size()[1], EMB_SIZE)
 
-    def test_init_pretrained_embeddings(self):
-        """Although not a method of PretrainedEmbedding, critical to test."""
+    def test_initialize_embeddings_weights(self):
         text_field = get_text_field()
-        pretrained_emb_tensor = embeddings_utils.init_pretrained_embeddings(
-            text_field.vocab.stoi,
-            RAW_EMBEDDING_PATH,
-            EMB_SIZE,
-            VocabMeta.UNK_TOKEN,
-            EmbedInitStrategy.ZERO,
-            text_field.lower,
+        pretrained_emb = embeddings_utils.PretrainedEmbedding(
+            RAW_EMBEDDING_PATH, text_field.lower
+        )
+        pretrained_emb_tensor = pretrained_emb.initialize_embeddings_weights(
+            text_field.vocab.stoi, VocabMeta.UNK_TOKEN, EMB_SIZE, EmbedInitStrategy.ZERO
         )
 
         self.assertEqual(pretrained_emb_tensor.size()[0], 4)

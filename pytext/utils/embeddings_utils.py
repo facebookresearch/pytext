@@ -80,7 +80,7 @@ class PretrainedEmbedding(object):
             The iterator will omit the first column (vocabulary) and via closure
             store values into the 'chunk_vocab' list.
             """
-            with open(raw_embeddings_path, "r") as txtfile:
+            with open(raw_embeddings_path, "r", errors="backslashreplace") as txtfile:
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
@@ -130,22 +130,21 @@ class PretrainedEmbedding(object):
     def initialize_embeddings_weights(
         self,
         vocab_to_idx: Dict[str, int],
-        unk_idx: int,
-        vocab_size: int,
+        unk: str,
         embed_dim: int,
         init_strategy: EmbedInitStrategy,
     ) -> torch.Tensor:
         """
-        Initialize embeddings weights of shape (vocab_size, embed_dim) from the
+        Initialize embeddings weights of shape (len(vocab_to_idx), embed_dim) from the
         pretrained embeddings vectors. Words that are not in the pretrained
-        embeddings list will be randomly initialized.
+        embeddings list will be initialized according to `init_strategy`.
         :param vocab_to_idx: a dict that maps words to indices that the model expects
-        :param unk_idx: index of unknown word
-        :param vocab_size: the number of unique words in the model vocab
+        :param unk: unknown token
         :param embed_dim: the embeddings dimension
+        :param init_strategy: method of initializing new tokens
         :returns: a float tensor of dimension (vocab_size, embed_dim)
         """
-        pretrained_embeds_weight = torch.Tensor(vocab_size, embed_dim)
+        pretrained_embeds_weight = torch.Tensor(len(vocab_to_idx), embed_dim)
 
         if init_strategy == EmbedInitStrategy.RANDOM:
             pretrained_embeds_weight.normal_(0, 1)
@@ -158,29 +157,11 @@ class PretrainedEmbedding(object):
 
         assert self.embedding_vectors is not None and self.embed_vocab is not None
         assert pretrained_embeds_weight.shape[-1] == self.embedding_vectors.shape[-1]
+        unk_idx = vocab_to_idx[unk]
         for word, idx in vocab_to_idx.items():
             if word in self.stoi and idx != unk_idx:
                 pretrained_embeds_weight[idx] = self.embedding_vectors[self.stoi[word]]
         return pretrained_embeds_weight
-
-
-def init_pretrained_embeddings(
-    vocab_to_id: Dict[str, int],
-    embeddings_path: str,
-    embed_dim: int,
-    unk: str,
-    embedding_init_strategy: EmbedInitStrategy,
-    lowercase_tokens: bool,
-) -> torch.Tensor:
-    return PretrainedEmbedding(
-        embeddings_path, lowercase_tokens
-    ).initialize_embeddings_weights(
-        vocab_to_id,
-        vocab_to_id[unk],
-        len(vocab_to_id),
-        embed_dim,
-        embedding_init_strategy,
-    )
 
 
 def append_dialect(word: str, dialect: str) -> str:
