@@ -125,7 +125,7 @@ The model ran over the training set 10 times. This output is the result of evalu
 
 - **Precision** - The number of times the model guessed this label and was right
 - **Recall** - The number of times the model correctly identified this label, out of every time it shows up in the test set. If this number is low for a label, the model should be predicting this label more.
-- **F1** - A geometric average of recall and precision.
+- **F1** - A harmonic mean of recall and precision.
 - **Support** - The number of times this label shows up in the test set.
 
 As you can see, the training results were pretty bad. We ran over the data 10 times, and in that time managed to learn how to predict only one of the labels in the test set successfully. In fact, many of the labels were never predicted at all! With 10 examples, that's not too surprising. See the next tutorial to run on a real dataset and get more usable results.
