@@ -18,11 +18,12 @@ class SimpleFeaturizer(Featurizer):
         sentence_markers: Optional[Tuple[str, str]] = None
         lowercase_tokens: bool = True
         split_regex: str = r"\s+"
+        convert_to_bytes: bool = False
 
     def tokenize(self, input_record: InputRecord) -> OutputRecord:
         """Tokenize one instance/example only."""
         tokens: List[str] = []
-        token_ranges: List[Tuple[int]] = []
+        token_ranges: List[Tuple[int, int]] = []
 
         def add_token(text, start, end):
             token = text[start:end]
@@ -30,12 +31,20 @@ class SimpleFeaturizer(Featurizer):
                 tokens.append(token)
                 token_ranges.append((start, end))
 
-        start = 0
-        text = input_record.raw_text
-        for sep in re.finditer(self.config.split_regex, text):
-            add_token(text, start, sep.start())
-            start = sep.end()
-        add_token(text, start, len(text))
+        if self.config.convert_to_bytes:
+            start = 0
+            text = input_record.raw_text.encode()
+            for byte in text:
+                tokens.append(chr(byte))
+                token_ranges.append((start, start + 1))
+                start += 1
+        else:
+            start = 0
+            text = input_record.raw_text
+            for sep in re.finditer(self.config.split_regex, text):
+                add_token(text, start, sep.start())
+                start = sep.end()
+            add_token(text, start, len(text))
 
         if not tokens:
             # Add PAD_TOKEN in case of empty text

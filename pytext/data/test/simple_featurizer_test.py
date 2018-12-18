@@ -24,6 +24,35 @@ class SimpleFeaturizerTest(unittest.TestCase):
         tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
         self.assertListEqual(tokens, ["Order", "me", "a", "coffee"])
 
+    def test_convert_to_bytes(self):
+        featurizer = SimpleFeaturizer.from_config(
+            SimpleFeaturizer.Config(convert_to_bytes=True, lowercase_tokens=False),
+            FeatureConfig(),
+        )
+        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
+        self.assertListEqual(
+            tokens,
+            [
+                "O",
+                "r",
+                "d",
+                "e",
+                "r",
+                " ",
+                "m",
+                "e",
+                " ",
+                "a",
+                " ",
+                "c",
+                "o",
+                "f",
+                "f",
+                "e",
+                "e",
+            ],
+        )
+
     def test_tokenize_add_sentence_markers(self):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(sentence_markers=("<s>", "</s>")), FeatureConfig()
