@@ -6,6 +6,18 @@ import torch
 from pytext.models.doc_model import DocModel
 
 from .ensemble import Ensemble
+from .same_model_bag_config import SameModelBagConfig
+
+
+class SameDocModelBagConfig(SameModelBagConfig):
+    """Class representing a bag of duplicate doc models with the same config.
+    Attributes:
+        count (int): Size of the bag/number of models.
+        model (DocModel.Config): The config for each doc model.
+    """
+
+    count: int = 1
+    model: DocModel.Config
 
 
 class BaggingDocEnsemble(Ensemble):
@@ -19,12 +31,12 @@ class BaggingDocEnsemble(Ensemble):
         `BaggingDocEnsemble`.
 
         Attributes:
-            models (List[DocModel.Config]): List of document classification model
+            models (List[SameDocModelBag]): List of document classification model
                 configurations.
 
         """
 
-        models: List[DocModel.Config]
+        models: List[SameDocModelBagConfig]
 
     def forward(self, *args, **kwargs) -> torch.Tensor:
         """Call `forward()` method of each document classification sub-model by
