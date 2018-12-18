@@ -229,7 +229,7 @@ class DataHandler(Component):
         if os.path.isfile(vocab_file):
             with open(vocab_file, "r") as f:
                 for i, line in enumerate(f):
-                    if len(vocab) == vocab_size:
+                    if vocab_size > 0 and len(vocab) == vocab_size:
                         print(
                             f"Read {i+1} items from {vocab_file}"
                             f"to load vocab of size {vocab_size}."
@@ -377,40 +377,36 @@ class DataHandler(Component):
         # build vocabs for features
         for name, feat in self.features.items():
             weights = None
+
             if feat.use_vocab:
-                if not hasattr(feat, "vocab"):  # Don't rebuild vocab
-                    if feat.vocab_from_all_data:
-                        print(
-                            f"Building vocab for feature {name} from train, eval"
-                            + " and test data."
-                        )
-                    else:
-                        print(
-                            f"Building vocab for feature {name} from train data only."
-                        )
-                    feat.build_vocab(
-                        *self._get_data_to_build_vocab(
-                            feat, train_data, eval_data, test_data
-                        ),
-                        min_freq=feat.min_freq,
+                pretrained_embeddings = None
+                pretrained_embeddings_path = getattr(
+                    feat, "pretrained_embeddings_path", None
+                )
+                if pretrained_embeddings_path:
+                    pretrained_embeddings = embeddings_utils.PretrainedEmbedding(
+                        pretrained_embeddings_path, feat.lower
                     )
-                else:
+
+                if hasattr(feat, "vocab"):  # Don't rebuild vocab
                     print(f"Vocab for feature {name} has been built. Not rebuilding.")
+                else:
+                    print(f"Building vocab for feature {name}.")
+                    vocab_data = self._get_data_to_build_vocab(
+                        feat, train_data, eval_data, test_data, pretrained_embeddings
+                    )
+                    feat.build_vocab(*vocab_data, min_freq=feat.min_freq)
                 print("{} field's vocabulary size is {}".format(name, len(feat.vocab)))
 
                 # Initialize pretrained embedding weights.
-                if (
-                    hasattr(feat, "pretrained_embeddings_path")
-                    and feat.pretrained_embeddings_path
-                ):
-                    weights = embeddings_utils.init_pretrained_embeddings(
+                if pretrained_embeddings:
+                    weights = pretrained_embeddings.initialize_embeddings_weights(
                         feat.vocab.stoi,
-                        feat.pretrained_embeddings_path,
-                        feat.embed_dim,
                         VocabMeta.UNK_TOKEN,
+                        feat.embed_dim,
                         feat.embedding_init_strategy,
-                        feat.lower,
                     )  # this is of type torch.Tensor
+
             meta = feat.get_meta()
             meta.pretrained_embeds_weight = weights
             self.metadata.features[name] = meta
@@ -449,30 +445,48 @@ class DataHandler(Component):
         train_data: textdata.Dataset,
         eval_data: textdata.Dataset,
         test_data: textdata.Dataset,
+        pretrained_embeddings: embeddings_utils.PretrainedEmbedding,
     ) -> List[Any]:
         """
-        This method prepares the list of data sources that
-        Field.build_vocab() accepts to build vocab from.
+        This method prepares the list of data sources that Field.build_vocab()
+        accepts to build vocab from. Based on the specifications from `feat`, the
+        data can come from
 
-        If vocab building from training data is configured then that Dataset
-        object is appended to build vocabulary from.
-
-        If a vocab file is provided an additional data source built from the file
-        is appended to the list which, is a list of items read from the vocab file.
+        - train data
+        - eval + test data
+        - specified vocab file
+        - pretrained embeddings dictionary
         """
         data = []
+
         if isinstance(feat, VocabUsingField):
             if feat.vocab_from_all_data:
+                print("Adding tokens from train, eval, and test data to vocab.")
                 data.extend([train_data, eval_data, test_data])
             elif feat.vocab_from_train_data:
+                print("Adding tokens from train data to vocab.")
                 data.append(train_data)
+
         if hasattr(feat, "vocab_file") and feat.vocab_file:
+            print(f"Adding tokens from {feat.vocab_file} to vocab.")
             lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
             vocab_set = self.load_vocab(
                 feat.vocab_file, feat.vocab_size, lowercase_tokens
             )
             if vocab_set:
                 data.append([vocab_set])
+
+        if getattr(feat, "vocab_from_pretrained_embeddings", False):
+            print("Adding tokens from pretrained embeddings to vocab.")
+            assert pretrained_embeddings
+            assert feat.min_freq == 1
+            pretrained_vocab = {
+                token
+                for token, i in pretrained_embeddings.stoi.items()
+                if feat.vocab_size <= 0 or i < feat.vocab_size
+            }
+            data.append([pretrained_vocab])
+
         return data
 
     def _gen_extra_metadata(self) -> None:

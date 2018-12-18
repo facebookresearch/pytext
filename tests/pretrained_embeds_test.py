@@ -62,16 +62,9 @@ class PretrainedEmbedsTest(unittest.TestCase):
         embeddings_ref.load_cached_embeddings(EMBED_CACHED_PATH)
         VOCAB = ["UNK", "aloha", "the"]
         EMBED_DIM = 5
-        # Get Vocab to Idx:
-        UNK_IDX = 0
-        embed_vocab_to_idx = {}
-        for word in embeddings_ref.embed_vocab:
-            if word in VOCAB:
-                embed_vocab_to_idx[word] = VOCAB.index(word)
-            else:
-                embed_vocab_to_idx[word] = UNK_IDX
+        embed_vocab_to_idx = {tok: i for i, tok in enumerate(VOCAB)}
         pretrained_embeds = embeddings_ref.initialize_embeddings_weights(
-            embed_vocab_to_idx, UNK_IDX, len(VOCAB), EMBED_DIM, EmbedInitStrategy.RANDOM
+            embed_vocab_to_idx, "UNK", EMBED_DIM, EmbedInitStrategy.RANDOM
         )
         assert pretrained_embeds.shape[0] == len(VOCAB)
         assert pretrained_embeds.shape[1] == EMBED_DIM
@@ -120,16 +113,9 @@ class PretrainedEmbedsTest(unittest.TestCase):
         embeddings_ref.load_cached_embeddings(EMBED_XLU_CACHED_PATH)
         VOCAB = ["UNK", "aloha-en_US", "the-es_XX"]
         EMBED_DIM = 5
-        # Get Vocab to Idx:
-        UNK_IDX = 0
-        embed_vocab_to_idx = {}
-        for word in embeddings_ref.embed_vocab:
-            if word in VOCAB:
-                embed_vocab_to_idx[word] = VOCAB.index(word)
-            else:
-                embed_vocab_to_idx[word] = UNK_IDX
+        embed_vocab_to_idx = {tok: i for i, tok in enumerate(VOCAB)}
         pretrained_embeds = embeddings_ref.initialize_embeddings_weights(
-            embed_vocab_to_idx, UNK_IDX, len(VOCAB), EMBED_DIM, EmbedInitStrategy.RANDOM
+            embed_vocab_to_idx, "UNK", EMBED_DIM, EmbedInitStrategy.RANDOM
         )
         assert pretrained_embeds.shape[0] == len(VOCAB)
         assert pretrained_embeds.shape[1] == EMBED_DIM

@@ -104,8 +104,10 @@ class VocabUsingField(Field):
         embedding_init_strategy=EmbedInitStrategy.RANDOM,
         vocab_file="",
         vocab_size="",
-        vocab_from_train_data=True,  # build vocab from train data
-        vocab_from_all_data=False,  # build vocab from train, eval, test data
+        vocab_from_train_data=True,  # add tokens from train data to vocab
+        vocab_from_all_data=False,  # add tokens from train, eval, test data to vocab
+        # add tokens from pretrained embeddings to vocab
+        vocab_from_pretrained_embeddings=False,
         min_freq=1,
         *args,
         **kwargs,
@@ -116,6 +118,7 @@ class VocabUsingField(Field):
         self.vocab_size = vocab_size
         self.vocab_from_train_data = vocab_from_train_data
         self.vocab_from_all_data = vocab_from_all_data
+        self.vocab_from_pretrained_embeddings = vocab_from_pretrained_embeddings
         self.min_freq = min_freq
         self.embed_dim = embed_dim
         self.embedding_init_strategy = embedding_init_strategy
@@ -188,6 +191,7 @@ class TextFeatureField(VocabUsingField):
         vocab_size="",
         vocab_from_train_data=True,
         vocab_from_all_data=False,
+        vocab_from_pretrained_embeddings=False,
         postprocessing=None,
         use_vocab=True,
         include_lengths=True,
@@ -212,6 +216,7 @@ class TextFeatureField(VocabUsingField):
             vocab_size=vocab_size,
             vocab_from_train_data=vocab_from_train_data,
             vocab_from_all_data=vocab_from_all_data,
+            vocab_from_pretrained_embeddings=vocab_from_pretrained_embeddings,
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,
@@ -239,6 +244,7 @@ class SeqFeatureField(VocabUsingNestedField):
         vocab_size="",
         vocab_from_train_data=True,
         vocab_from_all_data=False,
+        vocab_from_pretrained_embeddings=False,
         postprocessing=None,
         use_vocab=True,
         include_lengths=True,
@@ -257,6 +263,7 @@ class SeqFeatureField(VocabUsingNestedField):
             vocab_size=vocab_size,
             vocab_from_train_data=vocab_from_train_data,
             vocab_from_all_data=vocab_from_all_data,
+            vocab_from_pretrained_embeddings=vocab_from_pretrained_embeddings,
             postprocessing=postprocessing,
             use_vocab=use_vocab,
             include_lengths=include_lengths,

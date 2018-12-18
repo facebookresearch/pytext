@@ -23,8 +23,10 @@ class WordFeatConfig(ConfigBase):
     pretrained_embeddings_path: str = ""
     vocab_file: str = ""
     vocab_size: int = 0
-    vocab_from_train_data: bool = True  # build vocab from train data
-    vocab_from_all_data: bool = False  # build vocab from train, eval, test data
+    vocab_from_train_data: bool = True  # add tokens from train data to vocab
+    vocab_from_all_data: bool = False  # add tokens from train, eval, test data to vocab
+    # add tokens from pretrained embeddings to vocab
+    vocab_from_pretrained_embeddings: bool = False
     lowercase_tokens: bool = True
     min_freq: int = 1
     mlp_layer_dims: Optional[List[int]] = []
