@@ -27,7 +27,13 @@ disclosure of security bugs. In those cases, please go through the process
 outlined on that page and do not file a public issue.
 
 ## Coding Style  
-We try to follow the PEP style guidelines and encourage you to as well.
+We use isort and black to format our code, you can use the following commands to format your code prior to submission:
+
+```
+(pytext_venv) $ pip install isort black
+(pytext_venv) $ black pytext 
+(pytext_venv) $ isort pytext --recursive --multi-line 3 --trailing-comma --force-grid-wrap 0 --line-width 88 --lines-after-imports 2 --combine-as --section-default THIRDPARTY
+```
 
 ## License
 By contributing to PyText, you agree that your contributions will be licensed
