@@ -42,9 +42,24 @@ jobs:
       - store_artifacts:
           path: htmlcov
           destination: coverage
+  python_lint:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - checkout
+      - run:
+          name: setup
+          command: source .circleci/setup_circleimg.sh && pip install black isort
+      - run:
+          name: run black
+          command: black pytext --check
+      - run:
+          name: run isort
+          command: isort pytext --recursive --multi-line 3 --trailing-comma --force-grid-wrap 0 --line-width 88 --lines-after-imports 2 --combine-as --section-default THIRDPARTY --check-only
 workflows:
   version: 2
   build_and_test:
     jobs:
       - build_Py3.6
       - build_Py3.7
+      - python_lint
