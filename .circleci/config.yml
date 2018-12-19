@@ -51,7 +51,7 @@ jobs:
           name: setup
           command: |
               source .circleci/setup_circleimg.sh
-              pip install black isort
+    	      sudo pip install black isort
       - run:
           name: run black
           command: black pytext --check
