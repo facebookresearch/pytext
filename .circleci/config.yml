@@ -89,3 +89,4 @@ workflows:
       - build_Py3.6
       - build_Py3.7
       - python_lint
+      - build_docs
