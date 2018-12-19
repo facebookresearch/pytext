@@ -42,6 +42,28 @@ jobs:
       - store_artifacts:
           path: htmlcov
           destination: coverage
+  build_docs:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - checkout
+      - run:
+          name: setup
+          command: source .circleci/setup_circleimg.sh
+      - run:
+          name: install_pytorch
+          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl
+      - run:
+          name: install docs build deps
+          command: sudo pip install -r pytext/docs/requirements.txt
+      - run:
+          name: build docs
+          command: |
+              cd pytext/docs/
+              make html
+      - store_artifacts:
+          path: build/html
+          destination: docs
   python_lint:
     docker:
       - image: circleci/python:3.6
