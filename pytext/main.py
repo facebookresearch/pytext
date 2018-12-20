@@ -12,6 +12,7 @@ import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig
 from pytext.config.serialize import config_from_json, config_to_json, parse_config
+from pytext.data.data_handler import CommonMetadata
 from pytext.task import load
 from pytext.utils.documentation_helper import (
     ROOT_CONFIG,
@@ -22,6 +23,7 @@ from pytext.utils.documentation_helper import (
 )
 from pytext.workflow import (
     export_saved_model_to_caffe2,
+    prepare_task_metadata,
     test_model_from_snapshot_path,
     train_model,
 )
@@ -53,26 +55,34 @@ def train_model_distributed(config):
 
     print(f"\n=== Starting training, World size is {config.distributed_world_size}")
     if not config.use_cuda_if_available or not torch.cuda.is_available():
-        run_single(0, config_to_json(PyTextConfig, config), 1, None)
+        run_single(0, config_to_json(PyTextConfig, config), 1, None, None)
     else:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".dist_sync"
         ) as sync_file:
             dist_init_method = "file://" + sync_file.name
+            metadata = prepare_task_metadata(config)
             spawn(
                 run_single,
                 (
                     config_to_json(PyTextConfig, config),
                     config.distributed_world_size,
                     dist_init_method,
+                    metadata,
                 ),
                 config.distributed_world_size,
             )
 
 
-def run_single(rank, config_json: str, world_size: int, dist_init_method: str):
+def run_single(
+    rank,
+    config_json: str,
+    world_size: int,
+    dist_init_method: str,
+    metadata: CommonMetadata,
+):
     config = config_from_json(PyTextConfig, config_json)
-    train_model(config, dist_init_method, rank, rank, world_size)
+    train_model(config, dist_init_method, rank, rank, world_size, metadata)
 
 
 def gen_config_impl(task_name, options):
