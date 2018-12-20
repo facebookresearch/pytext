@@ -141,16 +141,14 @@ class BPTTLanguageModelDataHandler(DataHandler):
             InputRecord(raw_text=row_data[DFColumn.UTTERANCE])
         ).tokens
 
-    def _get_train_iter(
+    def _get_batch_iter(
         self,
-        train_dataset: textdata.Dataset,
+        shard_dataset: textdata.Dataset,
+        dataset_size: int,
         batch_size: int,
         rank: int = 0,
         world_size: int = 1,
     ) -> BatchIterator:
-        dataset_shard, max_num_examples = self._get_dataset_shard(
-            train_dataset, rank, world_size
-        )
         # Compute the per-worker batch size
         assert (
             batch_size >= world_size
@@ -159,7 +157,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
 
         return BatchIterator(
             textdata.BPTTIterator(
-                dataset_shard,
+                shard_dataset,
                 batch_size=batch_size,
                 bptt_len=self.bptt_len,
                 device="cuda:{}".format(torch.cuda.curren_device())
@@ -170,7 +168,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
                 sort_key=self.sort_key,
             ),
             self._postprocess_batch,
-            num_batches=math.ceil(max_num_examples / float(batch_size)),
+            num_batches=self._get_num_batches(dataset_size, batch_size, world_size),
         )
 
     def _train_input_from_batch(self, batch):

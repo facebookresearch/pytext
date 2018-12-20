@@ -47,6 +47,11 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(text_feat_meta.init_token_idx, 2)
         self.assertEqual(text_feat_meta.eos_token_idx, 3)
 
+        self.assertEqual(
+            data_handler.metadata.datasets_size.train_dataset_size,
+            len(data_handler.gen_dataset_from_path(FILE_NAME)),
+        )
+
         train_iter = data_handler.get_train_iter_from_path(FILE_NAME, BATCH_SIZE)
 
         batches = [t for t in train_iter]
