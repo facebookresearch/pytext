@@ -5,11 +5,12 @@ import json
 import pprint
 import sys
 import tempfile
+from importlib import import_module
 
 import click
 import torch
 from pytext import create_predictor
-from pytext.config import PyTextConfig, TestConfig
+from pytext.config import PyTextConfig
 from pytext.config.serialize import config_from_json, config_to_json, parse_config
 from pytext.task import load
 from pytext.utils.documentation_helper import (
@@ -20,7 +21,6 @@ from pytext.utils.documentation_helper import (
     replace_components,
 )
 from pytext.workflow import (
-    batch_predict,
     export_saved_model_to_caffe2,
     test_model_from_snapshot_path,
     train_model,
@@ -111,8 +111,11 @@ def gen_config_impl(task_name, options):
 @click.group()
 @click.option("--config-file", default="")
 @click.option("--config-json", default="")
+@click.option(
+    "--config-module", default="", help="python module that contains the config object"
+)
 @click.pass_context
-def main(context, config_file, config_json):
+def main(context, config_file, config_json, config_module):
     """Configs can be passed by file or directly from json.
     If neither --config-file or --config-json is passed,
     attempts to read the file from stdin.
@@ -124,18 +127,21 @@ def main(context, config_file, config_json):
     context.obj = Attrs()
 
     def load_config():
-        if not hasattr(context.obj, "config_json"):
-            if config_file:
-                with open(config_file) as file:
-                    config = json.load(file)
-            elif config_json:
-                config = json.loads(config_json)
-            else:
-                click.echo("No config file specified, reading from stdin")
-                config = json.load(sys.stdin)
         # Cache the config object so it can be accessed multiple times
-        context.obj.config_json = config
-        return config
+        if not hasattr(context.obj, "config"):
+            if config_module:
+                context.obj.config = import_module(config_module).config
+            else:
+                if config_file:
+                    with open(config_file) as file:
+                        config = json.load(file)
+                elif config_json:
+                    config = json.loads(config_json)
+                else:
+                    click.echo("No config file specified, reading from stdin")
+                    config = json.load(sys.stdin)
+                context.obj.config = parse_config(config)
+        return context.obj.config
 
     context.obj.load_config = load_config
 
@@ -207,7 +213,7 @@ def test(context, model_snapshot, test_path, use_cuda):
             )
     else:
         print(f"No model snapshot provided, loading from config")
-        config = parse_config(context.obj.load_config())
+        config = context.obj.load_config()
         model_snapshot = config.save_snapshot_path
         use_cuda = config.use_cuda_if_available
         print(f"Configured model snapshot {model_snapshot}")
@@ -219,7 +225,8 @@ def test(context, model_snapshot, test_path, use_cuda):
 @click.pass_context
 def train(context):
     """Train a model and save the best snapshot."""
-    config = parse_config(context.obj.load_config())
+
+    config = context.obj.load_config()
     print("\n===Starting training...")
     if config.distributed_world_size == 1:
         train_model(config)
@@ -239,7 +246,7 @@ def train(context):
 @click.pass_context
 def export(context, model, output_path):
     """Convert a pytext model snapshot to a caffe2 model."""
-    config = parse_config(context.obj.load_config())
+    config = context.obj.load_config()
     model = model or config.save_snapshot_path
     output_path = output_path or config.export_caffe2_path
     print(f"Exporting {model} to {output_path}")
@@ -251,7 +258,7 @@ def export(context, model, output_path):
 @click.pass_context
 def predict(context, exported_model):
     """Start a repl executing examples against a caffe2 model."""
-    config = parse_config(context.obj.load_config())
+    config = context.obj.load_config()
     print(f"Loading model from {exported_model or config.export_caffe2_path}")
     predictor = create_predictor(config, exported_model)
 
