@@ -62,7 +62,7 @@ jobs:
               cd pytext/docs/
               make html
       - store_artifacts:
-          path: build/html
+          path: pytext/docs/build/html
           destination: docs
   python_lint:
     docker:
