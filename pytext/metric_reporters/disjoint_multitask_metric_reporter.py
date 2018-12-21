@@ -11,11 +11,26 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         self.reporters = reporters
 
     def add_batch_stats(
-        self, n_batches, preds, targets, scores, loss, m_input, **context
+        self,
+        n_batches,
+        preds,
+        targets,
+        scores,
+        loss,
+        m_input,
+        performance_metrics,
+        **context,
     ):
         reporter = self.reporters[context[BatchContext.TASK_NAME]]
         reporter.add_batch_stats(
-            n_batches, preds, targets, scores, loss, m_input, **context
+            n_batches,
+            preds,
+            targets,
+            scores,
+            loss,
+            m_input,
+            performance_metrics,
+            **context,
         )
 
     def add_channel(self, channel):

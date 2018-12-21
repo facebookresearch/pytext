@@ -43,11 +43,20 @@ class MetricReporter(Component):
         self.all_context: Dict = {}
         self.all_loss: List = []
         self.all_scores: List = []
+        self.all_performance_metrics: Dict = {}
         self.n_batches = 0
         self.batch_size: List = []
 
     def add_batch_stats(
-        self, n_batches, preds, targets, scores, loss, m_input, **context
+        self,
+        n_batches,
+        preds,
+        targets,
+        scores,
+        loss,
+        m_input,
+        performance_metrics,
+        **context,
     ):
         """
         Aggregates a batch of output data (predictions, scores, targets/true labels
@@ -60,6 +69,8 @@ class MetricReporter(Component):
             scores (torch.Tensor): scores of current batch
             loss (double): average loss of current batch
             m_input (Tuple[torch.Tensor, ...]): model inputs of current batch
+            performance_metrics (Dict[string, float]): time/performance
+                measurements for training operations
             context (Dict[str, Any]): any additional context data, it could be
                 either a list of data which maps to each example, or a single value
                 for the batch
@@ -76,6 +87,7 @@ class MetricReporter(Component):
             self.aggregate_data(self.all_context[key], val)
         self.all_loss.append(loss)
         self.batch_size.append(len(targets))
+        self.aggregate_performance_metrics(performance_metrics)
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -85,6 +97,17 @@ class MetricReporter(Component):
 
     def aggregate_scores(self, new_batch):
         self.aggregate_data(self.all_scores, new_batch)
+
+    def aggregate_performance_metrics(self, new_batch):
+        for key, val in new_batch.items():
+            total_key = f"total_{key}"
+            per_example_key = f"per_example_{key}"
+            self.all_performance_metrics[total_key] = (
+                self.all_performance_metrics.get(total_key, 0.0) + val
+            )
+            self.all_performance_metrics[
+                per_example_key
+            ] = self.all_performance_metrics[total_key] / sum(self.batch_size)
 
     @classmethod
     def aggregate_data(cls, all_data, new_batch):
@@ -167,6 +190,7 @@ class MetricReporter(Component):
                         self.all_targets,
                         self.all_scores,
                         self.all_context,
+                        self.all_performance_metrics,
                         self.get_meta(),
                     )
 

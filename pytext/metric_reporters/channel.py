@@ -71,6 +71,7 @@ class ConsoleChannel(Channel):
         targets,
         scores,
         context,
+        performance_metrics,
         meta,
         *args,
     ):
@@ -81,6 +82,8 @@ class ConsoleChannel(Channel):
             metrics.print_metrics()
         else:
             print(metrics)
+
+        print(performance_metrics)
 
 
 class FileChannel(Channel):
@@ -103,6 +106,7 @@ class FileChannel(Channel):
         targets,
         scores,
         context,
+        performance_metrics,
         meta,
         *args,
     ):
@@ -112,10 +116,9 @@ class FileChannel(Channel):
             for metadata in meta.values():
                 # TODO the # prefix is quite ad-hoc, we should think of a better
                 # way to handle it
-                of.write("#")
-                of.write(json.dumps(metadata))
-                of.write("\n")
+                of.write(f"#{json.dumps(metadata)}\n")
 
+            of.write(f"#{json.dumps(performance_metrics)}\n")
             tsv_writer = csv.writer(
                 of,
                 delimiter="\t",
@@ -168,6 +171,7 @@ class TensorBoardChannel(Channel):
         targets,
         scores,
         context,
+        performance_metrics,
         meta,
         *args,
     ):
@@ -187,11 +191,16 @@ class TensorBoardChannel(Channel):
             scores (List[Any]): list of scores
             context (Dict[str, List[Any]]): dict of any additional context data,
                 each context is a list of data that maps to each example
+            performance_metrics (Dict[string, float]): time/performance
+                measurements for training operations
             meta (Dict[str, Any]): global metadata, such as target names
         """
         if stage == Stage.TEST:
             tag = "test"
             self.summary_writer.add_text(tag, f"loss={loss}")
+            for perf_key, perf_val in performance_metrics.items():
+                self.summary_writer.add_text(tag, f"{perf_key}={perf_val}")
+
             if isinstance(metrics, (int, float)):
                 self.summary_writer.add_text(tag, f"{self.metric_name}={metrics}")
             else:
@@ -199,6 +208,9 @@ class TensorBoardChannel(Channel):
         else:
             prefix = "train" if stage == Stage.TRAIN else "eval"
             self.summary_writer.add_scalar(f"{prefix}/loss", loss, epoch)
+            for perf_key, perf_val in performance_metrics.items():
+                self.summary_writer.add_scalar(f"{prefix}/{perf_key}", perf_val, epoch)
+
             if isinstance(metrics, (int, float)):
                 self.summary_writer.add_scalar(
                     f"{prefix}/{self.metric_name}", metrics, epoch

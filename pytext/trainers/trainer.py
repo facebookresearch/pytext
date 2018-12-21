@@ -3,6 +3,7 @@
 
 import copy
 import sys
+import time
 from typing import List, Optional
 
 import torch
@@ -190,6 +191,20 @@ class Trainer(TrainerBase):
         else:
             return model, best_metric
 
+    def execute_timed(
+        self, function, performance_metric_name, performance_metrics_dict
+    ):
+        t_start = time.perf_counter()
+        return_val = function()
+        t_stop = time.perf_counter()
+        performance_metrics_dict[performance_metric_name] = (
+            performance_metrics_dict.get(performance_metric_name, 0.0)
+            + t_stop
+            - t_start
+        )
+
+        return return_val
+
     def _run_epoch(
         self,
         stage,
@@ -207,15 +222,36 @@ class Trainer(TrainerBase):
             pre_batch()
             # pass context to model to use in forward call if needed
             model.contextualize(context)
-            logits = model(*inputs)
-            loss = model.get_loss(logits, targets, context)
+            performance_metrics = {}
+            logits = self.execute_timed(
+                lambda: model(*inputs), "model_forward_time", performance_metrics
+            )
+            loss = self.execute_timed(
+                lambda: model.get_loss(logits, targets, context),
+                "loss_compute_time",
+                performance_metrics,
+            )
             if BatchContext.IGNORE_LOSS in context:
                 loss *= 0
-            backprop(loss)
+
+            if stage == Stage.TRAIN:
+                self.execute_timed(
+                    lambda: backprop(loss), "backprop_time", performance_metrics
+                )
+            else:
+                backprop(loss)
+
             if report_metric:
                 preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
                 metric_reporter.add_batch_stats(
-                    batch_id, preds, targets, scores, loss.item(), inputs, **context
+                    batch_id,
+                    preds,
+                    targets,
+                    scores,
+                    loss.item(),
+                    inputs,
+                    performance_metrics,
+                    **context,
                 )
 
         metrics = None

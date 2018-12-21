@@ -124,6 +124,7 @@ class IntentSlotMetricReporter(MetricReporter):
         self.all_scores: Tuple = (self.all_doc_scores, self.all_word_scores)
         self.all_context: Dict = {}
         self.all_loss: List = []
+        self.all_performance_metrics: Dict = {}
         self.n_batches = 0
         self.batch_size: List = []
 
