@@ -19,11 +19,11 @@ We want to run the model on our test dataset and see how well it performs. Some 
     Macro P/R/F1 Scores:
         Label               	Precision 	Recall    	F1        	Support
 
-        reminder/set_reminder	25.00     	100.00    	40.00     	1
+        reminder/set_reminder	    25.00     	100.00    	40.00     	1
         alarm/time_left_on_alarm	0.00      	0.00      	0.00      	1
-        alarm/show_alarms   	0.00      	0.00      	0.00      	1
-        alarm/set_alarm     	0.00      	0.00      	0.00      	2
-        Overall macro scores	6.25      	25.00     	10.00
+        alarm/show_alarms   	    0.00      	0.00      	0.00      	1
+        alarm/set_alarm     	    0.00      	0.00      	0.00      	2
+        Overall macro scores	    6.25      	25.00     	10.00
 
     Soft Metrics:
         Label     	Average precision
