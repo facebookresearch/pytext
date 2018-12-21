@@ -98,9 +98,8 @@ class CRF(nn.Module):
         # Sum of emission and transition probabilities gives the final score for
         # the input.
         llh = self.transitions[self.start_tag, tags[:, 0]].unsqueeze(1)
-        llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * mask[
-            :, 0
-        ].unsqueeze(1)
+        llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * \
+            mask[:, 0].unsqueeze(1)
 
         for idx in range(1, seq_len):
             old_state, new_state = (
