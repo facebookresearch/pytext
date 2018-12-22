@@ -17,47 +17,48 @@ We want to run the model on our test dataset and see how well it performs. Some 
     Accuracy: 20.00
 
     Macro P/R/F1 Scores:
-        Label               	Precision 	Recall    	F1        	Support
+        Label                       Precision   Recall      F1          Support
 
-        reminder/set_reminder	    25.00     	100.00    	40.00     	1
-        alarm/time_left_on_alarm	0.00      	0.00      	0.00      	1
-        alarm/show_alarms   	    0.00      	0.00      	0.00      	1
-        alarm/set_alarm     	    0.00      	0.00      	0.00      	2
-        Overall macro scores	    6.25      	25.00     	10.00
+        reminder/set_reminder       25.00       100.00      40.00       1
+        alarm/time_left_on_alarm    0.00        0.00        0.00        1
+        alarm/show_alarms           0.00        0.00        0.00        1
+        alarm/set_alarm             0.00        0.00        0.00        2
+        Overall macro scores        6.25        25.00       10.00
 
     Soft Metrics:
-        Label     	Average precision
-        alarm/set_alarm	50.00
-        alarm/time_left_on_alarm	20.00
-        reminder/set_reminder	25.00
-        alarm/show_alarms	20.00
-        weather/find	nan
-        alarm/modify_alarm	nan
-        alarm/snooze_alarm	nan
-        reminder/show_reminders	nan
-        Label     	Recall at precision 0.2
-        alarm/set_alarm	100.00
-        Label     	Recall at precision 0.4
-        alarm/set_alarm	100.00
-        Label     	Recall at precision 0.6
-        alarm/set_alarm	0.00
-        Label     	Recall at precision 0.8
-        alarm/set_alarm	0.00
-        Label     	Recall at precision 0.9
-        alarm/set_alarm	0.00
-        Label     	Recall at precision 0.2
-    [snip...]
-        alarm/snooze_alarm	0.00
-        Label     	Recall at precision 0.2
-        reminder/show_reminders	0.00
-        Label     	Recall at precision 0.4
-        reminder/show_reminders	0.00
-        Label     	Recall at precision 0.6
-        reminder/show_reminders	0.00
-        Label     	Recall at precision 0.8
-        reminder/show_reminders	0.00
-        Label     	Recall at precision 0.9
-        reminder/show_reminders	0.00
+        Label       Average precision
+        alarm/set_alarm 50.00
+        alarm/time_left_on_alarm    20.00
+        reminder/set_reminder   25.00
+        alarm/show_alarms   20.00
+        weather/find    nan
+        alarm/modify_alarm  nan
+        alarm/snooze_alarm  nan
+        reminder/show_reminders nan
+        Label       Recall at precision 0.2
+        alarm/set_alarm 100.00
+        Label       Recall at precision 0.4
+        alarm/set_alarm 100.00
+        Label       Recall at precision 0.6
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.8
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.9
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.2
+        alarm/time_left_on_alarm    100.00
+        Label       Recall at precision 0.4
+        alarm/time_left_on_alarm    0.00
+        Label       Recall at precision 0.6
+        alarm/time_left_on_alarm    0.00
+    ... [snip]
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.6
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.8
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.9
+        reminder/show_reminders 0.00
 
 
 Export the model
