@@ -21,7 +21,7 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
 # Installing PyText
 
-### PyText requires Python 3.6 or above.
+### PyText requires Python 3.6.1 or above.
 
 *To get started on a Cloud VM, checkout [our guide](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#cloud-vm-setup)*
 
