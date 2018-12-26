@@ -48,13 +48,13 @@ By default, the model is created in `/tmp/model.pt`
 Now you can export your model as a caffe2 net:
 
 ```
-  (venv) $ pytext export < config.json
+  (venv) $ pytext export < demo/configs/docnn.json
 ```
 
 You can use the exported caffe2 model to predict the class of raw utterances like this:
 
 ```
-  (venv) $ pytext --config-file config.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
+  (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
 
 More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com)
