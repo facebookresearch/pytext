@@ -1,19 +1,7 @@
 Execute your first model
 =================================
 
-In :doc:`train_your_first_model`, we learnt how to train a very small, simple model. You can easily continue this tutorial with that model, but the results won't be very compelling. Here we'll use the much more powerful model from :doc:`atis_tutorial`. To make the commands below compatible with either, we recommend setting a shell variable to the config you're using.
-
-If you want to quickly run through this with the test model trained in the previous tutorial, do
-
-.. code-block:: console
-
-    (pytext) $ CONFIG=demo/configs/docnn.json
-
-If you're following along with the ATIS tutorial, use this config
-
-.. code-block:: console
-
-    (pytext) $ CONFIG=demo/atis_joint_model/atis_joint_config.json
+In :doc:`train_your_first_model`, we learnt how to train a small, simple model. We can continue this tutorial with that model here. This procedure can be used for any pytext model by supplying the matching config. For example, the much more powerful model from :doc:`atis_tutorial` can be executed using this same procedure.
 
 Evaluate the model
 --------------------
@@ -22,36 +10,56 @@ We want to run the model on our test dataset and see how well it performs. Some 
 
 .. code-block:: console
 
-    (pytext) $ pytext test < "$CONFIG"
+    (pytext) $ pytext test < demo/configs/docnn.json
 
-    Intent Metrics
-            Per label scores                                Precision       Recall          F1              Support
+    Stage.TEST
+    loss: 2.059336
+    Accuracy: 20.00
 
-            flight                                          98.27           99.05           98.66           632
-            flight_no                                       88.89           100.00          94.12           8
-            abbreviation                                    94.29           100.00          97.06           33
-            ground_service                                  94.74           100.00          97.30           36
-            airfare                                         92.31           100.00          96.00           48
-            airline                                         97.44           100.00          98.70           38
-    ...[snip]
-           ... [snip]
+    Macro P/R/F1 Scores:
+        Label                       Precision   Recall      F1          Support
 
-            Overall micro scores                            96.64           96.64           96.64           893
-            Overall macro scores                            73.03           69.55           69.14
+        reminder/set_reminder       25.00       100.00      40.00       1
+        alarm/time_left_on_alarm    0.00        0.00        0.00        1
+        alarm/show_alarms           0.00        0.00        0.00        1
+        alarm/set_alarm             0.00        0.00        0.00        2
+        Overall macro scores        6.25        25.00       10.00
 
+    Soft Metrics:
+        Label       Average precision
+        alarm/set_alarm 50.00
+        alarm/time_left_on_alarm    20.00
+        reminder/set_reminder   25.00
+        alarm/show_alarms   20.00
+        weather/find    nan
+        alarm/modify_alarm  nan
+        alarm/snooze_alarm  nan
+        reminder/show_reminders nan
+        Label       Recall at precision 0.2
+        alarm/set_alarm 100.00
+        Label       Recall at precision 0.4
+        alarm/set_alarm 100.00
+        Label       Recall at precision 0.6
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.8
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.9
+        alarm/set_alarm 0.00
+        Label       Recall at precision 0.2
+        alarm/time_left_on_alarm    100.00
+        Label       Recall at precision 0.4
+        alarm/time_left_on_alarm    0.00
+        Label       Recall at precision 0.6
+        alarm/time_left_on_alarm    0.00
+    ... [snip]
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.6
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.8
+        reminder/show_reminders 0.00
+        Label       Recall at precision 0.9
+        reminder/show_reminders 0.00
 
-    Slot Metrics
-            Per label scores                                Precision       Recall          F1              Support
-
-            toloc.city_name                                 97.12           98.88           97.99           715
-            fromloc.city_name                               98.46           99.72           99.08           703
-            fare_basis_code                                 88.89           94.12           91.43           17
-    ...[snip]
-
-            Overall micro scores                            94.88           95.13           95.01           2260
-            Overall macro scores                            70.13           71.12           69.09
-
-Not bad!
 
 Export the model
 -------------------
@@ -76,7 +84,7 @@ You can also pass in a configuration to infer some of these options. In this cas
 
 .. code-block:: console
 
-    (pytext) $ pytext export --output-path exported_model.c2 < "$CONFIG"
+    (pytext) $ pytext export --output-path exported_model.c2 < demo/configs/docnn.json
     ...[snip]
     Saving caffe2 model to: exported_model.c2
 
@@ -142,7 +150,7 @@ Execute the app
 
 .. code-block:: console
 
-    (pytext) $ python flask_app.py "$CONFIG" exported_model.c2
+    (pytext) $ python flask_app.py demo/configs/docnn.json exported_model.c2
     * Serving Flask app "flask_app" (lazy loading)
     * Environment: production
       WARNING: Do not use the development server in a production environment.
