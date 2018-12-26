@@ -1,7 +1,7 @@
 Execute your first model
 =================================
 
-In :doc:`train_your_first_model`, we learnt how to train a very small, simple model. We can continue this tutorial with that model here, knowing that the results won't be very compelling. For a more representative scenario, use the much more powerful model from :doc:`atis_tutorial` instead.
+In :doc:`train_your_first_model`, we learnt how to train a small, simple model. We can continue this tutorial with that model here. This procedure can be used for any pytext model by supplying the matching config. For example, the much more powerful model from :doc:`atis_tutorial` can be executed using this same procedure.
 
 Evaluate the model
 --------------------
