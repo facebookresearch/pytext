@@ -40,6 +40,7 @@ def pytorch_to_caffe2(
 
     # # copy as a ONNX snapshot
     from shutil import copyfile
+
     copyfile(export_path, export_path + ".onnx")
 
     onnx_model = onnx.load(export_path)
