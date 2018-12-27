@@ -148,12 +148,12 @@ def I(n):
 
 def unindent_docstring(docstring):
     lines = docstring.splitlines()
-    first = next(iter(lines), "")
-    second = next(iter([line for line in lines[1:] if line]), "")
+    first, *rest = lines or [""]
+    second = next((line for line in rest if line), "")
     indent = len(second) - len(second.lstrip())
-    if any([line[:indent].strip() for line in lines[1:]]):
+    if any(line[:indent].strip() for line in rest):
         raise ValueError("Unexpected unindent in docstring")
-    return [first] + [line[indent:] for line in lines[1:]]
+    return [first] + [line[indent:] for line in rest]
 
 
 def rst_big_header(s):
