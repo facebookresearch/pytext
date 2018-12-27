@@ -37,6 +37,11 @@ def pytorch_to_caffe2(
         output_names=output_names,
         export_params=True,
     )
+
+    # # copy as a ONNX snapshot
+    from shutil import copyfile
+    copyfile(export_path, export_path + ".onnx")
+
     onnx_model = onnx.load(export_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
