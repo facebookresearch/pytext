@@ -103,8 +103,8 @@ class DisjointMultitaskDataHandler(DataHandler):
         """Configuration class for `DisjointMultitaskDataHandler`.
 
         Attributes:
-            epoch_size (Optional[int]): Size of epoch in number of batches.  If not set,
-            do a single pass over the training data.
+            epoch_size (Optional[int]): Size of epoch in number of batches.  If not set
+                do a single pass over the training data.
 
         """
 

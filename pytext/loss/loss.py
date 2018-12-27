@@ -75,22 +75,22 @@ class BinaryCrossEntropyLoss(Loss):
 
 class AUCPRHingeLoss(nn.Module, Loss):
     """area under the precision-recall curve loss,
-    Reference: "Scalable Learning of Non-Decomposable Objectives", Section 5
-        TensorFlow Implementation:
-        https://github.com/tensorflow/models/tree/master/research/global_objectives
+    Reference: "Scalable Learning of Non-Decomposable Objectives", Section 5 \
+    TensorFlow Implementation: \
+    https://github.com/tensorflow/models/tree/master/research/global_objectives\
     """
 
     class Config(ConfigBase):
         """
-        Configs:
-            precision_range_lower: the lower range of precision values over
+        Attributes:
+            precision_range_lower (float): the lower range of precision values over
                 which to compute AUC. Must be nonnegative, `\leq precision_range_upper`,
                 and `leq 1.0`.
-            precision_range_upper: the upper range of precision values over
+            precision_range_upper (float): the upper range of precision values over
                 which to compute AUC. Must be nonnegative, `\geq precision_range_lower`,
                 and `leq 1.0`.
-            num_classes: number of classes(aka labels)
-            num_anchors: The number of grid points used to approximate the Riemann sum.
+            num_classes (int): number of classes(aka labels)
+            num_anchors (int): The number of grid points used to approximate the Riemann sum.
         """
 
         precision_range_lower: float = 0.0

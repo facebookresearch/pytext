@@ -7,15 +7,18 @@ from pytext.utils.cuda_utils import FloatTensor
 
 def range_to_anchors_and_delta(precision_range, num_anchors):
     """Calculates anchor points from precision range.
-      Args:
-        precision_range: an interval (a, b), where 0.0 <= a <= b <= 1.0
-        num_anchors: int, number of equally spaced anchor points.
-      Returns:
-        precision_values: A `Tensor` of [num_anchors] equally spaced values
-          in the interval precision_range.
-        delta: The spacing between the values in precision_values.
-      Raises:
-        ValueError: If precision_range is invalid.
+
+        Args:
+            precision_range: an interval (a, b), where 0.0 <= a <= b <= 1.0
+            num_anchors: int, number of equally spaced anchor points.
+
+        Returns:
+            precision_values: A `Tensor` of [num_anchors] equally spaced values
+                in the interval precision_range.
+            delta: The spacing between the values in precision_values.
+
+        Raises:
+            ValueError: If precision_range is invalid.
     """
     # Validate precision_range.
     if len(precision_range) != 2:
@@ -134,13 +137,15 @@ def weighted_hinge_loss(labels, logits, positive_weights=1.0, negative_weights=1
 def true_positives_lower_bound(labels, logits, weights):
     """
     true_positives_lower_bound defined in paper:
-        "Scalable Learning of Non-Decomposable Objectives"
+    "Scalable Learning of Non-Decomposable Objectives"
+
     Args:
         labels: A `Tensor` of shape broadcastable to logits.
         logits: A `Tensor` of shape [N, C] or [N, C, K].
             If the third dimension is present,
             the lower bound is computed on each slice [:, :, k] independently.
         weights: Per-example loss coefficients, with shape [N, 1] or [N, C]
+
     Returns:
         A `Tensor` of shape [C] or [C, K].
     """
@@ -158,7 +163,8 @@ def true_positives_lower_bound(labels, logits, weights):
 def false_postives_upper_bound(labels, logits, weights):
     """
     false_positives_upper_bound defined in paper:
-        "Scalable Learning of Non-Decomposable Objectives"
+    "Scalable Learning of Non-Decomposable Objectives"
+
     Args:
         labels: A `Tensor` of shape broadcastable to logits.
         logits: A `Tensor` of shape [N, C] or [N, C, K].
@@ -166,6 +172,7 @@ def false_postives_upper_bound(labels, logits, weights):
             the lower bound is computed on each slice [:, :, k] independently.
         weights: Per-example loss coefficients, with shape broadcast-compatible with
             that of `labels`. i.e. [N, 1] or [N, C]
+
     Returns:
         A `Tensor` of shape [C] or [C, K].
     """

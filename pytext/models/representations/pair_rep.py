@@ -32,14 +32,14 @@ class PairRepresentation(RepresentationBase):
     class Config(RepresentationBase.Config):
         """
         Attributes:
-            * `encode_relations`: if `false`, return the concatenation of the two
-              representations; if `true`, also concatenate their pairwise absolute
-              difference and pairwise elementwise product (à la arXiv:1705.02364).
-              Default: `true`.
-            * `subrepresentation`: the sub-representation used for the inputs. If
+            encode_relations (bool): if `false`, return the concatenation of the two
+                representations; if `true`, also concatenate their pairwise absolute
+                difference and pairwise elementwise product (à la arXiv:1705.02364).
+                Default: `true`.
+            subrepresentation (SubRepresentation): the sub-representation used for the inputs. If
               `subrepresentation_right` is not given, then this representation is
-               used for both inputs with tied weights.
-            * `subrepresentation_right`: the sub-representation used for the right
+              used for both inputs with tied weights.
+            subrepresentation_right (Optional[SubRepresentation]): the sub-representation used for the right
                input. Optional. If missing, `subrepresentation` is used with tied
                weights. Default: `None`.
         """

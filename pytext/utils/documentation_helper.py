@@ -37,6 +37,7 @@ def get_config_fields(obj):
         Return a dict of config help for this object, where:
         - key: config name
         - value: (default, type, options)
+
             - default: default value for this key if not specified
             - type: type for this config value, as a string
             - options: possible values for this config, only if type = Union

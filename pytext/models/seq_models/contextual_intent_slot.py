@@ -14,14 +14,14 @@ class ContextualIntentSlotModel(JointModel):
     Joint Model for Intent classification and slot tagging with inputs of contextual
     information (sequence of utterances) and dictionary feature of the last utterance.
 
-    Training data should includes:
-    doc_label (string): intent classification label of either the sequence of
-        utterances or just the last sentence
-    word_label (string): slot tagging label of the last utterance in the format
-        of start_idx:end_idx:slot_label, multiple slots are separated by a comma
+    Training data should include:
+    doc_label (string): intent classification label of either the sequence of \
+    utterances or just the last sentence
+    word_label (string): slot tagging label of the last utterance in the format\
+    of start_idx:end_idx:slot_label, multiple slots are separated by a comma
     text (list of string): sequence of utterances for training
-    dict_feat (dict): a dict of features that contains the feature of each word
-        in the last utterance
+    dict_feat (dict): a dict of features that contains the feature of each word\
+    in the last utterance
 
     Following is an example of raw columns from training data:
     doc_label   reply-where

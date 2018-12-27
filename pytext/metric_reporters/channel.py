@@ -214,6 +214,7 @@ class TensorBoardChannel(Channel):
         then under "tag=test" we will display "accuracy=0.7", and under
         "tag=test/scores" we will display "precision=0.8" and "recall=0.6" in
         TensorBoard.
+
         Args:
             tag (str): The tag name for the metric. If a field needs to be
                 flattened further, it will be prepended as a prefix to the field
@@ -230,6 +231,7 @@ class TensorBoardChannel(Channel):
         """
         Recursively flattens the metrics object and adds each field name and
         value as a scalar for the corresponding epoch using the summary writer.
+
         Args:
             prefix (str): The tag prefix for the metric. Each field name in the
                 metrics object will be prepended with the prefix.

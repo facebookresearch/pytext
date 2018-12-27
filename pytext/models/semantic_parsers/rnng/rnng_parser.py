@@ -38,9 +38,9 @@ class AblationParams(ConfigBase):
     when computing representation for the action classifier
 
     Attributes:
-    use_buffer: whether to use the buffer LSTM
-    use_stack: whether to use the stack LSTM
-    use_action: whether to use the action LSTM
+        use_buffer (bool): whether to use the buffer LSTM
+        use_stack (bool): whether to use the stack LSTM
+        use_action (bool): whether to use the action LSTM
     """
 
     use_buffer: bool = True
@@ -51,15 +51,17 @@ class AblationParams(ConfigBase):
 
 class RNNGConstraints(ConfigBase):
     """Constraints when computing valid actions.
+    
+    Attributes:
+        intent_slot_nesting (bool): for the intent slot models, the top level non-terminal
+            has to be an intent, an intent can only have slot non-terminals as
+            children and vice-versa.
 
-    intent_slot_nesting: for the intent slot models, the top level non-terminal
-    has to be an intent, an intent can only have slot non-terminals as
-    children and vice-versa.
-
-    ignore_loss_for_unsupported and no_slots_inside_unsupported:
-    if the data has "unsupported" label, that is if the label has a substring
-    "unsupported" in it, these flags control whether or not to compute loss or
-    predict slots in side the unsupported intent
+        ignore_loss_for_unsupported (bool): if the data has "unsupported" label, 
+            that is if the label has a substring "unsupported" in it, do not compute loss
+        no_slots_inside_unsupported (bool): if the data has "unsupported" label, that is
+            if the label has a substring "unsupported" in it, do not predict slots inside
+            this label.
     """
 
     intent_slot_nesting: bool = True
@@ -267,26 +269,22 @@ class RNNGParser(Model, Component):
         """RNNG forward function.
 
         Args:
-        tokens : torch.Tensor
-            list of tokens
-        seq_lens : torch.Tensor
-            list of sequence lengths
-        dict_feat : Optional[Tuple[torch.Tensor, ...]]
-            dictionary or gazetteer features for each token
-        actions : Optional[List[List[int]]]
-            Used only during training. Oracle actions for the instances.
-        beam_size : int
-            Beam size; used only during inference
-        topk : int
-            Number of top results from the method. if beam_size is 1 this is 1.
+            tokens (torch.Tensor): list of tokens
+            seq_lens (torch.Tensor): list of sequence lengths
+            dict_feat (Optional[Tuple[torch.Tensor, ...]]): dictionary or gazetteer
+                features for each token
+            actions (Optional[List[List[int]]]): Used only during training. 
+                Oracle actions for the instances.
+            beam_size (int): Beam size; used only during inference
+            topk (int) : Number of top results from the method. if beam_size is 1 this is 1.
 
 
         Returns:
-        if topk == 1
-            tuple of list of predicted actions and list of corresponding scores
-        else
+            if topk == 1
+                tuple of list of predicted actions and list of corresponding scores
+                else
             returns
-            list of tuple of list of predicted actions and list of corresponding scores
+                list of tuple of list of predicted actions and list of corresponding scores
 
 
         """
@@ -506,12 +504,10 @@ class RNNGParser(Model, Component):
         """Used for restricting the set of possible action predictions
 
         Args:
-        state : ParserState
-            The state of the stack, buffer and action
+            state (ParserState): The state of the stack, buffer and action
 
         Returns:
-        List[int]
-            indices of the valid actions
+            List[int] : indices of the valid actions
 
         """
         valid_actions: List[int] = []
