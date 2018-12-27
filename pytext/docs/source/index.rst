@@ -54,6 +54,7 @@ If you want to use PyText as a library and build your own models, please check t
   installation
   train_your_first_model
   execute_your_first_model
+  visualize_your_model
 
   pytext_models_in_your_app
   serving_models_in_production
