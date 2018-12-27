@@ -187,14 +187,16 @@ def run_apidoc(_):
 
     main()
 
+
 class PatchedPythonDomain(PythonDomain):
     def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
-        if 'refspecific' in node:
-            del node['refspecific']
+        if "refspecific" in node:
+            del node["refspecific"]
         return super(PatchedPythonDomain, self).resolve_xref(
-            env, fromdocname, builder, typ, target, node, contnode)
-    
+            env, fromdocname, builder, typ, target, node, contnode
+        )
+
+
 def setup(app):
     app.override_domain(PatchedPythonDomain)
     app.connect("builder-inited", run_apidoc)
-
