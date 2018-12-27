@@ -212,6 +212,7 @@ model class. However please inherit your model class from the base :class:`~Mode
 `create_module` method to construct modules. Doing so will give you the features of
 freezing / saving / loading any part of the model for free. It's as easy as
 setting the value in the corresponding config::
+
 	{
 	  "model": {
 	    "representation": {

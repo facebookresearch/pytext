@@ -178,7 +178,7 @@ Now that our model is loaded, we need to implement the `predict` API method whic
   ...
   }
 
-The full source code for *server.cpp* can be found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/server.cpp>`_.
+The full source code for *server.cpp* can be found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor_service/server.cpp>`__.
 
 Note: The source code in the demo also implements a REST proxy for the Thrift server to make it easy to test and make calls over simple HTTP, however it is not covered in the scope of this tutorial since the Thrift protocol is what we'll use in production.
 
@@ -229,7 +229,7 @@ In our *Dockerfile*, we also add some steps to copy our local files into the doc
 5. Test/Run the server
 -------------------------
 
-This section assumes that your local files match the one found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor>`_.
+This section assumes that your local files match the one found `here <https://github.com/facebookresearch/pytext/tree/master/demo/predictor>`__.
 
 Now that you have implemented your server, we will run the following commands to take it for a test run. In your server folder:
 

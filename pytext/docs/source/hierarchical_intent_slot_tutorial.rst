@@ -25,7 +25,7 @@ Prepare the configuration file for training. A sample config file can be found i
 
 
 3. Train a model with the downloaded dataset
-------------------------------------------
+--------------------------------------------
 
 Train the model using the command below
 
@@ -68,10 +68,12 @@ Load the model using the command below
 
 This will give you a REPL prompt. You can enter an utterance to get back the model's prediction repeatedly. You should enter in a json format shown below. Once done press Ctrl+D.
 ::
+
 	{"text": "order coffee from starbucks"}
 
 You should see an output like:
 ::
+
 	[{'prediction': [7, 0, 5, 0, 1, 0, 3, 0, 1, 1],
 	'score': [
 		0.44425372408062447,
