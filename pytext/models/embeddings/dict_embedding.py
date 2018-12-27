@@ -19,10 +19,12 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
     Example: For the utterance *Order coffee from Starbucks*, the dictionary
     features could be
     ::
+
         [
             {"tokenIdx": 1, "features": {"drink/beverage": 0.8, "music/song": 0.2}},
             {"tokenIdx": 3, "features": {"store/coffee_shop": 1.0}}
         ]
+
     ::
     Thus, for a given token there can be more than one dictionary features each
     of which has a confidence score. The final embedding for a token is the

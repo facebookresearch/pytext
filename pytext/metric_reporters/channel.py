@@ -176,6 +176,7 @@ class TensorBoardChannel(Channel):
         writer. In the current implementation, during the train/eval phase we
         recursively report each metric field as scalars, and during the test
         phase we report the final metrics to be displayed as texts.
+
         Args:
             stage (Stage): train, eval or test
             epoch (int): current epoch
