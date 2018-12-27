@@ -36,7 +36,7 @@ Note: The TensorBoard web server might fail to run might fail to run if TensorFl
 
 .. code-block:: console
 
-  $ pip install tensorboard
+  $ pip install tensorflow
 
 4. View your visualizations
 ------------------------------
