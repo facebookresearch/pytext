@@ -25,6 +25,7 @@ from pytext.workflow import (
     test_model_from_snapshot_path,
     train_model,
 )
+from tensorboardX import SummaryWriter
 from torch.multiprocessing.spawn import spawn
 
 
@@ -33,7 +34,7 @@ class Attrs:
         return f"Attrs({', '.join(f'{k}={v}' for k, v in vars(self).items())})"
 
 
-def train_model_distributed(config):
+def train_model_distributed(config, summary_writer):
     assert (
         config.use_cuda_if_available and torch.cuda.is_available()
     ) or config.distributed_world_size == 1, (
@@ -53,7 +54,7 @@ def train_model_distributed(config):
 
     print(f"\n=== Starting training, World size is {config.distributed_world_size}")
     if not config.use_cuda_if_available or not torch.cuda.is_available():
-        run_single(0, config_to_json(PyTextConfig, config), 1, None)
+        run_single(0, config_to_json(PyTextConfig, config), 1, None, summary_writer)
     else:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".dist_sync"
@@ -65,14 +66,24 @@ def train_model_distributed(config):
                     config_to_json(PyTextConfig, config),
                     config.distributed_world_size,
                     dist_init_method,
+                    summary_writer,
                 ),
                 config.distributed_world_size,
             )
 
 
-def run_single(rank, config_json: str, world_size: int, dist_init_method: str):
+def run_single(
+    rank: int,
+    config_json: str,
+    world_size: int,
+    dist_init_method: str,
+    summary_writer: SummaryWriter,
+):
     config = config_from_json(PyTextConfig, config_json)
-    train_model(config, dist_init_method, rank, rank, world_size)
+    if rank != 0:
+        summary_writer = None
+
+    train_model(config, dist_init_method, rank, rank, world_size, summary_writer)
 
 
 def gen_config_impl(task_name, options):
@@ -197,14 +208,20 @@ def gen_default_config(context, task_name, options):
     default=None,
     help="Run supported parts of the model on GPU if available.",
 )
+@click.option(
+    "--use-tensorboard/--no-tensorboard",
+    default=True,
+    help="Whether to visualize test metrics using TensorBoard.",
+)
 @click.pass_context
-def test(context, model_snapshot, test_path, use_cuda):
+def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
     """Test a trained model snapshot.
 
-    If model-snapshot is provided, the models and configuration will then be loaded from
-    the snapshot rather than any passed config file.
+    If model-snapshot is provided, the models and configuration will then be
+    loaded from the snapshot rather than any passed config file.
     Otherwise, a config file will be loaded.
     """
+    summary_writer = SummaryWriter() if use_tensorboard else None
     if model_snapshot:
         print(f"Loading model snapshot and config from {model_snapshot}")
         if use_cuda is None:
@@ -218,7 +235,13 @@ def test(context, model_snapshot, test_path, use_cuda):
         use_cuda = config.use_cuda_if_available
         print(f"Configured model snapshot {model_snapshot}")
     print("\n=== Starting testing...")
-    test_model_from_snapshot_path(model_snapshot, use_cuda, test_path)
+    try:
+        test_model_from_snapshot_path(
+            model_snapshot, use_cuda, test_path, summary_writer
+        )
+    finally:
+        if summary_writer is not None:
+            summary_writer.close()
 
 
 @main.command()
@@ -228,16 +251,22 @@ def train(context):
 
     config = context.obj.load_config()
     print("\n===Starting training...")
-    if config.distributed_world_size == 1:
-        train_model(config)
-    else:
-        train_model_distributed(config)
-    print("\n=== Starting testing...")
-    test_model_from_snapshot_path(
-        config.save_snapshot_path,
-        config.use_cuda_if_available,
-        config.task.data_handler.test_path,
-    )
+    summary_writer = SummaryWriter() if config.use_tensorboard else None
+    try:
+        if config.distributed_world_size == 1:
+            train_model(config, summary_writer=summary_writer)
+        else:
+            train_model_distributed(config, summary_writer)
+        print("\n=== Starting testing...")
+        test_model_from_snapshot_path(
+            config.save_snapshot_path,
+            config.use_cuda_if_available,
+            config.task.data_handler.test_path,
+            summary_writer,
+        )
+    finally:
+        if summary_writer is not None:
+            summary_writer.close()
 
 
 @main.command()
