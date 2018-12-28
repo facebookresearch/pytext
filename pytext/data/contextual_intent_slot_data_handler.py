@@ -163,11 +163,11 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 "token_range" (list of tuple)
                     token ranges of word labels, each tuple contains the start
                     position index and the end position index
-                "utterance" (list of string) 
+                "utterance" (list of string)
                     raw utterances
                 "word_label" (list of string)
                     list of labels of words in last utterance
-                "doc_label" (string) 
+                "doc_label" (string)
                     doc label for intent classification
                 "word_weight" (float)
                     weight of word label

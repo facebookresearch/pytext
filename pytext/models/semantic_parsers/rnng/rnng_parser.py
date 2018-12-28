@@ -51,17 +51,18 @@ class AblationParams(ConfigBase):
 
 class RNNGConstraints(ConfigBase):
     """Constraints when computing valid actions.
-    
-    Attributes:
-        intent_slot_nesting (bool): for the intent slot models, the top level non-terminal
-            has to be an intent, an intent can only have slot non-terminals as
-            children and vice-versa.
 
-        ignore_loss_for_unsupported (bool): if the data has "unsupported" label, 
-            that is if the label has a substring "unsupported" in it, do not compute loss
-        no_slots_inside_unsupported (bool): if the data has "unsupported" label, that is
-            if the label has a substring "unsupported" in it, do not predict slots inside
-            this label.
+    Attributes:
+        intent_slot_nesting (bool): for the intent slot models, the top level
+            non-terminal has to be an intent, an intent can only have slot
+            non-terminals as children and vice-versa.
+
+        ignore_loss_for_unsupported (bool): if the data has "unsupported" label,
+            that is if the label has a substring "unsupported" in it, do not
+            compute loss
+        no_slots_inside_unsupported (bool): if the data has "unsupported" label,
+            that is if the label has a substring "unsupported" in it, do not
+            predict slots inside this label.
     """
 
     intent_slot_nesting: bool = True
@@ -273,18 +274,19 @@ class RNNGParser(Model, Component):
             seq_lens (torch.Tensor): list of sequence lengths
             dict_feat (Optional[Tuple[torch.Tensor, ...]]): dictionary or gazetteer
                 features for each token
-            actions (Optional[List[List[int]]]): Used only during training. 
+            actions (Optional[List[List[int]]]): Used only during training.
                 Oracle actions for the instances.
             beam_size (int): Beam size; used only during inference
-            topk (int) : Number of top results from the method. if beam_size is 1 this is 1.
+            topk (int) : Number of top results from the method.
+                If beam_size is 1 this is 1.
 
 
         Returns:
             if topk == 1
                 tuple of list of predicted actions and list of corresponding scores
-                else
-            returns
-                list of tuple of list of predicted actions and list of corresponding scores
+            else
+                list of tuple of list of predicted actions and list of \
+                    corresponding scores
 
 
         """

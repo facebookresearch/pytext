@@ -90,7 +90,8 @@ class AUCPRHingeLoss(nn.Module, Loss):
                 which to compute AUC. Must be nonnegative, `\geq precision_range_lower`,
                 and `leq 1.0`.
             num_classes (int): number of classes(aka labels)
-            num_anchors (int): The number of grid points used to approximate the Riemann sum.
+            num_anchors (int): The number of grid points used to approximate the
+                Riemann sum.
         """
 
         precision_range_lower: float = 0.0

@@ -31,7 +31,7 @@ class ContextualIntentSlotRepresentation(RepresentationBase):
         | seq_embed |-->| seq_representation|--->+   | word_representation|
         +-----------+   +-------------------+        +--------------------+
                                                       joint_representation
-                                                  
+
     """
 
     class Config(RepresentationBase.Config):
