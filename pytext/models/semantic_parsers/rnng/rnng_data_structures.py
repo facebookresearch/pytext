@@ -5,6 +5,7 @@ from typing import Any, List, Sized, Tuple
 
 import torch as torch
 import torch.nn as nn
+import torch.nn.functional as F
 from pytext.utils.cuda_utils import xaviervar
 
 
@@ -22,14 +23,24 @@ class Element:
 
 
 class StackLSTM(Sized):
-    def __init__(self, rnn, initial_state, p_empty_embedding):
+    def __init__(self, rnn, initial_state, p_empty_embedding, use_attention=False):
         self.rnn = rnn
+        self.use_attention = use_attention
         self.list = (
             [(initial_state, (self._rnn_get_output(initial_state), "Root"))]
             if initial_state
             else None
         )
         self.empty = p_empty_embedding
+        self.hidden_dim = self._init_hidden_dim()
+        self.linear = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
+        self.out_linear = nn.Linear(self.hidden_dim, 1, bias=False)
+
+    def _init_hidden_dim(self):
+        if self.use_attention:
+            return int(self.empty.size()[1] / 2)
+        else:
+            return int(self.empty.size()[1])
 
     def _rnn_get_output(self, state):
         return state[0][-1]
@@ -49,9 +60,23 @@ class StackLSTM(Sized):
         return self.list[-1][1]
 
     def embedding(self):
-        return (
-            self._rnn_get_output(self.list[-1][0]) if len(self.list) > 1 else self.empty
-        )
+        if self.use_attention and len(self.list) > 1:
+            all_states_outputs = [self._rnn_get_output(state) for state in self.list]
+            all_states_outputs = torch.cat(all_states_outputs).squeeze(1)
+
+            u_i = self.out_linear(F.relu(self.linear(all_states_outputs)))
+
+            # attention weights
+            a_i = F.softmax(u_i, dim=0).unsqueeze(0).squeeze(2)
+            weighted_embedding = torch.mm(a_i, all_states_outputs)
+            last_state_output = self._rnn_get_output(self.list[-1][0])
+            return torch.cat([weighted_embedding, last_state_output], dim=1)
+
+        elif len(self.list) > 1:  # no attention
+            return self._rnn_get_output(self.list[-1][0])
+
+        else:
+            return self.empty
 
     def first_ele_match(self, funct):
         for st in self.list[::-1]:
@@ -143,7 +168,10 @@ class ParserState:
             parser.buff_rnn, parser.init_lstm(), parser.pempty_buffer_emb
         )
         self.stack_stackrnn = StackLSTM(
-            parser.stack_rnn, parser.init_lstm(), parser.empty_stack_emb
+            parser.stack_rnn,
+            parser.init_lstm(),
+            parser.empty_stack_emb,
+            parser.ablation_use_stack_attention,
         )
         self.action_stackrnn = StackLSTM(
             parser.action_rnn, parser.init_lstm(), parser.empty_action_emb

@@ -34,19 +34,22 @@ class CompositionalType(Enum):
 
 class AblationParams(ConfigBase):
     """Different ablation parameters.
-    use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
-    when computing representation for the action classifier
 
     Attributes:
     use_buffer: whether to use the buffer LSTM
     use_stack: whether to use the stack LSTM
     use_action: whether to use the action LSTM
+    use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
+        when computing representation for the action classifier
+    use_stack_attention adds attention for stack LSTM
+
     """
 
     use_buffer: bool = True
     use_stack: bool = True
     use_action: bool = True
     use_last_open_NT_feature: bool = False
+    use_stack_attention: bool = False
 
 
 class RNNGConstraints(ConfigBase):
@@ -201,6 +204,7 @@ class RNNGParser(Model, Component):
         self.ablation_use_buffer = ablation.use_buffer
         self.ablation_use_stack = ablation.use_stack
         self.ablation_use_action = ablation.use_action
+        self.ablation_use_stack_attention = ablation.use_stack_attention
 
         self.constraints_intent_slot_nesting = constraints.intent_slot_nesting
         self.constraints_no_slots_inside_unsupported = (
@@ -222,7 +226,13 @@ class RNNGParser(Model, Component):
         self.valid_SL_idxs = valid_SL_idxs
 
         num_actions = len(actions_vocab)
-        lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
+        lstm_count = (
+            ablation.use_buffer
+            + ablation.use_stack
+            + ablation.use_action
+            + ablation.use_stack_attention
+        )
+
         if lstm_count == 0:
             raise ValueError("Need at least one of the LSTMs to be true")
 
@@ -250,6 +260,11 @@ class RNNGParser(Model, Component):
 
         self.pempty_buffer_emb = nn.Parameter(torch.randn(1, lstm_dim))
         self.empty_stack_emb = nn.Parameter(torch.randn(1, lstm_dim))
+        self.stack_emb_dim = lstm_dim
+        if ablation.use_stack_attention:
+            self.stack_emb_dim = 2 * lstm_dim
+        self.empty_stack_emb = nn.Parameter(torch.randn(1, self.stack_emb_dim))
+
         self.empty_action_emb = nn.Parameter(torch.randn(1, lstm_dim))
 
         self.actions_lookup = nn.Embedding(num_actions, lstm_dim)
