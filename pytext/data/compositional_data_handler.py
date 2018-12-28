@@ -159,7 +159,7 @@ class CompositionalDataHandler(DataHandler):
         actions = ""
         # training time
         if DFColumn.SEQLOGICAL in row_data:
-            annotation = Annotation(row_data[DFColumn.SEQLOGICAL])
+            annotation = Annotation(row_data[DFColumn.SEQLOGICAL], utterance)
             actions = annotation.tree.to_actions()
 
             # Seqlogical format is required for building the tree representation of

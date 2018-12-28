@@ -54,6 +54,7 @@ class Annotation:
     def __init__(
         self,
         annotation_string: str,
+        utterance: str = "",
         brackets: str = OPEN + CLOSE,
         combination_labels: bool = True,
         add_dict_feat: bool = False,
@@ -75,7 +76,9 @@ class Annotation:
         else:
             raise ValueError("Cannot parse annotation_string")
 
-        self.tree = Tree(self.build_tree(accept_flat_intents_slots), combination_labels)
+        self.tree = Tree(
+            self.build_tree(accept_flat_intents_slots), combination_labels, utterance
+        )
         self.root: Root = self.tree.root
 
     def build_tree(self, accept_flat_intents_slots: bool = False):
@@ -479,13 +482,18 @@ class Node_Info:
 
 
 class Tree:
-    def __init__(self, root: Root, combination_labels: bool) -> None:
+    def __init__(
+        self, root: Root, combination_labels: bool, utterance: str = ""
+    ) -> None:
         self.root = root
         self.combination_labels = combination_labels
         try:
             self.validate_tree()
         except ValueError as v:
-            raise ValueError("Tree validation failed: {}".format(v))
+            raise ValueError(
+                "Tree validation failed: {}. \n".format(v)
+                + "Utterance is: {}".format(utterance)
+            )
 
     def validate_tree(self):
         """
