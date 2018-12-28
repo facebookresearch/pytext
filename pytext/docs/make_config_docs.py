@@ -182,6 +182,7 @@ def format_config_rst(config):
         (
             f".. py:currentmodule:: {config.config.__module__}",
             f".. py:class:: {config.config.__name__}",
+            I(1) + ":noindex:",
             "",
             I(1)
             + "**Bases:** "
