@@ -43,24 +43,28 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
     """
     Data Handler to build pipeline to process data and generate tensors to be consumed
     by ContextualIntentSlotModel. Columns of Input data includes:
-    1. doc label for intent classification
-    2. word label for slot tagging of the last utterance
-    3. a sequence of utterances (e.g., a dialog)
-    4. Optional dictionary feature contained in the last utterance
-    5. Optional doc weight that stands for the weight of intent task in joint loss.
-    6. Optional word weight that stands for the weight of slot task in joint loss.
+
+        1. doc label for intent classification
+        2. word label for slot tagging of the last utterance
+        3. a sequence of utterances (e.g., a dialog)
+        4. Optional dictionary feature contained in the last utterance
+        5. Optional doc weight that stands for the weight of intent task in joint loss.
+        6. Optional word weight that stands for the weight of slot task in joint loss.
 
     Attributes:
         raw_columns: columns to read from data source. In case of files, the order
             should match the data stored in that file. Raw columns include
-            [
-                RawData.DOC_LABEL,
-                RawData.WORD_LABEL,
-                RawData.TEXT,
-                RawData.DICT_FEAT (Optional),
-                RawData.DOC_WEIGHT (Optional),
-                RawData.WORD_WEIGHT (Optional),
-            ]
+            ::
+
+                [
+                    RawData.DOC_LABEL,
+                    RawData.WORD_LABEL,
+                    RawData.TEXT,
+                    RawData.DICT_FEAT (Optional),
+                    RawData.DOC_WEIGHT (Optional),
+                    RawData.WORD_WEIGHT (Optional),
+                ]
+
         labels: doc labels and word labels
         features: embeddings generated from sequences of utterances and
             dictionary features of the last utterance
@@ -149,20 +153,30 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
 
         Returns:
             Dict[str, Any]: Preprocessed dict of one row data includes:
-                "seq_word_feat" (list of list of string): tokenized words of
-                    sequence of utterances
-                "word_feat" (list of string): tokenized words of last utterance
-                "raw_word_label" (string): raw word label
-                "token_range" (list of tuple): token ranges of word labels, each
-                    tuple contains the start position index and the end position index
-                "utterance" (list of string): raw utterances
-                "word_label" (list of string): list of labels of words in last utterance
-                "doc_label" (string): doc label for intent classification
-                "word_weight" (float): weight of word label
-                "doc_weight" (float): weight of document label
-                "dict_feat" (tuple, optional): tuple of three lists, the first is
-                    the label of each words, the second is the weight of the feature,
-                    the third is the length of the feature.
+
+                "seq_word_feat" (list of list of string)
+                    tokenized words of sequence of utterances
+                "word_feat" (list of string)
+                    tokenized words of last utterance
+                "raw_word_label" (string)
+                    raw word label
+                "token_range" (list of tuple)
+                    token ranges of word labels, each tuple contains the start
+                    position index and the end position index
+                "utterance" (list of string) 
+                    raw utterances
+                "word_label" (list of string)
+                    list of labels of words in last utterance
+                "doc_label" (string) 
+                    doc label for intent classification
+                "word_weight" (float)
+                    weight of word label
+                "doc_weight" (float)
+                    weight of document label
+                "dict_feat" (tuple, optional)
+                    tuple of three lists, the first is the label of each words,
+                    the second is the weight of the feature, the third is the
+                    length of the feature.
 
         """
         sequence = data_utils.parse_json_array(row_data[RawData.TEXT])

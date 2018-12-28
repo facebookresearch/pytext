@@ -22,13 +22,16 @@ class ContextualIntentSlotRepresentation(RepresentationBase):
     implementation that combines the two embeddings. Seq_representation is concatenated
     with word_embeddings.
 
-    +-----------+
-    | word_embed|--------------------------->+   +--------------------+
-    +-----------+                            |   | doc_representation |
-    +-----------+   +-------------------+    |-->+--------------------+
-    | seq_embed |-->| seq_representation|--->+   | word_representation|
-    +-----------+   +-------------------+        +--------------------+
-                                                   joint_representation
+    ::
+
+        +-----------+
+        | word_embed|--------------------------->+   +--------------------+
+        +-----------+                            |   | doc_representation |
+        +-----------+   +-------------------+    |-->+--------------------+
+        | seq_embed |-->| seq_representation|--->+   | word_representation|
+        +-----------+   +-------------------+        +--------------------+
+                                                      joint_representation
+                                                  
     """
 
     class Config(RepresentationBase.Config):

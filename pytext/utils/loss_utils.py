@@ -15,6 +15,7 @@ def range_to_anchors_and_delta(precision_range, num_anchors):
         Returns:
             precision_values: A `Tensor` of [num_anchors] equally spaced values
                 in the interval precision_range.
+
             delta: The spacing between the values in precision_values.
 
         Raises:

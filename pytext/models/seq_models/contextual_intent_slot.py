@@ -24,11 +24,14 @@ class ContextualIntentSlotModel(JointModel):
     in the last utterance
 
     Following is an example of raw columns from training data:
+
+    ==========  =======================================================================
     doc_label   reply-where
     word_label  10:20:restaurant_name
     text        ["dinner at 6?", "wanna try Tomi Sushi?"]
     dict_feat   {"tokenFeatList": [{"tokenIdx": 2, "features": {"poi:eatery": 0.66}},
                                    {"tokenIdx": 3, "features": {"poi:eatery": 0.66}}]}
+    ==========  =======================================================================
 
     """
 
