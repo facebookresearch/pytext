@@ -56,7 +56,7 @@ class Model(nn.Module, Component):
 
     Let us discuss the joint intent-slot model as a case to go over these layers.
     The model predicts intent of input utterance and the slots in the utterance.
-    (Refer to :doc:`atis_tutorial` for details about intent-slot model.)
+    (Refer to :doc:`/atis_tutorial` for details about intent-slot model.)
 
     1. :class:`~EmbeddingList` layer is tasked with representing tokens. To do so we
        can use learnable word embedding table in conjunction with learnable character

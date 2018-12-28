@@ -57,17 +57,19 @@ Train the model using the command below.
 
 The output will look like:
 ::
+
   Stage.EVAL
   loss: 0.472868
   Accuracy: 85.67
 
 
 3. Configure for multitasking
---------------------------
+-----------------------------
 
 The example configuration for this tutorial is at ``demo/configs/multitask_sst_lm.json``.
 The main configuration is under `tasks`, which is a dictionary of task name to task config:
 ::
+
   "tasks": {
     "SST2": {
       "DocClassificationTask": { ... }
@@ -76,10 +78,12 @@ The main configuration is under `tasks`, which is a dictionary of task name to t
       "LMTask": { ... }
     }
   }
+
 The sub-tasks can be configured as you would in a single task setting, with the exception of changes described in the next sections.
 
 Also configure `epoch_size` under the parent task's data handler:
 ::
+
   "data_handler": {
     "epoch_size": 2000
   }
@@ -92,6 +96,7 @@ Parameter sharing is specified at module level with the `shared_module_key` para
 
 Here we will share the BiLSTM module.  Under the `SST` task, we set
 ::
+
   "representation": {
     "BiLSTMDocAttention": {
       "lstm": {
@@ -99,8 +104,10 @@ Here we will share the BiLSTM module.  Under the `SST` task, we set
       }
     }
   }
+
 Under the `LM` task, we set
 ::
+
   "representation": {
     "shared_module_key": "SHARED_LSTM"
   },
@@ -120,6 +127,7 @@ The embedding is also a module, and can be similarly shared. This is configured 
 
 Then point to this file in configuration:
 ::
+
   "features": {
       "shared_module_key": "SHARED_EMBEDDING",
       "word_feat": {
@@ -141,6 +149,7 @@ You can train the model with
 
 The output will look like
 ::
+
   Stage.EVAL
   loss: 0.455871
   Accuracy: 86.12
