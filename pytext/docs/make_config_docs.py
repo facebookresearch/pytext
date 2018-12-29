@@ -146,6 +146,16 @@ def I(n):
     return "  " * n
 
 
+def unindent_docstring(docstring):
+    lines = docstring.splitlines()
+    first, *rest = lines or [""]
+    second = next((line for line in rest if line), "")
+    indent = len(second) - len(second.lstrip())
+    if any(line[:indent].strip() for line in rest):
+        raise ValueError("Unexpected unindent in docstring")
+    return [first] + [line[indent:] for line in rest]
+
+
 def rst_big_header(s):
     return f"{s}\n{'='*len(s)}\n"
 
@@ -190,8 +200,12 @@ def format_config_rst(config):
             "",
             *(
                 I(1) + line
-                for line in GoogleDocstring(config.config.__doc__ or "").lines()
+                for line in GoogleDocstring(
+                    unindent_docstring(config.config.__doc__ or "")
+                ).lines()
             ),
+            "",
+            "**All Attributes (including base classes)**",
             "",
             *itertools.chain.from_iterable(
                 (

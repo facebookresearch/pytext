@@ -14,10 +14,11 @@ from pytext.models.module import Module
 class OutputLayerBase(Module):
     """
     Base class for all output layers in PyText. The responsibilities of this layer are
-    1. Implement how loss is computed from logits and targets.
-    2. Implement how to get predictions from logits.
-    3. Implement the Caffe2 operator for performing the above tasks. This is
-        used when PyText exports PyTorch model to Caffe2.
+
+        1. Implement how loss is computed from logits and targets.
+        2. Implement how to get predictions from logits.
+        3. Implement the Caffe2 operator for performing the above tasks. This is
+            used when PyText exports PyTorch model to Caffe2.
 
     Args:
         loss_fn (type): The loss function object to use for computing loss.

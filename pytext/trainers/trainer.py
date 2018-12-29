@@ -70,10 +70,11 @@ class Trainer(TrainerBase):
         """
         Train and eval a model, the model states will be modified. This function
         iterates epochs specified in config, and for each epoch do:
-            1 Train model using training data, aggregate and report training results
-            2 Adjust learning rate if scheduler is specified
-            3 Evaluate model using evaluation data
-            4 Calculate metrics based on evaluation results and select best model
+
+            1. Train model using training data, aggregate and report training results
+            2. Adjust learning rate if scheduler is specified
+            3. Evaluate model using evaluation data
+            4. Calculate metrics based on evaluation results and select best model
 
         Args:
             train_iter (BatchIterator): batch iterator of training data

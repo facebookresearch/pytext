@@ -44,7 +44,7 @@ class IntentSlotModelDecoder(DecoderBase):
 
         Attributes:
             use_doc_probs_in_word (bool): Whether to use intent probabilities
-            for predicting slots.
+                for predicting slots.
         """
 
         use_doc_probs_in_word: bool = False

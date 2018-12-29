@@ -60,13 +60,15 @@ class CharFeatureField(VocabUsingField):
     def pad(self, minibatch: List[List[List[str]]]) -> List[List[List[str]]]:
         """
         Example of minibatch:
-        [[['p', 'l', 'a', 'y', '<PAD>', '<PAD>'],
-          ['t', 'h', 'a', 't', '<PAD>', '<PAD>'],
-          ['t', 'r', 'a', 'c', 'k', '<PAD>'],
-          ['o', 'n', '<PAD>', '<PAD>', '<PAD>', '<PAD>'],
-          ['r', 'e', 'p', 'e', 'a', 't']
-         ], ...
-        ]
+        ::
+
+            [[['p', 'l', 'a', 'y', '<PAD>', '<PAD>'],
+              ['t', 'h', 'a', 't', '<PAD>', '<PAD>'],
+              ['t', 'r', 'a', 'c', 'k', '<PAD>'],
+              ['o', 'n', '<PAD>', '<PAD>', '<PAD>', '<PAD>'],
+              ['r', 'e', 'p', 'e', 'a', 't']
+             ], ...
+            ]
         """
         # If we change the same minibatch object then the underlying data
         # will get corrupted. Hence deep copy the minibatch object.

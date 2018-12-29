@@ -21,18 +21,20 @@ class ModelExporter(Component):
     Attributes:
         input_names (List[Str]): names of the input variables to model forward
             function, in a flattened way.
-          e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
-               a tuple of value and length: (List[Tensor], List[Tensor]) the
-               input names should looks like ['token', 'dict_value', 'dict_length']
-
+            e.g: forward(tokens, dict) where tokens is List[Tensor] and dict is
+            a tuple of value and length: (List[Tensor], List[Tensor]) the
+            input names should looks like ['token', 'dict_value', 'dict_length']
         dummy_model_input (Tuple[torch.Tensor]): dummy values to define the
             shape of input tensors, should exactly match the shape of the model
             forward function
         vocab_map (Dict[str, List[str]]): dict of input feature names
             to corresponding index_to_string array, e.g:
-            {
-                "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
-                "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
+            ::
+
+                {
+                    "text": ["<UNK>", "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8"],
+                    "dict": ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]
+                }
         output_names (List[Str]): names of output variables
     """
 
