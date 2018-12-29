@@ -3,7 +3,7 @@
 
 import copy
 import sys
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -64,9 +64,8 @@ class Trainer(TrainerBase):
         train_config: PyTextConfig,
         optimizers: List[torch.optim.Optimizer],
         scheduler=None,
-        training_result=None,  # only meaningful for Hogwild training.
         rank: int = 0,
-    ):
+    ) -> Tuple[torch.nn.Module, Any]:
         """
         Train and eval a model, the model states will be modified. This function
         iterates epochs specified in config, and for each epoch do:
@@ -185,11 +184,7 @@ class Trainer(TrainerBase):
             sys.stdout.flush()
 
         model.load_state_dict(best_model_state)
-
-        if training_result is not None:
-            training_result.append((model, best_metric))
-        else:
-            return model, best_metric
+        return model, best_metric
 
     def _run_epoch(
         self,
@@ -202,7 +197,7 @@ class Trainer(TrainerBase):
         backprop=lambda loss: None,
         rank=0,
     ):
-        print(f"Rank {rank} worker: Running epoch for {stage}")
+        print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
         for batch_id, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
