@@ -57,7 +57,7 @@ You can use the exported caffe2 model to predict the class of raw utterances lik
   (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
 
-More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com)
+More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com).
 
 # Join the community
 
