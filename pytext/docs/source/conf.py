@@ -184,6 +184,8 @@ def run_apidoc(_):
 
     apidoc.main(argv)
 
+    os.remove(os.path.join(modules, "modules.rst"))
+
     from make_config_docs import main
 
     main()
