@@ -43,7 +43,6 @@ class RNNGParser(Model, Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     class Config(ConfigBase):
-
         class CompositionalType(Enum):
             """Whether to use summation of the vectors or a BiLSTM based composition to
              generate embedding for a subtree"""
@@ -101,7 +100,9 @@ class RNNGParser(Model, Component):
             p_compositional = CompositionalSummationNN(
                 lstm_dim=model_config.lstm.lstm_dim
             )
-        elif model_config.compositional_type == RNNGParser.Config.CompositionalType.BLSTM:
+        elif (
+            model_config.compositional_type == RNNGParser.Config.CompositionalType.BLSTM
+        ):
             p_compositional = CompositionalNN(lstm_dim=model_config.lstm.lstm_dim)
         else:
             raise ValueError(
