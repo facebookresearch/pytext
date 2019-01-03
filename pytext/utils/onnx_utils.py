@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from shutil import copyfile
+
 import caffe2.python.predictor.predictor_exporter as pe
 import numpy as np
 import onnx
 import torch
 from caffe2.python import core, workspace
 from caffe2.python.onnx import backend as caffe2_backend
-from shutil import copyfile
 
 CAFFE2_DB_TYPE = "minidb"
 
