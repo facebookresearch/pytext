@@ -76,15 +76,16 @@ Exporting a model is pretty simple:
       Convert a pytext model snapshot to a caffe2 model.
 
     Options:
-      --model TEXT        the pytext snapshot model file to load
-      --output-path TEXT  where to save the exported model
-      --help              Show this message and exit.
+      --model TEXT         the pytext snapshot model file to load
+      --output-onnx-path   TEXT  where to save the exported onnx model
+      --output-caffe2-path TEXT  where to save the exported caffe2 model
+      --help               Show this message and exit.
 
 You can also pass in a configuration to infer some of these options. In this case let's do that because depending on how you're following along your snapshot might be in different places!
 
 .. code-block:: console
 
-    (pytext) $ pytext export --output-path exported_model.c2 < demo/configs/docnn.json
+    (pytext) $ pytext export --output-caffe2-path exported_model.c2 < demo/configs/docnn.json
     ...[snip]
     Saving caffe2 model to: exported_model.c2
 

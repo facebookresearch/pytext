@@ -20,7 +20,7 @@ def convert_caffe2_blob_name(blob_name):
     return f"{blob_name}_str:value"
 
 
-def export_to_caffe2(
+def pytorch_to_caffe2(
     model,
     export_input,
     external_input_names,
