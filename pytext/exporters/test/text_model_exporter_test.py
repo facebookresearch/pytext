@@ -298,7 +298,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 delete=False, suffix=".predictor"
             ) as pred_file:
                 print(pred_file.name)
-                output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+                output_names = exporter.export_to_caffe2(py_model, None, pred_file.name)
                 workspace.ResetWorkspace()
             pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
 
@@ -358,7 +358,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 delete=False, suffix=".predictor"
             ) as pred_file:
                 print(pred_file.name)
-                output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+                output_names = exporter.export_to_caffe2(py_model, None, pred_file.name)
                 workspace.ResetWorkspace()
             pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
 
@@ -424,7 +424,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".{}".format(".predictor")
             ) as pred_file:
-                output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+                output_names = exporter.export_to_caffe2(py_model, None, pred_file.name)
                 workspace.ResetWorkspace()
             pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
             for _i in range(num_predictions):
@@ -487,7 +487,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".{}".format(".predictor")
         ) as pred_file:
-            exporter.export_to_caffe2(py_model, pred_file.name)
+            exporter.export_to_caffe2(py_model, None, pred_file.name)
             workspace.ResetWorkspace()
 
         pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)

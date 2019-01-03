@@ -71,6 +71,8 @@ class PyTextConfig(ConfigBase):
     load_snapshot_path: str = ""
     # Where to save the trained pytorch model
     save_snapshot_path: str = "/tmp/model.pt"
+    # Exported onnx model will be stored here
+    export_onnx_path: str = ""
     # Exported caffe model will be stored here
     export_caffe2_path: str = "/tmp/model.caffe2.predictor"
     # Base directory where modules are saved

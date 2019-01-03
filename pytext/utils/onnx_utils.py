@@ -7,7 +7,7 @@ import onnx
 import torch
 from caffe2.python import core, workspace
 from caffe2.python.onnx import backend as caffe2_backend
-
+from shutil import copyfile
 
 CAFFE2_DB_TYPE = "minidb"
 
@@ -18,8 +18,13 @@ def convert_caffe2_blob_name(blob_name):
     return f"{blob_name}_str:value"
 
 
-def pytorch_to_caffe2(
-    model, export_input, external_input_names, output_names, export_path
+def export_to_caffe2(
+    model,
+    export_input,
+    external_input_names,
+    output_names,
+    export_onnx_path,
+    export_caffe2_path,
 ):
     num_tensors = 0
     for inp in export_input:
@@ -32,12 +37,14 @@ def pytorch_to_caffe2(
     torch.onnx.export(
         model,
         export_input,
-        export_path,
+        export_onnx_path or export_caffe2_path,
         input_names=all_input_names,
         output_names=output_names,
         export_params=True,
     )
-    onnx_model = onnx.load(export_path)
+    if export_onnx_path:
+        copyfile(export_onnx_path, export_caffe2_path)
+    onnx_model = onnx.load(export_caffe2_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
     c2_prepared = caffe2_backend.prepare(onnx_model)

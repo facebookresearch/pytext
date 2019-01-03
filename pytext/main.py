@@ -21,7 +21,7 @@ from pytext.utils.documentation_helper import (
     replace_components,
 )
 from pytext.workflow import (
-    export_saved_model_to_caffe2,
+    export_saved_model_to_onnx_and_caffe2,
     test_model_from_snapshot_path,
     train_model,
 )
@@ -271,15 +271,21 @@ def train(context):
 
 @main.command()
 @click.option("--model", help="the pytext snapshot model file to load")
-@click.option("--output-path", help="where to save the exported model")
+@click.option("--output-onnx-path", help="where to save the exported onnx model")
+@click.option("--output-caffe2-path", help="where to save the exported caffe2 model")
 @click.pass_context
-def export(context, model, output_path):
+def export(context, model, output_onnx_path, output_caffe2_path):
     """Convert a pytext model snapshot to a caffe2 model."""
     config = context.obj.load_config()
-    model = model or config.save_snapshot_path
-    output_path = output_path or config.export_caffe2_path
-    print(f"Exporting {model} to {output_path}")
-    export_saved_model_to_caffe2(model, output_path)
+    model = model or config.save_snapshot_path0
+    output_onnx_path = output_onnx_path or config.export_onnx_path
+    output_caffe2_path = output_caffe2_path or config.export_caffe2_path
+    print(
+        f"Exporting {model} to "
+        + (f"onnx file: {output_onnx_path}, " if output_onnx_path else "")
+        + f"{output_caffe2_path}"
+    )
+    export_saved_model_to_onnx_and_caffe2(model, output_onnx_path, output_caffe2_path)
 
 
 @main.command()

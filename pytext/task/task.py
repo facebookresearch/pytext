@@ -168,12 +168,13 @@ class TaskBase(Component):
         test_iter = self.data_handler.get_test_iter()
         return self.trainer.test(test_iter, self.model, self.metric_reporter)
 
-    def export(self, model, export_path, summary_writer=None):
+    def export(self, model, export_onnx_path, export_caffe2_path, summary_writer=None):
         """
         Wrapper method to export PyTorch model to Caffe2 model using :class:`~Exporter`.
 
         Args:
-            export_path (str): file path of exported model
+            export_onnx_path (str): file path of exported onnx model
+            export_caffe2_path (str): file path of exported caffe2 model
             summary_writer: TensorBoard SummaryWriter, used to output the PyTorch
                 model's execution graph to TensorBoard, default is None.
         """
@@ -184,8 +185,12 @@ class TaskBase(Component):
         if self.exporter:
             if summary_writer is not None:
                 summary_writer.add_graph(model, self.exporter.dummy_model_input)
-            print("Saving caffe2 model to: " + export_path)
-            self.exporter.export_to_caffe2(model, export_path)
+            print(
+                "Saving "
+                + (f"onnx model to: {export_onnx_path}, " if export_onnx_path else "")
+                + f"caffe2 model to: {export_caffe2_path}"
+            )
+            self.exporter.export_to_caffe2(model, export_onnx_path, export_caffe2_path)
 
     @classmethod
     def format_prediction(cls, predictions, scores, context, target_meta):
