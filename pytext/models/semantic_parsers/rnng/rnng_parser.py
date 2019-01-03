@@ -24,52 +24,6 @@ from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
 )
 
 
-class CompositionalType(Enum):
-    """Whether to use summation of the vectors or a BiLSTM based composition to
-     generate embedding for a subtree"""
-
-    BLSTM = "blstm"
-    SUM = "sum"
-
-
-class AblationParams(ConfigBase):
-    """Different ablation parameters.
-    use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
-    when computing representation for the action classifier
-
-    Attributes:
-        use_buffer (bool): whether to use the buffer LSTM
-        use_stack (bool): whether to use the stack LSTM
-        use_action (bool): whether to use the action LSTM
-    """
-
-    use_buffer: bool = True
-    use_stack: bool = True
-    use_action: bool = True
-    use_last_open_NT_feature: bool = False
-
-
-class RNNGConstraints(ConfigBase):
-    """Constraints when computing valid actions.
-
-    Attributes:
-        intent_slot_nesting (bool): for the intent slot models, the top level
-            non-terminal has to be an intent, an intent can only have slot
-            non-terminals as children and vice-versa.
-
-        ignore_loss_for_unsupported (bool): if the data has "unsupported" label,
-            that is if the label has a substring "unsupported" in it, do not
-            compute loss
-        no_slots_inside_unsupported (bool): if the data has "unsupported" label,
-            that is if the label has a substring "unsupported" in it, do not
-            predict slots inside this label.
-    """
-
-    intent_slot_nesting: bool = True
-    ignore_loss_for_unsupported: bool = False
-    no_slots_inside_unsupported: bool = True
-
-
 class RNNGParser(Model, Component):
     """
     The Recurrent Neural Network Grammar (RNNG) parser from
@@ -89,6 +43,49 @@ class RNNGParser(Model, Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     class Config(ConfigBase):
+        class CompositionalType(Enum):
+            """Whether to use summation of the vectors or a BiLSTM based composition to
+             generate embedding for a subtree"""
+
+            BLSTM = "blstm"
+            SUM = "sum"
+
+        class AblationParams(ConfigBase):
+            """Different ablation parameters.
+            use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
+            when computing representation for the action classifier
+
+            Attributes:
+                use_buffer (bool): whether to use the buffer LSTM
+                use_stack (bool): whether to use the stack LSTM
+                use_action (bool): whether to use the action LSTM
+            """
+
+            use_buffer: bool = True
+            use_stack: bool = True
+            use_action: bool = True
+            use_last_open_NT_feature: bool = False
+
+        class RNNGConstraints(ConfigBase):
+            """Constraints when computing valid actions.
+
+            Attributes:
+                intent_slot_nesting (bool): for the intent slot models, the top level
+                    non-terminal has to be an intent, an intent can only have slot
+                    non-terminals as children and vice-versa.
+
+                ignore_loss_for_unsupported (bool): if the data has "unsupported" label,
+                    that is if the label has a substring "unsupported" in it, do not
+                    compute loss
+                no_slots_inside_unsupported (bool): if the data has "unsupported" label,
+                    that is if the label has a substring "unsupported" in it, do not
+                    predict slots inside this label.
+            """
+
+            intent_slot_nesting: bool = True
+            ignore_loss_for_unsupported: bool = False
+            no_slots_inside_unsupported: bool = True
+
         version: int = 0
         lstm: BiLSTM.Config = BiLSTM.Config()
         ablation: AblationParams = AblationParams()
@@ -99,11 +96,13 @@ class RNNGParser(Model, Component):
 
     @classmethod
     def from_config(cls, model_config, feature_config, metadata: CommonMetadata):
-        if model_config.compositional_type == CompositionalType.SUM:
+        if model_config.compositional_type == RNNGParser.Config.CompositionalType.SUM:
             p_compositional = CompositionalSummationNN(
                 lstm_dim=model_config.lstm.lstm_dim
             )
-        elif model_config.compositional_type == CompositionalType.BLSTM:
+        elif (
+            model_config.compositional_type == RNNGParser.Config.CompositionalType.BLSTM
+        ):
             p_compositional = CompositionalNN(lstm_dim=model_config.lstm.lstm_dim)
         else:
             raise ValueError(
@@ -132,8 +131,8 @@ class RNNGParser(Model, Component):
 
     def __init__(
         self,
-        ablation: AblationParams,
-        constraints: RNNGConstraints,
+        ablation: Config.AblationParams,
+        constraints: Config.RNNGConstraints,
         lstm_num_layers: int,
         lstm_dim: int,
         max_open_NT: int,
