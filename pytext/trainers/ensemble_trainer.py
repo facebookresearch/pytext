@@ -42,8 +42,6 @@ class EnsembleTrainer(TrainerBase):
             most of the case only contains one optimizer
         scheduler (Optional[torch.optim.lr_scheduler]): learning rate scheduler,
             default is None
-        training_result (Optional): only meaningful for Hogwild training. default
-            is None
         rank (int): only used in distributed training, the rank of the current
             training thread, evaluation will only be done in rank 0
 

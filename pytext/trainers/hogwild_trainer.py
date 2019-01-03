@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from multiprocessing import Manager
-from typing import List
+from typing import Any, List, Tuple
 
 import torch
 import torch.multiprocessing as mp
+from pytext.common.constants import Stage
 from pytext.config import PyTextConfig
 from pytext.config.component import create_trainer
 from pytext.config.pytext_config import ConfigBase
@@ -21,16 +21,57 @@ class HogwildTrainer(Trainer):
 
     @classmethod
     def from_config(cls, config: Config, *args, **kwargs):
-        return cls(
-            create_trainer(config.real_trainer, *args, **kwargs), config.num_workers
-        )
+        return cls(config.real_trainer, config.num_workers, *args, **kwargs)
 
-    def __init__(self, real_trainer, num_workers):
-        self.real_trainer = real_trainer
+    def __init__(self, real_trainer_config, num_workers, *args, **kwargs):
+        super().__init__(real_trainer_config, *args, **kwargs)
         self.num_workers = num_workers
 
-    def test(self, model, test_iter, metric_reporter):
-        return self.real_trainer.test(model, test_iter, metric_reporter)
+    def _run_epoch(
+        self,
+        stage,
+        epoch,
+        data_iter,
+        model,
+        metric_reporter,
+        pre_batch=lambda: None,
+        backprop=lambda loss: None,
+        rank=0,
+    ):
+        if stage == Stage.TRAIN:
+            processes = []
+            for worker_rank in range(self.num_workers):
+                # Initialize the batches with different random states.
+                data_iter.batches.init_epoch()
+                p = mp.Process(
+                    target=super()._run_epoch,
+                    args=(
+                        stage,
+                        epoch,
+                        data_iter,
+                        model,
+                        metric_reporter,
+                        pre_batch,
+                        backprop,
+                        worker_rank,
+                    ),
+                )
+
+                processes.append(p)
+                p.start()
+            for p in processes:
+                p.join()
+        else:
+            return super()._run_epoch(
+                stage,
+                epoch,
+                data_iter,
+                model,
+                metric_reporter,
+                pre_batch,
+                backprop,
+                rank,
+            )
 
     def train(
         self,
@@ -43,7 +84,7 @@ class HogwildTrainer(Trainer):
         scheduler=None,
         *args,
         **kwargs
-    ):
+    ) -> Tuple[torch.nn.Module, Any]:
         print("Num of workers for Hogwild Training is {}".format(self.num_workers))
 
         # Share memory of tensors for concurrent updates from multiple processes.
@@ -51,29 +92,7 @@ class HogwildTrainer(Trainer):
             for param in model.parameters():
                 param.share_memory_()
 
-        processes = []
-        for rank in range(1, self.num_workers):
-            # Initialize the batches with different randome states.
-            train_iter.batches.init_epoch()
-            p = mp.Process(
-                target=self.real_trainer.train,
-                args=(
-                    train_iter,
-                    eval_iter,
-                    model,
-                    metric_reporter,
-                    optimizers,
-                    pytext_config,
-                    scheduler,
-                    None,
-                    rank,
-                ),
-            )
-            processes.append(p)
-            p.start()
-
-        training_result: List = Manager().list()  # Actual type is ListProxy.
-        self.real_trainer.train(
+        return super().train(
             train_iter,
             eval_iter,
             model,
@@ -81,13 +100,4 @@ class HogwildTrainer(Trainer):
             optimizers,
             pytext_config,
             scheduler,
-            training_result,
-            rank=0,
         )
-
-        for p in processes:
-            p.join()
-
-        # Ony rank 0 worker writes to training_result
-        assert len(training_result) == 1
-        return training_result[0]  # Contains best model and best metric.
