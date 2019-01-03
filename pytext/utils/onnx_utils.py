@@ -10,6 +10,7 @@ import torch
 from caffe2.python import core, workspace
 from caffe2.python.onnx import backend as caffe2_backend
 
+
 CAFFE2_DB_TYPE = "minidb"
 
 
