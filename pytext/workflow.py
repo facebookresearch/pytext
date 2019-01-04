@@ -99,7 +99,7 @@ def save_and_export(
 
 
 def export_saved_model_to_caffe2(
-    saved_model_path: str, export_caffe2_path: str
+    saved_model_path: str, export_caffe2_path: str, output_onnx_path: str = None
 ) -> None:
     task, train_config = load(saved_model_path)
     if task.exporter is None:
@@ -111,7 +111,7 @@ def export_saved_model_to_caffe2(
             train_config.task.labels,
             task.data_handler.metadata,
         )
-    task.export(task.model, export_caffe2_path)
+    task.export(task.model, export_caffe2_path, export_onnx_path=output_onnx_path)
 
 
 def test_model(

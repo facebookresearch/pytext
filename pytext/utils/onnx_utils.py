@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from shutil import copyfile
+
 import caffe2.python.predictor.predictor_exporter as pe
 import numpy as np
 import onnx
@@ -19,7 +21,12 @@ def convert_caffe2_blob_name(blob_name):
 
 
 def pytorch_to_caffe2(
-    model, export_input, external_input_names, output_names, export_path
+    model,
+    export_input,
+    external_input_names,
+    output_names,
+    export_path,
+    export_onnx_path,
 ):
     num_tensors = 0
     for inp in export_input:
@@ -32,11 +39,13 @@ def pytorch_to_caffe2(
     torch.onnx.export(
         model,
         export_input,
-        export_path,
+        export_onnx_path,
         input_names=all_input_names,
         output_names=output_names,
         export_params=True,
     )
+    print(f"Saved onnx model to: {export_onnx_path}")
+    copyfile(export_onnx_path, export_path)
     onnx_model = onnx.load(export_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
