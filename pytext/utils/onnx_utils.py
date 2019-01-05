@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from shutil import copyfile
-
 import caffe2.python.predictor.predictor_exporter as pe
 import numpy as np
 import onnx
@@ -36,18 +34,19 @@ def pytorch_to_caffe2(
     for name, _ in model.named_parameters():
         all_input_names.append(name)
     # # export the pytorch model to ONNX
+    if export_onnx_path:
+        print(f"Saving onnx model to: {export_onnx_path}")
+    else:
+        export_onnx_path = export_path
     torch.onnx.export(
         model,
         export_input,
-        export_onnx_path or export_path,
+        export_onnx_path,
         input_names=all_input_names,
         output_names=output_names,
         export_params=True,
     )
-    if export_onnx_path:
-        print(f"Saving onnx model to: {export_onnx_path}")
-        copyfile(export_onnx_path, export_path)
-    onnx_model = onnx.load(export_path)
+    onnx_model = onnx.load(export_onnx_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
     c2_prepared = caffe2_backend.prepare(onnx_model)
