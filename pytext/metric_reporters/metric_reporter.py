@@ -107,6 +107,8 @@ class MetricReporter(Component):
             return [elem.tolist() for elem in data]
         elif isinstance(data, List):
             return data
+        elif isinstance(data, tuple):
+            return data[0].tolist()
         else:
             raise NotImplementedError()
 

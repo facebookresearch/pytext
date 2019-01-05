@@ -7,7 +7,14 @@ import torch.nn.functional as F
 from caffe2.python import core
 from pytext.config.component import create_loss
 from pytext.fields import FieldMeta
-from pytext.loss import AUCPRHingeLoss, BinaryCrossEntropyLoss, CrossEntropyLoss
+from pytext.loss import (
+    AUCPRHingeLoss,
+    BinaryCrossEntropyLoss,
+    CrossEntropyLoss,
+    KLDivergenceBCELoss,
+    KLDivergenceCELoss,
+    SoftHardBCELoss,
+)
 from pytext.utils.cuda_utils import FloatTensor
 
 from .output_layer_base import OutputLayerBase
@@ -33,6 +40,9 @@ class ClassificationOutputLayer(OutputLayerBase):
             CrossEntropyLoss.Config,
             BinaryCrossEntropyLoss.Config,
             AUCPRHingeLoss.Config,
+            KLDivergenceBCELoss.Config,
+            KLDivergenceCELoss.Config,
+            SoftHardBCELoss.Config,
         ] = CrossEntropyLoss.Config()
 
     @classmethod

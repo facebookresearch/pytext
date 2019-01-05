@@ -225,3 +225,99 @@ class AUCPRHingeLoss(nn.Module, Loss):
             weights.unsqueeze_(-1)
 
         return labels, weights
+
+
+class KLDivergenceBCELoss(Loss):
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
+
+    def __call__(self, logits, targets, reduce=True):
+        """
+        Computes Kullback-Leibler divergence loss for multiclass classification
+        probability distribution computed by BinaryCrossEntropyLoss loss
+        """
+        hard_targets, soft_targets = targets
+        # we clamp the probability between (1e-20, 1 - 1e-20) to avoid log(0) problem
+        # in the calculation of KLDivergence
+        soft_targets = FloatTensor(soft_targets).exp().clamp(1e-20, 1 - 1e-20)
+        probs = F.sigmoid(logits).clamp(1e-20, 1 - 1e-20)
+        probs_neg = probs.neg().add(1).clamp(1e-20, 1 - 1e-20)
+        soft_targets_neg = soft_targets.neg().add(1).clamp(1e-20, 1 - 1e-20)
+        if self.weight is not None:
+            loss = (
+                F.kl_div(probs.log(), soft_targets, reduction="none") * self.weight
+                + F.kl_div(probs_neg.log(), soft_targets_neg, reduction="none")
+                * self.weight
+            )
+            if reduce:
+                loss = loss.mean()
+        else:
+            loss = F.kl_div(
+                probs.log(), soft_targets, reduction="mean" if reduce else "none"
+            ) + F.kl_div(
+                probs_neg.log(),
+                soft_targets_neg,
+                reduction="mean" if reduce else "none",
+            )
+        return loss
+
+
+class KLDivergenceCELoss(Loss):
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
+
+    def __call__(self, logits, targets, reduce=True):
+        """
+        Computes Kullback-Leibler divergence loss for multiclass classification
+        probability distribution computed by CrossEntropyLoss loss
+        """
+        hard_targets, soft_targets = targets
+        soft_targets = FloatTensor(soft_targets).exp().clamp(1e-20, 1 - 1e-20)
+        log_probs = F.log_softmax(logits, 1)
+        if self.weight is not None:
+            loss = F.kl_div(log_probs, soft_targets, reduction="none") * self.weight
+            if reduce:
+                loss = loss.mean()
+        else:
+            loss = F.kl_div(
+                log_probs, soft_targets, reduction="mean" if reduce else "none"
+            )
+        return loss
+
+
+class SoftHardBCELoss(Loss):
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
+        self.config = config
+
+    def __call__(self, logits, targets, reduce=True):
+        """
+        Computes soft and hard loss for knowledge distillation
+        """
+        hard_targets, prob_targets = targets
+
+        # hard targets
+        one_hot_targets = (
+            FloatTensor(hard_targets.size(0), logits.size(1))
+            .zero_()
+            .scatter_(1, hard_targets.unsqueeze(1).data, 1)
+        )
+
+        prob_loss = KLDivergenceBCELoss(self.config, weight=self.weight)
+        if self.weight is not None:
+            hard_loss = (
+                F.binary_cross_entropy_with_logits(
+                    logits, one_hot_targets, reduction="none"
+                )
+                * self.weight
+            )
+            if reduce:
+                hard_loss = hard_loss.mean()
+        else:
+            hard_loss = F.binary_cross_entropy_with_logits(
+                logits, one_hot_targets, reduction="mean" if reduce else "none"
+            )
+        return prob_loss(logits, targets, reduce=reduce) + hard_loss
