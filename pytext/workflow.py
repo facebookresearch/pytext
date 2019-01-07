@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 import torch
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import create_exporter
+from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import TensorBoardChannel
 from pytext.task import Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
@@ -45,6 +46,16 @@ def _set_cuda(
     )
 
 
+def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
+    """
+    Loading the whole dataset into cpu memory on every single processes could
+    cause OOMs for data parallel distributed training.
+    To avoid such practice, we move the operations that required loading the
+    whole dataset out of spawn, and pass the context to every single process.
+    """
+    return create_task(config.task).data_handler.metadata
+
+
 def train_model(
     config: PyTextConfig,
     dist_init_url: str = None,
@@ -52,9 +63,10 @@ def train_model(
     rank: int = 0,
     world_size: int = 1,
     summary_writer: Optional[SummaryWriter] = None,
+    metadata: CommonMetadata = None,
 ) -> Tuple:
     task = prepare_task(
-        config, dist_init_url, device_id, rank, world_size, summary_writer
+        config, dist_init_url, device_id, rank, world_size, summary_writer, metadata
     )
     trained_model, best_metric = task.train(config, rank, world_size)
     # Only rank 0 gets to finalize the job and export the model
@@ -70,9 +82,11 @@ def prepare_task(
     rank: int = 0,
     world_size: int = 1,
     summary_writer: Optional[SummaryWriter] = None,
+    metadata: CommonMetadata = None,
 ) -> Task:
 
     if dist_init_url and world_size > 1:
+        assert metadata is not None
         dist_init(rank, world_size, dist_init_url)
 
     print("\nParameters: {}\n".format(config))
@@ -80,7 +94,7 @@ def prepare_task(
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task = load(config.load_snapshot_path)
     else:
-        task = create_task(config.task)
+        task = create_task(config.task, metadata=metadata)
 
     if summary_writer:
         task.metric_reporter.add_channel(
