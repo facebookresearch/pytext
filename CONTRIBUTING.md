@@ -36,7 +36,7 @@ We use isort and black to format our code, you can use the following commands to
 ```
 
 ## Updates to Docs
-The documentation only work with Python 3.7 and above. 
+The documentation build process work with Python 3.7 and above. 
  
 ## License
 By contributing to PyText, you agree that your contributions will be licensed
