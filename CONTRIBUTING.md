@@ -35,6 +35,9 @@ We use isort and black to format our code, you can use the following commands to
 (pytext_venv) $ isort pytext --recursive --multi-line 3 --trailing-comma --force-grid-wrap 0 --line-width 88 --lines-after-imports 2 --combine-as --section-default THIRDPARTY
 ```
 
+## Updates to Docs
+The documentation build process work with Python 3.7 and above. 
+ 
 ## License
 By contributing to PyText, you agree that your contributions will be licensed
 under the LICENSE file in the root directory of this source tree.

@@ -85,7 +85,10 @@ def marked_up_type_name(arg_type):
         return f"Union[{', '.join(options)}]"
     elif hasattr(arg_type, "__args__"):
         options = [marked_up_type_name(t) for t in arg_type.__args__]
-        return f"{arg_type.__name__}[{', '.join(options)}]"
+        type_name = (
+            arg_type.__origin__.__name__ if arg_type.__origin__ else arg_type.__name__
+        )
+        return f"{type_name}[{', '.join(options)}]"
     elif arg_type is typing.Any:
         return f"Any"
     elif issubclass(arg_type, ConfigBase):
