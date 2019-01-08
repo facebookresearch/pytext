@@ -73,6 +73,8 @@ class PyTextConfig(ConfigBase):
     save_snapshot_path: str = "/tmp/model.pt"
     # Exported caffe model will be stored here
     export_caffe2_path: str = "/tmp/model.caffe2.predictor"
+    # Exported onnx model will be stored here
+    export_onnx_path: str = "/tmp/model.onnx"
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules

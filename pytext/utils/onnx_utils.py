@@ -19,7 +19,12 @@ def convert_caffe2_blob_name(blob_name):
 
 
 def pytorch_to_caffe2(
-    model, export_input, external_input_names, output_names, export_path
+    model,
+    export_input,
+    external_input_names,
+    output_names,
+    export_path,
+    export_onnx_path=None,
 ):
     num_tensors = 0
     for inp in export_input:
@@ -29,15 +34,19 @@ def pytorch_to_caffe2(
     for name, _ in model.named_parameters():
         all_input_names.append(name)
     # # export the pytorch model to ONNX
+    if export_onnx_path:
+        print(f"Saving onnx model to: {export_onnx_path}")
+    else:
+        export_onnx_path = export_path
     torch.onnx.export(
         model,
         export_input,
-        export_path,
+        export_onnx_path,
         input_names=all_input_names,
         output_names=output_names,
         export_params=True,
     )
-    onnx_model = onnx.load(export_path)
+    onnx_model = onnx.load(export_onnx_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
     c2_prepared = caffe2_backend.prepare(onnx_model)

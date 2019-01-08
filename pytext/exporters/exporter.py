@@ -167,7 +167,9 @@ class ModelExporter(Component):
         """
         return []
 
-    def export_to_caffe2(self, model, export_path: str) -> List[str]:
+    def export_to_caffe2(
+        self, model, export_path: str, export_onnx_path: str = None
+    ) -> List[str]:
         """
         export pytorch model to caffe2 by first using ONNX to convert logic in forward
         function to a caffe2 net, and then prepend/append additional operators to
@@ -176,6 +178,7 @@ class ModelExporter(Component):
         Args:
             model (Model): pytorch model to export
             export_path (str): path to save the exported caffe2 model
+            export_onnx_path (str): path to save the exported onnx model
 
         Returns:
             final_output_names: list of caffe2 model output names
@@ -186,6 +189,7 @@ class ModelExporter(Component):
             self.input_names,
             self.output_names,
             export_path,
+            export_onnx_path,
         )
         c2_prepared, final_input_names = self.prepend_operators(
             c2_prepared, self.input_names
