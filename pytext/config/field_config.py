@@ -76,6 +76,7 @@ class DocLabelConfig(ConfigBase):
     export_output_names: List[str] = ["doc_scores"]
     label_weights: Dict[str, float] = {}
     _name = DatasetFieldName.DOC_LABEL_FIELD
+    target_prob: bool = False
 
 
 TargetConfigBase = Union[DocLabelConfig, WordLabelConfig]

@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
-# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from .loss import AUCPRHingeLoss, BinaryCrossEntropyLoss, CrossEntropyLoss, Loss
+from .loss import (
+    AUCPRHingeLoss,
+    BinaryCrossEntropyLoss,
+    CrossEntropyLoss,
+    KLDivergenceBCELoss,
+    KLDivergenceCELoss,
+    Loss,
+    SoftHardBCELoss,
+)
 
 
-__all__ = ["Loss", "CrossEntropyLoss", "BinaryCrossEntropyLoss", "AUCPRHingeLoss"]
+__all__ = [
+    "AUCPRHingeLoss",
+    "Loss",
+    "CrossEntropyLoss",
+    "BinaryCrossEntropyLoss",
+    "KLDivergenceBCELoss",
+    "KLDivergenceCELoss",
+    "SoftHardBCELoss",
+]

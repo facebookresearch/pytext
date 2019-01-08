@@ -8,6 +8,7 @@ from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
 from .doc_classification_data_handler import DocClassificationDataHandler, RawData
 from .joint_data_handler import JointModelDataHandler
+from .kd_doc_classification_data_handler import KDDocClassificationDataHandler
 from .language_model_data_handler import LanguageModelDataHandler
 from .pair_classification_data_handler import PairClassificationDataHandler
 from .seq_data_handler import SeqModelDataHandler
@@ -27,4 +28,5 @@ __all__ = [
     "DocClassificationDataHandler",
     "RawData",
     "DisjointMultitaskDataHandler",
+    "KDDocClassificationDataHandler",
 ]
