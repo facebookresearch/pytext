@@ -59,7 +59,8 @@ class DisjointMultitask(TaskBase):
             OrderedDict(
                 (name, create_metric_reporter(task.metric_reporter, metadata[name]))
                 for name, task in task_config.tasks.items()
-            )
+            ),
+            target_task_name=task_config.metric_reporter.target_task_name,
         )
 
         model = DisjointMultitaskModel(
