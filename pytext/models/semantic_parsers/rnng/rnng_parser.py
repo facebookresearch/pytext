@@ -456,6 +456,16 @@ class RNNGParser(Model, Component):
                     ):
                         state.found_unsupported = True
 
+                    if target_action_idx in self.valid_IN_idxs:
+                        last_open_NT = None
+                        try:
+                            last_open_NT = state.stack_stackrnn.ele_from_top(
+                                state.is_open_NT[::-1].index(True)
+                            )
+                            last_open_NT.has_child_intent = True
+                        except ValueError:
+                            pass
+
                     state.is_open_NT.append(True)
                     state.num_open_NT += 1
                     state.stack_stackrnn.push(
@@ -534,7 +544,11 @@ class RNNGParser(Model, Component):
 
             if (not self.training) or self.constraints_intent_slot_nesting:
                 # if stack is empty or the last open NT is slot
-                if (not last_open_NT) or last_open_NT.node in self.valid_SL_idxs:
+                if (not last_open_NT) or (
+                    last_open_NT.node in self.valid_SL_idxs
+                    and not last_open_NT.has_child_intent
+                ):
+
                     valid_actions += self.valid_IN_idxs
                 elif last_open_NT.node in self.valid_IN_idxs:
                     if (

@@ -11,8 +11,10 @@ from pytext.utils.cuda_utils import xaviervar
 # token/non-terminal/sub-tree element on a stack.
 # need this value for computing valid actions
 class Element:
-    def __init__(self, node) -> None:
+    def __init__(self, node, has_child_intent=False, has_child_slot=False) -> None:
         self.node = node
+        self.has_child_intent = has_child_intent
+        self.has_child_slot = has_child_slot
 
     def __str__(self):
         return str(self.node)
@@ -173,6 +175,7 @@ class ParserState:
         other.is_open_NT = self.is_open_NT.copy()
         other.neg_prob = self.neg_prob
         other.found_unsupported = self.found_unsupported
+        other.sibling_is_intent = self.sibling_is_intent
         return other
 
     def __gt__(self, other):
