@@ -7,6 +7,7 @@ from typing import Dict
 from pytext.config import config_to_json
 from pytext.config.component import (
     create_data_handler,
+    create_exporter,
     create_featurizer,
     create_metric_reporter,
     create_model,
@@ -40,6 +41,7 @@ class DisjointMultitask(TaskBase):
         pprint(config_to_json(type(task_config), task_config))
 
         data_handlers = OrderedDict()
+        exporters = OrderedDict()
         for name, task in task_config.tasks.items():
             featurizer = create_featurizer(task.featurizer, task.features)
             data_handlers[name] = create_data_handler(
@@ -54,7 +56,20 @@ class DisjointMultitask(TaskBase):
         else:
             data_handler.init_metadata()
         metadata = data_handler.metadata
-
+        exporters = {
+            name: (
+                create_exporter(
+                    task.exporter,
+                    task.features,
+                    task.labels,
+                    data_handler.data_handlers[name].metadata,
+                    task.model,
+                )
+                if task.exporter
+                else None
+            )
+            for name, task in task_config.tasks.items()
+        }
         metric_reporter = DisjointMultitaskMetricReporter(
             OrderedDict(
                 (name, create_metric_reporter(task.metric_reporter, metadata[name]))
@@ -76,6 +91,7 @@ class DisjointMultitask(TaskBase):
 
         optimizers = create_optimizer(model, task_config.optimizer)
         return cls(
+            exporters=exporters,
             trainer=create_trainer(task_config.trainer),
             data_handler=data_handler,
             model=model,
@@ -84,5 +100,37 @@ class DisjointMultitask(TaskBase):
             lr_scheduler=Scheduler(
                 optimizers, task_config.scheduler, metric_reporter.lower_is_better
             ),
-            exporter=None,
         )
+
+    def __init__(self, exporters, **kwargs):
+        super().__init__(exporter=None, **kwargs)
+        self.exporters = exporters
+
+    def export(
+        self, multitask_model, export_path, summary_writer=None, export_onnx_path=None
+    ):
+        """
+        Wrapper method to export PyTorch model to Caffe2 model using :class:`~Exporter`.
+
+        Args:
+            export_path (str): file path of exported caffe2 model
+            summary_writer: TensorBoard SummaryWriter, used to output the PyTorch
+                model's execution graph to TensorBoard, default is None.
+            export_onnx_path (str):file path of exported onnx model
+        """
+        # Make sure to put the model on CPU and disable CUDA before exporting to
+        # ONNX to disable any data_parallel pieces
+        cuda_utils.CUDA_ENABLED = False
+        for name, model in multitask_model.models.items():
+            model = model.cpu()
+            if self.exporters[name]:
+                if summary_writer is not None:
+                    self.exporters[name].export_to_tensorboard(model, summary_writer)
+                model_export_path = f"{export_path}-{name}"
+                model_export_onnx_path = (
+                    f"{export_onnx_path}-{name}" if export_onnx_path else None
+                )
+                print("Saving caffe2 model to: " + model_export_path)
+                self.exporters[name].export_to_caffe2(
+                    model, model_export_path, model_export_onnx_path
+                )
