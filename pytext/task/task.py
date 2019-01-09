@@ -184,7 +184,7 @@ class TaskBase(Component):
         model = model.cpu()
         if self.exporter:
             if summary_writer is not None:
-                summary_writer.add_graph(model, self.exporter.dummy_model_input)
+                self.exporter.export_to_tensorboard(model, summary_writer)
             print("Saving caffe2 model to: " + export_path)
             self.exporter.export_to_caffe2(model, export_path, export_onnx_path)
 

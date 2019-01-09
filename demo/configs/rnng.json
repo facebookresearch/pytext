@@ -78,6 +78,6 @@
     },
     "distributed_world_size": 1,
     "use_cuda_if_available": false,
-    "use_tensorboard": false
+    "use_tensorboard": true
   }
 }

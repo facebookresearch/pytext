@@ -217,3 +217,14 @@ class ModelExporter(Component):
             self.get_extra_params(),
         )
         return final_out_names
+
+    def export_to_tensorboard(self, model, summary_writer):
+        """
+        Exports the pytorch model to tensorboard as a graph.
+
+        Args:
+            model (Model): pytorch model to export
+            summary_writer (SummaryWriter): The TensorBoardX summary writer.
+        """
+        # TensorBoardX needs an input to infer the shape of the PyTorch model graph
+        summary_writer.add_graph(model, self.dummy_model_input)
