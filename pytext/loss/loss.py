@@ -228,20 +228,26 @@ class AUCPRHingeLoss(nn.Module, Loss):
 
 
 class KLDivergenceBCELoss(Loss):
+    class Config(ConfigBase):
+        temperature: float = 1.0
+
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         self.ignore_index = ignore_index
         self.weight = weight
+        self.t = config.temperature
 
     def __call__(self, logits, targets, reduce=True):
         """
         Computes Kullback-Leibler divergence loss for multiclass classification
         probability distribution computed by BinaryCrossEntropyLoss loss
         """
-        hard_targets, soft_targets = targets
+        hard_targets, _, soft_targets_logits = targets
         # we clamp the probability between (1e-20, 1 - 1e-20) to avoid log(0) problem
         # in the calculation of KLDivergence
-        soft_targets = FloatTensor(soft_targets).exp().clamp(1e-20, 1 - 1e-20)
-        probs = F.sigmoid(logits).clamp(1e-20, 1 - 1e-20)
+        soft_targets = F.sigmoid(FloatTensor(soft_targets_logits) / self.t).clamp(
+            1e-20, 1 - 1e-20
+        )
+        probs = F.sigmoid(logits / self.t).clamp(1e-20, 1 - 1e-20)
         probs_neg = probs.neg().add(1).clamp(1e-20, 1 - 1e-20)
         soft_targets_neg = soft_targets.neg().add(1).clamp(1e-20, 1 - 1e-20)
         if self.weight is not None:
@@ -264,18 +270,24 @@ class KLDivergenceBCELoss(Loss):
 
 
 class KLDivergenceCELoss(Loss):
+    class Config(ConfigBase):
+        temperature: float = 1.0
+
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         self.ignore_index = ignore_index
         self.weight = weight
+        self.t = config.temperature
 
     def __call__(self, logits, targets, reduce=True):
         """
         Computes Kullback-Leibler divergence loss for multiclass classification
         probability distribution computed by CrossEntropyLoss loss
         """
-        hard_targets, soft_targets = targets
-        soft_targets = FloatTensor(soft_targets).exp().clamp(1e-20, 1 - 1e-20)
-        log_probs = F.log_softmax(logits, 1)
+        hard_targets, _, soft_targets_logits = targets
+        soft_targets = F.softmax(FloatTensor(soft_targets_logits) / self.t).clamp(
+            1e-20, 1 - 1e-20
+        )
+        log_probs = F.log_softmax(logits / self.t, 1)
         if self.weight is not None:
             loss = F.kl_div(log_probs, soft_targets, reduction="none") * self.weight
             if reduce:
@@ -288,16 +300,24 @@ class KLDivergenceCELoss(Loss):
 
 
 class SoftHardBCELoss(Loss):
+    """ Reference implementation from Distilling the knowledge in a Neural Network:
+    https://arxiv.org/pdf/1503.02531.pdf
+    """
+
+    class Config(ConfigBase):
+        temperature: float = 1.0
+
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         self.ignore_index = ignore_index
         self.weight = weight
         self.config = config
+        self.t = config.temperature
 
     def __call__(self, logits, targets, reduce=True):
         """
         Computes soft and hard loss for knowledge distillation
         """
-        hard_targets, prob_targets = targets
+        hard_targets, _, _ = targets
 
         # hard targets
         one_hot_targets = (
@@ -320,4 +340,4 @@ class SoftHardBCELoss(Loss):
             hard_loss = F.binary_cross_entropy_with_logits(
                 logits, one_hot_targets, reduction="mean" if reduce else "none"
             )
-        return prob_loss(logits, targets, reduce=reduce) + hard_loss
+        return self.t * self.t * prob_loss(logits, targets, reduce=reduce) + hard_loss

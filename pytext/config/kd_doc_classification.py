@@ -33,6 +33,7 @@ class ModelInput:
 
 class Target:
     DOC_LABEL = "doc_label"
+    TARGET_LOGITS_FIELD = "target_logit"
     TARGET_PROB_FIELD = "target_prob"
     TARGET_LABEL_FIELD = "target_label"
 
