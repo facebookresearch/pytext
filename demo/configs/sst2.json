@@ -18,7 +18,8 @@
         },
         "trainer": {
           "epochs": 15
-        }
+        },
+        "exporter": {}
       }
     }
   }
