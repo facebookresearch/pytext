@@ -19,7 +19,13 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
         file_name = tests_module.test_file("knowledge_distillation_test_tiny.tsv")
         label_config_dict = {"target_prob": True}
         data_handler_dict = {
-            "columns_to_read": ["text", "target_probs", "target_labels", "doc_label"]
+            "columns_to_read": [
+                "text",
+                "target_probs",
+                "target_logits",
+                "target_labels",
+                "doc_label",
+            ]
         }
         self.data_handler = KDDocClassificationDataHandler.from_config(
             KDDocClassificationDataHandler.Config(**data_handler_dict),
@@ -37,6 +43,7 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
         expected_columns = [
             RawData.TEXT,
             RawData.TARGET_PROBS,
+            RawData.TARGET_LOGITS,
             RawData.TARGET_LABELS,
             RawData.DOC_LABEL,
         ]
@@ -44,14 +51,14 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
         self.assertTrue(self.data_handler.raw_columns == expected_columns)
 
     def test_read_from_file(self):
-        # Check if the data has 10 rows and 4 columns
+        # Check if the data has 10 rows and 5 columns
         self.assertEqual(len(self.data), 10)
-        self.assertEqual(len(self.data[0]), 4)
+        self.assertEqual(len(self.data[0]), 5)
 
         self.assertEqual(self.data[0][RawData.TEXT], "Who R U ?")
         self.assertEqual(
             self.data[0][RawData.TARGET_PROBS],
-            "[-0.001166735659353435, -6.743621826171875]",
+            "[-0.005602254066616297, -5.430975914001465]",
         )
         self.assertEqual(
             self.data[0][RawData.TARGET_LABELS], '["cu:other", "cu:ask_Location"]'
@@ -64,7 +71,7 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
         self.assertListEqual(data[0][ModelInput.WORD_FEAT], ["who", "r", "u", "?"])
         self.assertListEqual(
             data[0][Target.TARGET_PROB_FIELD],
-            [-0.001166735659353435, -6.743621826171875],
+            [-0.005602254066616297, -5.430975914001465],
         )
 
     def test_align_target_label(self):

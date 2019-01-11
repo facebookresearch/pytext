@@ -35,6 +35,7 @@ class RawData:
     TEXT = "text"
     DICT_FEAT = "dict_feat"
     TARGET_PROBS = "target_probs"
+    TARGET_LOGITS = "target_logits"
     TARGET_LABELS = "target_labels"
 
 
@@ -97,6 +98,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
         extra_fields: Dict[str, Field] = {ExtraField.RAW_TEXT: RawField()}
         if target_config.target_prob:
             target_fields[Target.TARGET_PROB_FIELD] = RawField()
+            target_fields[Target.TARGET_LOGITS_FIELD] = RawField()
 
         if target_config.target_prob:
             extra_fields[Target.TARGET_LABEL_FIELD] = RawField()
@@ -138,6 +140,9 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
             res[Target.TARGET_LABEL_FIELD] = parse_json_array(
                 row_data[RawData.TARGET_LABELS]
             )
+            res[Target.TARGET_LOGITS_FIELD] = parse_json_array(
+                row_data[RawData.TARGET_LOGITS]
+            )
 
         return res
 
@@ -149,7 +154,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
     ):
         # build vocabs for label fields
         for name, label in self.labels.items():
-            if name in [Target.TARGET_PROB_FIELD]:
+            if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
                 continue
             # Need test data to make sure we cover all of the labels in it
             # It is particularly important when BIO is enabled as a B-[Label] can
@@ -167,7 +172,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
         self.metadata.target = [
             field.get_meta()
             for name, field in self.labels.items()
-            if name not in [Target.TARGET_PROB_FIELD]
+            if name not in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]
         ]
         if len(self.metadata.target) == 1:
             self.metadata.target = self.metadata.target[0]
@@ -202,7 +207,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
         targets = []
         for name in self.labels:
             target = getattr(batch, name)
-            if name in [Target.TARGET_PROB_FIELD]:
+            if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
                 target = self._align_target_label(target, label_list, batch_label_list)
             targets.append(target)
         if len(targets) == 1:
