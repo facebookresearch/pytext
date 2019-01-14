@@ -2,16 +2,15 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
-import os
 import unittest
 
 from pytext.utils import test_utils
 from pytext.utils.data_utils import align_slot_labels
+from pytext.utils.test_utils import import_tests_module
 
 
-RAW_TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "test_samples.json"
-)
+tests_module = import_tests_module()
+RAW_TEST_PATH = tests_module.test_file("test_music_samples.json")
 
 
 def get_test_sample():
