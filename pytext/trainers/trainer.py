@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import copy
+import os
 import sys
 from typing import Any, List, Optional, Tuple
 
@@ -53,7 +53,11 @@ class Trainer(TrainerBase):
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
-        return self._run_epoch(Stage.TEST, 1, test_iter, model, metric_reporter)
+        with torch.no_grad():
+            test_metric = self._run_epoch(
+                Stage.TEST, 1, test_iter, model, metric_reporter
+            )
+        return test_metric
 
     def train(
         self,
@@ -107,7 +111,7 @@ class Trainer(TrainerBase):
 
         best_metric = None
         last_best_epoch = 0
-        best_model_state = None
+        best_model_path = None
         scheduler = self._prepare_scheduler(train_iter, scheduler)
 
         def training_pre_batch_callback():
@@ -134,7 +138,6 @@ class Trainer(TrainerBase):
             model.train()
             lrs = (str(lr) for lr in learning_rates(optimizers))
             print(f"Learning rate(s): {', '.join(lrs)}")
-
             self._run_epoch(
                 Stage.TRAIN,
                 epoch,
@@ -145,12 +148,11 @@ class Trainer(TrainerBase):
                 backprop=training_backprop,
                 rank=rank,
             )
-
             model.eval(Stage.EVAL)
-            eval_metric = self._run_epoch(
-                Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
-            )
-
+            with torch.no_grad():
+                eval_metric = self._run_epoch(
+                    Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
+                )
             # Step the learning rate scheduler(s)
             if scheduler:
                 assert eval_metric is not None
@@ -171,7 +173,11 @@ class Trainer(TrainerBase):
                     model.save_modules(
                         base_path=train_config.modules_save_dir, suffix=f"-ep{epoch}"
                     )
-                best_model_state = copy.deepcopy(model.state_dict())
+                # save to disk to avoid multiple model copies in memory
+                best_model_path = os.path.join(
+                    train_config.modules_save_dir, "best_model"
+                )
+                torch.save(model.state_dict(), best_model_path)
 
             if self.config.early_stop_after > 0 and (
                 epoch - last_best_epoch == self.config.early_stop_after
@@ -183,7 +189,7 @@ class Trainer(TrainerBase):
                 break
             sys.stdout.flush()
 
-        model.load_state_dict(best_model_state)
+        model.load_state_dict(torch.load(best_model_path))
         return model, best_metric
 
     def _run_epoch(
