@@ -6,11 +6,13 @@ import pprint
 import sys
 import tempfile
 from importlib import import_module
+from pydoc import locate
 
 import click
 import torch
 from pytext import create_predictor
 from pytext.config import PyTextConfig
+from pytext.config.component import register_tasks
 from pytext.config.serialize import config_from_json, config_to_json, parse_config
 from pytext.data.data_handler import CommonMetadata
 from pytext.task import load
@@ -96,9 +98,15 @@ def run_single(
 
 
 def gen_config_impl(task_name, options):
+    # import the classes required by parameters
+    requested_classes = [locate(opt) for opt in options] + [locate(task_name)]
+    register_tasks(requested_classes)
+
     task_class_set = find_config_class(task_name)
     if not task_class_set:
-        raise Exception(f"Unknown task class: {task_name}")
+        raise Exception(
+            f"Unknown task class: {task_name} " "(try fully qualified class name?)"
+        )
     elif len(task_class_set) > 1:
         raise Exception(f"Multiple tasks named {task_name}: {task_class_set}")
 

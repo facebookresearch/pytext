@@ -142,13 +142,14 @@ def find_config_class(class_name):
         module_part = ".".join(m[:-1])
 
     ret = set()
-    for mod_name, mod in modules.items():
-        if not mod_name.startswith("pytext"):
+    for _, mod in list(modules.items()):
+        try:
+            for name, obj in getmembers(mod, isclass):
+                if name == class_name:
+                    if not module_part or obj.__module__ == module_part:
+                        ret.add(obj)
+        except ModuleNotFoundError:
             continue
-        for name, obj in getmembers(mod, isclass):
-            if name == class_name:
-                if not module_part or obj.__module__ == module_part:
-                    ret.add(obj)
     return ret
 
 
