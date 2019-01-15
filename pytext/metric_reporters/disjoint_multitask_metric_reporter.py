@@ -12,7 +12,10 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         target_task_name: Optional[str] = None  # for selecting best epoch
 
     def __init__(
-        self, reporters: Dict[str, MetricReporter], target_task_name: Optional[str]
+        self,
+        reporters: Dict[str, MetricReporter],
+        loss_weights: Dict[str, float],
+        target_task_name: Optional[str],
     ) -> None:
         """Short summary.
 
@@ -31,10 +34,15 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         self.reporters = reporters
         self.target_task_name = target_task_name or ""
         self.target_reporter = self.reporters.get(self.target_task_name, None)
+        self.loss_weights = loss_weights
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
+        # losses are weighted in DisjointMultitaskModel. Here we undo the
+        # weighting for proper reporting.
+        if self.loss_weights[context[BatchContext.TASK_NAME]] != 0:
+            loss /= self.loss_weights[context[BatchContext.TASK_NAME]]
         reporter = self.reporters[context[BatchContext.TASK_NAME]]
         reporter.add_batch_stats(
             n_batches, preds, targets, scores, loss, m_input, **context
