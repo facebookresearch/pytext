@@ -24,17 +24,21 @@ class DisjointMultitaskModel(Model):
 
     """
 
-    def __init__(self, models) -> None:
+    def __init__(self, models, loss_weights) -> None:
         models = nn.ModuleDict(models)
         super().__init__(None, None, None, None)
         self.models = models
         self.current_model = next(iter(models.values()))
+        self.loss_weights = loss_weights
 
     def contextualize(self, context):
         self.current_model = self.models[context[BatchContext.TASK_NAME]]
+        self.current_loss_weight = self.loss_weights[context[BatchContext.TASK_NAME]]
 
     def get_loss(self, logits, targets, context):
-        return self.current_model.get_loss(logits, targets, context)
+        return self.current_loss_weight * self.current_model.get_loss(
+            logits, targets, context
+        )
 
     def get_pred(self, logits, targets, context, *args):
         return self.current_model.get_pred(logits, targets, context, *args)

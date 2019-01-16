@@ -8,6 +8,10 @@
         "trainer": {
           "epochs": 15
         },
+        "task_weights": {
+          "SST2": 1,
+          "LM": 1
+        },
         "tasks": {
           "SST2": {
             "DocClassificationTask": {

@@ -32,6 +32,7 @@ class DisjointMultitask(TaskBase):
 
     class Config(TaskBase.Config):
         tasks: Dict[str, Task.Config]
+        task_weights: Dict[str, float] = {}
         data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
         metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
 
@@ -70,19 +71,25 @@ class DisjointMultitask(TaskBase):
             )
             for name, task in task_config.tasks.items()
         }
+        task_weights = {
+            task_name: task_config.task_weights.get(task_name, 1)
+            for task_name in task_config.tasks.keys()
+        }
         metric_reporter = DisjointMultitaskMetricReporter(
             OrderedDict(
                 (name, create_metric_reporter(task.metric_reporter, metadata[name]))
                 for name, task in task_config.tasks.items()
             ),
             target_task_name=task_config.metric_reporter.target_task_name,
+            loss_weights=task_weights,
         )
 
         model = DisjointMultitaskModel(
             OrderedDict(
                 (name, create_model(task.model, task.features, metadata[name]))
                 for name, task in task_config.tasks.items()
-            )
+            ),
+            loss_weights=task_weights,
         )
         if model_state:
             model.load_state_dict(model_state)
