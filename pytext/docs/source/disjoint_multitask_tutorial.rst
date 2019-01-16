@@ -86,13 +86,6 @@ The main configuration is under `tasks`, which is a dictionary of task name to t
 You can also modify `task_weights` to weight the loss for each task.
 The sub-tasks can be configured as you would in a single task setting, with the exception of changes described in the next sections.
 
-Also configure `epoch_size` under the parent task's data handler:
-::
-
-  "data_handler": {
-    "epoch_size": 2000
-  }
-
 
 3. Specify which parameters to share
 --------------------------------------

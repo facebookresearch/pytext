@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
 from pprint import pprint
-from typing import Dict
+from typing import Dict, Optional
 
 from pytext.config import config_to_json
 from pytext.config.component import (
@@ -33,6 +33,7 @@ class DisjointMultitask(TaskBase):
     class Config(TaskBase.Config):
         tasks: Dict[str, Task.Config]
         task_weights: Dict[str, float] = {}
+        target_task_name: Optional[str] = None  # for selecting best epoch
         data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
         metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
 
@@ -49,7 +50,9 @@ class DisjointMultitask(TaskBase):
                 task.data_handler, task.features, task.labels, featurizer=featurizer
             )
         data_handler = DisjointMultitaskDataHandler(
-            task_config.data_handler, data_handlers
+            task_config.data_handler,
+            data_handlers,
+            target_task_name=task_config.target_task_name,
         )
         print("\nLoading data...")
         if metadata:
@@ -80,8 +83,8 @@ class DisjointMultitask(TaskBase):
                 (name, create_metric_reporter(task.metric_reporter, metadata[name]))
                 for name, task in task_config.tasks.items()
             ),
-            target_task_name=task_config.metric_reporter.target_task_name,
             loss_weights=task_weights,
+            target_task_name=task_config.target_task_name,
         )
 
         model = DisjointMultitaskModel(

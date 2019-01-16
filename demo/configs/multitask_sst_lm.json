@@ -2,9 +2,6 @@
   "config": {
     "task": {
       "DisjointMultitask": {
-        "data_handler": {
-          "epoch_size": 2000
-        },
         "trainer": {
           "epochs": 15
         },
