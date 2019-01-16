@@ -163,9 +163,6 @@ class Trainer(TrainerBase):
 
             # choose best model.
             if metric_reporter.compare_metric(eval_metric, best_metric):
-                print(
-                    f"Rank {rank} worker: Found a better model! Saving the model state."
-                )
                 last_best_epoch = epoch
                 best_metric = eval_metric
                 # Only rank = 0 trainer saves modules.
@@ -177,7 +174,11 @@ class Trainer(TrainerBase):
                 best_model_path = os.path.join(
                     train_config.modules_save_dir, "best_model"
                 )
-                torch.save(model.state_dict(), best_model_path)
+                print(
+                    f"Rank {rank} worker: Found a better model! Saving to {best_model_path}."
+                )
+                if rank == 0:
+                    torch.save(model.state_dict(), best_model_path)
 
             if self.config.early_stop_after > 0 and (
                 epoch - last_best_epoch == self.config.early_stop_after
@@ -189,7 +190,8 @@ class Trainer(TrainerBase):
                 break
             sys.stdout.flush()
 
-        model.load_state_dict(torch.load(best_model_path))
+        if rank == 0:
+            model.load_state_dict(torch.load(best_model_path))
         return model, best_metric
 
     def _run_epoch(
