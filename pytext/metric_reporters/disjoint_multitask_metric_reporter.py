@@ -8,9 +8,6 @@ from .metric_reporter import MetricReporter
 
 
 class DisjointMultitaskMetricReporter(MetricReporter):
-    class Config(MetricReporter.Config):
-        target_task_name: Optional[str] = None  # for selecting best epoch
-
     def __init__(
         self,
         reporters: Dict[str, MetricReporter],

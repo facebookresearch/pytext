@@ -54,7 +54,7 @@ class BatchIterator:
         include_target=True,
         include_context=True,
         is_train=True,
-        num_batches=-1,
+        num_batches=0,
     ):
         self.processor = processor
         self.batches = batches
@@ -94,8 +94,11 @@ class BatchIterator:
             if i == num_batches - 1:
                 context = deepcopy(context)
                 context.update({BatchContext.IGNORE_LOSS: True})
-                for _j in range(num_batches, self.total_num_batches):
+                for _j in range(num_batches, len(self)):
                     yield (input, target, context)
+
+    def __len__(self):
+        return self.total_num_batches
 
 
 class DataHandler(Component):
