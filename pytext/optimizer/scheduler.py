@@ -206,7 +206,7 @@ class Scheduler(Component):
                 for optimizer in optimizers
             ]
         elif scheduler_params.type == SchedulerType.COSINE_ANNEALING_LR:
-            self.epoch_based_schedulers = [
+            self.batch_based_schedulers = [
                 CosineAnnealingLR(
                     optimizer, scheduler_params.T_max, scheduler_params.eta_min
                 )
