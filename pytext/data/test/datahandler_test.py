@@ -26,7 +26,21 @@ class DataHandlerTest(unittest.TestCase):
             DFColumn.DICT_FEAT,
         ]
 
-        data = DataHandler.read_from_file(file_name, columns)
+        feat = WordFeatConfig(
+            vocab_from_all_data=True,
+            vocab_from_train_data=False,
+            vocab_from_pretrained_embeddings=False,
+        )
+        featurizer = create_featurizer(
+            SimpleFeaturizer.Config(), FeatureConfig(word_feat=feat)
+        )
+        data_handler = DocClassificationDataHandler.from_config(
+            DocClassificationDataHandler.Config(),
+            ModelInputConfig(word_feat=feat),
+            TargetConfig(),
+            featurizer=featurizer,
+        )
+        data = data_handler.read_from_file(file_name, columns)
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
@@ -41,7 +55,21 @@ class DataHandlerTest(unittest.TestCase):
         file_name = tests_module.test_file("train_data_tiny.tsv")
         columns = {DFColumn.DOC_LABEL: 0, DFColumn.UTTERANCE: 2}
 
-        data = DataHandler.read_from_file(file_name, columns)
+        feat = WordFeatConfig(
+            vocab_from_all_data=True,
+            vocab_from_train_data=False,
+            vocab_from_pretrained_embeddings=False,
+        )
+        featurizer = create_featurizer(
+            SimpleFeaturizer.Config(), FeatureConfig(word_feat=feat)
+        )
+        data_handler = DocClassificationDataHandler.from_config(
+            DocClassificationDataHandler.Config(),
+            ModelInputConfig(word_feat=feat),
+            TargetConfig(),
+            featurizer=featurizer,
+        )
+        data = data_handler.read_from_file(file_name, columns)
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
