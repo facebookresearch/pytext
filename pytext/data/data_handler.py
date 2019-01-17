@@ -14,13 +14,14 @@ from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
-from pytext.utils import cuda_utils, embeddings_utils
+from pytext.utils import cuda_utils, dist_utils, embeddings_utils
 from torchtext import data as textdata
 
 
 class CommonMetadata:
     features: Dict[str, FieldMeta]
     target: FieldMeta
+    dataset_sizes: Dict[str, int]
 
 
 class BatchIterator:
@@ -281,19 +282,26 @@ class DataHandler(Component):
             field.load_meta(meta)
 
     def gen_dataset_from_path(
-        self, path: str, include_label_fields: bool = True, use_cache: bool = True
+        self,
+        path: str,
+        rank: int = 0,
+        world_size: int = 1,
+        include_label_fields: bool = True,
+        use_cache: bool = True,
     ) -> textdata.Dataset:
         """
         Generate a dataset from file
         Returns:
             dataset (TorchText.Dataset)
         """
-        if use_cache and path in self._data_cache:
+        if use_cache and path in self._data_cache and rank == 0 and world_size == 1:
             return self._data_cache[path]
         res = self.gen_dataset(
-            self.read_from_file(path, self.raw_columns), include_label_fields
+            self.read_from_file(path, self.raw_columns, rank, world_size),
+            include_label_fields,
         )
-        self._data_cache[path] = res
+        if rank == 0 and world_size == 1:
+            self._data_cache[path] = res
         return res
 
     def gen_dataset(
@@ -340,12 +348,12 @@ class DataHandler(Component):
         Initialize metadata using data from file
         """
         # get data sets
-        self._init_metadata(
-            *[
-                self.gen_dataset_from_path(path)
-                for path in [train_path, eval_path, test_path]
-            ]
-        )
+        pathes = [train_path, eval_path, test_path]
+        datasets = [self.gen_dataset_from_path(path) for path in pathes]
+        self._init_metadata(*datasets)
+        self.metadata.dataset_sizes = {
+            path: len(dataset) for (path, dataset) in zip(pathes, datasets)
+        }
 
     def init_metadata(self):
         """
@@ -511,7 +519,9 @@ class DataHandler(Component):
             world_size (int): used for distributed training, total number of Gpu
         """
         return self._get_train_iter(
-            self.gen_dataset_from_path(train_path), batch_size, rank, world_size
+            self.gen_dataset_from_path(train_path, rank=rank, world_size=world_size),
+            batch_size,
+            world_size,
         )
 
     def get_test_iter_from_path(self, test_path: str, batch_size: int) -> BatchIterator:
@@ -535,25 +545,20 @@ class DataHandler(Component):
         rank: int = 0,
         world_size: int = 1,
     ) -> BatchIterator:
+        shard_range = dist_utils.get_shard_range(len(train_data), rank, world_size)
+        shard_data = train_data[shard_range[0] : shard_range[1]]
+        dist_utils.pad_shard_data(shard_data, len(train_data), world_size)
         return self._get_train_iter(
-            self.gen_dataset(train_data), batch_size, rank, world_size
+            self.gen_dataset(shard_data), batch_size, world_size
         )
 
     def get_test_iter_from_raw_data(
-        self,
-        test_data: List[Dict[str, Any]],
-        batch_size: int,
-        rank: int = 0,
-        world_size: int = 1,
+        self, test_data: List[Dict[str, Any]], batch_size: int
     ) -> BatchIterator:
         return self._get_test_iter(self.gen_dataset(test_data), batch_size)
 
     def _get_train_iter(
-        self,
-        train_dataset: textdata.Dataset,
-        batch_size: int,
-        rank: int = 0,
-        world_size: int = 1,
+        self, shard_dataset: textdata.Dataset, batch_size: int, world_size: int = 1
     ) -> BatchIterator:
         """
         Generate data batch iterator for training data. If distributed training
@@ -562,15 +567,12 @@ class DataHandler(Component):
         padding required for each batch.
 
         Args:
-            train_dataset (str): training dataset
+            shard_dataset (str): sharded training or evaluation dataset
             batch_size (int): batch size
             rank (int): used for distributed training, the rank of current Gpu,
                 don't set it to anything but 0 for non-distributed training
             world_size (int): used for distributed training, total number of Gpu
         """
-        dataset_shard, max_num_examples = self._get_dataset_shard(
-            train_dataset, rank, world_size
-        )
         # Compute the per-worker batch size
         assert (
             batch_size >= world_size
@@ -579,7 +581,7 @@ class DataHandler(Component):
 
         return BatchIterator(
             textdata.BucketIterator(
-                dataset_shard,
+                shard_dataset,
                 batch_size=batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
@@ -590,7 +592,7 @@ class DataHandler(Component):
                 shuffle=self.shuffle,
             ),
             self._postprocess_batch,
-            num_batches=math.ceil(max_num_examples / float(batch_size)),
+            num_batches=math.ceil(len(shard_dataset) / float(batch_size)),
         )
 
     def _get_test_iter(
@@ -634,26 +636,12 @@ class DataHandler(Component):
             # only return the first batch since there is only one
             return input, context
 
-    @staticmethod
-    def _get_dataset_shard(
-        dataset: textdata.Dataset, rank: int, world_size: int
-    ) -> Tuple[textdata.Dataset, int]:
-        assert rank > -1 and world_size > 0
-        dataset_size = len(dataset)
-        shard_len = dataset_size // world_size
-        shard_offset = rank * shard_len
-        shard_end = dataset_size if rank == world_size - 1 else shard_offset + shard_len
-        # last shard has the most examples because we use Floor Division to
-        # compute shard_len, all fraction are contributed to the last shard
-        max_num_examples = dataset_size - shard_len * (world_size - 1)
-        return (
-            textdata.Dataset(dataset.examples[shard_offset:shard_end], dataset.fields),
-            max_num_examples,
-        )
-
-    @staticmethod
     def read_from_file(
-        file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
+        self,
+        file_name: str,
+        columns_to_use: Union[Dict[str, int], List[str]],
+        rank: int = 0,
+        world_size: int = 1,
     ) -> List[Dict[str, Any]]:
         """
         Read data from csv file. Input file format is required to be
@@ -670,10 +658,18 @@ class DataHandler(Component):
                 name: idx
                 for name, idx in zip(columns_to_use, range(len(columns_to_use)))
             }
+        shard_range = (
+            dist_utils.get_shard_range(
+                self.metadata.dataset_sizes[file_name], rank, world_size
+            )
+            if world_size > 1
+            else None
+        )
+
         with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
             csv_reader = csv.reader(f_handle, delimiter="\t", quoting=csv.QUOTE_NONE)
             data = []
-            i = 0
+            i, row_idx = 0, 0
             while True:
                 i += 1
                 try:
@@ -683,12 +679,19 @@ class DataHandler(Component):
                     continue
                 except StopIteration:
                     break
-                data.append(
-                    {
-                        name: row[index] if index < len(row) else ""
-                        for name, index in columns_to_use.items()
-                    }
-                )
+
+                if not shard_range or shard_range[0] <= row_idx < shard_range[1]:
+                    data.append(
+                        {
+                            name: row[index] if index < len(row) else ""
+                            for name, index in columns_to_use.items()
+                        }
+                    )
+                row_idx += 1
+
+            # some shard might have 1 less example due to data_size % world_size
+            # pad the shard to make sure all shard dataset have same size
+            dist_utils.pad_shard_data(data, row_idx, world_size)
             return data
 
     def _postprocess_batch(

@@ -96,17 +96,29 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         batches_1 = list(train_iter_1)
         batches_2 = list(train_iter_2)
         self.assertEqual(len(batches_1), len(batches_2))
-        # Shard 2 iterator shouldn't have dummy batches
+
+        shard_size_1 = len(train_iter_1.batches.dataset)
+        shard_size_2 = len(train_iter_1.batches.dataset)
+        self.assertEqual(shard_size_1, shard_size_2)
+
+        # Shard 1 & 2 iterator shouldn't have dummy batches
         CONTEXT_INDEX = 2
-        for b in batches_2:
+        for b in batches_1 + batches_2:
             assert BatchContext.IGNORE_LOSS not in b[CONTEXT_INDEX]
-        # Shard 1 should have 1 dummy batch
-        assert BatchContext.IGNORE_LOSS not in batches_1[0][CONTEXT_INDEX]
-        self.assertEqual(batches_1[1][2][BatchContext.IGNORE_LOSS], True)
-        test_batch = batches_2[0]
-        # first batch in shard # 2 is row # 3 and 4 in the dataset
+
+        # shard #1 took shard with input data index [1, 2, 3]
+        # shard #2 took shard with input data index [4, 5, 5]
+        # we pad shard #2 to make every shard the same size
+        test_batch = batches_1[0]
+        # first batch in shard #1 is row # 2 and 3 reordered by sort_key
         np.testing.assert_array_equal(
-            test_batch[1], [[23, 11, 5, 10, 3], [24, 5, 4, 3, 1]]
+            test_batch[1], [[9, 4, 6, 19, 7, 21, 8, 3], [24, 5, 4, 3, 1, 1, 1, 1]]
+        )
+
+        test_batch = batches_2[0]
+        # first batch in shard #2 is row # 5 and 5 reordered by sort_key
+        np.testing.assert_array_equal(
+            test_batch[1], [[23, 11, 5, 10, 3], [23, 11, 5, 10, 3]]
         )
 
     def _init_data_handler(self):
