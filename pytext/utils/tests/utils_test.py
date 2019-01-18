@@ -5,7 +5,7 @@ import json
 import unittest
 
 from pytext.utils import test_utils
-from pytext.utils.data_utils import align_slot_labels
+from pytext.utils.data_utils import align_slot_labels, unkify
 from pytext.utils.test_utils import import_tests_module
 
 
@@ -50,3 +50,27 @@ class UtilTest(unittest.TestCase):
         self.assertEqual(
             align_slot_labels([[0, 4], [5, 8]], None, True), "NoLabel NoLabel"
         )
+
+    def test_unkify(self):
+        map_token_unkified = {
+            "": "<unk>",
+            "Text": "<unk>-INITC",
+            "TExt": "<unk>-CAPS",
+            "!Text": "<unk>-CAPS",
+            "text": "<unk>-LC",
+            "text0": "<unk>-LC-NUM",
+            "text-0": "<unk>-LC-NUM-DASH",
+            "texts": "<unk>-LC-s",
+            "texted": "<unk>-LC-ed",
+            "texting": "<unk>-LC-ing",
+            "textion": "<unk>-LC-ion",
+            "texter": "<unk>-LC-er",
+            "texest": "<unk>-LC-est",
+            "textly": "<unk>-LC-ly",
+            "textity": "<unk>-LC-ity",
+            "texty": "<unk>-LC-y",
+            "textal": "<unk>-LC-al",
+        }
+
+        for token, expected_unkified in map_token_unkified.items():
+            self.assertEqual(unkify(token), expected_unkified)

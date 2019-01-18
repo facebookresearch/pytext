@@ -8,86 +8,122 @@ import torch.nn as nn
 from pytext.utils.cuda_utils import xaviervar
 
 
-# token/non-terminal/sub-tree element on a stack.
-# need this value for computing valid actions
 class Element:
-    def __init__(self, node) -> None:
+    """
+    Generic element representing a token / non-terminal / sub-tree on a stack.
+    Used to compute valid actions in the RNNG parser.
+    """
+
+    def __init__(self, node: Any) -> None:
         self.node = node
 
-    def __str__(self):
-        return str(self.node)
+    def __eq__(self, other) -> bool:
+        return self.node == other.node
 
-    def __repr__(self):
-        return self.__str__()
+    def __repr__(self) -> str:
+        return str(self.node)
 
 
 class StackLSTM(Sized):
-    def __init__(self, rnn, initial_state, p_empty_embedding):
-        self.rnn = rnn
-        self.list = (
-            [(initial_state, (self._rnn_get_output(initial_state), "Root"))]
+    """
+    The Stack LSTM from Dyer et al: https://arxiv.org/abs/1505.08075
+    """
+
+    def __init__(
+        self,
+        lstm: nn.LSTM,
+        initial_state: Tuple[torch.Tensor, torch.Tensor],
+        empty_embedding: torch.Tensor,
+    ):
+        """
+        Shapes:
+            initial_state: (lstm_layers, 1, lstm_hidden_dim) each
+            empty_embedding: (1, lstm_hidden_dim)
+        """
+        self.empty = empty_embedding
+        self.lstm = lstm
+
+        # Stack of (state, (embedding, element))
+        self.stack = (
+            [(initial_state, (self._lstm_output(initial_state), Element("Root")))]
             if initial_state
             else None
         )
-        self.empty = p_empty_embedding
 
-    def _rnn_get_output(self, state):
+    def _lstm_output(self, state: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+        """
+        Shapes:
+            state: (lstm_layers, 1, lstm_hidden_dim) each
+            return value: (1, lstm_hidden_dim)
+        """
         return state[0][-1]
 
-    def push(self, expr, ele: Element) -> None:
-        # assuming expr is always one element at a time; not a sequence.
-        # making it a sequence since LSTM takes a sequence
-        expr = expr.unsqueeze(1)
-        output, new_embedding = self.rnn(expr, self.list[-1][0])
-        self.list.append((new_embedding, (self._rnn_get_output(new_embedding), ele)))
+    def push(self, expression: torch.Tensor, element: Element) -> None:
+        """
+        Shapes:
+            expression: (1, lstm_input_dim)
+        """
+        old_top_state = self.stack[-1][0]
+        # Unsqueezing expression for sequence_length = 1
+        _, new_top_state = self.lstm(expression.unsqueeze(0), old_top_state)
+        # Push in (state, (embedding, element))
+        self.stack.append((new_top_state, (self._lstm_output(new_top_state), element)))
 
-    def pop(self) -> Tuple[Any, Element]:
-        # returning tuple of out embedding and the name of the element
-        return self.list.pop()[1]
+    def pop(self) -> Tuple[torch.Tensor, Element]:
+        """
+        Pops and returns tuple of output embedding (1, lstm_hidden_dim) and element
+        """
 
-    def top(self) -> Tuple[Any, Element]:
-        return self.list[-1][1]
+        return self.stack.pop()[1]
 
-    def embedding(self):
-        return (
-            self._rnn_get_output(self.list[-1][0]) if len(self.list) > 1 else self.empty
-        )
+    def embedding(self) -> torch.Tensor:
+        """
+        Shapes:
+            return value: (1, lstm_hidden_dim)
+        """
+        if len(self.stack) < 1:
+            return self.empty
 
-    def first_ele_match(self, funct):
-        for st in self.list[::-1]:
-            if funct(st):
-                return st[1][1]
-        return None
+        top_state = self.stack[-1][0]
+        return self._lstm_output(top_state)
 
-    def ele_from_top(self, index: int) -> Element:
-        return self.list[len(self.list) - index - 1][1][1]
+    def element_from_top(self, index: int) -> Element:
+        return self.stack[-(index + 1)][1][1]
 
-    def __len__(self):
-        return len(self.list) - 1
+    def __len__(self) -> int:
+        return len(self.stack) - 1
 
-    def __str__(self):
-        return "->".join([str(x[1][1]) for x in self.list])
+    def __str__(self) -> str:
+        return "->".join([str(x[1][1]) for x in self.stack])
 
     def copy(self):
-        other = StackLSTM(self.rnn, None, self.empty)
-        other.list = list(self.list)
+        other = StackLSTM(self.lstm, None, self.empty)
+        other.stack = list(self.stack)
         return other
 
 
 class CompositionFunction(nn.Module):
+    """
+    Combines a list / sequence of embeddings into one
+    """
+
     def __init__(self):
         super().__init__()
 
 
 class CompositionalNN(CompositionFunction):
-    def __init__(self, lstm_dim):
+    """
+    Combines a list / sequence of embeddings into one using a biLSTM
+    """
+
+    def __init__(self, lstm_dim: int):
         super().__init__()
         self.lstm_dim = lstm_dim
-        self.lstm_fwd = nn.LSTM(lstm_dim, lstm_dim, 1)
-        self.lstm_rev = nn.LSTM(lstm_dim, lstm_dim, 1)
+        self.lstm_fwd = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
+        self.lstm_rev = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
         self.linear_seq = nn.Sequential(nn.Linear(2 * lstm_dim, lstm_dim), nn.Tanh())
 
-    def forward(self, x):
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         """
         Embed the sequence. If the input corresponds to [IN:GL where am I at]:
         - x will contain the embeddings of [at I am where IN:GL] in that order.
@@ -97,8 +133,11 @@ class CompositionalNN(CompositionFunction):
 
         Args:
             x: Embeddings of the input tokens in *reversed* order
+        Shapes:
+            x: (1, lstm_dim) each
+            return value: (1, lstm_dim)
         """
-        # reset hidden every time
+        # reset hidden state every time
         lstm_hidden_fwd = (
             xaviervar(1, 1, self.lstm_dim),
             xaviervar(1, 1, self.lstm_dim),
@@ -107,11 +146,11 @@ class CompositionalNN(CompositionFunction):
             xaviervar(1, 1, self.lstm_dim),
             xaviervar(1, 1, self.lstm_dim),
         )
-        nt_element = x[-1]
-        rev_rest = x[:-1]
-        # Always put nt_element at the front
-        fwd_input = [nt_element] + rev_rest[::-1]
-        rev_input = [nt_element] + rev_rest
+        nonterminal_element = x[-1]
+        reversed_rest = x[:-1]
+        # Always put nonterminal_element at the front
+        fwd_input = [nonterminal_element] + reversed_rest[::-1]
+        rev_input = [nonterminal_element] + reversed_rest
         stacked_fwd = self.lstm_fwd(torch.stack(fwd_input), lstm_hidden_fwd)[0][0]
         stacked_rev = self.lstm_rev(torch.stack(rev_input), lstm_hidden_rev)[0][0]
         combined = torch.cat([stacked_fwd, stacked_rev], dim=1)
@@ -120,25 +159,30 @@ class CompositionalNN(CompositionFunction):
 
 
 class CompositionalSummationNN(CompositionFunction):
-    def __init__(self, lstm_dim):
+    """
+    Simpler version of CompositionalNN
+    """
+
+    def __init__(self, lstm_dim: int):
         super().__init__()
         self.lstm_dim = lstm_dim
-
         self.linear_seq = nn.Sequential(nn.Linear(lstm_dim, lstm_dim), nn.Tanh())
 
-    def forward(self, x):
+    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         combined = torch.sum(torch.cat(x, dim=0), dim=0, keepdim=True)
         subtree_embedding = self.linear_seq(combined)
         return subtree_embedding
 
 
 class ParserState:
-    # Copies another state instead if supplied
-    def __init__(self, parser=None):
+    """
+    Maintains state of the Parser. Useful for beam search
+    """
 
+    def __init__(self, parser=None):
         if not parser:
             return
-        # Otherwise initialize normally
+
         self.buffer_stackrnn = StackLSTM(
             parser.buff_rnn, parser.init_lstm(), parser.pempty_buffer_emb
         )
