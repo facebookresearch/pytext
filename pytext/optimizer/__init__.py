@@ -1,47 +1,45 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
-
 import torch
-from pytext.config.pytext_config import OptimizerParams, OptimizerType
-from pytext.models.model import Model
+from pytext.config import ConfigBase
+from pytext.config.component import Component, ComponentType
 
 
-def create_optimizer(
-    model: Model, optimizer_params: OptimizerParams
-) -> List[torch.optim.Optimizer]:
-    if optimizer_params.type == OptimizerType.ADAM:
-        return [
-            torch.optim.Adam(
-                model.get_param_groups_for_optimizer(),
-                lr=optimizer_params.lr,
-                weight_decay=optimizer_params.weight_decay,
-            )
-        ]
-    elif optimizer_params.type == OptimizerType.SGD:
-        return [
-            torch.optim.SGD(
-                model.get_param_groups_for_optimizer(),
-                lr=optimizer_params.lr,
-                momentum=optimizer_params.momentum,
-            )
-        ]
-    else:
-        raise ValueError("Unknown optimizer type")
+class Optimizer(Component):
+    __COMPONENT_TYPE__ = ComponentType.OPTIMIZER
+    __EXPANSIBLE__ = True
+
+    class Config(ConfigBase):
+        pass
 
 
-def optimizer_zero_grad(optimizers: List[torch.optim.Optimizer]) -> None:
-    for op in optimizers:
-        op.zero_grad()
+class Adam(torch.optim.Adam, Optimizer):
+    class Config(Optimizer.Config):
+        lr: float = 0.001
+        weight_decay: float = 0.00001
+
+    def __init__(self, parameters, lr, weight_decay):
+        super().__init__(parameters, lr=lr, weight_decay=weight_decay)
+
+    @classmethod
+    def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
+        return cls(model.parameters(), config.lr, config.weight_decay)
 
 
-def optimizer_step(optimizers: List[torch.optim.Optimizer]) -> None:
-    for op in optimizers:
-        op.step()
+class SGD(torch.optim.SGD, Optimizer):
+    class Config(Optimizer.Config):
+        lr: float = 0.001
+        momentum: float = 0.0
+
+    def __init__(self, parameters, lr, momentum):
+        super().__init__(parameters, lr=lr, momentum=momentum)
+
+    @classmethod
+    def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
+        return cls(model.parameters(), config.lr, config.momentum)
 
 
-def learning_rates(optimizers):
-    for optimizer in optimizers:
-        for param_group in optimizer.param_groups:
-            yield param_group["lr"]
+def learning_rates(optimizer):
+    for param_group in optimizer.param_groups:
+        yield param_group["lr"]

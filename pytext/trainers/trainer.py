@@ -14,7 +14,7 @@ from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
-from pytext.optimizer import learning_rates, optimizer_step, optimizer_zero_grad
+from pytext.optimizer import learning_rates
 from pytext.utils import cuda_utils
 
 
@@ -66,7 +66,7 @@ class Trainer(TrainerBase):
         model: Model,
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
-        optimizers: List[torch.optim.Optimizer],
+        optimizer: torch.optim.Optimizer,
         scheduler=None,
         rank: int = 0,
     ) -> Tuple[torch.nn.Module, Any]:
@@ -86,8 +86,7 @@ class Trainer(TrainerBase):
             metric_reporter (MetricReporter): compute metric based on training
                 output and report results to console, file.. etc
             train_config (PyTextConfig): training config
-            optimizers (List[torch.optim.Optimizer]): a list of torch optimizers, in
-                most of the case only contains one optimizer
+            optimizer (torch.optim.Optimizer): torch optimizer to be used
             scheduler (Optional[torch.optim.lr_scheduler]): learning rate scheduler,
                 default is None
             training_result (Optional): only meaningful for Hogwild training. default
@@ -115,7 +114,7 @@ class Trainer(TrainerBase):
         scheduler = self._prepare_scheduler(train_iter, scheduler)
 
         def training_pre_batch_callback():
-            optimizer_zero_grad(optimizers)
+            optimizer.zero_grad()
 
         def training_backprop(loss):
             loss.backward()
@@ -129,14 +128,14 @@ class Trainer(TrainerBase):
             else:
                 grad_norm = None
 
-            optimizer_step(optimizers)
+            optimizer.step()
             # grad_norm could be used to check grads sync in distributed training
             return grad_norm
 
         for epoch in range(1, self.config.epochs + 1):
             print(f"Rank {rank} worker: Starting epoch #{epoch}")
             model.train()
-            lrs = (str(lr) for lr in learning_rates(optimizers))
+            lrs = (str(lr) for lr in learning_rates(optimizer))
             print(f"Learning rate(s): {', '.join(lrs)}")
             self._run_epoch(
                 Stage.TRAIN,

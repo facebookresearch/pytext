@@ -15,16 +15,16 @@ from pytext.config.component import (
     create_featurizer,
     create_metric_reporter,
     create_model,
+    create_optimizer,
     create_trainer,
 )
 from pytext.config.field_config import FeatureConfig
-from pytext.config.pytext_config import OptimizerParams
 from pytext.data import DataHandler
 from pytext.data.featurizer import Featurizer, SimpleFeaturizer
 from pytext.exporters import ModelExporter
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
-from pytext.optimizer import create_optimizer
+from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
 from pytext.utils import cuda_utils
@@ -52,7 +52,7 @@ class TaskBase(Component):
         featurizer: Featurizer.Config = SimpleFeaturizer.Config()
         data_handler: DataHandler.Config
         trainer: Trainer.Config = Trainer.Config()
-        optimizer: OptimizerParams = OptimizerParams()
+        optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = Scheduler.Config()
         exporter: Optional[ModelExporter.Config] = None
 
@@ -94,7 +94,7 @@ class TaskBase(Component):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
-        optimizers = create_optimizer(model, task_config.optimizer)
+        optimizer = create_optimizer(task_config.optimizer, model)
         exporter = (
             create_exporter(
                 task_config.exporter,
@@ -111,9 +111,9 @@ class TaskBase(Component):
             data_handler=data_handler,
             model=model,
             metric_reporter=metric_reporter,
-            optimizers=optimizers,
+            optimizer=optimizer,
             lr_scheduler=Scheduler(
-                optimizers, task_config.scheduler, metric_reporter.lower_is_better
+                optimizer, task_config.scheduler, metric_reporter.lower_is_better
             ),
             exporter=exporter,
         )
@@ -124,7 +124,7 @@ class TaskBase(Component):
         data_handler: DataHandler,
         model: Model,
         metric_reporter: MetricReporter,
-        optimizers: List[torch.optim.Optimizer],
+        optimizer: torch.optim.Optimizer,
         lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler],
         exporter: Optional[ModelExporter],
     ) -> None:
@@ -132,7 +132,7 @@ class TaskBase(Component):
         self.data_handler: DataHandler = data_handler
         self.model: Model = model
         self.metric_reporter: MetricReporter = metric_reporter
-        self.optimizers: List[torch.optim.Optimizer] = optimizers
+        self.optimizer: torch.optim.Optimizer = optimizer
         self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
         self.exporter = exporter
 
@@ -152,7 +152,7 @@ class TaskBase(Component):
             self.model,
             self.metric_reporter,
             train_config,
-            self.optimizers,
+            self.optimizer,
             self.lr_scheduler,
             rank=rank,
         )

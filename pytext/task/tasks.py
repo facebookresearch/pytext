@@ -60,7 +60,7 @@ class EnsembleTask(Task):
             self.model.models[model_id],
             self.metric_reporter,
             train_config,
-            self.optimizers,
+            self.optimizer,
             self.lr_scheduler,
         )
 

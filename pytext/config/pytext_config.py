@@ -96,16 +96,3 @@ class TestConfig(ConfigBase):
     use_cuda_if_available: bool = True
     # Whether to use TensorBoard
     use_tensorboard: bool = True
-
-
-class OptimizerType(Enum):
-    ADAM = "adam"
-    SGD = "sgd"
-
-
-class OptimizerParams(ConfigBase):
-    type: OptimizerType = OptimizerType.ADAM
-    # Learning rate
-    lr: float = 0.001
-    weight_decay: float = 0.00001
-    momentum: float = 0.0

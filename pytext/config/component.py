@@ -4,6 +4,8 @@ import collections
 import enum
 from typing import Any, Dict, List, Tuple, Type, Union
 
+import torch
+
 from .pytext_config import ConfigBase, PyTextConfig
 
 
@@ -122,7 +124,7 @@ class Component(metaclass=ComponentMeta):
     def from_config(cls, config, *args, **kwargs):
         return cls(config, *args, **kwargs)
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, *args, **kwargs):
         self.config = config
 
 
@@ -160,6 +162,12 @@ def create_trainer(trainer_config, *args, **kwargs):
 
 def create_model(model_config, *args, **kwargs):
     return create_component(ComponentType.MODEL, model_config, *args, **kwargs)
+
+
+def create_optimizer(optimizer_config, model: torch.nn.Module, *args, **kwargs):
+    return create_component(
+        ComponentType.OPTIMIZER, optimizer_config, model, *args, **kwargs
+    )
 
 
 def create_predictor(predictor_config, *args, **kwargs):

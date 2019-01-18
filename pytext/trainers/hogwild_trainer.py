@@ -79,7 +79,7 @@ class HogwildTrainer(Trainer):
         eval_iter: Iterator,
         model: Model,
         metric_reporter: MetricReporter,
-        optimizers: List[torch.optim.Optimizer],
+        optimizer: torch.optim.Optimizer,
         pytext_config: PyTextConfig,
         scheduler=None,
         *args,
@@ -97,7 +97,7 @@ class HogwildTrainer(Trainer):
             eval_iter,
             model,
             metric_reporter,
-            optimizers,
+            optimizer,
             pytext_config,
             scheduler,
         )

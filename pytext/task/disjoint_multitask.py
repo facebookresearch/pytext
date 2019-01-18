@@ -11,6 +11,7 @@ from pytext.config.component import (
     create_featurizer,
     create_metric_reporter,
     create_model,
+    create_optimizer,
     create_trainer,
 )
 from pytext.data import DisjointMultitaskDataHandler
@@ -18,7 +19,6 @@ from pytext.metric_reporters.disjoint_multitask_metric_reporter import (
     DisjointMultitaskMetricReporter,
 )
 from pytext.models.disjoint_multitask_model import DisjointMultitaskModel
-from pytext.optimizer import create_optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda_utils
 
@@ -99,16 +99,16 @@ class DisjointMultitask(TaskBase):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
 
-        optimizers = create_optimizer(model, task_config.optimizer)
+        optimizer = create_optimizer(task_config.optimizer, model)
         return cls(
             exporters=exporters,
             trainer=create_trainer(task_config.trainer),
             data_handler=data_handler,
             model=model,
             metric_reporter=metric_reporter,
-            optimizers=optimizers,
+            optimizer=optimizer,
             lr_scheduler=Scheduler(
-                optimizers, task_config.scheduler, metric_reporter.lower_is_better
+                optimizer, task_config.scheduler, metric_reporter.lower_is_better
             ),
         )
 

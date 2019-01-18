@@ -33,19 +33,19 @@
           "word_feat": {
             "embed_dim": 100,
             "embedding_init_strategy": "zero",
-            "export_input_names": [
-              "tokens_vals"
-            ],
-            "pretrained_embeddings_path": "demo/atis_joint_model/glove.6B.100d.txt",
+            "export_input_names": ["tokens_vals"],
+            "pretrained_embeddings_path":
+              "demo/atis_joint_model/glove.6B.100d.txt",
             "vocab_from_train_data": true,
             "vocab_from_all_data": false,
             "lowercase_tokens": true
           }
         },
         "optimizer": {
-          "type": "adam",
-          "lr": "0.001",
-          "weight_decay": 0
+          "Adam": {
+            "lr": "0.001",
+            "weight_decay": 0
+          }
         },
         "trainer": {
           "epochs": 30
@@ -62,11 +62,7 @@
           }
         ],
         "data_handler": {
-          "columns_to_read": [
-            "doc_label",
-            "word_label",
-            "text"
-          ],
+          "columns_to_read": ["doc_label", "word_label", "text"],
           "train_batch_size": 86,
           "eval_batch_size": 128,
           "test_batch_size": 128,

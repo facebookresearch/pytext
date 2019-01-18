@@ -185,7 +185,7 @@ class Scheduler(Component):
 
     def __init__(
         self,
-        optimizers: List[torch.optim.Optimizer],
+        optimizer: torch.optim.Optimizer,
         scheduler_params: SchedulerParams,
         lower_is_better: bool = False,
     ) -> None:
@@ -198,19 +198,16 @@ class Scheduler(Component):
         elif scheduler_params.type == SchedulerType.STEP_LR:
             self.epoch_based_schedulers = [
                 StepLR(optimizer, scheduler_params.step_size, scheduler_params.gamma)
-                for optimizer in optimizers
             ]
         elif scheduler_params.type == SchedulerType.EXPONENTIAL_LR:
             self.epoch_based_schedulers = [
                 ExponentialLR(optimizer, scheduler_params.gamma)
-                for optimizer in optimizers
             ]
         elif scheduler_params.type == SchedulerType.COSINE_ANNEALING_LR:
             self.epoch_based_schedulers = [
                 CosineAnnealingLR(
                     optimizer, scheduler_params.T_max, scheduler_params.eta_min
                 )
-                for optimizer in optimizers
             ]
         elif scheduler_params.type == SchedulerType.REDUCE_LR_ON_PLATEAU:
             self.metric_based_schedulers = [
@@ -226,7 +223,6 @@ class Scheduler(Component):
                     ),
                     cooldown=scheduler_params.cooldown,
                 )
-                for optimizer in optimizers
             ]
         elif scheduler_params.type == SchedulerType.LM_FINE_TUNING_LR:
             self.batch_based_schedulers = [
@@ -239,7 +235,6 @@ class Scheduler(Component):
                     scheduler_params.lm_use_per_layer_lr,
                     scheduler_params.lm_gradual_unfreezing,
                 )
-                for optimizer in optimizers
             ]
         else:
             raise ValueError("Unknown optimizer scheduler type")
