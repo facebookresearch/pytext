@@ -204,7 +204,7 @@ class Scheduler(Component):
                 ExponentialLR(optimizer, scheduler_params.gamma)
             ]
         elif scheduler_params.type == SchedulerType.COSINE_ANNEALING_LR:
-            self.epoch_based_schedulers = [
+            self.batch_based_schedulers = [
                 CosineAnnealingLR(
                     optimizer, scheduler_params.T_max, scheduler_params.eta_min
                 )
