@@ -110,7 +110,6 @@ class Trainer(TrainerBase):
 
         best_metric = None
         last_best_epoch = 0
-        best_model_path = None
         scheduler = self._prepare_scheduler(train_iter, scheduler)
 
         def training_pre_batch_callback():
@@ -169,15 +168,15 @@ class Trainer(TrainerBase):
                     model.save_modules(
                         base_path=train_config.modules_save_dir, suffix=f"-ep{epoch}"
                     )
-                # save to disk to avoid multiple model copies in memory
-                best_model_path = os.path.join(
-                    train_config.modules_save_dir, "best_model"
-                )
-                print(
-                    f"Rank {rank} worker: Found a better model! Saving to {best_model_path}."
-                )
+
                 if rank == 0:
-                    torch.save(model.state_dict(), best_model_path)
+                    print(f"Rank {rank} worker: Found a better model!")
+                    model_state = model.state_dict()
+                    # save to cpu to avoid multiple model copies in gpu memory
+                    if cuda_utils.CUDA_ENABLED:
+                        for key, state in model_state.items():
+                            model_state[key] = state.cpu()
+                    best_model_state = model_state
 
             if self.config.early_stop_after > 0 and (
                 epoch - last_best_epoch == self.config.early_stop_after
@@ -190,7 +189,10 @@ class Trainer(TrainerBase):
             sys.stdout.flush()
 
         if rank == 0:
-            model.load_state_dict(torch.load(best_model_path))
+            if cuda_utils.CUDA_ENABLED:
+                for key, state in best_model_state.items():
+                    best_model_state[key] = state.cuda()
+            model.load_state_dict(best_model_state)
         return model, best_metric
 
     def _run_epoch(
