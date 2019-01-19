@@ -51,14 +51,15 @@ class RNNGParser(Model, Component):
             SUM = "sum"
 
         class AblationParams(ConfigBase):
-            """Different ablation parameters.
-            use_last_open_NT_feature uses the last open non-terminal as a 1-hot feature
-            when computing representation for the action classifier
+            """Ablation parameters.
 
             Attributes:
                 use_buffer (bool): whether to use the buffer LSTM
                 use_stack (bool): whether to use the stack LSTM
                 use_action (bool): whether to use the action LSTM
+                use_last_open_NT_feature (bool): whether to use the last open
+                    non-terminal as a 1-hot feature when computing representation
+                    for the action classifier
             """
 
             use_buffer: bool = True
@@ -313,17 +314,17 @@ class RNNGParser(Model, Component):
             if dict_feat_rev is not None
             else [tokens_list_rev]
         )
-        tok_embeddings = self.embedding(*embedding_input)
+        token_embeddings = self.embedding(*embedding_input)
 
         # Batch size is always = 1. So we squeeze the batch_size dimension.
-        tok_embeddings = tok_embeddings.squeeze(0)
+        token_embeddings = token_embeddings.squeeze(0)
         tokens_list_rev = tokens_list_rev.squeeze(0)
 
         initial_state = ParserState(self)
-        for i in range(tok_embeddings.size()[0]):
-            tok_embedding = tok_embeddings[i].unsqueeze(0)
+        for i in range(token_embeddings.size()[0]):
+            token_embedding = token_embeddings[i].unsqueeze(0)
             tok = tokens_list_rev[i]
-            initial_state.buffer_stackrnn.push(tok_embedding, Element(tok))
+            initial_state.buffer_stackrnn.push(token_embedding, Element(tok))
 
         beam = [initial_state]
         while beam and any(not state.finished() for state in beam):
@@ -359,7 +360,7 @@ class RNNGParser(Model, Component):
                     last_open_NT = None
                     try:
                         open_NT = state.is_open_NT[::-1].index(True)
-                        last_open_NT = stack.ele_from_top(open_NT)
+                        last_open_NT = stack.element_from_top(open_NT)
                     except ValueError:
                         pass
                     if last_open_NT:
@@ -413,58 +414,7 @@ class RNNGParser(Model, Component):
                 else:
                     state.action_scores.append(action_p)
 
-                action_embedding = self.actions_lookup(
-                    cuda_utils.Variable(torch.LongTensor([target_action_idx]))
-                )
-                state.action_stackrnn.push(action_embedding, Element(target_action_idx))
-
-                if target_action_idx == self.shift_idx:
-                    state.is_open_NT.append(False)
-                    tok_embedding, token = state.buffer_stackrnn.pop()
-                    state.stack_stackrnn.push(tok_embedding, Element(token))
-                elif target_action_idx == self.reduce_idx:
-                    state.num_open_NT -= 1
-                    popped_rep = []
-                    nt_tree = []
-
-                    while not state.is_open_NT[-1]:
-                        assert len(state.stack_stackrnn) > 0, "How come stack is empty!"
-                        state.is_open_NT.pop()
-                        top_of_stack = state.stack_stackrnn.pop()
-                        popped_rep.append(top_of_stack[0])
-                        nt_tree.append(top_of_stack[1])
-
-                    # pop the open NT and close it
-                    top_of_stack = state.stack_stackrnn.pop()
-                    popped_rep.append(top_of_stack[0])
-                    nt_tree.append(top_of_stack[1])
-
-                    state.is_open_NT.pop()
-                    state.is_open_NT.append(False)
-
-                    compostional_rep = self.p_compositional(popped_rep)
-                    combinedElement = Element(nt_tree)
-
-                    state.stack_stackrnn.push(compostional_rep, combinedElement)
-                elif target_action_idx in self.valid_NT_idxs:
-
-                    # if this is root prediction and if that root is one
-                    # of the unsupported intents
-                    if (
-                        len(state.predicted_actions_idx) == 1
-                        and target_action_idx in self.ignore_subNTs_roots
-                    ):
-                        state.found_unsupported = True
-
-                    state.is_open_NT.append(True)
-                    state.num_open_NT += 1
-                    state.stack_stackrnn.push(
-                        action_embedding, Element(target_action_idx)
-                    )
-                else:
-                    assert "not a valid action: {}".format(
-                        self.actions_vocab.itos[target_action_idx]
-                    )
+                self.push_action(state, target_action_idx)
 
                 state.neg_prob = neg_prob
                 beam.append(state)
@@ -494,8 +444,8 @@ class RNNGParser(Model, Component):
                 for state in sorted(beam)[:topk]
             ]
 
-    # Initializes LSTM parameters
-    def init_lstm(self):
+    def init_lstm(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        # Batch size fixed to 1
         return (
             torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
             torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
@@ -517,9 +467,10 @@ class RNNGParser(Model, Component):
         stack = state.stack_stackrnn
         buffer = state.buffer_stackrnn
 
-        # Reduce if there are 1. the top of stack is not an NT, and
-        # 2. two open NT on stack, or 3. buffer is empty
-        if (is_open_NT and not is_open_NT[-1]) and (
+        # Can REDUCE if
+        # 1. Top of multi-element stack is not an NT, and
+        # 2. Two open NTs on stack, or buffer is empty
+        if (is_open_NT and not is_open_NT[-1] and not len(is_open_NT) == 1) and (
             num_open_NT >= 2 or len(buffer) == 0
         ):
             assert len(stack) > 0
@@ -528,7 +479,7 @@ class RNNGParser(Model, Component):
         if len(buffer) > 0 and num_open_NT < self.max_open_NT:
             last_open_NT = None
             try:
-                last_open_NT = stack.ele_from_top(is_open_NT[::-1].index(True))
+                last_open_NT = stack.element_from_top(is_open_NT[::-1].index(True))
             except ValueError:
                 pass
 
@@ -555,15 +506,84 @@ class RNNGParser(Model, Component):
                 + " and num open NTs is "
                 + str(num_open_NT)
             )
+
+        # Can SHIFT if
+        # 1. Buffer is non-empty, and
+        # 2. At least one open NT on stack
         if len(buffer) > 0 and num_open_NT >= 1:
             valid_actions.append(self.shift_idx)
 
-        assert (
-            len(valid_actions) > 0
-        ), "No valid actions. stack is {}, buffer is {}, num open NT: {}".format(
-            str(stack), str(buffer), str(num_open_NT)
-        )
         return valid_actions
+
+    def push_action(self, state: ParserState, target_action_idx: int) -> None:
+        """Used for updating the state with a target next action
+
+        Args:
+            state (ParserState): The state of the stack, buffer and action
+            target_action_idx (int): Index of the action to process
+        """
+
+        # Update action_stackrnn
+        action_embedding = self.actions_lookup(
+            cuda_utils.Variable(torch.LongTensor([target_action_idx]))
+        )
+        state.action_stackrnn.push(action_embedding, Element(target_action_idx))
+
+        # Update stack_stackrnn
+        if target_action_idx == self.shift_idx:
+            # To SHIFT,
+            # 1. Pop T from buffer
+            # 2. Push T into stack
+            state.is_open_NT.append(False)
+            token_embedding, token = state.buffer_stackrnn.pop()
+            state.stack_stackrnn.push(token_embedding, Element(token))
+
+        elif target_action_idx == self.reduce_idx:
+            # To REDUCE
+            # 1. Pop Ts from stack until hit NT
+            # 2. Pop the open NT from stack and close it
+            # 3. Compute compositionalRep and push into stack
+            state.num_open_NT -= 1
+            popped_rep = []
+            nt_tree = []
+
+            while not state.is_open_NT[-1]:
+                assert len(state.stack_stackrnn) > 0, "How come stack is empty!"
+                state.is_open_NT.pop()
+                top_of_stack = state.stack_stackrnn.pop()
+                popped_rep.append(top_of_stack[0])
+                nt_tree.append(top_of_stack[1])
+
+            # pop the open NT and close it
+            top_of_stack = state.stack_stackrnn.pop()
+            popped_rep.append(top_of_stack[0])
+            nt_tree.append(top_of_stack[1])
+
+            state.is_open_NT.pop()
+            state.is_open_NT.append(False)
+
+            compostional_rep = self.p_compositional(popped_rep)
+            combinedElement = Element(nt_tree)
+
+            state.stack_stackrnn.push(compostional_rep, combinedElement)
+
+        elif target_action_idx in self.valid_NT_idxs:
+
+            # if this is root prediction and if that root is one
+            # of the unsupported intents
+            if (
+                len(state.predicted_actions_idx) == 1
+                and target_action_idx in self.ignore_subNTs_roots
+            ):
+                state.found_unsupported = True
+
+            state.is_open_NT.append(True)
+            state.num_open_NT += 1
+            state.stack_stackrnn.push(action_embedding, Element(target_action_idx))
+        else:
+            assert "not a valid action: {}".format(
+                self.actions_vocab.itos[target_action_idx]
+            )
 
     def get_param_groups_for_optimizer(self):
         """
@@ -574,8 +594,11 @@ class RNNGParser(Model, Component):
     def get_loss(
         self, logits: torch.Tensor, target_actions: torch.Tensor, context: torch.Tensor
     ):
-        # action scores is a 2D Tensor of dims sequence_length x number_of_actions
-        # targets is a 1D list of integers of length sequence_length
+        """
+        Shapes:
+            logits[1]: action scores: (1, sequence_length, number_of_actions)
+            target_actions: (1, sequence_length)
+        """
 
         # Get rid of the batch dimension
         action_scores = logits[1].squeeze(0)
