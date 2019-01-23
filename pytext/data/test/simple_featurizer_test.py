@@ -14,44 +14,32 @@ class SimpleFeaturizerTest(unittest.TestCase):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(), FeatureConfig()
         )
-        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
-        self.assertListEqual(tokens, ["order", "me", "a", "coffee"])
+        features = featurizer.featurize(InputRecord(raw_text=self.sentence))
+        expected_tokens = ["order", "me", "a", "coffee"]
+        expected_chars = [list(tok) for tok in expected_tokens]
+        self.assertListEqual(features.tokens, expected_tokens)
+        self.assertListEqual(features.characters, expected_chars)
 
     def test_tokenize_dont_lowercase(self):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(lowercase_tokens=False), FeatureConfig()
         )
-        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
-        self.assertListEqual(tokens, ["Order", "me", "a", "coffee"])
+        features = featurizer.featurize(InputRecord(raw_text=self.sentence))
+        expected_tokens = ["Order", "me", "a", "coffee"]
+        expected_chars = [list(tok) for tok in expected_tokens]
+        self.assertListEqual(features.tokens, expected_tokens)
+        self.assertListEqual(features.characters, expected_chars)
 
     def test_convert_to_bytes(self):
         featurizer = SimpleFeaturizer.from_config(
             SimpleFeaturizer.Config(convert_to_bytes=True, lowercase_tokens=False),
             FeatureConfig(),
         )
-        tokens = featurizer.featurize(InputRecord(raw_text=self.sentence)).tokens
-        self.assertListEqual(
-            tokens,
-            [
-                "O",
-                "r",
-                "d",
-                "e",
-                "r",
-                " ",
-                "m",
-                "e",
-                " ",
-                "a",
-                " ",
-                "c",
-                "o",
-                "f",
-                "f",
-                "e",
-                "e",
-            ],
-        )
+        features = featurizer.featurize(InputRecord(raw_text=self.sentence))
+        expected_tokens = list("Order me a coffee")
+        expected_chars = [list(char) for char in expected_tokens]
+        self.assertListEqual(features.tokens, expected_tokens)
+        self.assertListEqual(features.characters, expected_chars)
 
     def test_tokenize_add_sentence_markers(self):
         featurizer = SimpleFeaturizer.from_config(

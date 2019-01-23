@@ -46,6 +46,8 @@ class CharFeatConfig(ConfigBase):
     cnn: CNNParams = CNNParams()
     export_input_names: List[str] = ["char_vals"]
     vocab_from_train_data: bool = True
+    max_word_length: int = 20
+    min_freq: int = 1
 
 
 class PretrainedModelEmbeddingConfig(ConfigBase):
