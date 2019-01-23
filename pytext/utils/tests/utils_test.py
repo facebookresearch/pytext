@@ -70,6 +70,8 @@ class UtilTest(unittest.TestCase):
             "textity": "<unk>-LC-ity",
             "texty": "<unk>-LC-y",
             "textal": "<unk>-LC-al",
+            "-": "<unk>-DASH",
+            "72": "<unk>-NUM",
         }
 
         for token, expected_unkified in map_token_unkified.items():
