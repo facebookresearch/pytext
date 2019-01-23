@@ -188,6 +188,7 @@ class ClassificationMetrics(NamedTuple):
         per_label_soft_scores: Per label soft metrics.
         mcc: Matthews correlation coefficient.
         roc_auc: Area under the Receiver Operating Characteristic curve.
+        loss: Training loss (only used for selecting best model, no need to print).
     """
 
     accuracy: float
@@ -195,6 +196,7 @@ class ClassificationMetrics(NamedTuple):
     per_label_soft_scores: Optional[Dict[str, SoftClassificationMetrics]]
     mcc: Optional[float]
     roc_auc: Optional[float]
+    loss: float
 
     def print_metrics(self) -> None:
         print(f"Accuracy: {self.accuracy * 100:.2f}\n")
@@ -522,6 +524,7 @@ def compute_roc_auc(predictions: Sequence[LabelPrediction]) -> Optional[float]:
 def compute_classification_metrics(
     predictions: Sequence[LabelPrediction],
     label_names: Sequence[str],
+    loss: float,
     average_precisions: bool = True,
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
 ) -> ClassificationMetrics:
@@ -579,4 +582,5 @@ def compute_classification_metrics(
         per_label_soft_scores=soft_metrics,
         mcc=mcc,
         roc_auc=roc_auc,
+        loss=loss,
     )

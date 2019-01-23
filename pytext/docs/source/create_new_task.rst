@@ -253,10 +253,10 @@ results.::
 	                )
 	            ),
 	            self.label_names,
+							self.calculate_loss(),
 	        )
 
-	    @staticmethod
-	    def get_model_select_metric(metrics):
+	    def get_model_select_metric(self, metrics):
 	        return metrics.accuracy
 
 The :class:`~MetricReporter` base class already aggregates all the output from :class:`~Trainer`,

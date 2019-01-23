@@ -47,6 +47,5 @@ class LanguageModelMetricReporter(MetricReporter):
             n_words += num_words_in_batch
         return total_loss / float(n_words)
 
-    @staticmethod
-    def get_model_select_metric(metrics) -> float:
+    def get_model_select_metric(self, metrics) -> float:
         return metrics.perplexity_per_word
