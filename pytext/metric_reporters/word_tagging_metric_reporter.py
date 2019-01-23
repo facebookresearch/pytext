@@ -80,6 +80,5 @@ class WordTaggingMetricReporter(MetricReporter):
             ]
         )[1]
 
-    @staticmethod
-    def get_model_select_metric(metrics):
+    def get_model_select_metric(self, metrics):
         return metrics.micro_scores.f1

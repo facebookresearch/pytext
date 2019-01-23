@@ -42,7 +42,7 @@ class BasicMetricsTest(MetricsTestBase):
     def test_prf1_metrics(self) -> None:
         self.assertMetricsAlmostEqual(
             compute_classification_metrics(
-                PREDICTIONS1, LABEL_NAMES1, average_precisions=False
+                PREDICTIONS1, LABEL_NAMES1, loss=2.0, average_precisions=False
             ),
             ClassificationMetrics(
                 accuracy=0.5,
@@ -60,6 +60,7 @@ class BasicMetricsTest(MetricsTestBase):
                 per_label_soft_scores=None,
                 mcc=None,
                 roc_auc=None,
+                loss=2.0,
             ),
         )
 
@@ -81,11 +82,11 @@ class BasicMetricsTest(MetricsTestBase):
         )
 
     def test_compute_mcc(self) -> None:
-        metrics = compute_classification_metrics(PREDICTIONS2, LABEL_NAMES2)
+        metrics = compute_classification_metrics(PREDICTIONS2, LABEL_NAMES2, loss=5.0)
         self.assertAlmostEqual(metrics.mcc, 1.0 / 6)
         # Just to test the metrics print without errors
         metrics.print_metrics()
 
     def test_compute_roc_auc(self) -> None:
-        metrics = compute_classification_metrics(PREDICTIONS2, LABEL_NAMES2)
+        metrics = compute_classification_metrics(PREDICTIONS2, LABEL_NAMES2, loss=5.0)
         self.assertAlmostEqual(metrics.roc_auc, 1.0 / 6)

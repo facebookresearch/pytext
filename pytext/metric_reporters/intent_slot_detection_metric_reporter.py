@@ -181,6 +181,5 @@ class IntentSlotMetricReporter(MetricReporter):
             frame_accuracy=True,
         )
 
-    @staticmethod
-    def get_model_select_metric(metrics):
+    def get_model_select_metric(self, metrics):
         return metrics.frame_accuracy

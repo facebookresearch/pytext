@@ -176,8 +176,7 @@ class MetricReporter(Component):
             self._reset()
         return metrics
 
-    @staticmethod
-    def get_model_select_metric(metrics):
+    def get_model_select_metric(self, metrics):
         """
         Return a single numeric metric value that is used for model selection, returns
         the metric itself by default, but usually metrics will be more complicated
@@ -185,8 +184,7 @@ class MetricReporter(Component):
         """
         return metrics
 
-    @classmethod
-    def compare_metric(cls, new_metric, old_metric):
+    def compare_metric(self, new_metric, old_metric):
         """
         Check if new metric indicates better model performance
 
@@ -196,8 +194,8 @@ class MetricReporter(Component):
         if not old_metric:
             return True
 
-        new = cls.get_model_select_metric(new_metric)
-        old = cls.get_model_select_metric(old_metric)
+        new = self.get_model_select_metric(new_metric)
+        old = self.get_model_select_metric(old_metric)
         if new == old:
             return False
-        return (new < old) == cls.lower_is_better
+        return (new < old) == self.lower_is_better
