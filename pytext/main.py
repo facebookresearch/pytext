@@ -38,7 +38,7 @@ class Attrs:
         return f"Attrs({', '.join(f'{k}={v}' for k, v in vars(self).items())})"
 
 
-def train_model_distributed(config, summary_writer):
+def train_model_distributed(config):
     assert (
         config.use_cuda_if_available and torch.cuda.is_available()
     ) or config.distributed_world_size == 1, (
@@ -58,9 +58,7 @@ def train_model_distributed(config, summary_writer):
 
     print(f"\n=== Starting training, World size is {config.distributed_world_size}")
     if not config.use_cuda_if_available or not torch.cuda.is_available():
-        run_single(
-            0, config_to_json(PyTextConfig, config), 1, None, summary_writer, None
-        )
+        run_single(0, config_to_json(PyTextConfig, config), 1, None, None)
     else:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".dist_sync"
@@ -73,7 +71,6 @@ def train_model_distributed(config, summary_writer):
                     config_to_json(PyTextConfig, config),
                     config.distributed_world_size,
                     dist_init_method,
-                    summary_writer,
                     metadata,
                 ),
                 config.distributed_world_size,
@@ -85,16 +82,17 @@ def run_single(
     config_json: str,
     world_size: int,
     dist_init_method: str,
-    summary_writer: SummaryWriter,
     metadata: CommonMetadata,
 ):
     config = config_from_json(PyTextConfig, config_json)
-    if rank != 0:
-        summary_writer = None
-
-    train_model(
-        config, dist_init_method, rank, rank, world_size, summary_writer, metadata
-    )
+    summary_writer = SummaryWriter() if rank != 0 and config.use_tensorboard else None
+    try:
+        train_model(
+            config, dist_init_method, rank, rank, world_size, summary_writer, metadata
+        )
+    finally:
+        if summary_writer is not None:
+            summary_writer.close()
 
 
 def gen_config_impl(task_name, options):
@@ -273,7 +271,7 @@ def train(context):
         if config.distributed_world_size == 1:
             train_model(config, summary_writer=summary_writer)
         else:
-            train_model_distributed(config, summary_writer)
+            train_model_distributed(config)
         print("\n=== Starting testing...")
         test_model_from_snapshot_path(
             config.save_snapshot_path,
