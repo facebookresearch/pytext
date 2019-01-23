@@ -18,6 +18,7 @@ class CharFieldTest(unittest.TestCase):
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,
+            min_freq=2,
         )
         utterances = [
             [
@@ -50,15 +51,18 @@ class CharFieldTest(unittest.TestCase):
                 "c": 1,
             }
         )
+        expected_itos = [VocabMeta.UNK_TOKEN, pad, "l", "s", "u", "b"]
         preprocessed_data = [char_field.preprocess(x) for x in utterances]
-        char_field.build_vocab(preprocessed_data)
+        char_field.build_vocab(preprocessed_data, min_freq=2)
         self.assertEqual(char_field.vocab.freqs, expected_freqs)
+        self.assertEqual(char_field.vocab.itos, expected_itos)
 
     def test_pad_and_numericalize(self):
         char_field = CharFeatureField(
             pad_token=VocabMeta.PAD_TOKEN,
             unk_token=VocabMeta.UNK_TOKEN,
             batch_first=True,
+            max_word_length=4,
         )
         utterances = [
             [
@@ -74,18 +78,18 @@ class CharFieldTest(unittest.TestCase):
         # indices are meant to help relate to the expected_stitch_index.
         expected_padded_chars = [
             [
-                ["A", "l", "l", "l", pad],
-                ["u", "r", pad, pad, pad],
-                ["b", "@", "$", "s", pad],
-                ["b", "2", pad, pad, pad],
-                ["u", "s", pad, pad, pad],
+                ["A", "l", "l", "l"],
+                ["u", "r", pad, pad],
+                ["b", "@", "$", "s"],
+                ["b", "2", pad, pad],
+                ["u", "s", pad, pad],
             ],
             [
-                ["p", "l", "a", "y", pad],
-                ["m", "u", "s", "i", "c"],
-                [pad, pad, pad, pad, pad],
-                [pad, pad, pad, pad, pad],
-                [pad, pad, pad, pad, pad],
+                ["p", "l", "a", "y"],
+                ["m", "u", "s", "i"],
+                [pad, pad, pad, pad],
+                [pad, pad, pad, pad],
+                [pad, pad, pad, pad],
             ],
         ]
 

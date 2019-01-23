@@ -22,6 +22,8 @@ class CharFeatureField(VocabUsingField):
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
+        max_word_length=20,
+        min_freq=1,
         **kwargs
     ):
         super().__init__(
@@ -31,7 +33,9 @@ class CharFeatureField(VocabUsingField):
             use_vocab=True,
             pad_token=pad_token,
             unk_token=unk_token,
+            min_freq=min_freq,
         )
+        self.max_word_length = max_word_length
 
     def build_vocab(self, *args, **kwargs):
         sources = []
@@ -74,16 +78,15 @@ class CharFeatureField(VocabUsingField):
         # will get corrupted. Hence deep copy the minibatch object.
         padded_minibatch = copy.deepcopy(minibatch)
 
-        max_sentence_length, max_word_length = 0, 0
-        for sent in minibatch:
-            max_sentence_length = max(max_sentence_length, len(sent))
-            for word in sent:
-                max_word_length = max(max_word_length, len(word))
+        max_sentence_length = max(len(sent) for sent in minibatch)
+        max_word_length = max(len(word) for sent in minibatch for word in sent)
+        max_word_length = min(self.max_word_length, max_word_length)
 
         for i, sentence in enumerate(minibatch):
             for j, word in enumerate(sentence):
                 char_padding = [self.pad_token] * (max_word_length - len(word))
                 padded_minibatch[i][j].extend(char_padding)
+                padded_minibatch[i][j] = padded_minibatch[i][j][:max_word_length]
             if len(sentence) < max_sentence_length:
                 for _ in range(max_sentence_length - len(sentence)):
                     char_padding = [self.pad_token] * max_word_length

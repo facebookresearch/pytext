@@ -101,12 +101,19 @@ class DocClassificationDataHandler(DataHandler):
             **kwargs,
         )
 
-    def _get_tokens(self, mode_feature):
+    def _get_tokens(self, model_feature):
         if self.max_seq_len > 0:
             # truncate tokens if max_seq_len is set
-            return mode_feature.tokens[: self.max_seq_len]
+            return model_feature.tokens[: self.max_seq_len]
         else:
-            return mode_feature.tokens
+            return model_feature.tokens
+
+    def _get_chars(self, model_feature):
+        if self.max_seq_len > 0:
+            # truncate tokens if max_seq_len is set
+            return model_feature.characters[: self.max_seq_len]
+        else:
+            return model_feature.characters
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
         features = self.featurizer.featurize(
@@ -123,7 +130,7 @@ class DocClassificationDataHandler(DataHandler):
                 features.gazetteer_feat_weights,
                 features.gazetteer_feat_lengths,
             ),
-            ModelInput.CHAR_FEAT: features.characters,
+            ModelInput.CHAR_FEAT: self._get_chars(features),
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             ModelInput.DENSE_FEAT: row_data.get(ModelInput.DENSE_FEAT),
             # target

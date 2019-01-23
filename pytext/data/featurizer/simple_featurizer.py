@@ -55,7 +55,12 @@ class SimpleFeaturizer(Featurizer):
             tokens.insert(0, self.config.sentence_markers[0])
             tokens.append(self.config.sentence_markers[1])
 
-        return OutputRecord(tokens=tokens, token_ranges=token_ranges)
+        characters = [list(tok) for tok in tokens]
+
+        # TODO: support remaining features (see OutputRecord)
+        return OutputRecord(
+            tokens=tokens, token_ranges=token_ranges, characters=characters
+        )
 
     def tokenize_batch(
         self, input_records: Sequence[InputRecord]
