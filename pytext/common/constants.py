@@ -57,6 +57,7 @@ class Padding:
 
 class VocabMeta:
     UNK_TOKEN = "<unk>"
+    UNK_NUM_TOKEN = f"{UNK_TOKEN}-NUM"
     PAD_TOKEN = "<pad>"
     EOS_TOKEN = "</s>"
     INIT_TOKEN = "<s>"
