@@ -15,7 +15,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import learning_rates
-from pytext.utils import cuda_utils
+from pytext.utils import cuda_utils, time_utils
 
 
 class TrainerBase(Component):
@@ -50,6 +50,8 @@ class Trainer(TrainerBase):
         max_clip_norm: Optional[float] = None
         # Whether metrics on training data should be computed and reported.
         report_train_metrics: bool = True
+        # Whether progress bar should be showed
+        enable_progress_bar: bool = False
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
@@ -208,20 +210,27 @@ class Trainer(TrainerBase):
     ):
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
-        for batch_id, (inputs, targets, context) in enumerate(data_iter):
-            pre_batch()
-            # pass context to model to use in forward call if needed
-            model.contextualize(context)
-            logits = model(*inputs)
-            loss = model.get_loss(logits, targets, context)
-            if BatchContext.IGNORE_LOSS in context:
-                loss *= 0
-            backprop(loss)
-            if report_metric:
-                preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
-                metric_reporter.add_batch_stats(
-                    batch_id, preds, targets, scores, loss.item(), inputs, **context
-                )
+        enable_bar = (
+            stage == Stage.TRAIN and self.config.enable_progress_bar and rank == 0
+        )
+        with time_utils.progress_bar(enable_bar, data_iter, rank, epoch) as bar:
+            for batch_id, (inputs, targets, context) in enumerate(data_iter):
+                pre_batch()
+                # pass context to model to use in forward call if needed
+                model.contextualize(context)
+                logits = model(*inputs)
+                loss = model.get_loss(logits, targets, context)
+                if BatchContext.IGNORE_LOSS in context:
+                    loss *= 0
+                backprop(loss)
+                if report_metric:
+                    preds, scores = model.get_pred(
+                        logits, targets, context, stage, *inputs
+                    )
+                    metric_reporter.add_batch_stats(
+                        batch_id, preds, targets, scores, loss.item(), inputs, **context
+                    )
+                bar.update(batch_id + 1)
 
         metrics = None
         if report_metric:

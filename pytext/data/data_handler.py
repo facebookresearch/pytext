@@ -612,6 +612,7 @@ class DataHandler(Component):
             ),
             self._postprocess_batch,
             is_train=False,
+            num_batches=len(test_dataset),
         )
 
     def get_predict_iter(self, data: List[Dict[str, Any]]):

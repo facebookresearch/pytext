@@ -5,6 +5,7 @@ joblib
 numpy
 onnx
 pandas
+progressbar
 requests
 scipy
 torchtext
