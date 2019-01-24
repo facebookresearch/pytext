@@ -17,13 +17,13 @@ class CompositionalDataHandlerTest(unittest.TestCase):
                 DFColumn.WORD_LABEL: [
                     {
                         "id": "SL:DATE_TIME",
-                        "span": {"start": 21, "end": 26},
-                        "text": "today",
+                        "span": {"start": 24, "end": 34},
+                        "text": "8 pm today",
                     }
                 ],
-                DFColumn.UTTERANCE: "What EVENTS can I go today",
+                DFColumn.UTTERANCE: "What EVENTS can I go to at 8 pm today",
                 DFColumn.DICT_FEAT: "",
-                DFColumn.SEQLOGICAL: "[IN:GET_EVENT What EVENTS can I go [SL:DATE_TIME today ] ]",
+                DFColumn.SEQLOGICAL: "[IN:GET_EVENT What EVENTS can I go to at [SL:DATE_TIME 8 pm today ] ]",
             }
         ]
 
@@ -33,18 +33,18 @@ class CompositionalDataHandlerTest(unittest.TestCase):
                 DFColumn.WORD_LABEL: [
                     {
                         "id": "SL:ATTRIBUTE_EVENT",
-                        "span": {"start": 14, "end": 19},
-                        "text": "adult",
+                        "span": {"start": 14, "end": 17},
+                        "text": "fun",
                     },
                     {
                         "id": "SL:DATE_TIME",
-                        "span": {"start": 27, "end": 39},
+                        "span": {"start": 25, "end": 37},
                         "text": "this weekend",
                     },
                 ],
-                DFColumn.UTTERANCE: "Are there any adult events this weekend",
+                DFColumn.UTTERANCE: "Are there any fun events this weekend",
                 DFColumn.DICT_FEAT: "",
-                DFColumn.SEQLOGICAL: "[IN:GET_EVENT Are there any [SL:ATTRIBUTE_EVENT adult ] events [SL:DATE_TIME this weekend ] ]",
+                DFColumn.SEQLOGICAL: "[IN:GET_EVENT Are there any [SL:ATTRIBUTE_EVENT fun ] events [SL:DATE_TIME this weekend ] ]",
             }
         ]
 
@@ -101,13 +101,18 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             "SHIFT",
             "SHIFT",
             "SHIFT",
+            "SHIFT",
+            "SHIFT",
             "SL:DATE_TIME",
+            "SHIFT",
+            "SHIFT",
             "SHIFT",
             "REDUCE",
             "REDUCE",
         ]
         self.assertListEqual(
-            data.examples[0].word_feat, ["what", "events", "can", "i", "go", "today"]
+            data.examples[0].word_feat,
+            ["what", "events", "can", "i", "go", "to", "at", "8", "pm", "today"],
         )
         self.assertListEqual(data.examples[0].action_idx_feature, actions_expected)
         self.assertListEqual(data.examples[0].action_idx_label, actions_expected)
@@ -120,20 +125,25 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             set(self.dh.features["word_feat"].vocab.stoi),
             {
                 "<unk>",
+                "<unk>-NUM",
                 "what",
                 "events",
                 "can",
                 "i",
                 "go",
+                "to",
+                "at",
+                "pm",
                 "today",
                 "are",
                 "there",
                 "any",
-                "adult",
+                "fun",
                 "this",
                 "weekend",
             },
         )
+        print(self.dh.features["word_feat"].vocab.stoi)
         print(self.dh.features["action_idx_feature"].vocab.stoi)
         for input, _, _ in self.dh.get_train_iter_from_raw_data(
             self.train_data, batch_size=1
@@ -141,26 +151,28 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             print(input)
             # input = [token_batch, seq_lens_batch, dict_feat_batch, actions_batch]
             np.testing.assert_array_almost_equal(
-                input[0].numpy(), [[12, 1, 5, 7, 6, 10]]
+                input[0].numpy(), [[16, 2, 6, 9, 8, 13, 5, 1, 10, 14]]
             )  # tokens
             np.testing.assert_array_almost_equal(
-                input[1].numpy(), [6]
+                input[1].numpy(), [10]
             )  # sequence length
             self.assertTrue(input[2] is None)  # no dict feats
             np.testing.assert_array_almost_equal(
-                input[3], [[2, 0, 0, 0, 0, 0, 3, 0, 1, 1]]
+                input[3], [[2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 1, 1]]
             )  # actions
 
     def test_test_tensors(self):
         self.dh.init_metadata_from_raw_data(
             self.train_data, self.eval_data, self.test_data
         )
+        print(self.dh.features["word_feat"].vocab.stoi)
+        print(self.dh.features["action_idx_feature"].vocab.stoi)
         for input, target, _ in self.dh.get_test_iter_from_raw_data(
             self.eval_data, batch_size=1
         ):
             # input = [token_batch, seq_lens_batch, dict_feat_batch]
             np.testing.assert_array_almost_equal(
-                input[0].numpy(), [[4, 8, 3, 2, 1, 9, 11]]
+                input[0].numpy(), [[4, 11, 3, 7, 2, 12, 15]]
             )  # tokens
             np.testing.assert_array_almost_equal(
                 input[1].numpy(), [7]
@@ -186,11 +198,12 @@ class CompositionalDataHandlerTest(unittest.TestCase):
         custom_dh.init_metadata_from_raw_data(
             self.train_data, self.eval_data, self.test_data
         )
+        # <unk>-NUM = <unk> for numeric tokens
         # <unk>-LC = <unk> for lower-cased tokens
         # <unk>-LC-y = <unk> for lower-cased tokens with suffix "y" ("today")
         self.assertSetEqual(
             set(custom_dh.features["word_feat"].vocab.stoi),
-            {"<unk>", "<unk>-LC", "<unk>-LC-y", "events"},
+            {"<unk>", "<unk>-NUM", "<unk>-LC", "<unk>-LC-y", "events"},
         )
 
     def test_uppercase_tokens(self):
@@ -213,16 +226,20 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             set(custom_dh.features["word_feat"].vocab.stoi),
             {
                 "<unk>",
+                "<unk>-NUM",
                 "What",
                 "EVENTS",
                 "can",
                 "I",
                 "go",
+                "to",
+                "at",
+                "pm",
                 "today",
                 "Are",
                 "there",
                 "any",
-                "adult",
+                "fun",
                 "events",
                 "this",
                 "weekend",
