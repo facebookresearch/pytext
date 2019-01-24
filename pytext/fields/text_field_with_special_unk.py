@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple, Union
 
 import six
 import torch
+from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
 from pytext.utils.data_utils import is_number, unkify
 from torchtext.data import Dataset
@@ -16,6 +17,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
     def __init__(self, *args, unkify_func=unkify, **kwargs):
         super().__init__(*args, **kwargs)
         self.unkify_func = unkify_func
+        self.unk_num_token = VocabMeta.UNK_NUM_TOKEN
 
     def build_vocab(self, *args, min_freq=1, **kwargs):
         """
@@ -41,7 +43,8 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
             for x in data:
                 if not self.sequential:
                     x = [x]
-                x = ["NUM" if is_number(item) else item for item in x]
+                x = [item for item in x if not is_number(item)]
+                # All numbers are mapped to self.unk_num_token
                 try:
                     counter.update(x)
                 except TypeError:
@@ -54,6 +57,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
                     self.pad_token,
                     self.init_token,
                     self.eos_token,
+                    self.unk_num_token,
                 ]
                 if tok is not None
             )
