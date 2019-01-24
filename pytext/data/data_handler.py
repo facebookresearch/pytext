@@ -264,6 +264,11 @@ class DataHandler(Component):
         # pretrained_embeds_weight takes a lot space and is not needed in inference time
         for feature_meta in metadata.features.values():
             feature_meta.pretrained_embeds_weight = None
+        if isinstance(metadata.target, list):
+            for target_meta in metadata.target:
+                target_meta.pretrained_embeds_weight = None
+        else:
+            metadata.target.pretrained_embeds_weight = None
         return metadata
 
     def load_metadata(self, metadata: CommonMetadata):
@@ -388,13 +393,17 @@ class DataHandler(Component):
         # build vocabs for features
         for name, feat in self.features.items():
             weights = None
-
             if feat.use_vocab:
                 pretrained_embeddings = None
                 pretrained_embeddings_path = getattr(
                     feat, "pretrained_embeddings_path", None
                 )
                 if pretrained_embeddings_path:
+                    print(
+                        "load pretrained embeddings from {}".format(
+                            pretrained_embeddings_path
+                        )
+                    )
                     pretrained_embeddings = embeddings_utils.PretrainedEmbedding(
                         pretrained_embeddings_path, feat.lower
                     )
@@ -428,25 +437,43 @@ class DataHandler(Component):
         eval_data: textdata.Dataset,
         test_data: textdata.Dataset,
     ):
+        self.metadata.target = []
         # build vocabs for label fields
         for name, label in self.labels.items():
             # Need test data to make sure we cover all of the labels in it
             # It is particularly important when BIO is enabled as a B-[Label] can
             # appear in train and eval but test can have B-[Label] and I-[Label]
-
+            weights = None
             if label.use_vocab:
                 if not hasattr(label, "vocab"):  # Don't rebuild vocab
                     print("Building vocab for label {}".format(name))
                     label.build_vocab(train_data, eval_data, test_data)
-                    print(
-                        "{} field's vocabulary size is {}".format(
-                            name, len(label.vocab.itos)
-                        )
-                    )
                 else:
                     print(f"Vocab for label {name} has been built. Not rebuilding.")
+                print(
+                    "{} field's vocabulary size is {}".format(
+                        name, len(label.vocab.itos)
+                    )
+                )
+                pretrained_embeddings = None
+                pretrained_embeddings_path = getattr(
+                    label, "pretrained_embeddings_path", None
+                )
+                if pretrained_embeddings_path:
+                    pretrained_embeddings = embeddings_utils.PretrainedEmbedding(
+                        pretrained_embeddings_path
+                    )
+                if pretrained_embeddings:
+                    weights = pretrained_embeddings.initialize_embeddings_weights(
+                        label.vocab.stoi,
+                        label.unk_token,
+                        label.embed_dim,
+                        label.embedding_init_strategy,
+                    )  # this is of type torch.Tensor
 
-        self.metadata.target = [field.get_meta() for field in self.labels.values()]
+            meta = label.get_meta()
+            meta.pretrained_embeds_weight = weights
+            self.metadata.target.append(meta)
         if len(self.metadata.target) == 1:
             [self.metadata.target] = self.metadata.target
 

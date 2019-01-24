@@ -158,9 +158,17 @@ class PretrainedEmbedding(object):
         assert self.embedding_vectors is not None and self.embed_vocab is not None
         assert pretrained_embeds_weight.shape[-1] == self.embedding_vectors.shape[-1]
         unk_idx = vocab_to_idx[unk]
+        oov_count = 0
         for word, idx in vocab_to_idx.items():
             if word in self.stoi and idx != unk_idx:
                 pretrained_embeds_weight[idx] = self.embedding_vectors[self.stoi[word]]
+            else:
+                oov_count += 1
+        print(
+            "Out of pretrained embedding vocab counts: {}/{}".format(
+                oov_count, len(vocab_to_idx)
+            )
+        )
         return pretrained_embeds_weight
 
 
