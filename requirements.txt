@@ -3,7 +3,7 @@ future
 hypothesis<4.0
 joblib
 numpy
-onnx
+onnx==1.3.0
 pandas
 requests
 scipy
