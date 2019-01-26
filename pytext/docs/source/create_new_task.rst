@@ -347,7 +347,7 @@ Now that we have a fully functional class:`~Task`, we can generate a default JSO
 
 .. code-block:: console
 
-	(pytext) $ pytext gen_default_config WordTaggingTask > task_config.json
+	(pytext) $ pytext gen-default-config WordTaggingTask > task_config.json
 
 Tweak the config as you like, and then train the model via
 
@@ -359,7 +359,7 @@ Run predictions using the trained PyTorch model
 
 .. code-block:: console
 
-	(pytext) $ pytext predict_py --model-file="YOUR_PY_MODEL_FILE" < test.json
+	(pytext) $ pytext predict-py --model-file="YOUR_PY_MODEL_FILE" < test.json
 
 Run predictions using the exported Caffe2 model
 
