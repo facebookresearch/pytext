@@ -224,3 +224,10 @@ class TaskBase(Component):
 
 class Task(TaskBase):
     __EXPANSIBLE__ = True
+
+
+class ExampleTask(Task):
+    "An example Task used to generate default configs"
+
+    class Config(ConfigBase):
+        info: str = "replace ExampleTask with your Task and config"

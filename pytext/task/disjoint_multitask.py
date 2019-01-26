@@ -20,6 +20,7 @@ from pytext.metric_reporters.disjoint_multitask_metric_reporter import (
 )
 from pytext.models.disjoint_multitask_model import DisjointMultitaskModel
 from pytext.optimizer.scheduler import Scheduler
+from pytext.task.task import ExampleTask
 from pytext.utils import cuda_utils
 
 from . import Task, TaskBase
@@ -36,6 +37,15 @@ class DisjointMultitask(TaskBase):
         target_task_name: Optional[str] = None  # for selecting best epoch
         data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
         metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(
+            tasks={
+                "first_task_name": ExampleTask.Config(),
+                "second_task_name": ExampleTask.Config(),
+            }
+        )
 
     @classmethod
     def from_config(cls, task_config, metadata=None, model_state=None):
