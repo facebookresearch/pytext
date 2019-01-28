@@ -192,18 +192,22 @@ class SeqNNTask(Task):
 
 class ContextualIntentSlotTask(Task):
     class Config(Task.Config):
+        labels: ContextualIntentSlot.TargetConfig
         features: ContextualIntentSlot.ModelInputConfig = (
             ContextualIntentSlot.ModelInputConfig()
         )
         model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: ContextualIntentSlot.TargetConfig
         data_handler: ContextualIntentSlotModelDataHandler.Config = (
             ContextualIntentSlotModelDataHandler.Config()
         )
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
         )
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
 class SemanticParsingTask(Task):
