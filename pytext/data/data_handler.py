@@ -6,7 +6,7 @@ import math
 import multiprocessing
 import os
 from copy import deepcopy
-from typing import Any, Dict, List, MutableMapping, Set, Tuple, Type, Union
+from typing import Any, Dict, List, MutableMapping, Optional, Set, Tuple, Type, Union
 
 import torch
 from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
@@ -641,12 +641,16 @@ class DataHandler(Component):
             is_train=False,
         )
 
-    def get_predict_iter(self, data: List[Dict[str, Any]]):
+    def get_predict_iter(
+        self, data: List[Dict[str, Any]], batch_size: Optional[int] = None
+    ):
         ds = self.gen_dataset(data, include_label_fields=False)
+        if batch_size is None:
+            batch_size = len(ds)
         it = BatchIterator(
             textdata.Iterator(
                 ds,
-                batch_size=len(ds),
+                batch_size=batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
                 else "cpu",
@@ -654,14 +658,18 @@ class DataHandler(Component):
                 repeat=False,
                 train=False,
                 sort_key=self.sort_key,
+                sort_within_batch=self.sort_within_batch,
             ),
             self._postprocess_batch,
             include_target=False,
             is_train=False,
         )
-        for input, _, context in it:
-            # only return the first batch since there is only one
-            return input, context
+        if batch_size is not None:
+            return it
+        else:
+            for input, _, context in it:
+                # only return the first batch since there is only one
+                return input, context
 
     def read_from_file(
         self,
