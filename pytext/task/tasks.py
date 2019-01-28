@@ -121,9 +121,9 @@ class WordTaggingTask(Task):
 
 class JointTextTask(Task):
     class Config(Task.Config):
+        labels: List[TargetConfigBase]
         model: JointModel.Config = JointModel.Config()
         trainer: Trainer.Config = Trainer.Config()
-        labels: List[TargetConfigBase]
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
@@ -144,6 +144,10 @@ class JointTextTask(Task):
             ),
         ):
             yield {"intent": intent, "slot": slot}
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
 class LMTask(Task):
