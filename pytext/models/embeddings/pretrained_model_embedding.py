@@ -17,9 +17,11 @@ class PretrainedModelEmbedding(EmbeddingBase):
         return cls(config.embed_dim)
 
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
-        if embedding.shape[2] != self.embedding_dim:
+        if embedding.shape[1] % self.embedding_dim != 0:
             raise ValueError(
-                f"Expected {self.embedding_dim} as dimension for pretrained "
-                + f"model embedding but got {embedding.shape[2]}."
+                f"Input embedding_dim {embedding.shape[1]} is not a"
+                + f" multiple of specified embedding_dim {self.embedding_dim}"
             )
-        return embedding
+        num_tokens = embedding.shape[1] // self.embedding_dim
+        unflattened_embedding = embedding.view(-1, num_tokens, self.embedding_dim)
+        return unflattened_embedding
