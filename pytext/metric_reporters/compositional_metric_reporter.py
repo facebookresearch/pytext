@@ -26,6 +26,7 @@ from .metric_reporter import MetricReporter
 
 
 PRED_TARGET_TREES = "pred_target_trees"
+ALL_PRED_TREES = "all_pred_trees"
 
 
 class CompositionalFileChannel(FileChannel):
@@ -58,6 +59,40 @@ class CompositionalMetricReporter(MetricReporter):
         )
 
     def gen_extra_context(self):
+
+        # check if all_preds contains top K results or only 1 result
+        try:
+            top_k_exists = self.all_preds[0][0][0][0]
+            if top_k_exists:
+                batchSize = len(self.all_preds)
+                pred_target_trees = []
+                all_pred_trees: List[List[Tree]] = [[]] * batchSize
+
+                i = -1
+                for top_k_action_preds, action_targets, token_str_list in zip(
+                    self.all_preds,
+                    self.all_targets,
+                    self.all_context[DatasetFieldName.TOKENS],
+                ):
+                    i += 1
+                    for k, action_preds in enumerate(top_k_action_preds):
+                        action_preds = action_preds[0]
+                        pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                            token_str_list, self.actions_vocab, action_preds
+                        )
+                        all_pred_trees[i].append(pred_tree)
+                        if k == 0:
+                            target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                                token_str_list, self.actions_vocab, action_targets
+                            )
+                            pred_target_trees.append((pred_tree, target_tree))
+                self.all_context[PRED_TARGET_TREES] = pred_target_trees
+                self.all_context[ALL_PRED_TREES] = all_pred_trees
+
+        except TypeError:
+            self.gen_single_extra_context()
+
+    def gen_single_extra_context(self):
         pred_target_trees = []
         for action_preds, action_targets, token_str_list in zip(
             self.all_preds, self.all_targets, self.all_context[DatasetFieldName.TOKENS]
@@ -71,17 +106,42 @@ class CompositionalMetricReporter(MetricReporter):
             pred_target_trees.append((pred_tree, target_tree))
         self.all_context[PRED_TARGET_TREES] = pred_target_trees
 
+    # CREATE NODES
     def calculate_metric(self):
-        return compute_all_metrics(
-            [
-                FramePredictionPair(
-                    CompositionalMetricReporter.tree_to_metric_node(pred_tree),
-                    CompositionalMetricReporter.tree_to_metric_node(target_tree),
+
+        # to support top k predictions
+        try:
+            top_k_exists = self.all_preds[0][0][0][0]
+
+            # convert to frames
+            if top_k_exists:
+                batch_size = len(self.all_preds)
+                all_predicted_frames: List[List[Node]] = [[]] * batch_size
+
+                for i, top_k_preds in enumerate(self.all_context[ALL_PRED_TREES]):
+                    for pred_tree in top_k_preds:
+                        all_predicted_frames[i].append(
+                            CompositionalMetricReporter.tree_to_metric_node(pred_tree)
+                        )
+                return compute_all_metrics(
+                    self.create_frame_prediction_pairs(),
+                    overall_metrics=True,
+                    all_predicted_frames=all_predicted_frames,
                 )
-                for pred_tree, target_tree in self.all_context[PRED_TARGET_TREES]
-            ],
-            overall_metrics=True,
-        )
+
+        except TypeError:
+            return compute_all_metrics(
+                self.create_frame_prediction_pairs(), overall_metrics=True
+            )
+
+    def create_frame_prediction_pairs(self):
+        return [
+            FramePredictionPair(
+                CompositionalMetricReporter.tree_to_metric_node(pred_tree),
+                CompositionalMetricReporter.tree_to_metric_node(target_tree),
+            )
+            for pred_tree, target_tree in self.all_context[PRED_TARGET_TREES]
+        ]
 
     def get_model_select_metric(self, metrics):
         return metrics.frame_accuracy
@@ -92,6 +152,7 @@ class CompositionalMetricReporter(MetricReporter):
     ):
         builder = TreeBuilder()
         i = 0
+
         for action_idx in actions_indices:
             action = actions_vocab[action_idx]
             if action == REDUCE:

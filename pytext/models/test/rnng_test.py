@@ -6,6 +6,7 @@ from collections import Counter
 
 import torch
 import torch.nn as nn
+from pytext.common.constants import Stage
 from pytext.config.module_config import PoolingType
 from pytext.models.embeddings import DictEmbedding, EmbeddingList, WordEmbedding
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
@@ -82,6 +83,8 @@ class RNNGParserTest(unittest.TestCase):
             lstm_dim=20,
             max_open_NT=10,
             dropout=0.2,
+            beam_size=3,
+            top_k=3,
             actions_vocab=actions_vocab,
             shift_idx=4,
             reduce_idx=3,
@@ -201,7 +204,7 @@ class RNNGParserTest(unittest.TestCase):
         self.check_valid_actions(state, [self.parser.shift_idx])
 
     def test_forward_shapes(self):
-        self.parser.eval()
+        self.parser.eval(Stage.EVAL)
         tokens = torch.tensor([[0, 1, 2, 3]])
         seq_lens = torch.tensor([tokens.shape[1]])
         dict_feat = (
@@ -217,9 +220,9 @@ class RNNGParserTest(unittest.TestCase):
         self.assertEqual(actions.shape[0:2], scores.shape[0:2])
         self.assertEqual(scores.shape[2], len(self.parser.actions_vocab.itos))
 
-        results = self.parser(
-            tokens=tokens, seq_lens=seq_lens, dict_feat=dict_feat, beam_size=3, topk=3
-        )
+        # Beam Search Test
+        self.parser.eval(Stage.TEST)
+        results = self.parser(tokens=tokens, seq_lens=seq_lens, dict_feat=dict_feat)
         self.assertEqual(len(results), 3)
         for actions, scores in results:
             self.assertGreater(actions.shape[1], tokens.shape[1])
