@@ -343,6 +343,27 @@ class AllConfusions:
         )
 
 
+class PairwiseRankingMetrics(NamedTuple):
+    """
+    Metric class for pairwise ranking
+
+    Attributes:
+        count (int): number of samples
+        accuracy (float): how many times did we rank in the correct order
+        average_score_difference (float): average score(higherRank) - score(lowerRank)
+
+    """
+
+    num_examples: int
+    accuracy: float
+    average_score_difference: float
+
+    def print_metrics(self) -> None:
+        print(f"RankingAccuracy: {self.accuracy * 100:.2f}")
+        print(f"AvgScoreDiff: {self.average_score_difference}")
+        print(f"NumExamples: {self.num_examples}")
+
+
 def safe_division(n: Union[int, float], d: int) -> float:
     return float(n) / d if d else 0.0
 
@@ -583,4 +604,24 @@ def compute_classification_metrics(
         mcc=mcc,
         roc_auc=roc_auc,
         loss=loss,
+    )
+
+
+def compute_pairwise_ranking_metrics(
+    predictions: Sequence[int], scores: Sequence[float]
+):
+    """
+    Computes metrics for pairwise ranking given sequences of predictions and scores
+
+    Args:
+        predictions : 1 if ranking was correct, 0 if ranking was incorrect
+        scores : score(higher-ranked-sample) - score(lower-ranked-sample)
+
+    Returns:
+        PairwiseRankingMetrics object
+    """
+    return PairwiseRankingMetrics(
+        num_examples=len(predictions),
+        accuracy=safe_division(sum(predictions), len(predictions)),
+        average_score_difference=safe_division(sum(scores), len(predictions)),
     )

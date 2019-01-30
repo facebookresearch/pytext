@@ -3,6 +3,7 @@
 
 from .doc_classification_output_layer import ClassificationOutputLayer
 from .output_layer_base import OutputLayerBase
+from .pairwise_ranking_output_layer import PairwiseRankingOutputLayer
 from .utils import OutputLayerUtils
 from .word_tagging_output_layer import CRFOutputLayer, WordTaggingOutputLayer
 
@@ -12,5 +13,6 @@ __all__ = [
     "CRFOutputLayer",
     "ClassificationOutputLayer",
     "WordTaggingOutputLayer",
+    "PairwiseRankingOutputLayer",
     "OutputLayerUtils",
 ]

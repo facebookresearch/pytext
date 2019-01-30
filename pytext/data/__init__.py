@@ -11,6 +11,9 @@ from .joint_data_handler import JointModelDataHandler
 from .kd_doc_classification_data_handler import KDDocClassificationDataHandler
 from .language_model_data_handler import LanguageModelDataHandler
 from .pair_classification_data_handler import PairClassificationDataHandler
+from .query_document_pairwise_ranking_data_handler import (
+    QueryDocumentPairwiseRankingDataHandler,
+)
 from .seq_data_handler import SeqModelDataHandler
 
 
@@ -29,4 +32,5 @@ __all__ = [
     "RawData",
     "DisjointMultitaskDataHandler",
     "KDDocClassificationDataHandler",
+    "QueryDocumentPairwiseRankingDataHandler",
 ]
