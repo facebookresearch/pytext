@@ -8,6 +8,7 @@ from pytext.config import (
     doc_classification as DocClassification,
     kd_doc_classification as KDDocClassification,
     pair_classification as PairClassification,
+    query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
 )
 from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
 from pytext.data import (
@@ -19,6 +20,7 @@ from pytext.data import (
     KDDocClassificationDataHandler,
     LanguageModelDataHandler,
     PairClassificationDataHandler,
+    QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
 from pytext.metric_reporters import (
@@ -26,6 +28,7 @@ from pytext.metric_reporters import (
     CompositionalMetricReporter,
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
+    PairwiseRankingMetricReporter,
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel
@@ -33,12 +36,33 @@ from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsembl
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.pair_classification_model import PairClassificationModel
+from pytext.models.query_document_pairwise_ranking_model import (
+    QueryDocumentPairwiseRankingModel,
+)
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
+
+
+class QueryDocumentPairwiseRankingTask(Task):
+    class Config(Task.Config):
+        features: QueryDocumentPairwiseRanking.ModelInputConfig = (
+            QueryDocumentPairwiseRanking.ModelInputConfig()
+        )
+        model: QueryDocumentPairwiseRankingModel.Config = (
+            QueryDocumentPairwiseRankingModel.Config()
+        )
+        data_handler: QueryDocumentPairwiseRankingDataHandler.Config = (
+            QueryDocumentPairwiseRankingDataHandler.Config()
+        )
+        trainer: Trainer.Config = Trainer.Config()
+        labels: Optional[DocLabelConfig] = None
+        metric_reporter: PairwiseRankingMetricReporter.Config = (
+            PairwiseRankingMetricReporter.Config()
+        )
 
 
 # TODO better to have separate Task for different ensemble model

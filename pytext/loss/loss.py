@@ -341,3 +341,28 @@ class SoftHardBCELoss(Loss):
                 logits, one_hot_targets, reduction="mean" if reduce else "none"
             )
         return self.t * self.t * prob_loss(logits, targets, reduce=reduce) + hard_loss
+
+
+class PairwiseRankingLoss(Loss):
+    """
+    Given embeddings for a query, positive response and negative response
+    computes pairwise ranking hinge loss
+    """
+
+    class Config(ConfigBase):
+        margin: float = 1.0
+
+    @staticmethod
+    def get_similarities(embeddings):
+        pos_embed, neg_embed, query_embed = embeddings
+        pos_similarity = F.cosine_similarity(query_embed, pos_embed)
+        neg_similarity = F.cosine_similarity(query_embed, neg_embed)
+        return pos_similarity, neg_similarity, query_embed.size(0)
+
+    def __call__(self, logits, targets, reduce=True):
+        pos_similarity, neg_similarity, batch_size = self.get_similarities(logits)
+        targets_local = FloatTensor(batch_size)
+        targets_local.fill_(1)  # 1: pos_similarity should be higher than neg_similarity
+        return F.margin_ranking_loss(
+            pos_similarity, neg_similarity, targets_local, self.config.margin
+        )
