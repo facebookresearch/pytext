@@ -9,6 +9,7 @@ import pytext.utils.cuda_utils as cuda_utils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.data import CommonMetadata
@@ -87,12 +88,16 @@ class RNNGParser(Model, Component):
             ignore_loss_for_unsupported: bool = False
             no_slots_inside_unsupported: bool = True
 
-        version: int = 0
+        # version 0 - initial implementation
+        # version 1 - beam search
+        version: int = 1
         lstm: BiLSTM.Config = BiLSTM.Config()
         ablation: AblationParams = AblationParams()
         constraints: RNNGConstraints = RNNGConstraints()
         max_open_NT: int = 10
         dropout: float = 0.1
+        beam_size: int = 1
+        top_k: int = 1
         compositional_type: CompositionalType = CompositionalType.BLSTM
 
     @classmethod
@@ -119,6 +124,8 @@ class RNNGParser(Model, Component):
             lstm_dim=model_config.lstm.lstm_dim,
             max_open_NT=model_config.max_open_NT,
             dropout=model_config.dropout,
+            beam_size=model_config.beam_size,
+            top_k=model_config.top_k,
             actions_vocab=metadata.actions_vocab,
             shift_idx=metadata.shift_idx,
             reduce_idx=metadata.reduce_idx,
@@ -138,6 +145,8 @@ class RNNGParser(Model, Component):
         lstm_dim: int,
         max_open_NT: int,
         dropout: float,
+        beam_size: int,
+        top_k: int,
         actions_vocab,
         shift_idx: int,
         reduce_idx: int,
@@ -165,6 +174,10 @@ class RNNGParser(Model, Component):
             After that, the only valid actions are SHIFT and REDUCE
         dropout : float
             dropout parameter
+        beam_size : int
+            beam size for beam search; run only during inference
+        top_k : int
+            top k results from beam search
         actions_vocab : Vocab (right now torchtext.vocab.Vocab)
             dictionary of actions
         shift_idx : int
@@ -224,6 +237,9 @@ class RNNGParser(Model, Component):
         self.valid_IN_idxs = valid_IN_idxs
         self.valid_SL_idxs = valid_SL_idxs
 
+        self.beam_size = beam_size
+        self.top_k = top_k
+
         num_actions = len(actions_vocab)
         lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
         if lstm_count == 0:
@@ -264,8 +280,6 @@ class RNNGParser(Model, Component):
         seq_lens: torch.Tensor,
         dict_feat: Optional[Tuple[torch.Tensor, ...]] = None,
         actions: Optional[List[List[int]]] = None,
-        beam_size: int = 1,
-        topk: int = 1,
     ):
         """RNNG forward function.
 
@@ -276,13 +290,9 @@ class RNNGParser(Model, Component):
                 features for each token
             actions (Optional[List[List[int]]]): Used only during training.
                 Oracle actions for the instances.
-            beam_size (int): Beam size; used only during inference
-            topk (int) : Number of top results from the method.
-                If beam_size is 1 this is 1.
-
 
         Returns:
-            if topk == 1
+            if top_k == 1
                 tuple of list of predicted actions and list of corresponding scores
             else
                 list of tuple of list of predicted actions and list of \
@@ -290,8 +300,14 @@ class RNNGParser(Model, Component):
 
 
         """
+        beam_size = self.beam_size
+        top_k = self.top_k
+
+        if self.stage != Stage.TEST:
+            beam_size = 1
+            top_k = 1
+
         if self.training:
-            assert beam_size == 1, "beam_size must be 1 during training"
             assert actions is not None, "actions must be provided for training"
             actions_idx_rev = list(reversed(actions[0]))
         else:
@@ -429,7 +445,7 @@ class RNNGParser(Model, Component):
         )
 
         # Add batch dimension before returning.
-        if topk <= 1:
+        if top_k <= 1:
             state = min(beam)
             return (
                 torch.LongTensor(state.predicted_actions_idx).unsqueeze(0),
@@ -441,7 +457,7 @@ class RNNGParser(Model, Component):
                     torch.LongTensor(state.predicted_actions_idx).unsqueeze(0),
                     torch.cat(state.action_scores).unsqueeze(0),
                 )
-                for state in sorted(beam)[:topk]
+                for state in sorted(beam)[:top_k]
             ]
 
     def init_lstm(self) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -600,9 +616,18 @@ class RNNGParser(Model, Component):
             target_actions: (1, sequence_length)
         """
 
-        # Get rid of the batch dimension
-        action_scores = logits[1].squeeze(0)
-        target_actions = target_actions.squeeze(0)
+        # Supports beam search to check if there are top K predictions
+        # (there will be an extra dimension)
+        try:
+            top_k_exists = logits[0][0][0][0]
+            if top_k_exists:
+                action_scores = logits[0][1].squeeze(0)
+                target_actions = target_actions[0].squeeze(0)
+
+        except (TypeError, IndexError):
+            # Get rid of the batch dimension
+            action_scores = logits[1].squeeze(0)
+            target_actions = target_actions.squeeze(0)
 
         action_scores_list = torch.chunk(action_scores, action_scores.size()[0])
         target_vars = [
@@ -615,7 +640,7 @@ class RNNGParser(Model, Component):
         total_loss = torch.sum(torch.cat(losses)) if len(losses) > 0 else None
         return total_loss
 
-    def get_pred(self, logits: Tuple[torch.Tensor, torch.Tensor], *args):
+    def get_single_pred(self, logits: Tuple[torch.Tensor, torch.Tensor], *args):
         predicted_action_idx, predicted_action_scores = logits
         predicted_scores = [
             np.exp(np.max(action_scores)).item() / np.sum(np.exp(action_scores)).item()
@@ -623,6 +648,23 @@ class RNNGParser(Model, Component):
         ]
 
         return predicted_action_idx.tolist(), [predicted_scores]
+
+    # Supports beam search by checking if top K exists return type
+    def get_pred(self, logits: Tuple[torch.Tensor, torch.Tensor], *args):
+        try:
+            top_k_exists = logits[0][0][0][0]
+            if top_k_exists:
+                all_action_idx: List[List[int]] = [[] for _ in range(0, len(logits))]
+                all_scores: List[List[float]] = [[] for _ in range(0, len(logits))]
+                for i, l in enumerate(logits):  # there are two
+                    action_idx, scores = self.get_single_pred(l, *args)
+                    all_action_idx[i].extend(action_idx)
+                    all_scores[i].extend(scores)
+
+                return [all_action_idx], all_scores
+
+        except (TypeError, IndexError):
+            return self.get_single_pred(logits, *args)
 
     def save_modules(self, *args, **kwargs):
         pass

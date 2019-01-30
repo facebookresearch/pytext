@@ -161,6 +161,7 @@ class AllMetrics(NamedTuple):
 
     top_intent_accuracy: Optional[float]
     frame_accuracy: Optional[float]
+    frame_accuracy_top_k: Optional[float]
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
@@ -169,6 +170,8 @@ class AllMetrics(NamedTuple):
     def print_metrics(self) -> None:
         if self.frame_accuracy:
             print(f"\n\nFrame accuracy = {self.frame_accuracy * 100:.2f}")
+        if self.frame_accuracy_top_k:
+            print(f"\n\nTop k frame accuracy = {self.frame_accuracy_top_k * 100:.2f}")
         if self.bracket_metrics:
             print("\n\nBracket Metrics")
             self.bracket_metrics.print_metrics()
@@ -389,6 +392,20 @@ def compute_frame_accuracy(frame_pairs: Sequence[FramePredictionPair]) -> float:
     return safe_division(num_correct, num_samples)
 
 
+def compute_frame_accuracy_top_k(
+    frame_pairs: List[FramePredictionPair], all_frames: List[List[Node]]
+) -> Tuple[float, int]:
+    num_samples = len(frame_pairs)
+    num_correct = 0
+    for i, top_k_predicted_frames in enumerate(all_frames):
+        _, expected_frame = frame_pairs[i]
+        for predicted_frame in top_k_predicted_frames:
+            if predicted_frame == expected_frame:
+                num_correct += 1
+                break
+    return safe_division(num_correct, num_samples)
+
+
 def compute_frame_accuracies_by_depth(
     frame_pairs: Sequence[FramePredictionPair]
 ) -> FrameAccuraciesByDepth:
@@ -424,6 +441,7 @@ def compute_all_metrics(
     bracket_metrics: bool = True,
     tree_metrics: bool = True,
     overall_metrics: bool = False,
+    all_predicted_frames: List[List[Node]] = None,
 ) -> AllMetrics:
     """
     Given a list of predicted and gold intent frames, computes intent-slot related
@@ -445,6 +463,12 @@ def compute_all_metrics(
     Returns:
         AllMetrics which contains intent-slot related metrics.
     """
+    frame_accuracy_top_k = 0
+    if all_predicted_frames:
+        frame_accuracy_top_k = compute_frame_accuracy_top_k(
+            frame_pairs, all_predicted_frames
+        )
+
     top_intent = (
         compute_top_intent_accuracy(frame_pairs) if top_intent_accuracy else None
     )
@@ -469,4 +493,6 @@ def compute_all_metrics(
         else None
     )
 
-    return AllMetrics(top_intent, accuracy, accuracies, bracket, tree)
+    return AllMetrics(
+        top_intent, accuracy, frame_accuracy_top_k, accuracies, bracket, tree
+    )
