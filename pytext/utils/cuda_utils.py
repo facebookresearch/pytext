@@ -36,6 +36,13 @@ def FloatTensor(*args):
         return torch.FloatTensor(*args)
 
 
+def LongTensor(*args):
+    if CUDA_ENABLED:
+        return torch.cuda.LongTensor(*args)
+    else:
+        return torch.LongTensor(*args)
+
+
 def GetTensor(tensor):
     if CUDA_ENABLED:
         return tensor.cuda()

@@ -398,7 +398,9 @@ class RNNGParser(Model, Component):
                 log_probs = F.log_softmax(action_p, dim=1)[0]
 
                 for action in self.valid_actions(state):
-                    plans.append((state.neg_prob - log_probs[action], state, action))
+                    plans.append(
+                        (state.neg_prob - log_probs[action].item(), state, action)
+                    )
 
             beam = []
             # Take actions to regenerate the beam
@@ -448,13 +450,13 @@ class RNNGParser(Model, Component):
         if top_k <= 1:
             state = min(beam)
             return (
-                torch.LongTensor(state.predicted_actions_idx).unsqueeze(0),
+                cuda_utils.LongTensor(state.predicted_actions_idx).unsqueeze(0),
                 torch.cat(state.action_scores).unsqueeze(0),
             )
         else:
             return [
                 (
-                    torch.LongTensor(state.predicted_actions_idx).unsqueeze(0),
+                    cuda_utils.LongTensor(state.predicted_actions_idx).unsqueeze(0),
                     torch.cat(state.action_scores).unsqueeze(0),
                 )
                 for state in sorted(beam)[:top_k]
@@ -463,8 +465,8 @@ class RNNGParser(Model, Component):
     def init_lstm(self) -> Tuple[torch.Tensor, torch.Tensor]:
         # Batch size fixed to 1
         return (
-            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
-            torch.zeros(self.lstm_num_layers, 1, self.lstm_dim),
+            cuda_utils.FloatTensor(self.lstm_num_layers, 1, self.lstm_dim).fill_(0),
+            cuda_utils.FloatTensor(self.lstm_num_layers, 1, self.lstm_dim).fill_(0),
         )
 
     def valid_actions(self, state: ParserState) -> List[int]:
@@ -630,9 +632,7 @@ class RNNGParser(Model, Component):
             target_actions = target_actions.squeeze(0)
 
         action_scores_list = torch.chunk(action_scores, action_scores.size()[0])
-        target_vars = [
-            cuda_utils.Variable(torch.LongTensor([t])) for t in target_actions
-        ]
+        target_vars = torch.chunk(target_actions, target_actions.size()[0])
         losses = [
             self.loss_func(action, target).view(1)
             for action, target in zip(action_scores_list, target_vars)

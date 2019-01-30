@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Any, List, Tuple
+from typing import Any, Tuple
 
 import torch
 import torch.multiprocessing as mp
 from pytext.common.constants import Stage
 from pytext.config import PyTextConfig
-from pytext.config.component import create_trainer
 from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import Model
 from pytext.trainers.trainer import Trainer
+from pytext.utils import cuda_utils
 from torchtext.data import Iterator
 
 
@@ -21,6 +21,9 @@ class HogwildTrainer(Trainer):
 
     @classmethod
     def from_config(cls, config: Config, *args, **kwargs):
+        # can't run hogwild on cuda
+        if cuda_utils.CUDA_ENABLED or config.num_workers == 1:
+            return Trainer(config.real_trainer, *args, **kwargs)
         return cls(config.real_trainer, config.num_workers, *args, **kwargs)
 
     def __init__(self, real_trainer_config, num_workers, *args, **kwargs):
