@@ -13,6 +13,7 @@ class DatasetFieldName:
     DICT_FIELD = "dict_feat"
     RAW_DICT_FIELD = "sparsefeat"
     CHAR_FIELD = "char_feat"
+    DENSE_FIELD = "dense_feat"
     PRETRAINED_MODEL_EMBEDDING = "pretrained_model_embedding"
     DOC_WEIGHT_FIELD = "doc_weight"
     WORD_WEIGHT_FIELD = "word_weight"
