@@ -14,8 +14,10 @@ class Element:
     Used to compute valid actions in the RNNG parser.
     """
 
-    def __init__(self, node: Any) -> None:
+    def __init__(self, node, has_child_intent=False, has_child_slot=False) -> None:
         self.node = node
+        self.has_child_intent = has_child_intent
+        self.has_child_slot = has_child_slot
 
     def __eq__(self, other) -> bool:
         return self.node == other.node
