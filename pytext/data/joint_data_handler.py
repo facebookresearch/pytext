@@ -17,6 +17,7 @@ from pytext.fields import (
     DocLabelField,
     Field,
     FloatField,
+    FloatVectorField,
     PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
@@ -58,6 +59,7 @@ class JointModelDataHandler(DataHandler):
                 DatasetFieldName.TEXT_FIELD: TextFeatureField,
                 DatasetFieldName.DICT_FIELD: DictFeatureField,
                 DatasetFieldName.CHAR_FIELD: CharFeatureField,
+                DatasetFieldName.DENSE_FIELD: FloatVectorField,
                 DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
             },
         )
@@ -124,6 +126,7 @@ class JointModelDataHandler(DataHandler):
             DatasetFieldName.WORD_WEIGHT_FIELD: row_data.get(DFColumn.WORD_WEIGHT)
             or 1.0,
             DatasetFieldName.UTTERANCE_FIELD: row_data.get(DFColumn.UTTERANCE),
+            DatasetFieldName.DENSE_FIELD: row_data.get(DatasetFieldName.DENSE_FIELD),
             DatasetFieldName.TOKEN_RANGE: features.token_ranges,
         }
         if DatasetFieldName.DOC_LABEL_FIELD in self.labels:
@@ -141,15 +144,19 @@ class JointModelDataHandler(DataHandler):
     def _train_input_from_batch(self, batch):
         text_input = getattr(batch, DatasetFieldName.TEXT_FIELD)
         # text_input[1] is the length of each word
-        return (
-            (text_input[0],)
-            + tuple(
+        train_input = (
+            [text_input[0]]
+            + [
                 getattr(batch, name, None)
                 for name in self.features
-                if name != DatasetFieldName.TEXT_FIELD
-            )
-            + (text_input[1],)
+                if name
+                not in {DatasetFieldName.TEXT_FIELD, DatasetFieldName.DENSE_FIELD}
+            ]
+            + [text_input[1]]
         )
+        if DatasetFieldName.DENSE_FIELD in self.features:
+            train_input.append(getattr(batch, DatasetFieldName.DENSE_FIELD))
+        return tuple(train_input)
 
     def _context_from_batch(self, batch):
         # text_input[1] is the length of each word

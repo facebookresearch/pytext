@@ -65,6 +65,7 @@ class FeatureConfig(ModuleConfig):  # type: ignore
     seq_word_feat: Optional[WordFeatConfig] = None
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
+    dense_feat: Optional[FloatVectorConfig] = None
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
 
 
