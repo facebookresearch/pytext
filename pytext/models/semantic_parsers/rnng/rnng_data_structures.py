@@ -199,6 +199,7 @@ class ParserState:
         self.num_open_NT = 0
         self.is_open_NT: List[bool] = []
         self.found_unsupported = False
+        self.action_p = torch.Tensor()
 
         # negative cumulative log prob so sort(states) is in descending order
         self.neg_prob = 0
@@ -217,6 +218,9 @@ class ParserState:
         other.is_open_NT = self.is_open_NT.copy()
         other.neg_prob = self.neg_prob
         other.found_unsupported = self.found_unsupported
+
+        # detach to avoid making copies, only called in inference to share data
+        other.action_p = self.action_p.detach()
         return other
 
     def __gt__(self, other):

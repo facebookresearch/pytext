@@ -393,9 +393,9 @@ class RNNGParser(Model, Component):
                 if self.ablation_use_last_open_NT_feature:
                     summaries.append(last_open_NT_feature)
 
-                action_p = self.action_linear(torch.cat(summaries, dim=1))
+                state.action_p = self.action_linear(torch.cat(summaries, dim=1))
 
-                log_probs = F.log_softmax(action_p, dim=1)[0]
+                log_probs = F.log_softmax(state.action_p, dim=1)[0]
 
                 for action in self.valid_actions(state):
                     plans.append(
@@ -430,7 +430,7 @@ class RNNGParser(Model, Component):
                 ):
                     pass
                 else:
-                    state.action_scores.append(action_p)
+                    state.action_scores.append(state.action_p)
 
                 self.push_action(state, target_action_idx)
 
