@@ -105,3 +105,13 @@ class BoundaryPool(Module):
             return torch.cat((inputs[:, 0, :], inputs[:, max_len - 1, :]), dim=1)
         else:
             raise Exception("Unknown configuration type {}".format(self.boundary_type))
+
+
+class LastTimestepPool(Module):
+    def __init__(self, config: Module.Config, n_input: int) -> None:
+        super().__init__(config)
+
+    def forward(self, inputs: torch.Tensor, seq_lengths: torch.Tensor) -> torch.Tensor:
+        bsz, _, dim = inputs.shape
+        idx = seq_lengths.unsqueeze(1).expand(bsz, dim).unsqueeze(1)
+        return inputs.gather(1, idx - 1).squeeze(1)

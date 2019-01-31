@@ -8,7 +8,7 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 
-from .pooling import MaxPool, MeanPool, NoPool, SelfAttention
+from .pooling import LastTimestepPool, MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
 
 
@@ -47,7 +47,11 @@ class BiLSTMDocAttention(RepresentationBase):
         dropout: float = 0.4
         lstm: BiLSTM.Config = BiLSTM.Config()
         pooling: Union[
-            SelfAttention.Config, MaxPool.Config, MeanPool.Config, NoPool.Config
+            SelfAttention.Config,
+            MaxPool.Config,
+            MeanPool.Config,
+            NoPool.Config,
+            LastTimestepPool.Config,
         ] = SelfAttention.Config()
         mlp_decoder: Optional[MLPDecoder.Config] = None
 
