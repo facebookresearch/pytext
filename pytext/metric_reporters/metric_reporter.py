@@ -119,7 +119,7 @@ class MetricReporter(Component):
         """
         Calculate the average loss for all aggregated batch
         """
-        return sum(self.all_loss) / float(len(self.all_loss))
+        return sum(self.all_loss) / float(max(1, len(self.all_loss)))
 
     def calculate_metric(self):
         """
