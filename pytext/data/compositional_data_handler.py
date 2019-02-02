@@ -20,6 +20,7 @@ from pytext.fields import (
     ActionField,
     DictFeatureField,
     Field,
+    PretrainedModelEmbeddingField,
     RawField,
     TextFeatureFieldWithSpecialUnk,
 )
@@ -47,6 +48,7 @@ class CompositionalDataHandler(DataHandler):
         DatasetFieldName.TEXT_FIELD,
         DatasetFieldName.DICT_FIELD,
         ACTION_FEATURE_FIELD,
+        DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
     ]
 
     @classmethod
@@ -74,6 +76,13 @@ class CompositionalDataHandler(DataHandler):
         # RNNGParser's forward method during training time.
         action_field = ActionField()  # Use the same field for label too.
         features[ACTION_FEATURE_FIELD] = action_field
+
+        if feature_config.pretrained_model_embedding:
+            features[
+                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
+            ] = PretrainedModelEmbeddingField(
+                embed_dim=feature_config.pretrained_model_embedding.embed_dim
+            )
 
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.TOKENS: RawField(),
@@ -146,6 +155,7 @@ class CompositionalDataHandler(DataHandler):
             text_input[1],
             getattr(batch, DatasetFieldName.DICT_FIELD, None),
             None,
+            getattr(batch, DatasetFieldName.PRETRAINED_MODEL_EMBEDDING, None),
         ]
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -189,6 +199,13 @@ class CompositionalDataHandler(DataHandler):
                 )
                 return {}
 
+        pretrained_model_embedding = 0
+        if (
+            features.pretrained_token_embedding
+            and len(features.pretrained_token_embedding) > 0
+        ):
+            pretrained_model_embedding = features.pretrained_token_embedding
+
         return {
             DatasetFieldName.TEXT_FIELD: features.tokens,
             DatasetFieldName.DICT_FIELD: (
@@ -200,4 +217,5 @@ class CompositionalDataHandler(DataHandler):
             ACTION_LABEL_FIELD: copy.deepcopy(actions),
             DatasetFieldName.TOKENS: features.tokens,
             DatasetFieldName.UTTERANCE_FIELD: utterance,
+            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: pretrained_model_embedding,
         }
