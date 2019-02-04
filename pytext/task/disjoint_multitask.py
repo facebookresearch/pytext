@@ -101,6 +101,7 @@ class DisjointMultitask(TaskBase):
 
         optimizer = create_optimizer(task_config.optimizer, model)
         return cls(
+            target_task_name=task_config.target_task_name,
             exporters=exporters,
             trainer=create_trainer(task_config.trainer),
             data_handler=data_handler,
@@ -112,9 +113,10 @@ class DisjointMultitask(TaskBase):
             ),
         )
 
-    def __init__(self, exporters, **kwargs):
+    def __init__(self, target_task_name, exporters, **kwargs):
         super().__init__(exporter=None, **kwargs)
         self.exporters = exporters
+        self.target_task_name = target_task_name
 
     def export(
         self, multitask_model, export_path, summary_writer=None, export_onnx_path=None
@@ -136,10 +138,14 @@ class DisjointMultitask(TaskBase):
             if self.exporters[name]:
                 if summary_writer is not None:
                     self.exporters[name].export_to_tensorboard(model, summary_writer)
-                model_export_path = f"{export_path}-{name}"
-                model_export_onnx_path = (
-                    f"{export_onnx_path}-{name}" if export_onnx_path else None
-                )
+                if name == self.target_task_name:
+                    model_export_path = export_path
+                    model_export_onnx_path = export_onnx_path
+                else:
+                    model_export_path = f"{export_path}-{name}"
+                    model_export_onnx_path = (
+                        f"{export_onnx_path}-{name}" if export_onnx_path else None
+                    )
                 print("Saving caffe2 model to: " + model_export_path)
                 self.exporters[name].export_to_caffe2(
                     model, model_export_path, model_export_onnx_path
