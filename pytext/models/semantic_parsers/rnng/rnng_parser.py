@@ -280,6 +280,7 @@ class RNNGParser(Model, Component):
         seq_lens: torch.Tensor,
         dict_feat: Optional[Tuple[torch.Tensor, ...]] = None,
         actions: Optional[List[List[int]]] = None,
+        contextual_token_embeddings: Optional[torch.Tensor] = None,
     ):
         """RNNG forward function.
 
@@ -315,22 +316,19 @@ class RNNGParser(Model, Component):
 
         beam_size = max(beam_size, 1)
 
-        # Reverse the order of indices along last axis before embedding lookup.
+        # Reverse the order of input tokens.
         tokens_list_rev = torch.flip(tokens, [len(tokens.size()) - 1])
-        dict_feat_rev = None
-        if dict_feat:
-            dict_ids, dict_weights, dict_lengths = dict_feat
-            dict_ids_rev = torch.flip(dict_ids, [len(dict_ids.size()) - 1])
-            dict_weights_rev = torch.flip(dict_weights, [len(dict_weights.size()) - 1])
-            dict_lengths_rev = torch.flip(dict_lengths, [len(dict_lengths.size()) - 1])
-            dict_feat_rev = (dict_ids_rev, dict_weights_rev, dict_lengths_rev)
 
-        embedding_input = (
-            [tokens_list_rev, dict_feat_rev]
-            if dict_feat_rev is not None
-            else [tokens_list_rev]
-        )
+        # Aggregate inputs for embedding module.
+        embedding_input = [tokens]
+        if dict_feat is not None:
+            embedding_input.append(dict_feat)
+        if contextual_token_embeddings is not None:
+            embedding_input.append(contextual_token_embeddings)
+
+        # Embed and reverse the order of tokens.
         token_embeddings = self.embedding(*embedding_input)
+        token_embeddings = torch.flip(token_embeddings, [len(tokens.size()) - 1])
 
         # Batch size is always = 1. So we squeeze the batch_size dimension.
         token_embeddings = token_embeddings.squeeze(0)
