@@ -7,6 +7,7 @@ import sys
 import tempfile
 from importlib import import_module
 from pydoc import locate
+from typing import List, Optional
 
 import click
 import torch
@@ -15,6 +16,7 @@ from pytext.config import PyTextConfig
 from pytext.config.component import register_tasks
 from pytext.config.serialize import config_from_json, config_to_json, parse_config
 from pytext.data.data_handler import CommonMetadata
+from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.task import load
 from pytext.utils.documentation_helper import (
     ROOT_CONFIG,
@@ -29,7 +31,6 @@ from pytext.workflow import (
     test_model_from_snapshot_path,
     train_model,
 )
-from tensorboardX import SummaryWriter
 from torch.multiprocessing.spawn import spawn
 
 
@@ -38,7 +39,7 @@ class Attrs:
         return f"Attrs({', '.join(f'{k}={v}' for k, v in vars(self).items())})"
 
 
-def train_model_distributed(config):
+def train_model_distributed(config, metric_channels: Optional[List[Channel]]):
     assert (
         config.use_cuda_if_available and torch.cuda.is_available()
     ) or config.distributed_world_size == 1, (
@@ -58,7 +59,14 @@ def train_model_distributed(config):
 
     print(f"\n=== Starting training, World size is {config.distributed_world_size}")
     if not config.use_cuda_if_available or not torch.cuda.is_available():
-        run_single(0, config_to_json(PyTextConfig, config), 1, None, None)
+        run_single(
+            rank=0,
+            config_json=config_to_json(PyTextConfig, config),
+            world_size=1,
+            dist_init_method=None,
+            metadata=None,
+            metric_channels=metric_channels,
+        )
     else:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".dist_sync"
@@ -72,6 +80,7 @@ def train_model_distributed(config):
                     config.distributed_world_size,
                     dist_init_method,
                     metadata,
+                    metric_channels,
                 ),
                 config.distributed_world_size,
             )
@@ -81,18 +90,23 @@ def run_single(
     rank: int,
     config_json: str,
     world_size: int,
-    dist_init_method: str,
-    metadata: CommonMetadata,
+    dist_init_method: Optional[str],
+    metadata: Optional[CommonMetadata],
+    metric_channels: Optional[List[Channel]],
 ):
     config = config_from_json(PyTextConfig, config_json)
-    summary_writer = SummaryWriter() if rank != 0 and config.use_tensorboard else None
-    try:
-        train_model(
-            config, dist_init_method, rank, rank, world_size, summary_writer, metadata
-        )
-    finally:
-        if summary_writer is not None:
-            summary_writer.close()
+    if rank != 0:
+        metric_channels = []
+
+    train_model(
+        config=config,
+        dist_init_url=dist_init_method,
+        device_id=rank,
+        rank=rank,
+        world_size=world_size,
+        metric_channels=metric_channels,
+        metadata=metadata,
+    )
 
 
 def gen_config_impl(task_name, options):
@@ -236,7 +250,6 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
     loaded from the snapshot rather than any passed config file.
     Otherwise, a config file will be loaded.
     """
-    summary_writer = SummaryWriter() if use_tensorboard else None
     if model_snapshot:
         print(f"Loading model snapshot and config from {model_snapshot}")
         if use_cuda is None:
@@ -250,13 +263,16 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
         use_cuda = config.use_cuda_if_available
         print(f"Configured model snapshot {model_snapshot}")
     print("\n=== Starting testing...")
+    metric_channels = []
+    if config.use_tensorboard:
+        metric_channels.append(TensorBoardChannel())
     try:
         test_model_from_snapshot_path(
-            model_snapshot, use_cuda, test_path, summary_writer
+            model_snapshot, use_cuda, test_path, metric_channels
         )
     finally:
-        if summary_writer is not None:
-            summary_writer.close()
+        for mc in metric_channels:
+            mc.close()
 
 
 @main.command()
@@ -266,22 +282,24 @@ def train(context):
 
     config = context.obj.load_config()
     print("\n===Starting training...")
-    summary_writer = SummaryWriter() if config.use_tensorboard else None
+    metric_channels = []
+    if config.use_tensorboard:
+        metric_channels.append(TensorBoardChannel())
     try:
         if config.distributed_world_size == 1:
-            train_model(config, summary_writer=summary_writer)
+            train_model(config, metric_channels)
         else:
-            train_model_distributed(config)
+            train_model_distributed(config, metric_channels)
         print("\n=== Starting testing...")
         test_model_from_snapshot_path(
             config.save_snapshot_path,
             config.use_cuda_if_available,
             config.task.data_handler.test_path,
-            summary_writer,
+            metric_channels,
         )
     finally:
-        if summary_writer is not None:
-            summary_writer.close()
+        for mc in metric_channels:
+            mc.close()
 
 
 @main.command()
