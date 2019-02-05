@@ -119,15 +119,14 @@ class DisjointMultitask(TaskBase):
         self.target_task_name = target_task_name
 
     def export(
-        self, multitask_model, export_path, summary_writer=None, export_onnx_path=None
+        self, multitask_model, export_path, metric_channels, export_onnx_path=None
     ):
         """
         Wrapper method to export PyTorch model to Caffe2 model using :class:`~Exporter`.
 
         Args:
             export_path (str): file path of exported caffe2 model
-            summary_writer: TensorBoard SummaryWriter, used to output the PyTorch
-                model's execution graph to TensorBoard, default is None.
+            metric_channels: output the PyTorch model's execution graph to
             export_onnx_path (str):file path of exported onnx model
         """
         # Make sure to put the model on CPU and disable CUDA before exporting to
@@ -136,8 +135,8 @@ class DisjointMultitask(TaskBase):
         for name, model in multitask_model.models.items():
             model = model.cpu()
             if self.exporters[name]:
-                if summary_writer is not None:
-                    self.exporters[name].export_to_tensorboard(model, summary_writer)
+                for mc in metric_channels or []:
+                    self.exporters[name].export_to_metrics(model, mc)
                 if name == self.target_task_name:
                     model_export_path = export_path
                     model_export_onnx_path = export_onnx_path

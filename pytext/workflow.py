@@ -7,10 +7,9 @@ import torch
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import create_exporter
 from pytext.data.data_handler import CommonMetadata
-from pytext.metric_reporters.channel import TensorBoardChannel
+from pytext.metric_reporters.channel import Channel
 from pytext.task import Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
-from tensorboardX import SummaryWriter
 
 from .utils import cuda_utils
 
@@ -62,16 +61,16 @@ def train_model(
     device_id: int = 0,
     rank: int = 0,
     world_size: int = 1,
-    summary_writer: Optional[SummaryWriter] = None,
+    metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Tuple:
     task = prepare_task(
-        config, dist_init_url, device_id, rank, world_size, summary_writer, metadata
+        config, dist_init_url, device_id, rank, world_size, metric_channels, metadata
     )
     trained_model, best_metric = task.train(config, rank, world_size)
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
-        save_and_export(config, task, summary_writer)
+        save_and_export(config, task, metric_channels)
     return trained_model, best_metric
 
 
@@ -81,7 +80,7 @@ def prepare_task(
     device_id: int = 0,
     rank: int = 0,
     world_size: int = 1,
-    summary_writer: Optional[SummaryWriter] = None,
+    metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Task:
 
@@ -96,21 +95,19 @@ def prepare_task(
     else:
         task = create_task(config.task, metadata=metadata)
 
-    if summary_writer:
-        task.metric_reporter.add_channel(
-            TensorBoardChannel(summary_writer=summary_writer)
-        )
+    for mc in metric_channels or []:
+        task.metric_reporter.add_channel(mc)
 
     return task
 
 
 def save_and_export(
-    config: PyTextConfig, task: Task, summary_writer: Optional[SummaryWriter] = None
+    config: PyTextConfig, task: Task, metric_channels: Optional[List[Channel]] = None
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
     save(config, task.model, task.data_handler.metadata_to_save())
     task.export(
-        task.model, config.export_caffe2_path, summary_writer, config.export_onnx_path
+        task.model, config.export_caffe2_path, metric_channels, config.export_onnx_path
     )
 
 
@@ -131,13 +128,13 @@ def export_saved_model_to_caffe2(
 
 
 def test_model(
-    test_config: TestConfig, summary_writer: Optional[SummaryWriter] = None
+    test_config: TestConfig, metric_channels: Optional[List[Channel]]
 ) -> Any:
     return test_model_from_snapshot_path(
         test_config.load_snapshot_path,
         test_config.use_cuda_if_available,
         test_config.test_path,
-        summary_writer,
+        metric_channels,
     )
 
 
@@ -145,16 +142,15 @@ def test_model_from_snapshot_path(
     snapshot_path: str,
     use_cuda_if_available: bool,
     test_path: Optional[str] = None,
-    summary_writer: Optional[SummaryWriter] = None,
+    metric_channels: Optional[List[Channel]] = None,
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
     if not test_path:
         test_path = train_config.task.data_handler.test_path
-    if summary_writer:
-        task.metric_reporter.add_channel(
-            TensorBoardChannel(summary_writer=summary_writer)
-        )
+
+    for mc in metric_channels or []:
+        task.metric_reporter.add_channel(mc)
 
     return (task.test(test_path), train_config.task.metric_reporter.output_path)
 

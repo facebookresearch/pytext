@@ -5,6 +5,7 @@ import json
 from typing import Tuple
 
 from pytext.common.constants import Stage
+from tensorboardX import SummaryWriter
 
 
 class Channel:
@@ -53,6 +54,12 @@ class Channel:
             meta (Dict[str, Any]): global metadata, such as target names
         """
         raise NotImplementedError()
+
+    def close(self):
+        pass
+
+    def export(self, model, input_to_model=None):
+        pass
 
 
 class ConsoleChannel(Channel):
@@ -152,9 +159,9 @@ class TensorBoardChannel(Channel):
             TensorBoard dashboard, defaults to "accuracy"
     """
 
-    def __init__(self, summary_writer, metric_name="accuracy"):
+    def __init__(self, summary_writer=None, metric_name="accuracy"):
         super().__init__()
-        self.summary_writer = summary_writer
+        self.summary_writer = summary_writer or SummaryWriter()
         self.metric_name = metric_name
 
     def report(
@@ -245,3 +252,9 @@ class TensorBoardChannel(Channel):
                 )
             elif hasattr(field_value, "_asdict"):
                 self.add_scalars(f"{prefix}/{field_name}", field_value, epoch)
+
+    def close(self):
+        self.summary_writer.close()
+
+    def export(self, model, input_to_model=None):
+        self.summary_writer.add_graph(model, input_to_model)

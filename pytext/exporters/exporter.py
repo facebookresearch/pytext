@@ -218,13 +218,14 @@ class ModelExporter(Component):
         )
         return final_out_names
 
-    def export_to_tensorboard(self, model, summary_writer):
+    def export_to_metrics(self, model, metric_channels):
         """
         Exports the pytorch model to tensorboard as a graph.
 
         Args:
             model (Model): pytorch model to export
-            summary_writer (SummaryWriter): The TensorBoardX summary writer.
+            metric_channels (List[Channel]): outputs of model's execution graph
         """
-        # TensorBoardX needs an input to infer the shape of the PyTorch model graph
-        summary_writer.add_graph(model, self.dummy_model_input)
+
+        for mc in metric_channels or []:
+            mc.export(model, self.dummy_model_input)
