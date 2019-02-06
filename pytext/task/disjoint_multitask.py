@@ -111,6 +111,7 @@ class DisjointMultitask(TaskBase):
             lr_scheduler=Scheduler(
                 optimizer, task_config.scheduler, metric_reporter.lower_is_better
             ),
+            random_seed=task_config.random_seed,
         )
 
     def __init__(self, target_task_name, exporters, **kwargs):
