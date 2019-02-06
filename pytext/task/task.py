@@ -177,7 +177,7 @@ class TaskBase(Component):
         test_iter = self.data_handler.get_test_iter()
         return self.trainer.test(test_iter, self.model, self.metric_reporter)
 
-    def export(self, model, export_path, metric_channels, export_onnx_path=None):
+    def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
         """
         Wrapper method to export PyTorch model to Caffe2 model using :class:`~Exporter`.
 
@@ -191,8 +191,9 @@ class TaskBase(Component):
         cuda_utils.CUDA_ENABLED = False
         model = model.cpu()
         if self.exporter:
-            print("Exporting metrics")
-            self.exporter.export_to_metrics(model, metric_channels)
+            if metric_channels:
+                print("Exporting metrics")
+                self.exporter.export_to_metrics(model, metric_channels)
             print("Saving caffe2 model to: " + export_path)
             self.exporter.export_to_caffe2(model, export_path, export_onnx_path)
 
