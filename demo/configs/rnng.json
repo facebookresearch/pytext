@@ -43,7 +43,6 @@
         },
         "trainer": {
           "real_trainer": {
-            "random_seed": 0,
             "epochs": 1,
             "early_stop_after": 0,
             "max_clip_norm": null,

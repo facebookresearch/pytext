@@ -10,6 +10,7 @@ from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
+from pytext.utils.python_utils import set_random_seeds
 
 from .utils import cuda_utils
 
@@ -90,6 +91,8 @@ def prepare_task(
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
+    set_random_seeds(config.task.random_seed)
+
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task = load(config.load_snapshot_path)
     else:

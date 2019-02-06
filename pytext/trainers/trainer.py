@@ -30,7 +30,6 @@ class Trainer(TrainerBase):
         2 Test trained model, compute and publish metrics against a blind test set.
 
     Attributes:
-        random_seed (int): Manual random seed
         epochs (int): Training epochs
         early_stop_after (int): Stop after how many epochs when the eval metric
             is not improving
@@ -40,8 +39,6 @@ class Trainer(TrainerBase):
     """
 
     class Config(ConfigBase):
-        # Manual random seed
-        random_seed: int = 0
         # Training epochs
         epochs: int = 10
         # Stop after how many epochs when the eval metric is not improving
