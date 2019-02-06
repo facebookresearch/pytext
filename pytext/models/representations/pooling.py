@@ -112,6 +112,14 @@ class LastTimestepPool(Module):
         super().__init__(config)
 
     def forward(self, inputs: torch.Tensor, seq_lengths: torch.Tensor) -> torch.Tensor:
+        # inputs: (bsz, max_len, dim)
+        # seq_lengths: (bsz,)
+
+        if torch._C._get_tracing_state():
+            # if it is exporting, the batch size = 1, so we return the last hidden state
+            # by returning the last dimension to avoid introducing extra operators
+            assert inputs.shape[0] == 1
+            return inputs[:, -1, :]
         bsz, _, dim = inputs.shape
         idx = seq_lengths.unsqueeze(1).expand(bsz, dim).unsqueeze(1)
         return inputs.gather(1, idx - 1).squeeze(1)
