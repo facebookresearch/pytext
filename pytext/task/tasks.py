@@ -71,10 +71,10 @@ class EnsembleTask(Task):
         model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
         labels: List[TargetConfigBase]
-        data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
         metric_reporter: Union[
             ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
-        ]
+        ] = ClassificationMetricReporter.Config()
+        data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
     def train_single_model(self, train_config, model_id, rank=0, world_size=1):
         assert model_id >= 0 and model_id < len(self.model.models)
@@ -86,6 +86,13 @@ class EnsembleTask(Task):
             train_config,
             self.optimizer,
             self.lr_scheduler,
+        )
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(
+            labels=[DocLabelConfig(), WordLabelConfig()],
+            model=BaggingDocEnsemble.Config(models=[DocModel.Config()]),
         )
 
 
