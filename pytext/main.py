@@ -123,7 +123,8 @@ def gen_config_impl(task_name, options):
         raise Exception(f"Multiple tasks named {task_name}: {task_class_set}")
 
     task_class = next(iter(task_class_set))
-    root = PyTextConfig(task=task_class.Config())
+    task_config = getattr(task_class, "example_config", task_class.Config)
+    root = PyTextConfig(task=task_config())
 
     # Use components listed in options instead of defaults
     for opt in options:
