@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 
 class ConfigBaseMeta(type):
@@ -81,6 +81,8 @@ class PyTextConfig(ConfigBase):
     save_module_checkpoints: bool = False
     # Whether to use TensorBoard
     use_tensorboard: bool = True
+    #: Seed value to seed torch, python, and numpy random generators.
+    random_seed: Optional[int] = None
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done

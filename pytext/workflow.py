@@ -91,7 +91,8 @@ def prepare_task(
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
-    set_random_seeds(config.task.random_seed)
+    if config.random_seed is not None:
+        set_random_seeds(config.random_seed)
 
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task = load(config.load_snapshot_path)
