@@ -26,18 +26,27 @@ class QueryDocumentPairwiseRankingRep(RepresentationBase):
         subrepresentation: Union[
             BiLSTMDocAttention.Config, DocNNRepresentation.Config
         ] = BiLSTMDocAttention.Config()
+        # should the query and the response share representations?
+        shared_representations : bool = True
 
     def __init__(self, config: Config, embed_dim: Tuple[int, ...]) -> None:
         super().__init__(config)
         num_subrepresentations = 2
         assert len(embed_dim) == 1
         # TODO: allow query and response embed_dims to be different
-        self.subrepresentations = nn.ModuleList(
-            itertools.repeat(
-                create_module(config.subrepresentation, embed_dim=embed_dim[0]),
-                num_subrepresentations,
+        if config.shared_representations:
+            self.subrepresentations = nn.ModuleList(
+                itertools.repeat(
+                    create_module(config.subrepresentation, embed_dim=embed_dim[0]),
+                    num_subrepresentations,
+                )
             )
-        )
+        else:
+            self.subrepresentations = nn.ModuleList(
+                create_module(config.subrepresentation, embed_dim=embed_dim[0])
+                for x in range(num_subrepresentations)
+            )
+
         self.representation_dim = self.subrepresentations[0].representation_dim
         self.representation_dim = (num_subrepresentations, self.representation_dim)
 
