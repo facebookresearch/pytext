@@ -108,31 +108,9 @@ class CompositionalMetricReporter(MetricReporter):
 
     # CREATE NODES
     def calculate_metric(self):
-
-        # to support top k predictions
-        try:
-            top_k_exists = self.all_preds[0][0][0][0]
-
-            # convert to frames
-            if top_k_exists:
-                batch_size = len(self.all_preds)
-                all_predicted_frames: List[List[Node]] = [[]] * batch_size
-
-                for i, top_k_preds in enumerate(self.all_context[ALL_PRED_TREES]):
-                    for pred_tree in top_k_preds:
-                        all_predicted_frames[i].append(
-                            CompositionalMetricReporter.tree_to_metric_node(pred_tree)
-                        )
-                return compute_all_metrics(
-                    self.create_frame_prediction_pairs(),
-                    overall_metrics=True,
-                    all_predicted_frames=all_predicted_frames,
-                )
-
-        except TypeError:
-            return compute_all_metrics(
-                self.create_frame_prediction_pairs(), overall_metrics=True
-            )
+        return compute_all_metrics(
+            self.create_frame_prediction_pairs(), overall_metrics=True
+        )
 
     def create_frame_prediction_pairs(self):
         return [
