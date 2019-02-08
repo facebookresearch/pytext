@@ -27,6 +27,11 @@ def to_numpy(a_tensor):
 
 class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
     def setUp(self):
+        self.setup_data()
+        self.model_shared_rep = self.create_model(True)
+        self.model_unshared_rep = self.create_model(False)
+
+    def setup_data(self):
         simple_featurizer_config = SimpleFeaturizer.Config()
         simple_featurizer_config.split_regex = r""
         simple_featurizer_config.convert_to_bytes = True
@@ -46,10 +51,14 @@ class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
         self.data_handler.init_metadata_from_path(
             self.file_name, self.file_name, self.file_name
         )
+
+    def create_model(self, shared_rep):
+        # shared_rep: do query and response share representation layer?
         metadata = self.data_handler.metadata
         model_config = QueryDocumentPairwiseRankingModel.Config()
 
         model_config.representation = QueryDocumentPairwiseRankingRep.Config()
+        model_config.representation.shared_representations = shared_rep
 
         model_config.decoder = MLPDecoderQueryResponse.Config()
         model_config.decoder.hidden_dims = [64]
@@ -60,17 +69,16 @@ class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
         feat_config.pos_response.embed_dim = 64
         feat_config.neg_response = WordFeatConfig()
         feat_config.query = WordFeatConfig()
-
-        self.model = QueryDocumentPairwiseRankingModel.from_config(
+        return QueryDocumentPairwiseRankingModel.from_config(
             model_config, feat_config, metadata
         )
 
     def test_init(self):
         iter = self.data_handler.get_test_iter_from_path(self.file_name, 4)
-        self.model.eval()
+        self.model_shared_rep.eval()
         for (m_input, _targets, _context) in iter:
             pos_embeddings, neg_embeddings, query_embeddings = map(
-                to_numpy, self.model(*m_input)
+                to_numpy, self.model_shared_rep(*m_input)
             )
             self.assertTrue(pos_embeddings.shape[0] == 4)
             self.assertTrue(np.all(np.equal(pos_embeddings[1], neg_embeddings[1])))
@@ -79,3 +87,13 @@ class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
             self.assertFalse(np.all(np.equal(pos_embeddings[2], neg_embeddings[2])))
             self.assertTrue(np.all(np.equal(query_embeddings[2], query_embeddings[3])))
             self.assertFalse(np.all(np.equal(query_embeddings[1], query_embeddings[2])))
+
+    def test_rep_sharing(self):
+        self.assertTrue(
+            id(self.model_shared_rep.representation.subrepresentations[0])
+            == id(self.model_shared_rep.representation.subrepresentations[1])
+        )
+        self.assertFalse(
+            id(self.model_unshared_rep.representation.subrepresentations[0])
+            == id(self.model_unshared_rep.representation.subrepresentations[1])
+        )
