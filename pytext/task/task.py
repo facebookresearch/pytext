@@ -55,7 +55,6 @@ class TaskBase(Component):
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = Scheduler.Config()
         exporter: Optional[ModelExporter.Config] = None
-        random_seed: int = 0
 
     @classmethod
     def from_config(cls, task_config, metadata=None, model_state=None):
@@ -117,7 +116,6 @@ class TaskBase(Component):
                 optimizer, task_config.scheduler, metric_reporter.lower_is_better
             ),
             exporter=exporter,
-            random_seed=task_config.random_seed,
         )
 
     def __init__(
@@ -129,7 +127,6 @@ class TaskBase(Component):
         optimizer: torch.optim.Optimizer,
         lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler],
         exporter: Optional[ModelExporter],
-        random_seed: int,
     ) -> None:
         self.trainer: Trainer = trainer
         self.data_handler: DataHandler = data_handler
@@ -138,7 +135,6 @@ class TaskBase(Component):
         self.optimizer: torch.optim.Optimizer = optimizer
         self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
         self.exporter = exporter
-        self.random_seed = random_seed
 
     def train(self, train_config, rank=0, world_size=1):
         """
@@ -150,8 +146,6 @@ class TaskBase(Component):
             world_size (int): for distributed training only, total gpu to use, default
                 is 1
         """
-        # Check seed is set correctly.
-        assert torch.initial_seed() == self.random_seed
         result = self.trainer.train(
             self.data_handler.get_train_iter(rank, world_size),
             self.data_handler.get_eval_iter(),
@@ -162,8 +156,6 @@ class TaskBase(Component):
             self.lr_scheduler,
             rank=rank,
         )
-        # Check seed is not tampered with by other code.
-        assert torch.initial_seed() == self.random_seed
         return result
 
     def test(self, test_path):
