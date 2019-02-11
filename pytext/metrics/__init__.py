@@ -68,6 +68,7 @@ class SoftClassificationMetrics(NamedTuple):
 
     average_precision: float
     recall_at_precision: Dict[float, float]
+    roc_auc: Optional[float]
 
 
 class MacroPRF1Scores(NamedTuple):
@@ -485,8 +486,11 @@ def compute_soft_metrics(
         recall_at_precision_dict = recall_at_precision(
             y_true_sorted, y_score_sorted, recall_at_precision_thresholds
         )
+        roc_auc = compute_roc_auc(predictions, target_class=i)
         soft_metrics[label_name] = SoftClassificationMetrics(
-            average_precision=ap, recall_at_precision=recall_at_precision_dict
+            average_precision=ap,
+            recall_at_precision=recall_at_precision_dict,
+            roc_auc=roc_auc,
         )
     return soft_metrics
 
@@ -515,15 +519,17 @@ def compute_matthews_correlation_coefficients(
     return mcc
 
 
-def compute_roc_auc(predictions: Sequence[LabelPrediction]) -> Optional[float]:
+def compute_roc_auc(
+    predictions: Sequence[LabelPrediction], target_class: int = 0
+) -> Optional[float]:
     """
     Computes area under the Receiver Operating Characteristic curve, for binary
     classification. Implementation based off of (and explained at)
     https://www.ibm.com/developerworks/community/blogs/jfp/entry/Fast_Computation_of_AUC_ROC_score?lang=en.
     """
-    # Collect scores - arbitrarily select class 0 as positive, as metric is symmetric
-    y_true = [expected == 0 for _, _, expected in predictions]
-    y_score = [label_scores[0] for label_scores, _, _ in predictions]
+    # Collect scores
+    y_true = [expected == target_class for _, _, expected in predictions]
+    y_score = [label_scores[target_class] for label_scores, _, _ in predictions]
     y_true_sorted, _ = sort_by_score(y_true, y_score)
 
     # Compute auc as probability that a positive example is scored higher than
@@ -539,7 +545,7 @@ def compute_roc_auc(predictions: Sequence[LabelPrediction]) -> Optional[float]:
     if n_true == 0 or n_false == 0:
         return None
 
-    return n_correct_pair_order / (n_true * n_false)
+    return float(n_correct_pair_order / (n_true * n_false))
 
 
 def compute_classification_metrics(

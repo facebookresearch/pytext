@@ -73,10 +73,12 @@ class BasicMetricsTest(MetricsTestBase):
                 "label1": SoftClassificationMetrics(
                     average_precision=8.0 / 15,
                     recall_at_precision=recall_at_precision_dict_l1,
+                    roc_auc=1.0 / 6,
                 ),
                 "label2": SoftClassificationMetrics(
                     average_precision=0.7,
                     recall_at_precision=recall_at_precision_dict_l2,
+                    roc_auc=4.0 / 6,
                 ),
             },
         )
