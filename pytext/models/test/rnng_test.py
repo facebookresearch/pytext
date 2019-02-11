@@ -29,12 +29,8 @@ class RNNGDataStructuresTest(unittest.TestCase):
         element_node = Element("Node")
 
         lstm = nn.LSTM(lstm_dim, lstm_dim, num_layers=lstm_num_layers)
-        initial_state = (
-            torch.zeros(lstm_num_layers, 1, lstm_dim),
-            torch.zeros(lstm_num_layers, 1, lstm_dim),
-        )
         empty_embedding = torch.zeros(1, lstm_dim)
-        stackLSTM = StackLSTM(lstm, initial_state, empty_embedding)
+        stackLSTM = StackLSTM(lstm)
 
         stackLSTM.push(empty_embedding, element_node)
         self.assertEqual(len(stackLSTM), 1)

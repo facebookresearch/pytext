@@ -267,10 +267,6 @@ class RNNGParser(Model, Component):
             lstm_dim, lstm_dim, num_layers=lstm_num_layers, dropout=dropout
         )
 
-        self.pempty_buffer_emb = nn.Parameter(torch.randn(1, lstm_dim))
-        self.empty_stack_emb = nn.Parameter(torch.randn(1, lstm_dim))
-        self.empty_action_emb = nn.Parameter(torch.randn(1, lstm_dim))
-
         self.actions_lookup = nn.Embedding(num_actions, lstm_dim)
         self.loss_func = nn.CrossEntropyLoss()
 
@@ -459,13 +455,6 @@ class RNNGParser(Model, Component):
                 )
                 for state in sorted(beam)[:top_k]
             ]
-
-    def init_lstm(self) -> Tuple[torch.Tensor, torch.Tensor]:
-        # Batch size fixed to 1
-        return (
-            cuda_utils.FloatTensor(self.lstm_num_layers, 1, self.lstm_dim).fill_(0),
-            cuda_utils.FloatTensor(self.lstm_num_layers, 1, self.lstm_dim).fill_(0),
-        )
 
     def valid_actions(self, state: ParserState) -> List[int]:
         """Used for restricting the set of possible action predictions
