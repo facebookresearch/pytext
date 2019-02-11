@@ -59,6 +59,7 @@ class DisjointMultitask(TaskBase):
             data_handler.load_metadata(metadata)
         else:
             data_handler.init_metadata()
+
         metadata = data_handler.metadata
         exporters = {
             name: (
@@ -86,7 +87,6 @@ class DisjointMultitask(TaskBase):
             loss_weights=task_weights,
             target_task_name=task_config.target_task_name,
         )
-
         model = DisjointMultitaskModel(
             OrderedDict(
                 (name, create_model(task.model, task.features, metadata[name]))

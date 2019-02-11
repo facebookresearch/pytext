@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import os
 import sys
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -94,9 +93,11 @@ class Trainer(TrainerBase):
         Returns:
             model, best_metric: the trained model together with the best metric
         """
+        world_size = 1
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
-            if cuda_utils.DISTRIBUTED_WORLD_SIZE > 1:
+            world_size = cuda_utils.DISTRIBUTED_WORLD_SIZE
+            if world_size > 1:
                 device_id = torch.cuda.current_device()
                 model = DistributedModel(
                     module=model,
@@ -110,10 +111,26 @@ class Trainer(TrainerBase):
         scheduler = self._prepare_scheduler(train_iter, scheduler)
 
         def training_pre_batch_callback():
-            optimizer.zero_grad()
+            if world_size > 1:
+                # replace optimizer.zero_grad() here to work with DDP
+                # in cases where some parameters don't receive grads at each step
+                # loss.backward will set grad for params in the computation graph
+                # we can thus follow which params are left out and call .backward
+                # on them manually
+                for p in model.parameters():
+                    if p.grad is not None:
+                        p.grad.detach_()
+                        p.grad = None
+            else:
+                optimizer.zero_grad()
 
         def training_backprop(loss):
             loss.backward()
+            if world_size > 1:
+                # DDP fix when some parameters don't receive grads
+                for p in model.parameters():
+                    if p.requires_grad and p.grad is None:
+                        p.backward(torch.zeros_like(p.data))
             if scheduler:
                 scheduler.step_batch()
 

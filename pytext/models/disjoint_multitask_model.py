@@ -28,12 +28,17 @@ class DisjointMultitaskModel(Model):
         models = nn.ModuleDict(models)
         super().__init__(None, None, None, None)
         self.models = models
-        self.current_model = next(iter(models.values()))
+        # make this a list to prevent registering in state_dict
+        self._current_model = [next(iter(models.values()))]
         self.loss_weights = loss_weights
 
     def contextualize(self, context):
-        self.current_model = self.models[context[BatchContext.TASK_NAME]]
+        self._current_model[0] = self.models[context[BatchContext.TASK_NAME]]
         self.current_loss_weight = self.loss_weights[context[BatchContext.TASK_NAME]]
+
+    @property
+    def current_model(self):
+        return self._current_model[0]
 
     def get_loss(self, logits, targets, context):
         return self.current_loss_weight * self.current_model.get_loss(
@@ -45,18 +50,6 @@ class DisjointMultitaskModel(Model):
 
     def forward(self, *inputs) -> List[torch.Tensor]:
         return self.current_model.forward(*inputs)
-
-    def state_dict(self):
-        # This is called during pickle, we don't want the current_model copied
-        model, self.current_model = self.current_model, None
-        try:
-            return super().state_dict()
-        finally:
-            self.current_model = model
-
-    def load_state_dict(self, state_dict, strict=True):
-        self.current_model = None
-        super().load_state_dict(state_dict, strict)
 
     def save_modules(self, base_path, suffix=""):
         for name, model in self.models.items():
