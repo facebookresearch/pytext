@@ -7,7 +7,7 @@ import sys
 import tempfile
 from importlib import import_module
 from pydoc import locate
-from typing import List, Optional
+from typing import Dict, List, Optional, Union
 
 import click
 import torch
@@ -45,10 +45,6 @@ def train_model_distributed(config, metric_channels: Optional[List[Channel]]):
     ) or config.distributed_world_size == 1, (
         "distributed training is only available for GPU training"
     )
-    assert (
-        config.distributed_world_size == 1
-        or not config.task.__class__.__name__ == "DisjointMultitask.Config"
-    ), "Distributed training currently not supported for DisjointMultitask"
     assert (
         config.distributed_world_size == 1
         or config.distributed_world_size <= torch.cuda.device_count()
@@ -91,7 +87,7 @@ def run_single(
     config_json: str,
     world_size: int,
     dist_init_method: Optional[str],
-    metadata: Optional[CommonMetadata],
+    metadata: Optional[Union[Dict[str, CommonMetadata], CommonMetadata]],
     metric_channels: Optional[List[Channel]],
 ):
     config = config_from_json(PyTextConfig, config_json)
