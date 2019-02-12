@@ -101,6 +101,18 @@ class BiLSTM(RepresentationBase):
                 states[0].transpose(0, 1).contiguous(),
                 states[1].transpose(0, 1).contiguous(),
             )
+        else:
+            # We need to send in a zero state that matches the batch size, because
+            # torch.jit tracing currently traces this as constant and therefore
+            # locks the traced model into a static batch size.
+            # see https://github.com/pytorch/pytorch/issues/16664
+            state = torch.zeros(
+                self.config.num_layers * (2 if self.config.bidirectional else 1),
+                seq_lengths.size(0),  # batch size
+                self.config.lstm_dim,
+            )
+            states = (state, state)
+
         rnn_input = pack_padded_sequence(
             embedded_tokens, seq_lengths.int(), batch_first=True
         )
