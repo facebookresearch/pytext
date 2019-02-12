@@ -601,10 +601,7 @@ class DataHandler(Component):
             world_size (int): used for distributed training, total number of Gpu
         """
         # Compute the per-worker batch size
-        assert (
-            batch_size >= world_size
-        ), "batch size needs to be >= the distributed world size"
-        batch_size = batch_size // world_size
+        batch_size = batch_size // world_size or batch_size
 
         return BatchIterator(
             textdata.BucketIterator(
