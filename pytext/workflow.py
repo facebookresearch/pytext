@@ -156,7 +156,11 @@ def test_model_from_snapshot_path(
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
 
-    return (task.test(test_path), train_config.task.metric_reporter.output_path)
+    return (
+        task.test(test_path),
+        train_config.task.metric_reporter.output_path,
+        metric_channels,
+    )
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
