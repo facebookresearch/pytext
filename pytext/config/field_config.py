@@ -14,7 +14,7 @@ class EmbedInitStrategy(Enum):
     ZERO = "zero"
 
 
-class WordFeatConfig(ConfigBase):
+class WordFeatConfig(ModuleConfig):
     embed_dim: int = 100
     freeze: bool = False  # only freezes embedding lookup, not MLP layers
     embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
@@ -32,7 +32,7 @@ class WordFeatConfig(ConfigBase):
     mlp_layer_dims: Optional[List[int]] = []
 
 
-class DictFeatConfig(ConfigBase):
+class DictFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
     pooling: PoolingType = PoolingType.MEAN
@@ -40,7 +40,7 @@ class DictFeatConfig(ConfigBase):
     vocab_from_train_data: bool = True
 
 
-class CharFeatConfig(ConfigBase):
+class CharFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
     cnn: CNNParams = CNNParams()
