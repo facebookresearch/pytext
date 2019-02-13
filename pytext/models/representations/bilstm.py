@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
+from pytext.utils import cuda_utils
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .representation_base import RepresentationBase
@@ -110,6 +111,7 @@ class BiLSTM(RepresentationBase):
                 self.config.num_layers * (2 if self.config.bidirectional else 1),
                 seq_lengths.size(0),  # batch size
                 self.config.lstm_dim,
+                device=torch.cuda.current_device() if cuda_utils.CUDA_ENABLED else None,
             )
             states = (state, state)
 
