@@ -87,7 +87,10 @@ class EmbeddingList(EmbeddingBase, ModuleList):
             emb_tensor = emb(*input)
             tensors.append(emb_tensor)
 
-        return torch.cat(tensors, 2) if self.concat else tuple(tensors)
+        if self.concat:
+            return torch.cat(tensors, 2)
+        else:
+            return tuple(tensors) if len(tensors) > 1 else tensors[0]
 
     def get_param_groups_for_optimizer(self) -> List[Dict[str, nn.Parameter]]:
         """
