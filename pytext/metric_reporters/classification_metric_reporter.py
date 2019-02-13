@@ -33,6 +33,7 @@ class ComparableClassificationMetric(Enum):
     MACRO_F1 = "macro_f1"
     LABEL_F1 = "label_f1"
     LABEL_AVG_PRECISION = "label_avg_precision"
+    LABEL_ROC_AUC = "label_roc_auc"
     # use negative because the reporter's lower_is_better value is False
     NEGATIVE_LOSS = "negative_loss"
 
@@ -63,6 +64,7 @@ class ClassificationMetricReporter(MetricReporter):
         if config.model_select_metric in (
             ComparableClassificationMetric.LABEL_F1,
             ComparableClassificationMetric.LABEL_AVG_PRECISION,
+            ComparableClassificationMetric.LABEL_ROC_AUC,
         ):
             assert config.target_label is not None
             assert config.target_label in label_names
@@ -110,6 +112,8 @@ class ClassificationMetricReporter(MetricReporter):
             == ComparableClassificationMetric.LABEL_AVG_PRECISION
         ):
             metric = metrics.per_label_soft_scores[self.target_label].average_precision
+        elif self.model_select_metric == ComparableClassificationMetric.LABEL_ROC_AUC:
+            metric = metrics.per_label_soft_scores[self.target_label].roc_auc
         elif self.model_select_metric == ComparableClassificationMetric.NEGATIVE_LOSS:
             metric = -metrics.loss
         else:
