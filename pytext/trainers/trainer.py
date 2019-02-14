@@ -15,6 +15,7 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import learning_rates
 from pytext.utils import cuda_utils
+from tqdm import tqdm
 
 
 class TrainerBase(Component):
@@ -220,9 +221,12 @@ class Trainer(TrainerBase):
         backprop=lambda loss: None,
         rank=0,
     ):
-        print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
-        for batch_id, (inputs, targets, context) in enumerate(data_iter):
+        for batch_id, (inputs, targets, context) in tqdm(
+            enumerate(data_iter),
+            total=len(data_iter.batches),
+            desc=f"Rank {rank} worker running epoch #{epoch} for {stage}",
+        ):
             pre_batch()
             # pass context to model to use in forward call if needed
             model.contextualize(context)
