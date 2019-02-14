@@ -4,7 +4,8 @@ from enum import Enum
 from typing import Dict, List, Tuple, Union
 
 from .component import Registry
-from .pytext_config import PyTextConfig, TestConfig
+from .config_adapter import upgrade_to_latest
+from .pytext_config import PyTextConfig
 
 
 class ConfigParseError(Exception):
@@ -114,6 +115,12 @@ def _try_component_config_from_json(cls, value):
     return None
 
 
+def pytext_config_from_json(json_obj, ignore_fields=(), auto_upgrade=True):
+    if auto_upgrade:
+        json_obj = upgrade_to_latest(json_obj)
+    return config_from_json(PyTextConfig, json_obj, ignore_fields)
+
+
 def config_from_json(cls, json_obj, ignore_fields=()):
     if getattr(cls, "__EXPANSIBLE__", False):
         component_config = _try_component_config_from_json(cls, json_obj)
@@ -218,6 +225,6 @@ def parse_config(config_json):
     """
     Parse PyTextConfig object from parameter string or parameter file
     """
-    if "config" not in config_json:
-        return config_from_json(PyTextConfig, config_json)
-    return config_from_json(PyTextConfig, config_json["config"])
+    if "config" in config_json:
+        config_json = config_json["config"]
+    return pytext_config_from_json(config_json)

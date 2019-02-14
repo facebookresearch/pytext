@@ -9,7 +9,7 @@ from caffe2.python import workspace
 from caffe2.python.predictor import predictor_exporter
 
 from .builtin_task import register_builtin_tasks
-from .config import PyTextConfig, config_from_json
+from .config import PyTextConfig, pytext_config_from_json
 from .config.component import create_featurizer
 from .data.featurizer import InputRecord
 from .utils.onnx_utils import CAFFE2_DB_TYPE, convert_caffe2_blob_name
@@ -63,8 +63,8 @@ def load_config(filename: str) -> PyTextConfig:
     with open(filename) as file:
         config_json = json.loads(file.read())
     if "config" not in config_json:
-        return config_from_json(PyTextConfig, config_json)
-    return config_from_json(PyTextConfig, config_json["config"])
+        return pytext_config_from_json(config_json)
+    return pytext_config_from_json(config_json["config"])
 
 
 def create_predictor(

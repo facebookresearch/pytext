@@ -12,9 +12,13 @@ from typing import Dict, List, Optional, Union
 import click
 import torch
 from pytext import create_predictor
-from pytext.config import PyTextConfig
+from pytext.config import LATEST_VERSION, PyTextConfig
 from pytext.config.component import register_tasks
-from pytext.config.serialize import config_from_json, config_to_json, parse_config
+from pytext.config.serialize import (
+    config_to_json,
+    parse_config,
+    pytext_config_from_json,
+)
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.task import load
@@ -90,7 +94,7 @@ def run_single(
     metadata: Optional[Union[Dict[str, CommonMetadata], CommonMetadata]],
     metric_channels: Optional[List[Channel]],
 ):
-    config = config_from_json(PyTextConfig, config_json)
+    config = pytext_config_from_json(config_json)
     if rank != 0:
         metric_channels = []
 
@@ -120,7 +124,7 @@ def gen_config_impl(task_name, options):
 
     task_class = next(iter(task_class_set))
     task_config = getattr(task_class, "example_config", task_class.Config)
-    root = PyTextConfig(task=task_config())
+    root = PyTextConfig(task=task_config(), version=LATEST_VERSION)
 
     # Use components listed in options instead of defaults
     for opt in options:
