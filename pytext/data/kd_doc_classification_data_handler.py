@@ -17,6 +17,7 @@ from pytext.fields import (
     DictFeatureField,
     DocLabelField,
     Field,
+    FloatVectorField,
     PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
@@ -90,6 +91,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
                 ModelInput.DICT_FEAT: DictFeatureField,
                 ModelInput.CHAR_FEAT: CharFeatureField,
                 ModelInput.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
+                ModelInput.DENSE_FEAT: FloatVectorField,
             },
         )
         target_fields: Dict[str, Field] = create_label_fields(
@@ -128,6 +130,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
             ),
             ModelInput.CHAR_FEAT: features.characters,
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            ModelInput.DENSE_FEAT: row_data.get(ModelInput.DENSE_FEAT),
             # target
             DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
             # extra data
