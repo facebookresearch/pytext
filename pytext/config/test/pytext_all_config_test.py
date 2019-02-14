@@ -17,6 +17,7 @@ EXCLUDE_JSON = {
     # used by test_merge_token_labels_to_slot
     "pytext/utils/tests/test_samples.json"
 }
+EXCLUDE_DIRS = {"pytext/config/test/json_config"}
 
 
 class LoadAllConfigTest(unittest.TestCase):
@@ -28,6 +29,8 @@ class LoadAllConfigTest(unittest.TestCase):
         print()
         for filename in glob.iglob("pytext/**/*.json", recursive=True):
             if filename in EXCLUDE_JSON:
+                continue
+            if any(filename.startswith(prefix) for prefix in EXCLUDE_DIRS):
                 continue
             print("--- loading:", filename)
             with open(filename) as file:

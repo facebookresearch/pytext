@@ -5,7 +5,7 @@ import os
 from collections import OrderedDict
 
 import torch
-from pytext.config import PyTextConfig, config_from_json, config_to_json
+from pytext.config import PyTextConfig, config_to_json, pytext_config_from_json
 from pytext.data import CommonMetadata
 from pytext.models import Model
 
@@ -43,7 +43,7 @@ def load(load_path: str):
         raise ValueError(f"Invalid snapshot path{load_path}")
     print(f"Loading model from {load_path}...")
     state = torch.load(load_path, map_location=lambda storage, loc: storage)
-    config = config_from_json(PyTextConfig, state[CONFIG_JSON])
+    config = pytext_config_from_json(state[CONFIG_JSON])
     task = create_task(
         config.task, metadata=state[DATA_STATE], model_state=state[MODEL_STATE]
     )

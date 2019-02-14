@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
-from enum import Enum
 from typing import Any, Optional, Union
 
 
@@ -83,6 +82,8 @@ class PyTextConfig(ConfigBase):
     use_tensorboard: bool = True
     #: Seed value to seed torch, python, and numpy random generators.
     random_seed: Optional[int] = None
+    # config version
+    version: int
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done
@@ -98,3 +99,6 @@ class TestConfig(ConfigBase):
     use_cuda_if_available: bool = True
     # Whether to use TensorBoard
     use_tensorboard: bool = True
+
+
+LATEST_VERSION = 1

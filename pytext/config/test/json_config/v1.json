@@ -1,0 +1,82 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "type": "adam",
+            "lr": 0.05,
+            "weight_decay": 0.00001,
+            "momentum": 0
+          }
+        }
+      }
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          }
+        }
+      },
+      "version": 1
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "lr": 0.05,
+            "weight_decay": 0.00001,
+            "momentum": 0
+          }
+        }
+      }
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          }
+        }
+      },
+      "version": 1
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "type": "sgd",
+            "lr": 0.05,
+            "weight_decay": 0.00001,
+            "momentum": 0.00001
+          }
+        }
+      }
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "SGD": {
+              "lr": 0.05,
+              "momentum": 0.00001
+            }
+          }
+        }
+      },
+      "version": 1
+    }
+  }
+]
