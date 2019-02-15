@@ -59,38 +59,28 @@ class CompositionalMetricReporter(MetricReporter):
         )
 
     def gen_extra_context(self):
-
         # check if all_preds contains top K results or only 1 result
-        try:
-            top_k_exists = self.all_preds[0][0][0][0]
-            if top_k_exists:
-                batchSize = len(self.all_preds)
-                pred_target_trees = []
-                all_pred_trees: List[List[Tree]] = [[]] * batchSize
+        batchSize = len(self.all_preds)
+        pred_target_trees = []
+        all_pred_trees: List[List[Tree]] = [[]] * batchSize
 
-                i = -1
-                for top_k_action_preds, action_targets, token_str_list in zip(
-                    self.all_preds,
-                    self.all_targets,
-                    self.all_context[DatasetFieldName.TOKENS],
-                ):
-                    i += 1
-                    for k, action_preds in enumerate(top_k_action_preds):
-                        action_preds = action_preds[0]
-                        pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
-                            token_str_list, self.actions_vocab, action_preds
-                        )
-                        all_pred_trees[i].append(pred_tree)
-                        if k == 0:
-                            target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
-                                token_str_list, self.actions_vocab, action_targets
-                            )
-                            pred_target_trees.append((pred_tree, target_tree))
-                self.all_context[PRED_TARGET_TREES] = pred_target_trees
-                self.all_context[ALL_PRED_TREES] = all_pred_trees
-
-        except TypeError:
-            self.gen_single_extra_context()
+        i = -1
+        for top_k_action_preds, action_targets, token_str_list in zip(
+            self.all_preds, self.all_targets, self.all_context[DatasetFieldName.TOKENS]
+        ):
+            i += 1
+            for k, action_preds in enumerate(top_k_action_preds):
+                pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                    token_str_list, self.actions_vocab, action_preds
+                )
+                all_pred_trees[i].append(pred_tree)
+                if k == 0:
+                    target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
+                        token_str_list, self.actions_vocab, action_targets
+                    )
+                    pred_target_trees.append((pred_tree, target_tree))
+        self.all_context[PRED_TARGET_TREES] = pred_target_trees
+        self.all_context[ALL_PRED_TREES] = all_pred_trees
 
     def gen_single_extra_context(self):
         pred_target_trees = []

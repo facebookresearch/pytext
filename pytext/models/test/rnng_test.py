@@ -211,7 +211,7 @@ class RNNGParserTest(unittest.TestCase):
 
         actions, scores = self.parser(
             tokens=tokens, seq_lens=seq_lens, dict_feat=dict_feat
-        )
+        )[0]
         self.assertGreater(actions.shape[1], tokens.shape[1])
         self.assertEqual(actions.shape[0:2], scores.shape[0:2])
         self.assertEqual(scores.shape[2], len(self.parser.actions_vocab.itos))
