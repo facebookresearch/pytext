@@ -277,7 +277,7 @@ class RNNGParser(Model, Component):
         dict_feat: Optional[Tuple[torch.Tensor, ...]] = None,
         actions: Optional[List[List[int]]] = None,
         contextual_token_embeddings: Optional[torch.Tensor] = None,
-    ):
+    ) -> List[Tuple[torch.Tensor, torch.Tensor]]:
         """RNNG forward function.
 
         Args:
@@ -289,13 +289,10 @@ class RNNGParser(Model, Component):
                 Oracle actions for the instances.
 
         Returns:
-            if top_k == 1
-                tuple of list of predicted actions and list of corresponding scores
-            else
-                list of tuple of list of predicted actions and list of \
-                    corresponding scores
-
-
+            list of top k tuple of predicted actions tensor and corresponding scores tensor.
+            Tensor shape:
+            (batch_size, action_length)
+            (batch_size, action_length, number_of_actions)
         """
         beam_size = self.beam_size
         top_k = self.top_k
@@ -440,21 +437,14 @@ class RNNGParser(Model, Component):
             len(state.buffer_stackrnn)
         )
 
-        # Add batch dimension before returning.
-        if top_k <= 1:
-            state = min(beam)
-            return (
+        # Unsqueeze to add batch dimension before returning.
+        return [
+            (
                 cuda_utils.LongTensor(state.predicted_actions_idx).unsqueeze(0),
                 torch.cat(state.action_scores).unsqueeze(0),
             )
-        else:
-            return [
-                (
-                    cuda_utils.LongTensor(state.predicted_actions_idx).unsqueeze(0),
-                    torch.cat(state.action_scores).unsqueeze(0),
-                )
-                for state in sorted(beam)[:top_k]
-            ]
+            for state in sorted(beam)[:top_k]
+        ]
 
     def valid_actions(self, state: ParserState) -> List[int]:
         """Used for restricting the set of possible action predictions
@@ -597,26 +587,20 @@ class RNNGParser(Model, Component):
         return [{"params": self.parameters()}]
 
     def get_loss(
-        self, logits: torch.Tensor, target_actions: torch.Tensor, context: torch.Tensor
+        self,
+        logits: List[Tuple[torch.Tensor, torch.Tensor]],
+        target_actions: torch.Tensor,
+        context: torch.Tensor,
     ):
         """
         Shapes:
-            logits[1]: action scores: (1, sequence_length, number_of_actions)
-            target_actions: (1, sequence_length)
+            logits[1]: action scores: (1, action_length, number_of_actions)
+            target_actions: (1, action_length)
         """
-
-        # Supports beam search to check if there are top K predictions
-        # (there will be an extra dimension)
-        try:
-            top_k_exists = logits[0][0][0][0]
-            if top_k_exists:
-                action_scores = logits[0][1].squeeze(0)
-                target_actions = target_actions[0].squeeze(0)
-
-        except (TypeError, IndexError):
-            # Get rid of the batch dimension
-            action_scores = logits[1].squeeze(0)
-            target_actions = target_actions.squeeze(0)
+        # squeeze to get rid of the batch dimension
+        # logits[0] is the top1 result
+        action_scores = logits[0][1].squeeze(0)
+        target_actions = target_actions[0].squeeze(0)
 
         action_scores_list = torch.chunk(action_scores, action_scores.size()[0])
         target_vars = torch.chunk(target_actions, target_actions.size()[0])
@@ -637,21 +621,14 @@ class RNNGParser(Model, Component):
         return predicted_action_idx.tolist(), [predicted_scores]
 
     # Supports beam search by checking if top K exists return type
-    def get_pred(self, logits: Tuple[torch.Tensor, torch.Tensor], *args):
-        try:
-            top_k_exists = logits[0][0][0][0]
-            if top_k_exists:
-                all_action_idx: List[List[int]] = [[] for _ in range(0, len(logits))]
-                all_scores: List[List[float]] = [[] for _ in range(0, len(logits))]
-                for i, l in enumerate(logits):  # there are two
-                    action_idx, scores = self.get_single_pred(l, *args)
-                    all_action_idx[i].extend(action_idx)
-                    all_scores[i].extend(scores)
+    def get_pred(self, logits: List[Tuple[torch.Tensor, torch.Tensor]], *args):
+        n = len(logits)
+        all_action_idx: List[List[int]] = [[]] * n
+        all_scores: List[List[float]] = [[]] * n
+        for i, l in enumerate(logits):
+            all_action_idx[i], all_scores[i] = self.get_single_pred(l, *args)
 
-                return [all_action_idx], all_scores
-
-        except (TypeError, IndexError):
-            return self.get_single_pred(logits, *args)
+        return all_action_idx, all_scores
 
     def save_modules(self, *args, **kwargs):
         pass
