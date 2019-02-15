@@ -15,6 +15,7 @@ class ComponentType(enum.Enum):
     DATA_HANDLER = "data_handler"
     DATA_SOURCE = "data_source"
     TOKENIZER = "tokenizer"
+    TENSORIZER = "tensorizer"
     BATCHER = "batcher"
     FEATURIZER = "featurizer"
     TRAINER = "trainer"
