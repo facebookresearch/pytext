@@ -23,6 +23,7 @@ class ComponentType(enum.Enum):
     OPTIMIZER = "optimizer"
     SCHEDULER = "scheduler"
     MODEL = "model"
+    MODEL2 = "model2"
     MODULE = "module"
     PREDICTOR = "predictor"
     EXPORTER = "exporter"
