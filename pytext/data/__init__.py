@@ -4,6 +4,7 @@
 from .bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from .compositional_data_handler import CompositionalDataHandler
 from .contextual_intent_slot_data_handler import ContextualIntentSlotModelDataHandler
+from .data import Data, RawBatcher
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
 from .doc_classification_data_handler import DocClassificationDataHandler, RawData
@@ -23,12 +24,14 @@ __all__ = [
     "ContextualIntentSlotModelDataHandler",
     "BatchIterator",
     "CommonMetadata",
+    "Data",
     "DataHandler",
     "JointModelDataHandler",
     "LanguageModelDataHandler",
     "PairClassificationDataHandler",
     "SeqModelDataHandler",
     "DocClassificationDataHandler",
+    "RawBatcher",
     "RawData",
     "DisjointMultitaskDataHandler",
     "KDDocClassificationDataHandler",
