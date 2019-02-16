@@ -118,7 +118,7 @@ class LanguageModelDataHandlerTest(unittest.TestCase):
         test_batch = batches_2[0]
         # first batch in shard #2 is row # 5 and 5 reordered by sort_key
         np.testing.assert_array_equal(
-            test_batch[1], [[23, 11, 5, 10, 3], [23, 11, 5, 10, 3]]
+            test_batch[1], [[23, 11, 5, 10, 3], [24, 5, 4, 3, 1]]
         )
 
     def _init_data_handler(self):
