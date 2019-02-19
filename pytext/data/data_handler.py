@@ -6,7 +6,19 @@ import math
 import multiprocessing
 import os
 from copy import deepcopy
-from typing import Any, Dict, List, MutableMapping, Optional, Set, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 import torch
 from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
@@ -301,16 +313,28 @@ class DataHandler(Component):
         """
         if use_cache and path in self._data_cache and rank == 0 and world_size == 1:
             return self._data_cache[path]
+
+        shard_range = (
+            dist_utils.get_shard_range(
+                self.metadata.dataset_sizes[path], rank, world_size
+            )
+            if world_size > 1
+            else None
+        )
         res = self.gen_dataset(
-            self.read_from_file(path, self.raw_columns, rank, world_size),
+            self.read_from_file_gen(path, self.raw_columns),
             include_label_fields,
+            shard_range,
         )
         if rank == 0 and world_size == 1:
             self._data_cache[path] = res
         return res
 
     def gen_dataset(
-        self, data: List[Dict[str, Any]], include_label_fields: bool = True
+        self,
+        data: Iterable[Dict[str, Any]],
+        include_label_fields: bool = True,
+        shard_range: Tuple[int, int] = None,
     ) -> textdata.Dataset:
         """
         Generate torchtext Dataset from raw in memory data.
@@ -325,11 +349,13 @@ class DataHandler(Component):
         fields = {name: (name, field) for name, field in to_process.items()}
         # generate example from dataframe
         examples = [
-            textdata.Example.fromdict(row, fields) for row in self.preprocess(data)
+            textdata.Example.fromdict(row, fields)
+            for idx, row in enumerate(self.preprocess(data))
+            if not shard_range or shard_range[0] <= idx <= shard_range[1]
         ]
         return textdata.Dataset(examples, to_process)
 
-    def preprocess(self, data: List[Dict[str, Any]]):
+    def preprocess(self, data: Iterable[Dict[str, Any]]):
         """
         preprocess the raw data to create TorchText.Example, this is the second
         step in whole processing pipeline
@@ -573,10 +599,10 @@ class DataHandler(Component):
         world_size: int = 1,
     ) -> BatchIterator:
         shard_range = dist_utils.get_shard_range(len(train_data), rank, world_size)
-        shard_data = train_data[shard_range[0] : shard_range[1]]
-        dist_utils.pad_shard_data(shard_data, len(train_data), world_size)
         return self._get_train_iter(
-            self.gen_dataset(shard_data), batch_size, world_size
+            self.gen_dataset(train_data, shard_range=shard_range),
+            batch_size,
+            world_size,
         )
 
     def get_test_iter_from_raw_data(
@@ -668,13 +694,9 @@ class DataHandler(Component):
                 # only return the first batch since there is only one
                 return input, context
 
-    def read_from_file(
-        self,
-        file_name: str,
-        columns_to_use: Union[Dict[str, int], List[str]],
-        rank: int = 0,
-        world_size: int = 1,
-    ) -> List[Dict[str, Any]]:
+    def read_from_file_gen(
+        self, file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
+    ) -> Generator[Dict, None, None]:
         """
         Read data from csv file. Input file format is required to be
         tab-separated columns
@@ -690,18 +712,10 @@ class DataHandler(Component):
                 name: idx
                 for name, idx in zip(columns_to_use, range(len(columns_to_use)))
             }
-        shard_range = (
-            dist_utils.get_shard_range(
-                self.metadata.dataset_sizes[file_name], rank, world_size
-            )
-            if world_size > 1
-            else None
-        )
 
         with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
             csv_reader = csv.reader(f_handle, delimiter="\t", quoting=csv.QUOTE_NONE)
-            data = []
-            i, row_idx = 0, 0
+            i = 0
             while True:
                 i += 1
                 try:
@@ -712,19 +726,15 @@ class DataHandler(Component):
                 except StopIteration:
                     break
 
-                if not shard_range or shard_range[0] <= row_idx < shard_range[1]:
-                    data.append(
-                        {
-                            name: row[index] if index < len(row) else ""
-                            for name, index in columns_to_use.items()
-                        }
-                    )
-                row_idx += 1
+                yield {
+                    name: row[index] if index < len(row) else ""
+                    for name, index in columns_to_use.items()
+                }
 
-            # some shard might have 1 less example due to data_size % world_size
-            # pad the shard to make sure all shard dataset have same size
-            dist_utils.pad_shard_data(data, row_idx, world_size)
-            return data
+    def read_from_file(
+        self, file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
+    ) -> List[Dict[str, Any]]:
+        return [x for x in self.read_from_file_gen(file_name, columns_to_use)]
 
     def _postprocess_batch(
         self,

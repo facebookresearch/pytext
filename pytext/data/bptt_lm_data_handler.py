@@ -3,7 +3,7 @@
 
 import itertools
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List
 
 import torch
 from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
@@ -120,7 +120,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
         """
         self.metadata.target = self.metadata.features[DatasetFieldName.TEXT_FIELD]
 
-    def preprocess(self, data: List[Dict[str, Any]]):
+    def preprocess(self, data: Iterable[Dict[str, Any]]):
         tokens = []
         for row in data:
             tokens.extend(self.preprocess_row(row))

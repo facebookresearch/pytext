@@ -6,6 +6,7 @@ import unittest
 
 from pytext.utils import test_utils
 from pytext.utils.data_utils import align_slot_labels, unkify
+from pytext.utils.dist_utils import get_shard_range
 from pytext.utils.test_utils import import_tests_module
 
 
@@ -76,3 +77,28 @@ class UtilTest(unittest.TestCase):
 
         for token, expected_unkified in map_token_unkified.items():
             self.assertEqual(unkify(token), expected_unkified)
+
+    def test_get_shard_range(self):
+        # first 5 ranks should take 3 examples
+        # last 3 ranks should take 2 examples, but to make sure all shard have
+        # same size, we pad with the previous example.
+        dataset_size, world_size = 21, 8
+        expected = [
+            (0, (0, 2)),
+            (1, (3, 5)),
+            (2, (6, 8)),
+            (3, (9, 11)),
+            (4, (12, 14)),
+            (5, (14, 16)),
+            (6, (16, 18)),
+            (7, (18, 20)),
+        ]
+        for rank, expected_range in expected:
+            shard_range = get_shard_range(dataset_size, rank, world_size)
+            self.assertEqual(shard_range, expected_range)
+
+        dataset_size, world_size = 16, 4
+        expected = [(0, (0, 3)), (1, (4, 7)), (2, (8, 11)), (3, (12, 15))]
+        for rank, expected_range in expected:
+            shard_range = get_shard_range(dataset_size, rank, world_size)
+            self.assertEqual(shard_range, expected_range)
