@@ -75,7 +75,6 @@ class TSVDataSource(RootDataSource):
         self._train_tsv = make_tsv(train_file) if train_file else []
         self._test_tsv = make_tsv(test_file) if test_file else []
         self._eval_tsv = make_tsv(eval_file) if eval_file else []
-        self._access_lock = threading.Lock()
 
     def _iter_raw_train(self):
         return iter(self._train_tsv)
