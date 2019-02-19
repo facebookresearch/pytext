@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import itertools
 from collections import defaultdict
 from typing import (
     Any,
@@ -102,30 +103,35 @@ class MacroPRF1Metrics(NamedTuple):
     per_label_scores: Dict[str, PRF1Scores]
     macro_scores: MacroPRF1Scores
 
-    def print_metrics(self) -> None:
-        res = (
-            f"\t{'Label':<20}"
-            f"\t{'Precision':<10}"
-            f"\t{'Recall':<10}"
-            f"\t{'F1':<10}"
-            f"\t{'Support':<10}\n\n"
-        )
-        for label, label_metrics in self.per_label_scores.items():
-            support = label_metrics.true_positives + label_metrics.false_negatives
-            res += (
-                f"\t{label:<20}"
-                f"\t{label_metrics.precision * 100:<10.2f}"
-                f"\t{label_metrics.recall * 100:<10.2f}"
-                f"\t{label_metrics.f1 * 100:<10.2f}"
-                f"\t{support:<10}\n"
+    def print_metrics(self, indentation="") -> None:
+        print(
+            ascii_table(
+                [
+                    {
+                        "label": label,
+                        "precision": f"{metrics.precision:.2f}",
+                        "recall": f"{metrics.recall:.2f}",
+                        "f1": f"{metrics.f1:.2f}",
+                        "support": metrics.true_positives + metrics.false_negatives,
+                    }
+                    for label, metrics in self.per_label_scores.items()
+                ],
+                human_column_names={
+                    "label": "Label",
+                    "precision": "Precision",
+                    "recall": "Recall",
+                    "f1": "F1",
+                    "support": "Support",
+                },
+                footer={
+                    "label": "Overall macro scores",
+                    "precision": f"{self.macro_scores.precision:.2f}",
+                    "recall": f"{self.macro_scores.recall:.2f}",
+                    "f1": f"{self.macro_scores.f1:.2f}",
+                },
+                indentation=indentation,
             )
-        res += (
-            f"\t{'Overall macro scores':<20}"
-            f"\t{self.macro_scores.precision * 100:<10.2f}"
-            f"\t{self.macro_scores.recall * 100:<10.2f}"
-            f"\t{self.macro_scores.f1 * 100:<10.2f}"
         )
-        print(res)
 
 
 class PRF1Metrics(NamedTuple):
@@ -179,6 +185,49 @@ class PRF1Metrics(NamedTuple):
         print(res)
 
 
+def ascii_table(data, human_column_names=None, footer=None, indentation=""):
+    data = list(data)
+    columns = human_column_names or set(itertools.chain.from_iterable(data))
+    widths = {
+        column: max(len(str(row.get(column))) for row in data) for column in columns
+    }
+    if human_column_names:
+        for column, human in human_column_names.items():
+            widths[column] = max(widths[column], len(human))
+
+    separator = "+" + "+".join("-" * (width + 2) for width in widths.values()) + "+"
+
+    def format_row(row, alignment=">"):
+        return (
+            "| "
+            + " | ".join(
+                format(row.get(column, ""), f"{alignment}{width}")
+                for column, width in widths.items()
+            )
+            + " |"
+        )
+
+    header = (
+        (format_row(human_column_names, alignment="<"), separator)
+        if human_column_names
+        else ()
+    )
+
+    footer = (format_row(footer, alignment="<"), separator) if footer else ()
+
+    return indentation + f"\n{indentation}".join(
+        (separator, *header, *(format_row(row) for row in data), separator, *footer)
+    )
+
+
+def ascii_table_from_dict(dict, key_name, value_name, indentation=""):
+    return ascii_table(
+        [{"key": key, "value": value} for key, value in dict.items()],
+        {"key": key_name, "value": value_name},
+        indentation=indentation,
+    )
+
+
 class ClassificationMetrics(NamedTuple):
     """
     Metric class for various classification metrics.
@@ -202,16 +251,44 @@ class ClassificationMetrics(NamedTuple):
     def print_metrics(self) -> None:
         print(f"Accuracy: {self.accuracy * 100:.2f}\n")
         print("Macro P/R/F1 Scores:")
-        self.macro_prf1_metrics.print_metrics()
+        self.macro_prf1_metrics.print_metrics(indentation="\t")
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
-            print(f"\t{'Label':<10}\t{'Average precision':<10}")
-            for label, label_metrics in self.per_label_soft_scores.items():
-                print(f"\t{label:<10}\t{label_metrics.average_precision * 100:<10.2f}")
-            for label, label_metrics in self.per_label_soft_scores.items():
-                for threshold, recall in label_metrics.recall_at_precision.items():
-                    print(f"\t{'Label':<10}\tRecall at precision {threshold}")
-                    print(f"\t{label:<10}\t{recall * 100:<10.2f}")
+            soft_scores = {
+                label: f"{metrics.average_precision * 100:.2f}"
+                for label, metrics in self.per_label_soft_scores.items()
+            }
+            print(
+                ascii_table_from_dict(
+                    soft_scores, "Label", "Average precision", indentation="\t"
+                )
+            )
+            all_thresholds = set(
+                itertools.chain.from_iterable(
+                    metrics.recall_at_precision
+                    for metrics in self.per_label_soft_scores.values()
+                )
+            )
+            print("\n\t Precision at Recall")
+            print(
+                ascii_table(
+                    (
+                        dict(
+                            {"label": label},
+                            **{
+                                str(p): f"{r:.2f}"
+                                for p, r in metrics.recall_at_precision.items()
+                            },
+                        )
+                        for label, metrics in self.per_label_soft_scores.items()
+                    ),
+                    dict(
+                        {"label": "Label"},
+                        **{str(t): f"P@R {t}" for t in all_thresholds},
+                    ),
+                    indentation="\t",
+                )
+            )
         if self.mcc:
             print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
         if self.roc_auc:
