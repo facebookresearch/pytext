@@ -44,6 +44,8 @@ class CharFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
     cnn: CNNParams = CNNParams()
+    highway_layers: int = 0
+    projection_dim: Optional[int] = None
     export_input_names: List[str] = ["char_vals"]
     vocab_from_train_data: bool = True
     max_word_length: int = 20

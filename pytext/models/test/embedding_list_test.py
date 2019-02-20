@@ -18,7 +18,12 @@ class EmbeddingListTest(unittest.TestCase):
             mlp_layer_dims=[],
         )
         char_embedding = CharacterEmbedding(
-            num_embeddings=5, embed_dim=4, out_channels=2, kernel_sizes=[1, 2]
+            num_embeddings=5,
+            embed_dim=4,
+            out_channels=2,
+            kernel_sizes=[1, 2],
+            highway_layers=1,
+            projection_dim=3,
         )
         embedding_list = EmbeddingList([word_embedding, char_embedding], concat=True)
         param_groups = embedding_list.get_param_groups_for_optimizer()

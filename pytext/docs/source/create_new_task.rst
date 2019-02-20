@@ -114,13 +114,13 @@ above, will be used later in the process.
 	      )
 	      res = {
 	          # features
-	          ModelInput.WORD_FEAT: features.tokens,
+	          ModelInput.WORD_FEAT: self._get_tokens(features),
 	          ModelInput.DICT_FEAT: (
 	              features.gazetteer_feats,
 	              features.gazetteer_feat_weights,
 	              features.gazetteer_feat_lengths,
 	          ),
-	          ModelInput.CHAR_FEAT: features.characters,
+	          ModelInput.CHAR_FEAT: self._get_chars(features),
 	          # target
 	          [Target.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
 	              features.token_ranges,

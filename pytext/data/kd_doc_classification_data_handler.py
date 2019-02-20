@@ -128,7 +128,7 @@ class KDDocClassificationDataHandler(DocClassificationDataHandler):
                 features.gazetteer_feat_weights,
                 features.gazetteer_feat_lengths,
             ),
-            ModelInput.CHAR_FEAT: features.characters,
+            ModelInput.CHAR_FEAT: self._get_chars(features),
             ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             ModelInput.DENSE_FEAT: row_data.get(ModelInput.DENSE_FEAT),
             # target
