@@ -26,7 +26,7 @@ from .metric_reporter import MetricReporter
 
 
 PRED_TARGET_TREES = "pred_target_trees"
-ALL_PRED_TREES = "all_pred_trees"
+ALL_PRED_FRAMES = "all_pred_frames"
 
 
 class CompositionalFileChannel(FileChannel):
@@ -60,46 +60,35 @@ class CompositionalMetricReporter(MetricReporter):
 
     def gen_extra_context(self):
         # check if all_preds contains top K results or only 1 result
-        batchSize = len(self.all_preds)
         pred_target_trees = []
-        all_pred_trees: List[List[Tree]] = [[]] * batchSize
+        all_pred_trees: List[List[Tree]] = []
 
-        i = -1
         for top_k_action_preds, action_targets, token_str_list in zip(
             self.all_preds, self.all_targets, self.all_context[DatasetFieldName.TOKENS]
         ):
-            i += 1
+            topk_pred_trees = []
             for k, action_preds in enumerate(top_k_action_preds):
                 pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
                     token_str_list, self.actions_vocab, action_preds
                 )
-                all_pred_trees[i].append(pred_tree)
+                topk_pred_trees.append(
+                    CompositionalMetricReporter.tree_to_metric_node(pred_tree)
+                )
                 if k == 0:
                     target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
                         token_str_list, self.actions_vocab, action_targets
                     )
                     pred_target_trees.append((pred_tree, target_tree))
+            all_pred_trees.append(topk_pred_trees)
         self.all_context[PRED_TARGET_TREES] = pred_target_trees
-        self.all_context[ALL_PRED_TREES] = all_pred_trees
-
-    def gen_single_extra_context(self):
-        pred_target_trees = []
-        for action_preds, action_targets, token_str_list in zip(
-            self.all_preds, self.all_targets, self.all_context[DatasetFieldName.TOKENS]
-        ):
-            pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
-                token_str_list, self.actions_vocab, action_preds
-            )
-            target_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
-                token_str_list, self.actions_vocab, action_targets
-            )
-            pred_target_trees.append((pred_tree, target_tree))
-        self.all_context[PRED_TARGET_TREES] = pred_target_trees
+        self.all_context[ALL_PRED_FRAMES] = all_pred_trees
 
     # CREATE NODES
     def calculate_metric(self):
         return compute_all_metrics(
-            self.create_frame_prediction_pairs(), overall_metrics=True
+            self.create_frame_prediction_pairs(),
+            overall_metrics=True,
+            all_predicted_frames=self.all_context[ALL_PRED_FRAMES],
         )
 
     def create_frame_prediction_pairs(self):
