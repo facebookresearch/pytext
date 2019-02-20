@@ -35,8 +35,8 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
                 SimpleFeaturizer.Config(), FeatureConfig()
             ),
         )
-        self.data = self.data_handler.read_from_file(
-            file_name, self.data_handler.raw_columns
+        self.data = list(
+            self.data_handler.read_from_file(file_name, self.data_handler.raw_columns)
         )
 
     def test_create_from_config(self):

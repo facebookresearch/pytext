@@ -322,7 +322,7 @@ class DataHandler(Component):
             else None
         )
         res = self.gen_dataset(
-            self.read_from_file_gen(path, self.raw_columns),
+            self.read_from_file(path, self.raw_columns),
             include_label_fields,
             shard_range,
         )
@@ -665,7 +665,7 @@ class DataHandler(Component):
         )
 
     def get_predict_iter(
-        self, data: List[Dict[str, Any]], batch_size: Optional[int] = None
+        self, data: Iterable[Dict[str, Any]], batch_size: Optional[int] = None
     ):
         ds = self.gen_dataset(data, include_label_fields=False)
         if batch_size is None:
@@ -694,7 +694,7 @@ class DataHandler(Component):
                 # only return the first batch since there is only one
                 return input, context
 
-    def read_from_file_gen(
+    def read_from_file(
         self, file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
     ) -> Generator[Dict, None, None]:
         """
@@ -730,11 +730,6 @@ class DataHandler(Component):
                     name: row[index] if index < len(row) else ""
                     for name, index in columns_to_use.items()
                 }
-
-    def read_from_file(
-        self, file_name: str, columns_to_use: Union[Dict[str, int], List[str]]
-    ) -> List[Dict[str, Any]]:
-        return [x for x in self.read_from_file_gen(file_name, columns_to_use)]
 
     def _postprocess_batch(
         self,

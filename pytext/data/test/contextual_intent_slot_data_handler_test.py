@@ -24,7 +24,7 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
             featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), ModelInputConfig()),
         )
 
-        self.data = self.dh.read_from_file(file_name, self.dh.raw_columns)
+        self.data = list(self.dh.read_from_file(file_name, self.dh.raw_columns))
 
     def test_create_from_config(self):
         expected_columns = [

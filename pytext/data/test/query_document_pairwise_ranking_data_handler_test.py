@@ -40,8 +40,8 @@ class QueryDocumentPairwiseRankingDataHandlerTest(unittest.TestCase):
 
     def test_read_from_file(self):
         file_name = tests_module.test_file("query_document_pairwise_ranking_tiny.tsv")
-        data = self.data_handler.read_from_file(
-            file_name, self.data_handler.raw_columns
+        data = list(
+            self.data_handler.read_from_file(file_name, self.data_handler.raw_columns)
         )
         # Check if the data has 4 rows and 3 columns
         self.assertEqual(len(data), 4)
@@ -52,8 +52,8 @@ class QueryDocumentPairwiseRankingDataHandlerTest(unittest.TestCase):
 
     def test_tokenization(self):
         file_name = tests_module.test_file("query_document_pairwise_ranking_tiny.tsv")
-        data = self.data_handler.read_from_file(
-            file_name, self.data_handler.raw_columns
+        data = list(
+            self.data_handler.read_from_file(file_name, self.data_handler.raw_columns)
         )
         data = list(self.data_handler.preprocess(data))
         print(data[0][ModelInput.QUERY])
