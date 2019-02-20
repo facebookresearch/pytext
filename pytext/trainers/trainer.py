@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import sys
+import time
 from typing import Any, Optional, Tuple
 
 import torch
@@ -35,6 +36,8 @@ class Trainer(TrainerBase):
         max_clip_norm (Optional[float]): Clip gradient norm if set
         report_train_metrics (bool): Whether metrics on training data should be
             computed and reported.
+        target_time_limit_seconds (int): Target time limit for training in seconds. If
+            the expected time to train another epoch exceeds this limit, stop training.
     """
 
     class Config(ConfigBase):
@@ -46,6 +49,8 @@ class Trainer(TrainerBase):
         max_clip_norm: Optional[float] = None
         # Whether metrics on training data should be computed and reported.
         report_train_metrics: bool = True
+        # Target time limit for training.
+        target_time_limit_seconds: int = 0
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
@@ -145,7 +150,20 @@ class Trainer(TrainerBase):
             # grad_norm could be used to check grads sync in distributed training
             return grad_norm
 
+        time_start = time.time()
         for epoch in range(1, self.config.epochs + 1):
+            if self.config.target_time_limit_seconds > 0 and epoch > 1:
+                time_elapsed = time.time() - time_start
+                mean_epoch_time = time_elapsed / float(epoch - 1)
+                expected_next_epoch_time = time_elapsed + mean_epoch_time
+                if expected_next_epoch_time > self.config.target_time_limit_seconds:
+                    print(
+                        f"Training stopped after {epoch - 1} epochs and "
+                        f"{int(time_elapsed)} seconds, due to the target max training "
+                        f"time of {self.config.target_time_limit_seconds} seconds."
+                    )
+                    break
+
             print(f"Rank {rank} worker: Starting epoch #{epoch}")
             model.train()
             lrs = (str(lr) for lr in learning_rates(optimizer))
