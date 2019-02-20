@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -18,19 +18,23 @@ class CharacterEmbedding(EmbeddingBase):
     followed by max-pooling over character embeddings to obtain an embedding
     vector for each token.
 
-    Implementation is loosely based on https://arxiv.org/abs/1508.06615 but,
-    does not implement the Highway Network illustrated in the paper.
+    Implementation is loosely based on https://arxiv.org/abs/1508.06615.
 
     Args:
         num_embeddings (int): Total number of characters (vocabulary size).
-        embed_dim (int): Size of embedding vector.
+        embed_dim (int): Size of character embeddings to be passed to convolutions.
         out_channels (int): Number of output channels.
         kernel_sizes (List[int]): Dimension of input Tensor passed to MLP.
+        highway_layers (int): Number of highway layers applied to pooled output.
+        projection_dim (int): If specified, size of output embedding for token, via
+            a linear projection from convolution output.
 
     Attributes:
         char_embed (nn.Embedding): Character embedding table.
         convs (nn.ModuleList): Convolution layers that operate on character
         embeddings.
+        highway_layers (nn.Module): Highway layers on top of convolution output.
+        projection (nn.Module): Final linear layer to token embedding.
         embedding_dim (int): Dimension of the final token embedding produced.
 
     """
@@ -56,6 +60,8 @@ class CharacterEmbedding(EmbeddingBase):
             config.embed_dim,
             config.cnn.kernel_num,
             config.cnn.kernel_sizes,
+            config.highway_layers,
+            config.projection_dim,
         )
 
     def __init__(
@@ -64,10 +70,15 @@ class CharacterEmbedding(EmbeddingBase):
         embed_dim: int,
         out_channels: int,
         kernel_sizes: List[int],
+        highway_layers: int,
+        projection_dim: Optional[int],
         *args,
         **kwargs,
     ) -> None:
-        super().__init__(embed_dim)
+        conv_out_dim = len(kernel_sizes) * out_channels
+        output_dim = projection_dim or conv_out_dim
+        super().__init__(output_dim)
+
         self.char_embed = nn.Embedding(num_embeddings, embed_dim)
         self.convs = nn.ModuleList(
             [
@@ -79,7 +90,12 @@ class CharacterEmbedding(EmbeddingBase):
                 for K in kernel_sizes
             ]
         )
-        self.embedding_dim = out_channels * len(kernel_sizes)
+        self.highway = None
+        if highway_layers > 0:
+            self.highway = Highway(conv_out_dim, highway_layers)
+        self.projection = None
+        if projection_dim:
+            self.projection = nn.Linear(conv_out_dim, projection_dim)
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
         """
@@ -100,7 +116,7 @@ class CharacterEmbedding(EmbeddingBase):
         batch_size, max_sent_length, max_word_length = tuple(chars.size())
         chars = chars.view(batch_size * max_sent_length, max_word_length)
 
-        # char_embedding: (bsize * max_sent_length, max_word_length, emb_size)
+        # char_embedding: (bsize * max_sent_length, max_word_length, embed_dim)
         char_embedding = self.char_embed(chars)
 
         # conv_inp dim: (bsize * max_sent_length, emb_size, max_word_length)
@@ -113,7 +129,52 @@ class CharacterEmbedding(EmbeddingBase):
 
         # Concat different feature maps together
         # char_pool_out dim: (bsize * max_sent_length, out_channel * num_kernels)
-        char_pool_out = torch.cat(char_pool_outs, 1)
+        char_out = torch.cat(char_pool_outs, 1)
 
-        # Reshape to (bsize, max_sent_length, out_channel * len(self.convs))
-        return char_pool_out.view(batch_size, max_sent_length, -1)
+        # Highway layers, preserves dims
+        if self.highway is not None:
+            char_out = self.highway(char_out)
+
+        if self.projection is not None:
+            # Linear map back to final embedding size:
+            # (bsize * max_sent_length, projection_dim)
+            char_out = self.projection(char_out)
+
+        # Reshape to (bsize, max_sent_length, "output_dim")
+        return char_out.view(batch_size, max_sent_length, -1)
+
+
+class Highway(nn.Module):
+    """
+    A `Highway layer <https://arxiv.org/abs/1505.00387>`.
+    Adopted from the AllenNLP implementation.
+    """
+
+    def __init__(self, input_dim: int, num_layers: int = 1):
+        super().__init__()
+        self.input_dim = input_dim
+        self.layers = nn.ModuleList(
+            [nn.Linear(input_dim, input_dim * 2) for _ in range(num_layers)]
+        )
+        self.activation = nn.ReLU()
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for layer in self.layers:
+            # As per comment in AllenNLP:
+            # We should bias the highway layer to just carry its input forward. We do
+            # that by setting the bias on `B(x)` to be positive, because that means `g`
+            # will be biased to be high, so we will carry the input forward. The bias
+            # on `B(x)` is the second half of the bias vector in each Linear layer.
+            nn.init.constant_(layer.bias[self.input_dim :], 1)
+            nn.init.constant_(layer.bias[: self.input_dim], 0)
+            nn.init.xavier_normal_(layer.weight)
+
+    def forward(self, x: torch.Tensor):
+        for layer in self.layers:
+            projection = layer(x)
+            proj_x, gate = projection.chunk(2, dim=-1)
+            proj_x = self.activation(proj_x)
+            gate = F.sigmoid(gate)
+            x = gate * x + (gate.new_tensor([1]) - gate) * proj_x
+        return x

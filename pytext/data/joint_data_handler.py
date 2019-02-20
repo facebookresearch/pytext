@@ -92,12 +92,19 @@ class JointModelDataHandler(DataHandler):
             **kwargs,
         )
 
-    def _get_tokens(self, mode_feature):
+    def _get_tokens(self, model_feature):
         if self.max_seq_len > 0:
             # truncate tokens if max_seq_len is set
-            return mode_feature.tokens[: self.max_seq_len]
+            return model_feature.tokens[: self.max_seq_len]
         else:
-            return mode_feature.tokens
+            return model_feature.tokens
+
+    def _get_chars(self, model_feature):
+        if self.max_seq_len > 0:
+            # truncate tokens if max_seq_len is set
+            return model_feature.characters[: self.max_seq_len]
+        else:
+            return model_feature.characters
 
     def featurize(self, row_data: Dict[str, Any]):
         return self.featurizer.featurize(
@@ -118,7 +125,7 @@ class JointModelDataHandler(DataHandler):
                 features.gazetteer_feat_weights,
                 features.gazetteer_feat_lengths,
             ),
-            DatasetFieldName.CHAR_FIELD: features.characters,
+            DatasetFieldName.CHAR_FIELD: self._get_chars(features),
             DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
             # extra data
             # TODO move the logic to FloatField
