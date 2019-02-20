@@ -16,6 +16,7 @@ from typing import (
 )
 
 import numpy as np
+from pytext.common.ascii_table import ascii_table, ascii_table_from_dict
 
 
 RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
@@ -183,49 +184,6 @@ class PRF1Metrics(NamedTuple):
             f"\t{self.macro_scores.f1 * 100:<10.2f}\n"
         )
         print(res)
-
-
-def ascii_table(data, human_column_names=None, footer=None, indentation=""):
-    data = list(data)
-    columns = human_column_names or set(itertools.chain.from_iterable(data))
-    widths = {
-        column: max(len(str(row.get(column))) for row in data) for column in columns
-    }
-    if human_column_names:
-        for column, human in human_column_names.items():
-            widths[column] = max(widths[column], len(human))
-
-    separator = "+" + "+".join("-" * (width + 2) for width in widths.values()) + "+"
-
-    def format_row(row, alignment=">"):
-        return (
-            "| "
-            + " | ".join(
-                format(row.get(column, ""), f"{alignment}{width}")
-                for column, width in widths.items()
-            )
-            + " |"
-        )
-
-    header = (
-        (format_row(human_column_names, alignment="<"), separator)
-        if human_column_names
-        else ()
-    )
-
-    footer = (format_row(footer, alignment="<"), separator) if footer else ()
-
-    return indentation + f"\n{indentation}".join(
-        (separator, *header, *(format_row(row) for row in data), separator, *footer)
-    )
-
-
-def ascii_table_from_dict(dict, key_name, value_name, indentation=""):
-    return ascii_table(
-        [{"key": key, "value": value} for key, value in dict.items()],
-        {"key": key_name, "value": value_name},
-        indentation=indentation,
-    )
 
 
 class ClassificationMetrics(NamedTuple):
