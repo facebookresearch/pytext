@@ -40,7 +40,7 @@ class DataHandlerTest(unittest.TestCase):
             TargetConfig(),
             featurizer=featurizer,
         )
-        data = data_handler.read_from_file(file_name, columns)
+        data = list(data_handler.read_from_file(file_name, columns))
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
@@ -69,7 +69,7 @@ class DataHandlerTest(unittest.TestCase):
             TargetConfig(),
             featurizer=featurizer,
         )
-        data = data_handler.read_from_file(file_name, columns)
+        data = list(data_handler.read_from_file(file_name, columns))
         for col in columns:
             self.assertTrue(col in data[0], "{} must in the data".format(col))
         self.assertEqual("alarm/modify_alarm", data[0][DFColumn.DOC_LABEL])
