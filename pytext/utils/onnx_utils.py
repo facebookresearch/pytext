@@ -10,6 +10,22 @@ from caffe2.python.onnx import backend as caffe2_backend
 
 
 CAFFE2_DB_TYPE = "minidb"
+ONNX_OPTIMIZATION_PASSES = [
+    "eliminate_nop_dropout",
+    "eliminate_nop_monotone_argmax",
+    "eliminate_nop_pad",
+    "eliminate_nop_transpose",
+    "fuse_add_bias_into_conv",
+    "fuse_bn_into_conv",
+    "fuse_consecutive_concats",
+    "fuse_consecutive_log_softmax",
+    "fuse_consecutive_reduce_unsqueeze",
+    "fuse_consecutive_squeezes",
+    "fuse_consecutive_transposes",
+    "fuse_matmul_add_bias_into_gemm",
+    "fuse_pad_into_conv",
+    "fuse_transpose_into_gemm",
+]
 
 
 def convert_caffe2_blob_name(blob_name):
@@ -25,6 +41,7 @@ def pytorch_to_caffe2(
     output_names,
     export_path,
     export_onnx_path=None,
+    optimize=True,
 ):
     num_tensors = 0
     for inp in export_input:
@@ -48,6 +65,8 @@ def pytorch_to_caffe2(
     )
     onnx_model = onnx.load(export_onnx_path)
     onnx.checker.check_model(onnx_model)
+    if optimize:
+        onnx_model = onnx.optimizer.optimize(onnx_model, ONNX_OPTIMIZATION_PASSES)
     # Convert the ONNX model to a caffe2 net
     c2_prepared = caffe2_backend.prepare(onnx_model)
     return c2_prepared
