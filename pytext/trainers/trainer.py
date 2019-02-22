@@ -15,6 +15,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import learning_rates
+from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda_utils, time_utils
 
 
@@ -68,7 +69,7 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
         optimizer: torch.optim.Optimizer,
-        scheduler=None,
+        scheduler: Scheduler = None,
         rank: int = 0,
     ) -> Tuple[torch.nn.Module, Any]:
         """
@@ -88,7 +89,7 @@ class Trainer(TrainerBase):
                 output and report results to console, file.. etc
             train_config (PyTextConfig): training config
             optimizer (torch.optim.Optimizer): torch optimizer to be used
-            scheduler (Optional[torch.optim.lr_scheduler]): learning rate scheduler,
+            scheduler (Scheduler): learning rate scheduler,
                 default is None
             training_result (Optional): only meaningful for Hogwild training. default
                 is None
@@ -115,8 +116,10 @@ class Trainer(TrainerBase):
 
         best_metric = None
         last_best_epoch = 0
-        scheduler = self._prepare_scheduler(train_iter, scheduler)
         timer.add_stage(stage="pre_training")
+
+        if scheduler:
+            scheduler.prepare(train_iter, self.config.epochs)
 
         def training_pre_batch_callback():
             if world_size > 1:
@@ -196,7 +199,7 @@ class Trainer(TrainerBase):
             # Step the learning rate scheduler(s)
             if scheduler:
                 assert eval_metric is not None
-                scheduler.step(
+                scheduler.step_epoch(
                     metrics=metric_reporter.get_model_select_metric(eval_metric),
                     epoch=epoch,
                 )
@@ -286,11 +289,3 @@ class Trainer(TrainerBase):
 
         timer.report("Trainer epoch timer")
         return metrics
-
-    def _prepare_scheduler(self, train_iter, scheduler=None):
-        if scheduler:
-            for batch_based_scheduler in scheduler.batch_based_schedulers:
-                batch_based_scheduler.num_epochs = self.config.epochs
-                batch_based_scheduler.steps_per_epoch = train_iter.total_num_batches
-            scheduler.step_batch()
-        return scheduler

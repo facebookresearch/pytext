@@ -176,6 +176,12 @@ def create_optimizer(optimizer_config, model: torch.nn.Module, *args, **kwargs):
     )
 
 
+def create_scheduler(scheduler_config, optimizer, *args, **kwargs):
+    return create_component(
+        ComponentType.SCHEDULER, scheduler_config, optimizer, *args, **kwargs
+    )
+
+
 def create_predictor(predictor_config, *args, **kwargs):
     return create_component(ComponentType.PREDICTOR, predictor_config, *args, **kwargs)
 
