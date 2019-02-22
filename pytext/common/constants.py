@@ -23,6 +23,7 @@ class DatasetFieldName:
     LANGUAGE_ID_FIELD = "lang"
     SEQ_LENS = "seq_lens"
     TARGET_SEQ_LENS = "target_seq_lens"
+    RAW_SEQUENCE = "raw_sequence"
     SOURCE_SEQ_FIELD = "source_sequence"
     TARGET_SEQ_FIELD = "target_sequence"
 

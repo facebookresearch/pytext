@@ -14,6 +14,9 @@ COMBINATION_SLOT_LABEL = SLOT_PREFIX + "COMBINE"
 SHIFT = "SHIFT"
 REDUCE = "REDUCE"
 
+INVALID_TREE_STR = "[IN:INVALID_TREE placeholder]"
+SEQLOGICAL_LOTV_TOKEN = "0"
+
 
 def is_valid_nonterminal(node_label: str) -> bool:
     return node_label.startswith(INTENT_PREFIX) or node_label.startswith(SLOT_PREFIX)
