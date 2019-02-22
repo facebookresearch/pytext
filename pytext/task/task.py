@@ -16,6 +16,7 @@ from pytext.config.component import (
     create_metric_reporter,
     create_model,
     create_optimizer,
+    create_scheduler,
     create_trainer,
 )
 from pytext.config.field_config import FeatureConfig
@@ -53,7 +54,7 @@ class TaskBase(Component):
         data_handler: DataHandler.Config
         trainer: Trainer.Config = Trainer.Config()
         optimizer: Optimizer.Config = Adam.Config()
-        scheduler: Optional[Scheduler.Config] = Scheduler.Config()
+        scheduler: Optional[Scheduler.Config] = None
         exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
@@ -95,6 +96,11 @@ class TaskBase(Component):
             model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
         optimizer = create_optimizer(task_config.optimizer, model)
+        if task_config.scheduler:
+            scheduler = create_scheduler(task_config.scheduler, optimizer)
+        else:
+            scheduler = None
+
         exporter = (
             create_exporter(
                 task_config.exporter,
@@ -112,9 +118,7 @@ class TaskBase(Component):
             model=model,
             metric_reporter=metric_reporter,
             optimizer=optimizer,
-            lr_scheduler=Scheduler(
-                optimizer, task_config.scheduler, metric_reporter.lower_is_better
-            ),
+            lr_scheduler=scheduler,
             exporter=exporter,
         )
 
@@ -125,7 +129,7 @@ class TaskBase(Component):
         model: Model,
         metric_reporter: MetricReporter,
         optimizer: torch.optim.Optimizer,
-        lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler],
+        lr_scheduler: Scheduler,
         exporter: Optional[ModelExporter],
     ) -> None:
         self.trainer: Trainer = trainer
@@ -133,7 +137,7 @@ class TaskBase(Component):
         self.model: Model = model
         self.metric_reporter: MetricReporter = metric_reporter
         self.optimizer: torch.optim.Optimizer = optimizer
-        self.lr_scheduler: List[torch.optim.lr_scheduler._LRScheduler] = lr_scheduler
+        self.lr_scheduler: Scheduler = lr_scheduler
         self.exporter = exporter
 
     def train(self, train_config, rank=0, world_size=1):

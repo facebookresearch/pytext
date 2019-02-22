@@ -1,80 +1,91 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 import math
-from enum import Enum
-from typing import List, Optional
 
 import torch
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
+from pytext.optimizer import Optimizer
 from torch.optim.lr_scheduler import (
-    CosineAnnealingLR,
-    ExponentialLR,
-    ReduceLROnPlateau,
-    StepLR,
+    CosineAnnealingLR as TorchCosineAnnealingLR,
+    ExponentialLR as TorchExponentialLR,
+    ReduceLROnPlateau as TorchReduceLROnPlateau,
+    StepLR as TorchStepLR,
     _LRScheduler,
 )
 
 
-class SchedulerType(Enum):
-    NONE = "none"
-    STEP_LR = "step_lr"
-    EXPONENTIAL_LR = "exponential_lr"
-    COSINE_ANNEALING_LR = "cosine_annealing_lr"
-    REDUCE_LR_ON_PLATEAU = "reduce_lr_on_plateau"
-    LM_FINE_TUNING_LR = "lm_fine_tuning_lr"
+class Scheduler(Component):
+    """
+    Schedulers help in adjusting the learning rate during training. Scheduler
+    is a wrapper class over schedulers which can be available in torch
+    library or for custom implementations. There are two kinds of lr scheduling
+    that is supported by this class. Per epoch scheduling and per batch scheduling.
+    In per epoch scheduling, the learning rate is adjusted at the end of each epoch
+    and in per batch scheduling the learning rate is adjusted after the forward and
+    backward pass through one batch during the training.
+
+    There are two main methods that needs to be implemented by the Scheduler.
+    step_epoch() is called at the end of each epoch and step_batch() is called
+    at the end of each batch in the training data.
+
+    prepare() method can be used by BatchSchedulers to initialize any attributes
+    they may need.
+
+    """
+
+    __COMPONENT_TYPE__ = ComponentType.SCHEDULER
+    __EXPANSIBLE__ = True
+
+    class Config(ConfigBase):
+        pass
+
+    def step_batch(self, **kwargs) -> None:
+        pass
+
+    def step_epoch(self, **kwargs) -> None:
+        pass
+
+    def prepare(self, train_iter, total_epochs):
+        pass
 
 
-class SchedulerParams(ConfigBase):
-    """Parameters for the learning rate schedulers."""
-
-    type: SchedulerType = SchedulerType.NONE
-    step_size: int = 30
-    gamma: float = 0.1
-    T_max: int = 1000
-    eta_min: float = 0
-
-    # Parameters specific to `ReduceLROnPlateau` (see PyTorch docs)
-    patience: int = 5
-    threshold: float = 0.0001
-    threshold_is_absolute: bool = False  # see threshold_mode option in PyTorch
-    cooldown: int = 0
-
-    # Parameters specific to class `LmFineTuning` config
-    cut_frac: float = 0.1
-    ratio: int = 32
-    non_pretrained_param_groups: int = 2  # see docstring below for default value
-    lm_lr_multiplier: float = 1.0
-    lm_use_per_layer_lr: bool = False
-    lm_gradual_unfreezing: bool = True
+class BatchScheduler(Scheduler):
+    def prepare(self, train_iter, total_epochs):
+        self.num_epochs = total_epochs
+        self.steps_per_epoch = train_iter.total_num_batches
 
 
-class LmFineTuning(_LRScheduler):
+class LmFineTuning(_LRScheduler, BatchScheduler):
     """
     Fine-tuning methods from the paper
     "[arXiv:1801.06146]Universal Language Model Fine-tuning for Text Classification".
 
     Specifically, modifies training schedule using slanted triangular learning rates,
     discriminative fine-tuning (per-layer learning rates), and gradual unfreezing.
-
-    Args:
-        optimizer (Optimizer): Wrapped optimizer.
-        cut_frac: the fraction of iterations we increase the learning rate. Default 0.1
-        ratio (int): how much smaller the lowest LR is from the maximum LR eta_max.
-            Default: 32.
-        non_pretrained_param_groups (int): Number of param_groups, starting from the
-            end, that were not pretrained. The default value is 2, since the base Model
-            class supplies to the optimizer typically one param_group from the embedding
-            and one param_group from its other components.
-        lm_lr_multiplier (float): Factor to multiply lr for all pretrained layers by.
-        lm_use_per_layer_lr (bool): Whether to make each pretrained layer's lr
-            one-half as large as the next (higher) layer.
-        lm_gradual_unfreezing (bool): Whether to unfreeze layers one by one (per epoch).
-        last_epoch (int): Though the name is `last_epoch`, it means `last batch update`.
-            last_batch_update: = current_epoch_number * num_batches_per_epoch + batch_id
-            after each batch update, it will increment 1
     """
+
+    class Config(Scheduler.Config):
+        #: The fraction of iterations we increase the learning rate. Default 0.1
+        cut_frac: float = 0.1
+        #: How much smaller the lowest LR is from the maximum LR eta_max.
+        ratio: int = 32
+        #: Number of param_groups, starting from the
+        #: end, that were not pretrained. The default value is 2, since the base Model
+        #: class supplies to the optimizer typically one param_group from the embedding
+        #: and one param_group from its other components.
+        non_pretrained_param_groups: int = 2
+        #: Factor to multiply lr for all pretrained layers by.
+        lm_lr_multiplier: float = 1.0
+        #: Whether to make each pretrained layer's lr
+        #:    one-half as large as the next (higher) layer.
+        lm_use_per_layer_lr: bool = False
+        #: Whether to unfreeze layers one by one (per epoch).
+        lm_gradual_unfreezing: bool = True
+        #: Though the name is `last_epoch`, it means `last batch update`.
+        #: last_batch_update: = current_epoch_number * num_batches_per_epoch + batch_id
+        #: after each batch update, it will increment 1
+        last_epoch: int = -1
 
     def __init__(
         self,
@@ -103,6 +114,19 @@ class LmFineTuning(_LRScheduler):
         self.lm_use_per_layer_lr = lm_use_per_layer_lr
         self.lm_gradual_unfreezing = lm_gradual_unfreezing
         super(LmFineTuning, self).__init__(optimizer, last_epoch)
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer):
+        return cls(
+            optimizer,
+            config.cut_frac,
+            config.ratio,
+            config.non_pretrained_param_groups,
+            config.lm_lr_multiplier,
+            config.lm_use_per_layer_lr,
+            config.lm_gradual_unfreezing,
+            config.last_epoch,
+        )
 
     def get_lr(self):
         if self.num_epochs is None or self.steps_per_epoch is None:
@@ -168,83 +192,111 @@ class LmFineTuning(_LRScheduler):
         epoch = self.last_epoch / self.steps_per_epoch
         return epoch < self.lm_pretrained_layers - layer_index
 
+    def step_batch(self, metrics=None, epoch=None):
+        self.step(epoch)
 
-class Scheduler(Component):
-    """Wrapper for all schedulers.
 
-    Wraps one of PyTorch's epoch-based learning rate schedulers or the metric-based
-    `ReduceLROnPlateau`. The trainer will need to call the `step()` method at
-    the end of every epoch, passing the epoch number and validation metrics.
-    Note this differs slightly from PyText, where some schedulers need to be
-    stepped at the beginning of each epoch.
+class StepLR(TorchStepLR, Scheduler):
+    """
+    Wrapper around `torch.optim.lr_scheduler.StepLR`
+    See the original documentation for more details.
     """
 
-    __COMPONENT_TYPE__ = ComponentType.SCHEDULER
+    class Config(Scheduler.Config):
+        #: Period of learning rate decay.
+        step_size: int = 30
+        #: Multiplicative factor of learning rate decay.
+        gamma: float = 0.1
 
-    Config = SchedulerParams
+    @classmethod
+    def from_config(cls, config: Config, optimizer):
+        return cls(optimizer, config.step_size, config.gamma)
 
-    def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        scheduler_params: SchedulerParams,
-        lower_is_better: bool = False,
-    ) -> None:
-        self.batch_based_schedulers: List[_LRScheduler] = []
-        self.epoch_based_schedulers: List[_LRScheduler] = []
-        self.metric_based_schedulers: List[ReduceLROnPlateau] = []
+    def step_epoch(self, metrics=None, epoch=None):
+        self.step(epoch)
 
-        if scheduler_params.type == SchedulerType.NONE:
-            pass
-        elif scheduler_params.type == SchedulerType.STEP_LR:
-            self.epoch_based_schedulers = [
-                StepLR(optimizer, scheduler_params.step_size, scheduler_params.gamma)
-            ]
-        elif scheduler_params.type == SchedulerType.EXPONENTIAL_LR:
-            self.epoch_based_schedulers = [
-                ExponentialLR(optimizer, scheduler_params.gamma)
-            ]
-        elif scheduler_params.type == SchedulerType.COSINE_ANNEALING_LR:
-            self.batch_based_schedulers = [
-                CosineAnnealingLR(
-                    optimizer, scheduler_params.T_max, scheduler_params.eta_min
-                )
-            ]
-        elif scheduler_params.type == SchedulerType.REDUCE_LR_ON_PLATEAU:
-            self.metric_based_schedulers = [
-                ReduceLROnPlateau(
-                    optimizer,
-                    mode="min" if lower_is_better else "max",
-                    factor=scheduler_params.gamma,
-                    patience=scheduler_params.patience,
-                    min_lr=scheduler_params.eta_min,
-                    threshold=scheduler_params.threshold,
-                    threshold_mode=(
-                        "abs" if scheduler_params.threshold_is_absolute else "rel"
-                    ),
-                    cooldown=scheduler_params.cooldown,
-                )
-            ]
-        elif scheduler_params.type == SchedulerType.LM_FINE_TUNING_LR:
-            self.batch_based_schedulers = [
-                LmFineTuning(
-                    optimizer,
-                    scheduler_params.cut_frac,
-                    scheduler_params.ratio,
-                    scheduler_params.non_pretrained_param_groups,
-                    scheduler_params.lm_lr_multiplier,
-                    scheduler_params.lm_use_per_layer_lr,
-                    scheduler_params.lm_gradual_unfreezing,
-                )
-            ]
-        else:
-            raise ValueError("Unknown optimizer scheduler type")
 
-    def step(self, metrics: float, epoch: Optional[int] = None) -> None:
-        for epoch_based_scheduler in self.epoch_based_schedulers:
-            epoch_based_scheduler.step(epoch)
-        for metric_based_scheduler in self.metric_based_schedulers:
-            metric_based_scheduler.step(metrics, epoch)
+class ReduceLROnPlateau(TorchReduceLROnPlateau, Scheduler):
+    """
+    Wrapper around `torch.optim.lr_scheduler.ReduceLROnPlateau`
+    See the original documentation for more details.
+    """
 
-    def step_batch(self) -> None:
-        for batch_based_scheduler in self.batch_based_schedulers:
-            batch_based_scheduler.step()
+    class Config(Scheduler.Config):
+        #: This indicates the desirable direction in which we would like the
+        #: training to proceed. If set to true, learning rate will be reduce
+        #: when quantity being monitored stops going down
+        lower_is_better: bool = True
+        #: Factor by which the learning rate will be reduced. new_lr = lr * factor
+        factor: float = 0.1
+        #: Number of epochs with no improvement after which learning rate will
+        #: be reduced
+        patience: int = 5
+        #: Lower bound on the learning rate of all param groups
+        min_lr: float = 0
+        #: Threshold for measuring the new optimum, to only focus on significant
+        #: changes.
+        threshold: float = 0.0001
+        #: One of rel, abs.
+        #: In rel mode, dynamic_threshold = best * ( 1 + threshold ) in ‘max’ mode
+        #: or best * ( 1 - threshold ) in min mode.
+        #: In abs mode, dynamic_threshold = best + threshold in max mode or
+        #: best - threshold in min mode.
+        threshold_is_absolute: bool = True
+        #: Number of epochs to wait before resuming normal operation after
+        #: lr has been reduced.
+        cooldown: int = 0
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(
+            optimizer,
+            mode="min" if config.lower_is_better else "max",
+            factor=config.factor,
+            patience=config.patience,
+            min_lr=config.min_lr,
+            threshold=config.threshold,
+            threshold_mode=("abs" if config.threshold_is_absolute else "rel"),
+            cooldown=config.cooldown,
+        )
+
+    def step_epoch(self, metrics, epoch):
+        self.step(metrics, epoch)
+
+
+class CosineAnnealingLR(TorchCosineAnnealingLR, BatchScheduler):
+    """
+    Wrapper around `torch.optim.lr_scheduler.CosineAnnealingLR`
+    See the original documentation for more details.
+    """
+
+    class Config(Scheduler.Config):
+        #: Maximum number of iterations.
+        t_max: int = 1000
+        #: Minimum learning rate
+        eta_min: float = 0
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(optimizer, config.t_max, config.eta_min)
+
+    def step_batch(self, metrics=None, epoch=None):
+        self.step(epoch)
+
+
+class ExponentialLR(TorchExponentialLR, Scheduler):
+    """
+    Wrapper around `torch.optim.lr_scheduler.ExponentialLR`
+    See the original documentation for more details.
+    """
+
+    class Config(Scheduler.Config):
+        #: Multiplicative factor of learning rate decay.
+        gamma: float = 0.1
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(optimizer, config.gamma)
+
+    def step_epoch(self, metrics=None, epoch=None):
+        self.step(epoch)
