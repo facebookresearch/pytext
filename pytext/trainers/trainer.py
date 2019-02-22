@@ -135,7 +135,7 @@ class Trainer(TrainerBase):
             else:
                 optimizer.zero_grad()
 
-        def training_backprop(loss, timer):
+        def training_backprop(loss):
             loss.backward()
             if world_size > 1:
                 # DDP fix when some parameters don't receive grads
@@ -251,7 +251,7 @@ class Trainer(TrainerBase):
         model,
         metric_reporter,
         pre_batch=lambda: None,
-        backprop=lambda loss, timer: None,
+        backprop=lambda loss: None,
         rank=0,
     ):
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
@@ -270,7 +270,7 @@ class Trainer(TrainerBase):
                 loss *= 0
             timer.add_stage("compute_loss")
 
-            backprop(loss, timer)
+            backprop(loss)
             if report_metric:
                 preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
                 metric_reporter.add_batch_stats(
