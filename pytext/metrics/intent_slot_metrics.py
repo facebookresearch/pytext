@@ -442,6 +442,7 @@ def compute_all_metrics(
     tree_metrics: bool = True,
     overall_metrics: bool = False,
     all_predicted_frames: List[List[Node]] = None,
+    calculated_loss: float = None,
 ) -> AllMetrics:
     """
     Given a list of predicted and gold intent frames, computes intent-slot related
@@ -494,5 +495,11 @@ def compute_all_metrics(
     )
 
     return AllMetrics(
-        top_intent, accuracy, frame_accuracy_top_k, accuracies, bracket, tree
+        top_intent,
+        accuracy,
+        frame_accuracy_top_k,
+        accuracies,
+        bracket,
+        tree,
+        calculated_loss,
     )
