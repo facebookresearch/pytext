@@ -15,14 +15,14 @@ from .representation_base import RepresentationBase
 class AugmentedLSTMCell(nn.Module):
     """
     `AugmentedLSTMCell` implements a AugmentedLSTM cell.
-     Args:
+    Args:
         embed_dim (int): The number of expected features in the input.
         lstm_dim (int): Number of features in the hidden state of the LSTM.
         Defaults to 32.
         use_highway (bool): If `True` we append a highway network to the
         outputs of the LSTM.
         use_bias (bool): If `True` we use a bias in our LSTM calculations, otherwise
-            we don't.
+        we don't.
 
     Attributes:
         input_linearity (nn.Module): Fused weight matrix which
