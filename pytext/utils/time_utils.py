@@ -22,6 +22,15 @@ class StageTime:
 
 
 class StageTimer:
+    """
+    Reports each stage Total Time, Average Time and Count format in ascii_table.
+
+    Example:
+    [forward] total: 21.470, average: 0.031, count: 702
+    [add_metric] total: 15.764, average: 0.022, count: 702
+    [overall] total: 38.076, average: 38.076, count: 1
+    """
+
     def __init__(self):
         self.reset()
 
