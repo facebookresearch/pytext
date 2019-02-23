@@ -52,6 +52,8 @@ class Trainer(TrainerBase):
         report_train_metrics: bool = True
         # Target time limit for training.
         target_time_limit_seconds: int = 0
+        # Whether to do evaluation and model selection based on it.
+        do_eval: bool = True
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
@@ -160,7 +162,9 @@ class Trainer(TrainerBase):
             return grad_norm
 
         time_start = time.time()
+        best_model_state = None
         for epoch in range(1, self.config.epochs + 1):
+            sys.stdout.flush()
             if self.config.target_time_limit_seconds > 0 and epoch > 1:
                 time_elapsed = time.time() - time_start
                 mean_epoch_time = time_elapsed / float(epoch - 1)
@@ -189,52 +193,53 @@ class Trainer(TrainerBase):
             )
             timer.add_stage(stage=f"epoch_train")
 
-            model.eval(Stage.EVAL)
-            with torch.no_grad():
-                eval_metric = self._run_epoch(
-                    Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
-                )
-            timer.add_stage(stage=f"epoch_eval")
+            if self.config.do_eval:
+                model.eval(Stage.EVAL)
+                with torch.no_grad():
+                    eval_metric = self._run_epoch(
+                        Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
+                    )
+                timer.add_stage(stage=f"epoch_eval")
 
-            # Step the learning rate scheduler(s)
-            if scheduler:
-                assert eval_metric is not None
-                scheduler.step_epoch(
-                    metrics=metric_reporter.get_model_select_metric(eval_metric),
-                    epoch=epoch,
-                )
-
-            # choose best model.
-            if metric_reporter.compare_metric(eval_metric, best_metric):
-                last_best_epoch = epoch
-                best_metric = eval_metric
-                # Only rank = 0 trainer saves modules.
-                if train_config.save_module_checkpoints and rank == 0:
-                    model.save_modules(
-                        base_path=train_config.modules_save_dir, suffix=f"-ep{epoch}"
+                # Step the learning rate scheduler(s)
+                if scheduler:
+                    assert eval_metric is not None
+                    scheduler.step_epoch(
+                        metrics=metric_reporter.get_model_select_metric(eval_metric),
+                        epoch=epoch,
                     )
 
-                if rank == 0:
-                    print(f"Rank {rank} worker: Found a better model!")
-                    model_state = model.state_dict()
-                    # save to cpu to avoid multiple model copies in gpu memory
-                    if cuda_utils.CUDA_ENABLED:
-                        for key, state in model_state.items():
-                            model_state[key] = state.cpu()
-                    best_model_state = model_state
-                timer.add_stage(stage=f"epoch_save/load_module")
+                # choose best model.
+                if metric_reporter.compare_metric(eval_metric, best_metric):
+                    last_best_epoch = epoch
+                    best_metric = eval_metric
+                    # Only rank = 0 trainer saves modules.
+                    if train_config.save_module_checkpoints and rank == 0:
+                        model.save_modules(
+                            base_path=train_config.modules_save_dir,
+                            suffix=f"-ep{epoch}",
+                        )
 
-            if self.config.early_stop_after > 0 and (
-                epoch - last_best_epoch == self.config.early_stop_after
-            ):
-                print(
-                    f"Rank {rank} worker: Eval metric hasn't changed for "
-                    + f"{self.config.early_stop_after} epochs. Stopping now."
-                )
-                break
-            sys.stdout.flush()
+                    if rank == 0:
+                        print(f"Rank {rank} worker: Found a better model!")
+                        model_state = model.state_dict()
+                        # save to cpu to avoid multiple model copies in gpu memory
+                        if cuda_utils.CUDA_ENABLED:
+                            for key, state in model_state.items():
+                                model_state[key] = state.cpu()
+                        best_model_state = model_state
+                    timer.add_stage(stage=f"epoch_save/load_module")
 
-        if rank == 0:
+                if self.config.early_stop_after > 0 and (
+                    epoch - last_best_epoch == self.config.early_stop_after
+                ):
+                    print(
+                        f"Rank {rank} worker: Eval metric hasn't changed for "
+                        + f"{self.config.early_stop_after} epochs. Stopping now."
+                    )
+                    break
+
+        if rank == 0 and best_model_state is not None:
             if cuda_utils.CUDA_ENABLED:
                 for key, state in best_model_state.items():
                     best_model_state[key] = state.cuda()

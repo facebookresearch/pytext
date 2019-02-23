@@ -240,7 +240,7 @@ class Model(nn.Module, Component):
     def save_modules(self, base_path: str = "", suffix: str = ""):
         """Save each sub-module in separate files for reusing later."""
         for module in [self.embedding, self.representation, self.decoder]:
-            if getattr(module.config, "save_path", None):
+            if module is not None and getattr(module.config, "save_path", None):
                 path = module.config.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
