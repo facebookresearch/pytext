@@ -262,10 +262,11 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
         config = context.obj.load_config()
         model_snapshot = config.save_snapshot_path
         use_cuda = config.use_cuda_if_available
+        use_tensorboard = config.use_tensorboard
         print(f"Configured model snapshot {model_snapshot}")
     print("\n=== Starting testing...")
     metric_channels = []
-    if config.use_tensorboard:
+    if use_tensorboard:
         metric_channels.append(TensorBoardChannel())
     try:
         test_model_from_snapshot_path(
