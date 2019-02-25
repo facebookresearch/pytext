@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -35,6 +35,7 @@ class MLPDecoder(DecoderBase):
         """
 
         hidden_dims: List[int] = []
+        out_dim: Optional[int] = None
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -44,6 +45,8 @@ class MLPDecoder(DecoderBase):
             layers.append(nn.Linear(in_dim, dim))
             layers.append(nn.ReLU())
             in_dim = dim
+        if config.out_dim:
+            out_dim = config.out_dim
         if out_dim > 0:
             layers.append(nn.Linear(in_dim, out_dim))
 
