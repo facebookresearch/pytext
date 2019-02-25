@@ -146,6 +146,15 @@ class FileChannel(Channel):
             yield [preds[i], targets[i], scores[i]]
 
 
+class DetailFileChannel(FileChannel):
+    def get_title(self):
+        return ("prediction", "target", "text", "score")
+
+    def gen_content(self, metrics, loss, preds, targets, scores, contexts):
+        for i in range(len(preds)):
+            yield [preds[i], targets[i], contexts["utterance"][i], scores[i]]
+
+
 class TensorBoardChannel(Channel):
     """
     TensorBoardChannel defines how to format and report the result of a PyText
