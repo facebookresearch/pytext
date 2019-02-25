@@ -25,6 +25,7 @@ class OutputRecord(NamedTuple):
     characters: Optional[List[List[str]]] = None
     pretrained_token_embedding: Optional[List[List[float]]] = None
     dense_feats: Optional[List[float]] = None
+    wordpiece_masks: Optional[List[int]] = None
 
 
 class Featurizer(Component):
