@@ -532,6 +532,24 @@ class Tree:
     def flat_str(self):
         return self.root.flat_str()
 
+    def lotv_str(self):
+        """
+        LOTV -- Limited Output Token Vocabulary
+        We map the terminal tokens in the input to a constant output
+        (SEQLOGICAL_LOTV_TOKEN) to make the parsing task easier for models where
+        the decoding is decoupled from the input (e.g. seq2seq). This way,
+        the model can focus on learning to predict the parse tree,
+        rather than waste effort learning to replicate terminal tokens.
+        """
+        flat_str = self.root.flat_str().split(" ")
+        all_tokens = self.list_tokens()
+        return " ".join(
+            [
+                token if token not in all_tokens else SEQLOGICAL_LOTV_TOKEN
+                for token in flat_str
+            ]
+        )
+
     def list_tokens(self):
         return self.root.list_tokens()
 
