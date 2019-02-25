@@ -208,6 +208,9 @@ class Trainer(TrainerBase):
             if metric_reporter.compare_metric(eval_metric, best_metric):
                 last_best_epoch = epoch
                 best_metric = eval_metric
+                best_selection_metric = metric_reporter.get_model_select_metric(
+                    best_metric
+                )
                 # Only rank = 0 trainer saves modules.
                 if train_config.save_module_checkpoints and rank == 0:
                     model.save_modules(
@@ -215,7 +218,10 @@ class Trainer(TrainerBase):
                     )
 
                 if rank == 0:
-                    print(f"Rank {rank} worker: Found a better model!")
+                    print(
+                        f"Rank {rank} worker: Found a better model! "
+                        f"Metric for better model is {best_selection_metric}."
+                    )
                     model_state = model.state_dict()
                     # save to cpu to avoid multiple model copies in gpu memory
                     if cuda_utils.CUDA_ENABLED:

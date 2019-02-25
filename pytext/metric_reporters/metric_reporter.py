@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from pytext.config.component import Component, ComponentType
@@ -32,10 +32,12 @@ class MetricReporter(Component):
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
+        select_metric_path: Optional[str] = None
 
-    def __init__(self, channels) -> None:
+    def __init__(self, channels, **kwargs) -> None:
         self._reset()
         self.channels = channels
+        self.select_metric_path = kwargs.get("select_metric_path")
 
     def _reset(self):
         self.all_preds: List = []
@@ -182,6 +184,12 @@ class MetricReporter(Component):
         the metric itself by default, but usually metrics will be more complicated
         data structures
         """
+        if self.select_metric_path:
+            try:
+                path = "metrics." + self.select_metric_path
+                return eval(path)
+            except SyntaxError:
+                return metrics
         return metrics
 
     def compare_metric(self, new_metric, old_metric):
