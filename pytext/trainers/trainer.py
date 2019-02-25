@@ -59,7 +59,10 @@ class Trainer(TrainerBase):
             test_metric = self._run_epoch(
                 Stage.TEST, 1, test_iter, model, metric_reporter
             )
-        return test_metric
+            model_selection_metric = metric_reporter.get_model_select_metric(
+                test_metric
+            )
+        return test_metric, model_selection_metric
 
     def train(
         self,
