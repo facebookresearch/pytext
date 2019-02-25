@@ -7,7 +7,6 @@ from pytext.common.constants import Padding
 from pytext.utils.cuda_utils import GetTensor
 from torch.autograd import Variable
 
-
 class CRF(nn.Module):
     """
     Compute the log-likelihood of the input assuming a conditional random field
@@ -17,7 +16,7 @@ class CRF(nn.Module):
         num_tags: The number of tags
     """
 
-    def __init__(self, num_tags: int) -> None:
+    def __init__(self, num_tags: int, ignore_index: int = Padding.WORD_LABEL_PAD_IDX) -> None:
         if num_tags <= 0:
             raise ValueError(f"Invalid number of tags: {num_tags}")
         super().__init__()
@@ -29,7 +28,7 @@ class CRF(nn.Module):
         self.end_tag = num_tags + 1
         self.reset_parameters()
         # TODO Remove hardcoding to read from metadata
-        self.ignore_index = Padding.WORD_LABEL_PAD_IDX
+        self.ignore_index = ignore_index
 
     def reset_parameters(self) -> None:
         nn.init.uniform_(self.transitions, -0.1, 0.1)
@@ -46,7 +45,6 @@ class CRF(nn.Module):
         self,
         emissions: torch.FloatTensor,
         tags: torch.LongTensor,
-        ignore_index=Padding.WORD_LABEL_PAD_IDX,
         reduce: bool = True,
     ) -> Variable:
         """
@@ -59,7 +57,6 @@ class CRF(nn.Module):
             tags: Actual tags for each token in the input. Expected shape is
                 batch_size * seq_len
         """
-        self.ignore_index = ignore_index
         mask = self._make_mask_from_targets(tags)
 
         numerator = self._compute_joint_llh(emissions, tags, mask)
@@ -101,11 +98,11 @@ class CRF(nn.Module):
         llh += emissions[:, 0, :].gather(1, tags[:, 0].view(-1, 1)) * mask[
             :, 0
         ].unsqueeze(1)
-
+        masked_tags = tags * mask.long()
         for idx in range(1, seq_len):
             old_state, new_state = (
-                tags[:, idx - 1].view(-1, 1),
-                tags[:, idx].view(-1, 1),
+                masked_tags[:, idx - 1].view(-1, 1),
+                masked_tags[:, idx].view(-1, 1),
             )
             emission_scores = emissions[:, idx, :].gather(1, new_state)
             transition_scores = self.transitions[old_state, new_state]
