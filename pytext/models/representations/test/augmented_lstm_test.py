@@ -10,7 +10,7 @@ class AugmentedLSTMTest(unittest.TestCase):
     def _test_shape(self, use_highway, variational_dropout, num_layers, bidirectional):
         config = AugmentedLSTM.Config()
         config.use_highway = use_highway
-        config.dropout_rate = variational_dropout
+        config.dropout = variational_dropout
         config.num_layers = num_layers
         config.bidirectional = bidirectional
 
@@ -21,6 +21,7 @@ class AugmentedLSTMTest(unittest.TestCase):
         input_size = 31
 
         aug_lstm = AugmentedLSTM(config, input_size)
+        aug_lstm.train()
 
         input_tensor = torch.randn(batch_size, time_step, input_size)
         input_length = torch.zeros((batch_size,)).long()
@@ -65,11 +66,12 @@ class AugmentedLSTMTest(unittest.TestCase):
             s_output, (s_hidden_state, s_cell_state) = aug_lstm(
                 input_tensor, input_length, inp_state
             )
-            if config.dropout_rate == 0.0:
+            if config.dropout == 0.0:
                 assert torch.all(
                     torch.lt(torch.abs(torch.add(s_output, -output)), 1e-12)
                 )
             else:
+                print(use_highway, variational_dropout, num_layers, bidirectional)
                 assert not torch.all(torch.eq(s_output, output))
 
     def test_augmented_lstm(self):

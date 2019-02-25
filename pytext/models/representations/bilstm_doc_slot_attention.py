@@ -8,9 +8,9 @@ from pytext.config import ConfigBase
 from pytext.config.module_config import SlotAttentionType
 from pytext.models.module import create_module
 
-from .bilstm import BiLSTM
 from .pooling import MaxPool, MeanPool, SelfAttention
 from .representation_base import RepresentationBase
+from .rnn_union import RNNUnion
 from .slot_attention import SlotAttention
 
 
@@ -49,7 +49,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
 
     class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
-        lstm: BiLSTM.Config = BiLSTM.Config()
+        rnn: RNNUnion.Config = RNNUnion.Config()
         pooling: Optional[
             Union[SelfAttention.Config, MaxPool.Config, MeanPool.Config]
         ] = None
@@ -67,7 +67,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
             float("-inf") if isinstance(config.pooling, MaxPool.Config) else 0.0
         )
         self.lstm = create_module(
-            config.lstm, embed_dim=embed_dim, padding_value=padding_value
+            config.rnn, input_size=embed_dim, padding_value=padding_value
         )
 
         lstm_out_dim = self.lstm.representation_dim
