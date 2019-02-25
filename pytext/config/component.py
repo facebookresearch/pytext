@@ -195,9 +195,12 @@ def create_loss(loss_config, *args, **kwargs):
 
 
 def create_metric_reporter(module_config, *args, **kwargs):
-    return create_component(
+    metric_reporter = create_component(
         ComponentType.METRIC_REPORTER, module_config, *args, **kwargs
     )
+    if module_config.select_metric_path:
+        metric_reporter.select_metric_path = module_config.select_metric_path
+    return metric_reporter
 
 
 def get_component_name(obj):
