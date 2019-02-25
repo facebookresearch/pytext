@@ -10,6 +10,7 @@ def v0_to_v1(json_config):
         "optimizer" not in task
         or "Adam" in task["optimizer"]
         or "SGD" in task["optimizer"]
+        or "NAG" in task["optimizer"]
     ):
         return json_config
     op_type = task["optimizer"].get("type", "adam")
@@ -23,6 +24,13 @@ def v0_to_v1(json_config):
         for key in ["lr", "momentum"]:
             if key in task["optimizer"]:
                 op_config["SGD"][key] = task["optimizer"][key]
+    elif op_type == "nag":
+        op_config = {"NAG": {}}
+        for key in ["lr", "weight_decay", "momentum"]:
+            if key in task["optimizer"]:
+                op_config["NAG"][key] = task["optimizer"][key]
+    else:
+        raise ValueError("Migration not supported for your optimizer")
     task["optimizer"] = op_config
     json_config["version"] = 1
     return json_config
