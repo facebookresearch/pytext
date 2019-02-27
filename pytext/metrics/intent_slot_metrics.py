@@ -52,7 +52,7 @@ class Node:
         self.children: Set[Node] = children or set()
 
     def __hash__(self):
-        return hash((self.label, self.span, frozenset(self.children)))
+        return hash((self.label, self.span))
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Node):
