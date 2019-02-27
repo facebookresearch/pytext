@@ -28,7 +28,7 @@ from pytext.models import Model
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
-from pytext.utils import cuda_utils
+from pytext.utils import cuda_utils, precision_utils
 
 
 def create_task(task_config, metadata=None, model_state=None):
@@ -183,6 +183,8 @@ class TaskBase(Component):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda_utils.CUDA_ENABLED = False
+        precision_utils.deactivate()
+
         model = model.cpu()
         if self.exporter:
             if metric_channels:

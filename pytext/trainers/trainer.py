@@ -16,7 +16,7 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import learning_rates
 from pytext.optimizer.scheduler import Scheduler
-from pytext.utils import cuda_utils, time_utils
+from pytext.utils import cuda_utils, precision_utils, time_utils
 
 
 class TrainerBase(Component):
@@ -118,10 +118,11 @@ class Trainer(TrainerBase):
 
         best_metric = None
         last_best_epoch = 0
-        timer.add_stage(stage="pre_training")
 
         if scheduler:
             scheduler.prepare(train_iter, self.config.epochs)
+        optimizer = precision_utils.wrap_optimizer(optimizer)
+        timer.add_stage(stage="pre_training")
 
         def training_pre_batch_callback():
             if world_size > 1:
@@ -138,7 +139,7 @@ class Trainer(TrainerBase):
                 optimizer.zero_grad()
 
         def training_backprop(loss):
-            loss.backward()
+            precision_utils.backward(optimizer, loss)
             if world_size > 1:
                 # DDP fix when some parameters don't receive grads
                 for p in model.parameters():

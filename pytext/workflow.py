@@ -12,7 +12,7 @@ from pytext.task import Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
 from pytext.utils.python_utils import set_random_seeds
 
-from .utils import cuda_utils
+from .utils import cuda_utils, precision_utils
 
 
 def _set_cuda(
@@ -44,6 +44,12 @@ def _set_cuda(
             cuda_utils.DISTRIBUTED_WORLD_SIZE,
         )
     )
+
+
+def _set_fp16(use_fp16: bool) -> None:
+    # only support single GPU training at this moment.
+    precision_utils.set_fp16(fp16_enabled=use_fp16)
+    print(f"# for debug of FP16: fp16_enabled={precision_utils.FP16_ENABLED}")
 
 
 def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
@@ -91,6 +97,7 @@ def prepare_task(
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
+    _set_fp16(config.use_fp16 and world_size == 1)
     if config.random_seed is not None:
         set_random_seeds(config.random_seed)
 

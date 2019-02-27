@@ -64,6 +64,9 @@ class PyTextConfig(ConfigBase):
     # the actual task union types will be generated in runtime
     task: Union[PlaceHolder, Any]
     use_cuda_if_available: bool = True
+    # Enable mixed precision training, make sure running on volta(tensor cores)
+    # WARNING: under develoment, performance might vary per model.
+    use_fp16: bool = False
     # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
     distributed_world_size: int = 1
     # Path to a snapshot of a trained model to keep training on
