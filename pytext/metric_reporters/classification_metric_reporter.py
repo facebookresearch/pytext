@@ -12,6 +12,9 @@ from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
 
 
+META_LABEL_NAMES = "label_names"
+
+
 class IntentModelChannel(FileChannel):
     def get_title(self):
         return ("predicted", "actual", "scores_str", "text")
@@ -94,7 +97,7 @@ class ClassificationMetricReporter(MetricReporter):
         )
 
     def get_meta(self):
-        return {"label_names": self.label_names}
+        return {META_LABEL_NAMES: self.label_names}
 
     def get_model_select_metric(self, metrics):
         if self.model_select_metric == ComparableClassificationMetric.ACCURACY:
