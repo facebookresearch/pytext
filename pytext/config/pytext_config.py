@@ -101,4 +101,4 @@ class TestConfig(ConfigBase):
     use_tensorboard: bool = True
 
 
-LATEST_VERSION = 1
+LATEST_VERSION = 2

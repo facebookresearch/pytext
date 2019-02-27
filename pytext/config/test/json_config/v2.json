@@ -1,0 +1,155 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "type": "step_lr",
+            "step_size": 10,
+            "gamma": 0.00001
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "StepLR": {
+              "step_size": 10,
+              "gamma": 0.00001
+            }
+          }
+        }
+      },
+      "version": 2
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "type": "lm_fine_tuning",
+            "cut_frac": 0.1,
+            "ratio": 32,
+            "non_pretrained_param_groups": 2,
+            "lm_lr_multiplier": 1.0,
+            "lm_use_per_layer_lr": false,
+            "lm_gradual_unfreezing": true,
+            "last_epoch": -1
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "LmFineTuning": {
+              "cut_frac": 0.1,
+              "ratio": 32,
+              "non_pretrained_param_groups": 2,
+              "lm_lr_multiplier": 1.0,
+              "lm_use_per_layer_lr": false,
+              "lm_gradual_unfreezing": true,
+              "last_epoch": -1
+            }
+          }
+        }
+      },
+      "version": 2
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "type": "reduce_lr_on_plateau",
+            "lower_is_better": true,
+            "factor": 0.1,
+            "patience": 5,
+            "min_lr": 0,
+            "threshold": 0.0001,
+            "threshold_is_absolute": true,
+            "cooldown": 0
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "ReduceLROnPlateau": {
+              "lower_is_better": true,
+              "factor": 0.1,
+              "patience": 5,
+              "min_lr": 0,
+              "threshold": 0.0001,
+              "threshold_is_absolute": true,
+              "cooldown": 0
+            }
+          }
+        }
+      },
+      "version": 2
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "type": "cosine_annealing_lr",
+            "t_max": 1000,
+            "eta_min": 0
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "CosineAnnealingLR": {
+              "t_max": 1000,
+              "eta_min": 0
+            }
+          }
+        }
+      },
+      "version": 2
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "type": "exponential_lr",
+            "gamma": 0.00001
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "ExponentialLR": {
+              "gamma": 0.00001
+            }
+          }
+        }
+      },
+      "version": 2
+    }
+  }
+]
