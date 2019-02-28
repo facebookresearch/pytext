@@ -7,6 +7,7 @@ from collections import Counter
 
 from pytext.common.constants import VocabMeta
 from pytext.fields.char_field import CharFeatureField
+from pytext.utils import precision_utils
 
 
 pad = VocabMeta.PAD_TOKEN
@@ -111,3 +112,8 @@ class CharFieldTest(unittest.TestCase):
         self.assertEqual(
             numericalized_minibatch.numpy().tolist(), expected_numericalized_chars
         )
+
+        precision_utils._FP16_ENABLED = True
+        padded_minibatch = char_field.pad(minibatch)
+        self.assertTrue(len(padded_minibatch[0]) % 8 == 0)
+        precision_utils._FP16_ENABLED = False

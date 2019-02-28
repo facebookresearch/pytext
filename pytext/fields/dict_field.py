@@ -68,7 +68,7 @@ class DictFeatureField(VocabUsingField):
 
         lengths_flattened = [l for l_list in lengths for l in l_list]
         ex_lengths = [len(l_list) for l_list in lengths]
-        max_ex_len = max(ex_lengths)
+        max_ex_len = self.pad_length(max(ex_lengths))
         max_feat_len = max(lengths_flattened)
         all_lengths, all_feats, all_weights = [], [], []
         for i, ex_len in enumerate(ex_lengths):
