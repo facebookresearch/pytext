@@ -3,7 +3,7 @@
 
 from typing import Dict
 
-from pytext.config.component import Component, ComponentMeta, ComponentType
+from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
 from pytext.data.tensorizers import Tensorizer
 

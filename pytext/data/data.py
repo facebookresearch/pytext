@@ -132,4 +132,4 @@ class Data(Component):
                 name: tensorizer.create_training_tensors(batch)
                 for name, tensorizer in self.tensorizers.items()
             }
-            yield batch, tensors
+            yield tensors

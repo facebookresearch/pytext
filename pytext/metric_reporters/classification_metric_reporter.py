@@ -42,11 +42,12 @@ class ComparableClassificationMetric(Enum):
 
 
 class ClassificationMetricReporter(MetricReporter):
+    UTTERANCE_COLUMN = "raw_text"
+
     class Config(MetricReporter.Config):
         model_select_metric: ComparableClassificationMetric = (
             ComparableClassificationMetric.ACCURACY
         )
-        utterance_column: str = "text"
         target_label: Optional[str] = None
 
     def __init__(
@@ -57,13 +58,11 @@ class ClassificationMetricReporter(MetricReporter):
             ComparableClassificationMetric.ACCURACY
         ),
         target_label: Optional[str] = None,
-        utterance_column: str = Config.utterance_column,
     ) -> None:
         super().__init__(channels)
         self.label_names = label_names
         self.model_select_metric = model_select_metric
         self.target_label = target_label
-        self.utterance_column = utterance_column
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
@@ -89,11 +88,10 @@ class ClassificationMetricReporter(MetricReporter):
             [ConsoleChannel(), IntentModelChannel((Stage.TEST,), config.output_path)],
             config.model_select_metric,
             config.target_label,
-            config.utterance_column,
         )
 
     def batch_context(self, batch):
-        return {"utterance": [row[self.utterance_column] for row in batch]}
+        return {"utterance": batch[self.UTTERANCE_COLUMN]}
 
     def calculate_metric(self):
         return compute_classification_metrics(
