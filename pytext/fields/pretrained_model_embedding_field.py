@@ -57,6 +57,7 @@ class PretrainedModelEmbeddingField(Field):
             while j < len(sent) and word_embedding_dim == 0:
                 word_embedding_dim = len(sent[j])
                 j += 1
+        max_sentence_length = self.pad_length(max_sentence_length)
 
         for i, sentence in enumerate(padded_minibatch):
             if len(sentence) < max_sentence_length:
