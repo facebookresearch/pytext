@@ -668,12 +668,10 @@ class DataHandler(Component):
         self, data: Iterable[Dict[str, Any]], batch_size: Optional[int] = None
     ):
         ds = self.gen_dataset(data, include_label_fields=False)
-        if batch_size is None:
-            batch_size = len(ds)
         it = BatchIterator(
             textdata.Iterator(
                 ds,
-                batch_size=batch_size,
+                batch_size=len(ds) if batch_size is None else batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
                 if cuda_utils.CUDA_ENABLED
                 else "cpu",
