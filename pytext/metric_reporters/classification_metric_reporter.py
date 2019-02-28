@@ -43,24 +43,31 @@ class ClassificationMetricReporter(MetricReporter):
         model_select_metric: ComparableClassificationMetric = (
             ComparableClassificationMetric.ACCURACY
         )
+        utterance_column: str = "text"
         target_label: Optional[str] = None
 
     def __init__(
         self,
         label_names: List[str],
         channels: List[Channel],
-        model_select_metric: str,
-        target_label: Optional[str],
+        model_select_metric: ComparableClassificationMetric = (
+            ComparableClassificationMetric.ACCURACY
+        ),
+        target_label: Optional[str] = None,
+        utterance_column: str = Config.utterance_column,
     ) -> None:
         super().__init__(channels)
         self.label_names = label_names
         self.model_select_metric = model_select_metric
         self.target_label = target_label
+        self.utterance_column = utterance_column
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata):
-        label_names = meta.target.vocab.itos
+        return cls.from_config_and_label_names(config, meta.target.vocab.itos)
 
+    @classmethod
+    def from_config_and_label_names(cls, config, label_names: List[str]):
         if config.model_select_metric in (
             ComparableClassificationMetric.LABEL_F1,
             ComparableClassificationMetric.LABEL_AVG_PRECISION,
@@ -79,7 +86,11 @@ class ClassificationMetricReporter(MetricReporter):
             [ConsoleChannel(), IntentModelChannel((Stage.TEST,), config.output_path)],
             config.model_select_metric,
             config.target_label,
+            config.utterance_column,
         )
+
+    def batch_context(self, batch):
+        return {"utterance": [row[self.utterance_column] for row in batch]}
 
     def calculate_metric(self):
         return compute_classification_metrics(

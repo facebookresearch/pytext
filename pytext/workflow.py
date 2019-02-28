@@ -8,7 +8,7 @@ from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import create_exporter
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
-from pytext.task import Task, create_task, load, save
+from pytext.task import NewTask, Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
 from pytext.utils.python_utils import set_random_seeds
 
@@ -109,7 +109,10 @@ def save_and_export(
     config: PyTextConfig, task: Task, metric_channels: Optional[List[Channel]] = None
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
-    save(config, task.model, task.data_handler.metadata_to_save())
+    meta = None
+    if hasattr(task, "data_handler"):
+        meta = task.data_handler.metadata_to_save()
+    save(config, task.model, meta)
     task.export(
         task.model, config.export_caffe2_path, metric_channels, config.export_onnx_path
     )
@@ -150,17 +153,17 @@ def test_model_from_snapshot_path(
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
-    if not test_path:
-        test_path = train_config.task.data_handler.test_path
 
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
 
-    return (
-        task.test(test_path),
-        train_config.task.metric_reporter.output_path,
-        metric_channels,
-    )
+    if isinstance(task, NewTask):
+        test_results = task.test()
+    else:
+        if not test_path:
+            test_path = train_config.task.data_handler.test_path
+        test_results = task.test(test_path)
+    return test_results, train_config.task.metric_reporter.output_path, metric_channels
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):

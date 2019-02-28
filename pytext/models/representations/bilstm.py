@@ -115,9 +115,7 @@ class BiLSTM(RepresentationBase):
             )
             states = (state, state)
 
-        rnn_input = pack_padded_sequence(
-            embedded_tokens, seq_lengths.int(), batch_first=True
-        )
+        rnn_input = pack_padded_sequence(embedded_tokens, seq_lengths, batch_first=True)
         rep, new_state = self.lstm(rnn_input, states)
         rep, _ = pad_packed_sequence(
             rep,

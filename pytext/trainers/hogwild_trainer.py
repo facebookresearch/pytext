@@ -38,7 +38,7 @@ class HogwildTrainer(Trainer):
         model,
         metric_reporter,
         pre_batch=lambda: None,
-        backprop=lambda loss: None,
+        backprop=lambda loss, timer=None: None,
         rank=0,
         num_samples_to_log_progress=1000,
     ):

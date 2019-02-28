@@ -107,7 +107,7 @@ class WordTensorizer(Tensorizer):
         )
 
 
-class CharacterTensorizer(Tensorizer):
+class ByteTensorizer(Tensorizer):
     """Turn characters into ints based on their ascii values."""
 
     PAD_IDX = 0
@@ -124,18 +124,51 @@ class CharacterTensorizer(Tensorizer):
         return torch.LongTensor(padded_texts), torch.LongTensor(seq_lens)
 
 
+class WordCharacterTensorizer(WordTensorizer):
+    """Turn words into 2-dimensional tensors of ints based on their ascii values.
+    Words are padded to the maximum word length. Sequence lengths are the lengths
+    of each token, 0 for pad token.
+    """
+
+    PAD_IDX = 0
+
+    def create_training_tensors(self, batch):
+        """Convert text to characters, pad batch."""
+        all_tokens = [self.tokenizer.tokenize(row[self.column]) for row in batch]
+        lengths = [[len(token.value) for token in tokens] for tokens in all_tokens]
+        characters = [
+            [[ord(c) for c in token.value] for token in tokens] for tokens in all_tokens
+        ]
+        return (
+            torch.LongTensor(pad(characters, self.PAD_IDX)),
+            torch.LongTensor(pad(lengths, self.PAD_IDX)),
+        )
+
+
 class LabelTensorizer(Tensorizer):
     """Numberize labels."""
 
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str = "label"
+        #: Whether to allow for unknown labels at test/prediction time
+        allow_unknown: bool = False
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column, config.allow_unknown)
+
+    def __init__(
+        self, column: str = Config.column, allow_unknown: bool = Config.allow_unknown
+    ):
+        self.column = column
+        self.allow_unknown = allow_unknown
 
     def initialize(self):
         """Look through the dataset for all labels and create a vocab map for them."""
         builder = VocabBuilder()
-        builder.use_unk = False
         builder.use_pad = False
+        builder.use_unk = self.allow_unknown
         try:
             while True:
                 row = yield

@@ -295,8 +295,8 @@ def train(context):
         test_model_from_snapshot_path(
             config.save_snapshot_path,
             config.use_cuda_if_available,
-            config.task.data_handler.test_path,
-            metric_channels,
+            test_path=None,
+            metric_channels=metric_channels,
         )
     finally:
         for mc in metric_channels:

@@ -87,18 +87,17 @@ def pad(nested_lists, pad_token, pad_shape=None):
     return result
 
 
-class Unk:
-    def __repr__(self):
-        return "_UNK_"
+class SpecialToken(str):
+    def __eq__(self, other):
+        # We don't want to compare as equal to actual strings, but we want to behave
+        # like a string code-wise.
+        return self is other
+
+    __hash__ = str.__hash__
 
 
-class Pad:
-    def __repr__(self):
-        return "_PAD_"
-
-
-UNK = Unk()
-PAD = Pad()
+UNK = SpecialToken("__UNKNOWN__")
+PAD = SpecialToken("__PAD__")
 
 
 class Vocabulary:

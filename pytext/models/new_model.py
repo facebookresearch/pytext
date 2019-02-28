@@ -3,15 +3,24 @@
 
 from typing import Dict
 
-from pytext.config.component import Component, ComponentType
-from pytext.config.field_config import WordFeatConfig
-from pytext.data.tensorizers import LabelTensorizer, Tensorizer, WordTensorizer
-from pytext.data.utils import UNK
-from pytext.loss import CrossEntropyLoss
-from pytext.models import doc_model
-from pytext.models.doc_model import ClassificationOutputLayer
-from pytext.models.embeddings import WordEmbedding
-from pytext.models.module import create_module
+from pytext.config.component import Component, ComponentMeta, ComponentType
+from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
+from pytext.data.tensorizers import Tensorizer
+
+
+class ModelInputMeta(ConfigBaseMeta):
+    def __new__(metacls, typename, bases, namespace):
+        annotations = namespace.get("__annotations__", {})
+        for type in annotations.values():
+            if not issubclass(type, Tensorizer.Config):
+                raise TypeError(
+                    "ModelInput configuration should only include tensorizers"
+                )
+        return super().__new__(metacls, typename, bases, namespace)
+
+
+class ModelInputBase(ConfigBase, metaclass=ModelInputMeta):
+    """Base class for model inputs."""
 
 
 class Model(Component):
@@ -19,10 +28,10 @@ class Model(Component):
     __EXPANSIBLE__ = True
 
     class Config(Component.Config):
-        inputs: Dict[str, Tensorizer.Config]
+        class ModelInput(ModelInputBase):
+            pass
 
-    def build_context_for_metrics(self, batch):
-        return {}
+        inputs: ModelInput = ModelInput()
 
     def train_batch(self, batch):
         model_inputs = self.arrange_model_inputs(batch)
@@ -38,38 +47,3 @@ class Model(Component):
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         raise NotImplementedError
-
-
-class DocModel(Model, doc_model.DocModel):
-    class Config(Model.Config, doc_model.DocModel.Config):
-        inputs: Dict[str, Tensorizer.Config] = {
-            "tokens": WordTensorizer.Config(),
-            "labels": LabelTensorizer.Config(),
-        }
-        embedding: WordFeatConfig = WordFeatConfig()
-
-    def arrange_model_inputs(self, tensor_dict):
-        tokens, seq_lens = tensor_dict["tokens"]
-        return (tokens, seq_lens)
-
-    def arrange_targets(self, tensor_dict):
-        return tensor_dict["labels"]
-
-    @classmethod
-    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        vocab = tensorizers["tokens"].vocab
-        labels = tensorizers["labels"].labels
-
-        embedding = WordEmbedding(
-            len(vocab), config.embedding.embed_dim, None, None, vocab.idx[UNK], []
-        )
-        representation = create_module(
-            config.representation, embed_dim=embedding.embedding_dim
-        )
-        decoder = create_module(
-            config.decoder,
-            in_dim=representation.representation_dim,
-            out_dim=len(labels),
-        )
-        output_layer = ClassificationOutputLayer(labels, CrossEntropyLoss(None))
-        return cls(embedding, representation, decoder, output_layer)
