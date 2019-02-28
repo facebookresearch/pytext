@@ -3,7 +3,7 @@
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-from pytext.utils import loss_utils
+from pytext.utils import loss_utils, precision_utils
 from pytext.utils.cuda_utils import FloatTensor
 from torch import nn
 
@@ -52,13 +52,17 @@ class BinaryCrossEntropyLoss(Loss):
             .scatter_(1, targets.unsqueeze(1).data, 1)
         )
 
+        """
+        `F.binary_cross_entropy` or `torch.nn.BCELoss.` requires the
+        output of the previous function be already a FloatTensor.
+        """
         # This weighting applies uniform class weights.
         # examples_per_class = one_hot_target.sum(0).clamp(min=1)
         # total_positive = examples_per_class.sum()
         # weights = total_positive.unsqueeze(0) / examples_per_class
 
         loss = F.binary_cross_entropy_with_logits(
-            m_out, one_hot_targets, reduction="none"
+            precision_utils.maybe_float(m_out), one_hot_targets, reduction="none"
         )
 
         if self.config.reweight_negative:
