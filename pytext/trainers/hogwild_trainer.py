@@ -40,6 +40,7 @@ class HogwildTrainer(Trainer):
         pre_batch=lambda: None,
         backprop=lambda loss: None,
         rank=0,
+        num_samples_to_log_progress=1000,
     ):
         if stage == Stage.TRAIN:
             processes = []
@@ -57,6 +58,7 @@ class HogwildTrainer(Trainer):
                         pre_batch,
                         backprop,
                         worker_rank,
+                        num_samples_to_log_progress,
                     ),
                 )
 
@@ -74,6 +76,7 @@ class HogwildTrainer(Trainer):
                 pre_batch,
                 backprop,
                 rank,
+                num_samples_to_log_progress,
             )
 
     def train(

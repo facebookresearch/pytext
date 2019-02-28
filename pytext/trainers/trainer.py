@@ -54,6 +54,8 @@ class Trainer(TrainerBase):
         target_time_limit_seconds: int = 0
         # Whether to do evaluation and model selection based on it.
         do_eval: bool = True
+        # Number of samples for logging training progress.
+        num_samples_to_log_progress = 1000
 
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
@@ -190,6 +192,7 @@ class Trainer(TrainerBase):
                 pre_batch=training_pre_batch_callback,
                 backprop=training_backprop,
                 rank=rank,
+                num_samples_to_log_progress=self.config.num_samples_to_log_progress,
             )
             timer.add_stage(stage=f"epoch_train")
 
@@ -197,7 +200,13 @@ class Trainer(TrainerBase):
                 model.eval(Stage.EVAL)
                 with torch.no_grad():
                     eval_metric = self._run_epoch(
-                        Stage.EVAL, epoch, eval_iter, model, metric_reporter, rank=rank
+                        Stage.EVAL,
+                        epoch,
+                        eval_iter,
+                        model,
+                        metric_reporter,
+                        rank=rank,
+                        num_samples_to_log_progress=self.config.num_samples_to_log_progress,
                     )
                 timer.add_stage(stage=f"epoch_eval")
 
@@ -258,6 +267,7 @@ class Trainer(TrainerBase):
         pre_batch=lambda: None,
         backprop=lambda loss: None,
         rank=0,
+        num_samples_to_log_progress=1000,
     ):
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
@@ -282,6 +292,12 @@ class Trainer(TrainerBase):
                     batch_id, preds, targets, scores, loss.item(), inputs, **context
                 )
                 timer.add_stage("add_metric")
+
+            if rank == 0 and (batch_id + 1) % num_samples_to_log_progress == 0:
+                print(
+                    f"Epoch {epoch}: finished training {batch_id + 1} samples.",
+                    flush=True,
+                )
 
         metrics = None
         if report_metric:
