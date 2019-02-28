@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import functools
 import itertools
 from typing import Dict, Iterable
 
@@ -8,6 +9,7 @@ from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
 
 from .sources import DataSchema, DataSource, RawExample
+from .sources.data_source import GeneratorIterator
 from .tensorizers import Tensorizer
 
 
@@ -36,6 +38,19 @@ class RawBatcher(Component):
             yield [ex for ex in batch if ex is not None]
 
 
+def generator_iterator(fn):
+    """Turn a generator into a GeneratorIterator-wrapped function.
+    Effectively this allows iterating over a generator multiple times by recording
+    the call arguments, and calling the generator with them anew each item __iter__
+    is called on the returned object."""
+
+    @functools.wraps(fn)
+    def wrapped(*args, **kwargs):
+        return GeneratorIterator(fn, *args, **kwargs)
+
+    return wrapped
+
+
 class Data(Component):
     """Data is an abstraction that handles all of the following:
 
@@ -59,7 +74,10 @@ class Data(Component):
     __EXPANSIBLE__ = True
 
     class Config(Component.Config):
-        source: DataSource.Config
+        #: Specify where training/test/eval data come from. The default value
+        #: will not provide any data.
+        source: DataSource.Config = DataSource.Config()
+        #: How training examples are split into batches for the optimizer.
         batcher: RawBatcher.Config = RawBatcher.Config()
 
     @classmethod
@@ -94,6 +112,7 @@ class Data(Component):
             for initializer in initializers:
                 initializer.send(row)
 
+    @generator_iterator
     def batches(self, stage: Stage):
         """Create batches of tensors to pass to model train_batch.
         This function yields dictionaries that mirror the `tensorizers` dict passed to

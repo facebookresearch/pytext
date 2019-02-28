@@ -32,7 +32,7 @@ class ModuleTest(unittest.TestCase):
         model = create_model(
             DocModel.Config(),
             FeatureConfig(
-                word_feat=WordFeatConfig(freeze=True, mlp_layers=[4]),
+                word_feat=WordFeatConfig(freeze=True, mlp_layer_dims=[4]),
                 dict_feat=DictFeatConfig(),
             ),
             metadata=mock_metadata(),

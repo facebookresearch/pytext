@@ -42,11 +42,25 @@ class ConfigBase(metaclass=ConfigBaseMeta):
         return {k: getattr(self, k) for k in type(self).__annotations__}
 
     def __init__(self, **kwargs):
-        unspecified_fields = type(self).__annotations__.keys() - (
-            (kwargs.keys() | type(self)._field_defaults.keys())
-        )
+        """Configs can be constructed by specifying values by keyword.
+        If a keyword is supplied that isn't in the config, or if a config requires
+        a value that isn't specified and doesn't have a default, a TypeError will be
+        raised."""
+        specified = kwargs.keys() | type(self)._field_defaults.keys()
+        required = type(self).__annotations__.keys()
+        # Unspecified fields have no default and weren't provided by the caller
+        unspecified_fields = required - specified
         if unspecified_fields:
             raise TypeError(f"Failed to specify {unspecified_fields} for {type(self)}")
+
+        # Overspecified fields are fields that were provided but that the config
+        # doesn't know what to do with, ie. was never specified anywhere.
+        overspecified_fields = specified - required
+        if overspecified_fields:
+            raise TypeError(
+                f"Specified non-existent fields {overspecified_fields} for {type(self)}"
+            )
+
         vars(self).update(kwargs)
 
     def __str__(self):

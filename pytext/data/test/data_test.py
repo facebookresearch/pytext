@@ -26,7 +26,7 @@ class DataTest(unittest.TestCase):
 
         self.tensorizers = {
             "tokens": WordTensorizer(column="text"),
-            "labels": LabelTensorizer(column="label"),
+            "labels": LabelTensorizer(column="label", allow_unknown=True),
         }
 
     def test_create_data_no_batcher_provided(self):
@@ -76,6 +76,20 @@ class DataTest(unittest.TestCase):
         # Tensorizers should have been initialized
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
         self.assertEqual(7, len(tensorizers["labels"].labels))
+
+    def test_data_iterate_multiple_times(self):
+        data = Data(self.data_source, self.tensorizers)
+        batches = data.batches(Stage.TRAIN)
+        data1 = list(batches)
+        data2 = list(batches)
+        # We should have made at least one non-empty batch
+        self.assertTrue(data1)
+        self.assertTrue(data2)
+        batch1, _ = data1[0]
+        batch2, _ = data2[0]
+        # pytorch tensors don't have equals comparisons, so comparing the tensor
+        # dicts is non-trivial, but they should also be equal
+        self.assertEqual(batch1, batch2)
 
 
 class RawBatcherTest(unittest.TestCase):
