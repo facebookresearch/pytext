@@ -262,10 +262,11 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
         config = context.obj.load_config()
         model_snapshot = config.save_snapshot_path
         use_cuda = config.use_cuda_if_available
+        use_tensorboard = config.use_tensorboard
         print(f"Configured model snapshot {model_snapshot}")
     print("\n=== Starting testing...")
     metric_channels = []
-    if config.use_tensorboard:
+    if use_tensorboard:
         metric_channels.append(TensorBoardChannel())
     try:
         test_model_from_snapshot_path(
@@ -288,7 +289,7 @@ def train(context):
         metric_channels.append(TensorBoardChannel())
     try:
         if config.distributed_world_size == 1:
-            train_model(config, metric_channels)
+            train_model(config, metric_channels=metric_channels)
         else:
             train_model_distributed(config, metric_channels)
         print("\n=== Starting testing...")
