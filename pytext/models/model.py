@@ -20,7 +20,101 @@ from .output_layers import OutputLayerBase
 from .representations.representation_base import RepresentationBase
 
 
-class Model(nn.Module, Component):
+class BaseModel(nn.Module, Component):
+    """
+    Base model class which inherits from nn.Module. Also has a stage flag to
+    indicate it's in `train`, `eval`, or `test` stage.
+    This is because the built-in train/eval flag in PyTorch can't distinguish eval
+    and test, which is required to support some use cases.
+    """
+
+    __EXPANSIBLE__ = True
+    __COMPONENT_TYPE__ = ComponentType.MODEL
+
+    class Config(Component.Config):
+        pass
+
+    def __init__(self, stage: Stage = Stage.TRAIN) -> None:
+        nn.Module.__init__(self)
+        self.stage = stage
+        self.module_list: List[nn.Module] = []
+
+    def train(self, mode=True):
+        """Override to explicitly maintain the stage (train, eval, test)."""
+        super().train(mode)
+        self.stage = Stage.TRAIN
+
+    def eval(self, stage=Stage.TEST):
+        """Override to explicitly maintain the stage (train, eval, test)."""
+        super().eval()
+        self.stage = stage
+
+    def contextualize(self, context):
+        """Add additional context into model. `context` can be anything that
+        helps maintaining/updating state. For example, it is used by
+        :class:`~DisjointMultitaskModel` for changing the task that should be
+        trained with a given iterator.
+        """
+        self.context = context
+
+    def get_loss(self, logit, target, context):
+        return self.output_layer.get_loss(logit, target, context)
+
+    def get_pred(self, logit, target=None, context=None, *args):
+        return self.output_layer.get_pred(logit, target, context)
+
+    def save_modules(self, base_path: str = "", suffix: str = ""):
+        """Save each sub-module in separate files for reusing later."""
+        for module in self.module_list:
+            if getattr(module.config, "save_path", None):
+                path = module.config.save_path + suffix
+                if base_path:
+                    path = os.path.join(base_path, path)
+                print(f"Saving state of module {type(module).__name__} to {path} ...")
+                torch.save(module.state_dict(), path)
+
+    def prepare_for_onnx_export_(self, **kwargs):
+        """Make model exportable via ONNX trace."""
+
+        def apply_prepare_for_onnx_export_(module):
+            if module != self and hasattr(module, "prepare_for_onnx_export_"):
+                module.prepare_for_onnx_export_(**kwargs)
+
+        self.apply(apply_prepare_for_onnx_export_)
+
+    def get_param_groups_for_optimizer(self) -> List[Dict[str, List[nn.Parameter]]]:
+        """
+        Returns a list of parameter groups of the format {"params": param_list}.
+        The parameter groups loosely correspond to layers and are ordered from low
+        to high. Currently, only the embedding layer can provide multiple param groups,
+        and other layers are put into one param group. The output of this method
+        is passed to the optimizer so that schedulers can change learning rates
+        by layer.
+        """
+        non_emb_params = dict(self.named_parameters())
+        model_params = [non_emb_params]
+
+        # some subclasses of Model (e.g. Ensemble) do not have embeddings
+        embedding = getattr(self, "embedding", None)
+        if embedding is not None:
+            emb_params_by_layer = self.embedding.get_param_groups_for_optimizer()
+
+            # Delete params from the embedding layers
+            for emb_params in emb_params_by_layer:
+                for name in emb_params:
+                    del non_emb_params["embedding.%s" % name]
+
+            model_params = emb_params_by_layer + model_params
+            print_str = (
+                "Model has %d param groups (%d from embedding module) for optimizer"
+            )
+            print(print_str % (len(model_params), len(emb_params_by_layer)))
+
+        model_params = [{"params": params.values()} for params in model_params]
+        return model_params
+
+
+class Model(BaseModel):
     """
     Generic single-task model class that expects four components:
 
@@ -28,10 +122,6 @@ class Model(nn.Module, Component):
     2. `Representation`
     3. `Decoder`
     4. `Output Layer`
-
-    Model also have a stage flag to indicate it's in `train`, `eval`, or `test` stage.
-    This is because the built-in train/eval flag in PyTorch can't distinguish eval
-    and test, which is required to support some use cases.
 
     Forward pass: `embedding -> representation -> decoder -> output_layer`
 
@@ -93,12 +183,25 @@ class Model(nn.Module, Component):
     """
 
     __EXPANSIBLE__ = True
-    __COMPONENT_TYPE__ = ComponentType.MODEL
 
-    class Config(ConfigBase):
+    class Config(BaseModel.Config):
         representation = None
         decoder = None
         output_layer = None
+
+    def __init__(
+        self,
+        embedding: EmbeddingBase,
+        representation: RepresentationBase,
+        decoder: DecoderBase,
+        output_layer: OutputLayerBase,
+    ) -> None:
+        super().__init__()
+        self.embedding = embedding
+        self.representation = representation
+        self.decoder = decoder
+        self.output_layer = output_layer
+        self.module_list = [embedding, representation, decoder]
 
     @classmethod
     def create_sub_embs(
@@ -177,22 +280,6 @@ class Model(nn.Module, Component):
         output_layer = create_module(config.output_layer, metadata.target)
         return cls(embedding, representation, decoder, output_layer)
 
-    def __init__(
-        self,
-        embedding: EmbeddingBase,
-        representation: RepresentationBase,
-        decoder: DecoderBase,
-        output_layer: OutputLayerBase,
-        stage: Stage = Stage.TRAIN,
-    ) -> None:
-        nn.Module.__init__(self)
-
-        self.embedding = embedding
-        self.representation = representation
-        self.decoder = decoder
-        self.output_layer = output_layer
-        self.stage = stage
-
     def forward(self, *inputs) -> List[torch.Tensor]:
         embedding_input = inputs[: self.embedding.num_emb_modules]
         token_emb = self.embedding(*embedding_input)
@@ -212,77 +299,3 @@ class Model(nn.Module, Component):
         return self.decoder(
             *input_representation, *decoder_inputs
         )  # returned Tensor's dim = (batch_size, num_classes)
-
-    def train(self, mode=True):
-        """Override to explicitly maintain the stage (train, eval, test)."""
-        super().train(mode)
-        self.stage = Stage.TRAIN
-
-    def eval(self, stage=Stage.TEST):
-        """Override to explicitly maintain the stage (train, eval, test)."""
-        super().eval()
-        self.stage = stage
-
-    def contextualize(self, context):
-        """Add additional context into model. `context` can be anything that
-        helps maintaining/updating state. For example, it is used by
-        :class:`~DisjointMultitaskModel` for changing the task that should be
-        trained with a given iterator.
-        """
-        self.context = context
-
-    def get_loss(self, logit, target, context):
-        return self.output_layer.get_loss(logit, target, context)
-
-    def get_pred(self, logit, target=None, context=None, *args):
-        return self.output_layer.get_pred(logit, target, context)
-
-    def save_modules(self, base_path: str = "", suffix: str = ""):
-        """Save each sub-module in separate files for reusing later."""
-        for module in [self.embedding, self.representation, self.decoder]:
-            if module is not None and getattr(module.config, "save_path", None):
-                path = module.config.save_path + suffix
-                if base_path:
-                    path = os.path.join(base_path, path)
-                print(f"Saving state of module {type(module).__name__} to {path} ...")
-                torch.save(module.state_dict(), path)
-
-    def prepare_for_onnx_export_(self, **kwargs):
-        """Make model exportable via ONNX trace."""
-
-        def apply_prepare_for_onnx_export_(module):
-            if module != self and hasattr(module, "prepare_for_onnx_export_"):
-                module.prepare_for_onnx_export_(**kwargs)
-
-        self.apply(apply_prepare_for_onnx_export_)
-
-    def get_param_groups_for_optimizer(self) -> List[Dict[str, List[nn.Parameter]]]:
-        """
-        Returns a list of parameter groups of the format {"params": param_list}.
-        The parameter groups loosely correspond to layers and are ordered from low
-        to high. Currently, only the embedding layer can provide multiple param groups,
-        and other layers are put into one param group. The output of this method
-        is passed to the optimizer so that schedulers can change learning rates
-        by layer.
-        """
-        non_emb_params = dict(self.named_parameters())
-        model_params = [non_emb_params]
-
-        # some subclasses of Model (e.g. Ensemble) do not have embeddings
-        embedding = getattr(self, "embedding", None)
-        if embedding is not None:
-            emb_params_by_layer = self.embedding.get_param_groups_for_optimizer()
-
-            # Delete params from the embedding layers
-            for emb_params in emb_params_by_layer:
-                for name in emb_params:
-                    del non_emb_params["embedding.%s" % name]
-
-            model_params = emb_params_by_layer + model_params
-            print_str = (
-                "Model has %d param groups (%d from embedding module) for optimizer"
-            )
-            print(print_str % (len(model_params), len(emb_params_by_layer)))
-
-        model_params = [{"params": params.values()} for params in model_params]
-        return model_params
