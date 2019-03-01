@@ -257,6 +257,4 @@ class TensorBoardChannel(Channel):
         self.summary_writer.close()
 
     def export(self, model, input_to_model=None):
-        # TODO re-enable after fixing tensorboard issue t41127613
-        # self.summary_writer.add_graph(model, input_to_model)
-        pass
+        self.summary_writer.add_graph(model, input_to_model)
