@@ -6,6 +6,7 @@ import itertools
 import re
 from typing import List, NamedTuple, Tuple
 
+import torch
 from pytext.config.component import Component, ComponentType
 
 
@@ -50,12 +51,13 @@ class Tokenizer(Component):
         return [token for token in tokens if token.value]
 
 
-# Some utility functions that make the create_tensors function simpler to implement
-
-
 def should_iter(i):
     """Whether or not an object looks like a python iterable (not including strings)."""
-    return hasattr(i, "__iter__") and not isinstance(i, str)
+    return (
+        hasattr(i, "__iter__")
+        and not isinstance(i, str)
+        and not (isinstance(i, torch.Tensor) and len(i) == 0)
+    )
 
 
 def _infer_pad_shape(nested_lists):
@@ -85,6 +87,14 @@ def pad(nested_lists, pad_token, pad_shape=None):
     result = [pad(nested, pad_token, rest) for nested in nested_lists]
     result += [_make_nested_padding(rest, pad_token)] * (dimension - len(result))
     return result
+
+
+def pad_and_tensorize(batch, pad_token=0, dtype=torch.long):
+    batch = list(batch)
+    if not batch:
+        return torch.Tensor()
+
+    return torch.tensor(pad(batch, pad_token=pad_token), dtype=dtype)
 
 
 class SpecialToken(str):
@@ -120,10 +130,13 @@ class Vocabulary:
         else:
             lookup = self.idx.__getitem__
 
-        return [
-            self.lookup_all(value) if should_iter(value) else lookup(value)
-            for value in nested_values
-        ]
+        def lookup_value(value):
+            return self.lookup_all(value) if should_iter(value) else lookup(value)
+
+        if not should_iter(nested_values):
+            return lookup_value(nested_values)
+        else:
+            return [lookup_value(value) for value in nested_values]
 
     def __getitem__(self, item):
         return self._vocab[item]

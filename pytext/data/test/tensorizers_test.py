@@ -57,18 +57,18 @@ class TensorizersTest(unittest.TestCase):
             init.send(row)
         init.close()
 
-        batch = [
+        rows = [
             {"text": types.Text("I want some coffee")},
             {"text": types.Text("Turn it up")},
         ]
+        tensors = (tensorizer.numberize(row) for row in rows)
+        tokens, seq_len = next(tensors)
+        self.assertEqual([24, 0, 0, 0], tokens)
+        self.assertEqual(4, seq_len)
 
-        tokens, seq_lens = tensorizer.create_training_tensors(batch)
-        self.assertIsInstance(tokens, torch.LongTensor)
-        self.assertIsInstance(seq_lens, torch.LongTensor)
-        self.assertEqual((2, 4), tokens.size())
-        self.assertEqual((2,), seq_lens.size())
-        self.assertEqual([[24, 0, 0, 0], [13, 47, 9, 1]], tokens.tolist())
-        self.assertEqual([4, 3], seq_lens.tolist())
+        tokens, seq_len = next(tensors)
+        self.assertEqual([13, 47, 9], tokens)
+        self.assertEqual(3, seq_len)
 
     def test_create_byte_tensors(self):
         tensorizer = ByteTensorizer(column="text")
@@ -76,22 +76,19 @@ class TensorizersTest(unittest.TestCase):
 
         s1 = "I want some coffee"
         s2 = "Turn it up"
+        rows = [{"text": types.Text(s1)}, {"text": types.Text(s2)}]
+        expected = [[ord(c) for c in s1], [ord(c) for c in s2]]
 
-        ld = len(s1) - len(s2)
+        tensors = (tensorizer.numberize(row) for row in rows)
+        chars, seq_len = next(tensors)
+        self.assertEqual(len(s1), len(chars))
+        self.assertEqual(expected[0], chars)
+        self.assertEqual(len(s1), seq_len)
 
-        batch = [{"text": types.Text(s1)}, {"text": types.Text(s2)}]
-        expected = [
-            [ord(c) for c in s1] + [0] * (max(-ld, 0)),
-            [ord(c) for c in s2] + [0] * (max(ld, 0)),
-        ]
-
-        chars, seq_lens = tensorizer.create_training_tensors(batch)
-        self.assertIsInstance(chars, torch.LongTensor)
-        self.assertIsInstance(seq_lens, torch.LongTensor)
-        self.assertEqual((2, max(len(s1), len(s2))), chars.size())
-        self.assertEqual((2,), seq_lens.size())
-        self.assertEqual(expected, chars.tolist())
-        self.assertEqual([len(s1), len(s2)], seq_lens.tolist())
+        chars, seq_len = next(tensors)
+        self.assertEqual(len(s2), len(chars))
+        self.assertEqual(expected[1], chars)
+        self.assertEqual(len(s2), seq_len)
 
     def test_create_word_character_tensors(self):
         tensorizer = WordCharacterTensorizer(column="text")
@@ -112,7 +109,9 @@ class TensorizersTest(unittest.TestCase):
 
         expected_lens = [[1, 4, 4, 6], [4, 2, 2, 0]]
 
-        chars, seq_lens = tensorizer.create_training_tensors(batch)
+        chars, seq_lens = tensorizer.tensorize(
+            tensorizer.numberize(row) for row in batch
+        )
         self.assertIsInstance(chars, torch.LongTensor)
         self.assertIsInstance(seq_lens, torch.LongTensor)
         self.assertEqual((2, 4, 6), chars.size())
@@ -137,27 +136,16 @@ class TensorizersTest(unittest.TestCase):
             init.send(row)
         init.close()
 
-        batch = [
+        rows = [
             {"label": types.Label("weather/find")},
             {"label": types.Label("alarm/set_alarm")},
-        ]
-
-        tensor = tensorizer.create_training_tensors(batch)
-        self.assertEqual((2,), tensor.size())
-        self.assertEqual([6, 1], tensor.tolist())
-
-    def test_create_label_tensors_fails_with_unknown_label(self):
-        tensorizer = LabelTensorizer(column="label")
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in self.data.train:
-            init.send(row)
-        init.close()
-
-        batch = [
             {"label": types.Label("non/existent")},
-            {"label": types.Label("alarm/set_alarm")},
         ]
 
+        tensors = (tensorizer.numberize(row) for row in rows)
+        tensor = next(tensors)
+        self.assertEqual(6, tensor)
+        tensor = next(tensors)
+        self.assertEqual(1, tensor)
         with self.assertRaises(Exception):
-            tensorizer.create_training_tensors(batch)
+            tensor = next(tensors)
