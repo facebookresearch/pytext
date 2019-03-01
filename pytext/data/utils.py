@@ -108,15 +108,29 @@ class SpecialToken(str):
 
 UNK = SpecialToken("__UNKNOWN__")
 PAD = SpecialToken("__PAD__")
+BOS = SpecialToken("__BEGIN_OF_SENTENCE__")
+EOS = SpecialToken("__END_OF_SENTENCE__")
 
 
 class Vocabulary:
     """A mapping from indices to vocab elements."""
 
-    def __init__(self, vocab_list, counts=None):
+    def __init__(self, vocab_list, counts=None, replacements=None):
         self._vocab = vocab_list
         self.counts = counts
         self.idx = {word: i for i, word in enumerate(vocab_list)}
+        if replacements:
+            self.replace_tokens(replacements)
+
+    def replace_tokens(self, replacements):
+        """Replace tokens in vocab with given replacement.
+           Used for replacing special strings for special tokens.
+           e.g. '[UNK]' for UNK"""
+        for token, replacement in replacements.items():
+            idx = self.idx[token]
+            del (self.idx[token])
+            self._vocab[idx] = replacement
+            self.idx[replacement] = idx
 
     def lookup_all(self, nested_values):
         """
@@ -154,6 +168,10 @@ class VocabBuilder:
         self.unk_index = 0
         self.use_pad = True
         self.pad_index = 1
+        self.use_bos = False
+        self.bos_index = 2
+        self.use_eos = False
+        self.eos_index = 3
 
     def add_all(self, nested_values) -> None:
         """Count a value or nested container of values in the vocabulary."""
@@ -176,6 +194,10 @@ class VocabBuilder:
             tokens_to_insert.append((self.unk_index, UNK))
         if self.use_pad:
             tokens_to_insert.append((self.pad_index, PAD))
+        if self.use_bos:
+            tokens_to_insert.append((self.bos_index, BOS))
+        if self.use_eos:
+            tokens_to_insert.append((self.eos_index, EOS))
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
 
