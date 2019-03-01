@@ -13,8 +13,8 @@ from .sources.data_source import GeneratorIterator
 from .tensorizers import Tensorizer
 
 
-class RawBatcher(Component):
-    """Batcher designed to batch raw data, before tensorization."""
+class Batcher(Component):
+    """Batcher designed to batch rows of data, before padding."""
 
     __COMPONENT_TYPE__ = ComponentType.BATCHER
 
@@ -31,11 +31,35 @@ class RawBatcher(Component):
         self.batch_size = batch_size
 
     def batchify(self, iterable: Iterable[RawExample]):
-        """Group rows by batch_size.
+        """Group rows by batch_size.  Assume iterable of dicts, yield dict of lists.
         The last batch will be of length len(iterable) % batch_size."""
         iterators = [iter(iterable)] * self.batch_size
         for batch in itertools.zip_longest(*iterators):
-            yield [ex for ex in batch if ex is not None]
+            yield zip_dicts([ex for ex in batch if ex is not None])
+
+
+def numberize_rows(tensorizers, rows):
+    for row in rows:
+        yield {
+            name: tensorizer.numberize(row) for name, tensorizer in tensorizers.items()
+        }
+
+
+def pad_and_tensorize_batches(tensorizers, batches):
+    for batch in batches:
+        yield {
+            name: tensorizer.tensorize(batch[name])
+            for name, tensorizer in tensorizers.items()
+        }
+
+
+def zip_dicts(dicts):
+    all_keys = set(itertools.chain.from_iterable(dicts))
+    zipped = {key: [] for key in all_keys}
+    for d in dicts:
+        for key in all_keys:
+            zipped[key].append(d.get(key))
+    return zipped
 
 
 def generator_iterator(fn):
@@ -78,7 +102,7 @@ class Data(Component):
         #: will not provide any data.
         source: DataSource.Config = DataSource.Config()
         #: How training examples are split into batches for the optimizer.
-        batcher: RawBatcher.Config = RawBatcher.Config()
+        batcher: Batcher.Config = Batcher.Config()
 
     @classmethod
     def from_config(
@@ -92,13 +116,13 @@ class Data(Component):
         self,
         data_source: DataSource,
         tensorizers: Dict[str, Tensorizer],
-        batcher: RawBatcher = None,
+        batcher: Batcher = None,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
         self.data_source = data_source
         self.tensorizers = tensorizers
-        self.batcher = batcher or RawBatcher()
+        self.batcher = batcher or Batcher()
         self.__initialize_tensorizers()
 
     def __initialize_tensorizers(self):
@@ -127,9 +151,6 @@ class Data(Component):
             Stage.EVAL: self.data_source.eval,
         }[stage]
 
-        for batch in self.batcher.batchify(rows):
-            tensors = {
-                name: tensorizer.create_training_tensors(batch)
-                for name, tensorizer in self.tensorizers.items()
-            }
-            yield tensors
+        numberized_rows = numberize_rows(self.tensorizers, rows)
+        batches = self.batcher.batchify(numberized_rows)
+        return pad_and_tensorize_batches(self.tensorizers, batches)
