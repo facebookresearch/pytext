@@ -5,7 +5,12 @@ from typing import Dict, Union
 
 from pytext.config import ConfigBase
 from pytext.config.field_config import WordFeatConfig
-from pytext.data.tensorizers import LabelTensorizer, Tensorizer, WordTensorizer
+from pytext.data.tensorizers import (
+    LabelTensorizer,
+    MetaInput,
+    Tensorizer,
+    WordTensorizer,
+)
 from pytext.data.utils import UNK
 from pytext.loss import CrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -47,13 +52,14 @@ class NewDocModel(NewModel, DocModel):
     for describing which inputs it expects and arranging its input tensors."""
 
     class Config(NewModel.Config, DocModel.Config):
-        embedding: WordFeatConfig = WordFeatConfig()
-
         class ModelInput(NewModel.Config.ModelInput):
             tokens: WordTensorizer.Config = WordTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
+            # for metric reporter
+            raw_text: MetaInput.Config = MetaInput.Config(column="text")
 
         inputs: ModelInput = ModelInput()
+        embedding: WordFeatConfig = WordFeatConfig()
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens = tensor_dict["tokens"]
