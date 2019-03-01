@@ -59,7 +59,11 @@ def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
     To avoid such practice, we move the operations that required loading the
     whole dataset out of spawn, and pass the context to every single process.
     """
-    return create_task(config.task).data_handler.metadata
+    return (
+        create_task(config.task).data_handler.metadata
+        if hasattr(config.task, "data_handler")
+        else {}
+    )
 
 
 def train_model(

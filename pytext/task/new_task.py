@@ -3,7 +3,7 @@
 
 from typing import Dict, Optional
 
-from pytext.common.constants import BatchContext, Stage
+from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component
 from pytext.data import types as data_types
@@ -17,6 +17,7 @@ from pytext.models.new_model import Model
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
+from pytext.utils import cuda_utils
 
 from .task import TaskBase
 
@@ -34,24 +35,23 @@ class NewTaskTrainer(Trainer):
         metric_reporter: MetricReporter,
         pre_batch=lambda: None,
         backprop=lambda loss, timer=None: None,
+        num_samples_to_log_progress: int = None,
         rank=0,
     ):
         """Our run_epoch is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
-        for batch_id, (batch, tensors) in enumerate(batches):
+
+        for batch_id, batch in enumerate(batches):
             print(f"Batch {batch_id} has {len(batch)} examples")
             pre_batch()
-            context = metric_reporter.batch_context(batch)
-            # pass context to model to use in forward call if needed
-            model.contextualize(context)
-            loss, metric_data = model.train_batch(tensors)
-            if BatchContext.IGNORE_LOSS in context:
-                loss *= 0
+            loss, metric_data = model.train_batch(batch)
             backprop(loss)
             if report_metric:
-                metric_reporter.add_batch_stats(batch_id, *metric_data, **context)
+                metric_reporter.add_batch_stats(
+                    batch_id, *metric_data, **metric_reporter.batch_context(batch)
+                )
 
         metrics = None
         if report_metric:
@@ -122,6 +122,8 @@ class NewTask(TaskBase):
         )
         # Initialized tensorizers can be used to create the model
         model = create_component(ComponentType.MODEL2, config.model, tensorizers)
+        if cuda_utils.CUDA_ENABLED:
+            model = model.cuda()
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.

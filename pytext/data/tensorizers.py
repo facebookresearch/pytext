@@ -24,10 +24,10 @@ class Tensorizer(Component):
     __EXPANSIBLE__ = True
 
     class Config(Component.Config):
-        """Make mypy happy."""
+        pass
 
     @classmethod
-    def from_config(cls, config: Component.Config):
+    def from_config(cls, config: Config):
         return cls(config.column)
 
     def __init__(self, column):
@@ -181,6 +181,18 @@ class LabelTensorizer(Tensorizer):
         """Numberize labels."""
         labels = [row[self.column] for row in batch]
         return torch.tensor(self.labels.lookup_all(labels), dtype=torch.long)
+
+
+class MetaInput(Tensorizer):
+    """A pass-through tensorizer to include raw fields from datasource in the batch.
+       Used mostly for metric reporting."""
+
+    class Config(Tensorizer.Config):
+        #: The name of the text column to parse from the data source.
+        column: str = "text"
+
+    def create_training_tensors(self, batch):
+        return [row[self.column] for row in batch]
 
 
 def initialize_tensorizers(tensorizers, data_source):
