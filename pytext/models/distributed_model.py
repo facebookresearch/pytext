@@ -35,14 +35,6 @@ class DistributedModel(nn.parallel.DistributedDataParallel):
         wrapped_module = super().__getattr__("module")
         return wrapped_module.cpu()
 
-    def state_dict(self, *args, **kwargs):
-        wrapped_module = super().__getattr__("module")
-        return wrapped_module.state_dict(*args, **kwargs)
-
-    def load_state_dict(self, *args, **kwargs):
-        wrapped_module = super().__getattr__("module")
-        return wrapped_module.load_state_dict(*args, **kwargs)
-
     def train(self, mode=True):
         """
         Override to set stage
