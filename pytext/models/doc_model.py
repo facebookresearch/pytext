@@ -17,7 +17,6 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
-from pytext.models.new_model import Model as NewModel
 from pytext.models.output_layers import ClassificationOutputLayer
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
@@ -47,12 +46,12 @@ class DocModel(Model):
         )
 
 
-class NewDocModel(NewModel, DocModel):
+class NewDocModel(DocModel):
     """DocModel that's compatible with the new Model abstraction, which is responsible
     for describing which inputs it expects and arranging its input tensors."""
 
-    class Config(NewModel.Config, DocModel.Config):
-        class ModelInput(NewModel.Config.ModelInput):
+    class Config(DocModel.Config):
+        class ModelInput(Model.Config.ModelInput):
             tokens: WordTensorizer.Config = WordTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
             # for metric reporter
