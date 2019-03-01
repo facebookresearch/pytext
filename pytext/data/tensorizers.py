@@ -3,7 +3,7 @@
 
 from pytext.config.component import Component, ComponentType, create_component
 
-from .utils import PAD, Tokenizer, VocabBuilder, pad_and_tensorize
+from .utils import BOS, EOS, PAD, Tokenizer, VocabBuilder, pad_and_tensorize
 
 
 class Tensorizer(Component):
@@ -76,34 +76,71 @@ class WordTensorizer(Tensorizer):
         column: str = "text"
         #: The tokenizer to use to split input text into tokens.
         tokenizer: Tokenizer.Config = Tokenizer.Config()
+        add_bos_token: bool = False
+        add_eos_token: bool = False
+        use_eos_token_for_bos = False
 
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        return cls(config.column, tokenizer)
+        return cls(
+            column=config.column,
+            tokenizer=tokenizer,
+            add_bos_token=config.add_bos_token,
+            add_eos_token=config.add_eos_token,
+            use_eos_token_for_bos=config.use_eos_token_for_bos,
+        )
 
-    def __init__(self, column, tokenizer=None):
+    def __init__(
+        self,
+        column,
+        tokenizer=None,
+        add_bos_token=Config.add_bos_token,
+        add_eos_token=Config.add_eos_token,
+        use_eos_token_for_bos=Config.use_eos_token_for_bos,
+        vocab=None,
+    ):
         super().__init__(column)
         self.tokenizer = tokenizer or Tokenizer()
+        self.vocab = vocab
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
+
+    def _lookup_tokens(self, tokens):
+        tokens = self.vocab.lookup_all(tokens)
+        if self.add_eos_token:
+            tokens.append(self.vocab.idx[EOS])
+        if self.add_bos_token:
+            bos_token = (
+                self.vocab.idx[EOS]
+                if (self.use_eos_token_for_bos and self.add_eos_token)
+                else self.vocab.idx[BOS]
+            )
+            tokens = [bos_token] + tokens
+        return tokens
 
     def initialize(self):
         """Build vocabulary based on training corpus."""
         builder = VocabBuilder()
         try:
             while True:
-                row = yield
-                raw_text = row[self.column]
-                tokenized = self.tokenizer.tokenize(raw_text)
-                builder.add_all([t.value for t in tokenized])
+                if self.vocab:
+                    yield
+                else:
+                    row = yield
+                    raw_text = row[self.column]
+                    tokenized = self.tokenizer.tokenize(raw_text)
+                    builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
-            self.vocab = builder.make_vocab()
+            if not self.vocab:
+                self.vocab = builder.make_vocab()
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
         tokenized_texts = [t.value for t in self.tokenizer.tokenize(row[self.column])]
-        tokens = self.vocab.lookup_all(tokenized_texts)
-        seq_len = len(tokenized_texts)
-        return tokens, seq_len
+        tokens = self._lookup_tokens(tokenized_texts)
+        return tokens, len(tokens)
 
     def tensorize(self, batch):
         tokens, seq_lens = zip(*batch)

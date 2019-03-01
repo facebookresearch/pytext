@@ -65,9 +65,8 @@ class DataTest(unittest.TestCase):
             "tokens": WordTensorizer(column="text"),
             "labels": LabelTensorizer(column="label"),
         }
-        with self.assertRaises(AttributeError):
-            # verify WordTensorizer isn't in an initialized state yet
-            tensorizers["tokens"].vocab
+        # verify WordTensorizer isn't in an initialized state yet
+        assert tensorizers["tokens"].vocab is None
         Data(self.data_source, tensorizers)
         # Tensorizers should have been initialized
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
