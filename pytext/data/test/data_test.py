@@ -4,7 +4,7 @@
 import unittest
 
 from pytext.common.constants import Stage
-from pytext.data import Data, RawBatcher, types
+from pytext.data import Batcher, Data, types
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, WordTensorizer
@@ -34,12 +34,11 @@ class DataTest(unittest.TestCase):
         batches = list(data.batches(Stage.TRAIN))
         # We should have made at least one non-empty batch
         self.assertTrue(batches)
-        batch, tensors = next(iter(batches))
+        batch = next(iter(batches))
         self.assertTrue(batch)
-        self.assertTrue(tensors)
 
     def test_create_batches(self):
-        data = Data(self.data_source, self.tensorizers, RawBatcher(batch_size=16))
+        data = Data(self.data_source, self.tensorizers, Batcher(batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
@@ -48,16 +47,18 @@ class DataTest(unittest.TestCase):
         self.assertEqual((10,), seq_lens.size())
         self.assertEqual((10,), batch["labels"].size())
         self.assertEqual({"tokens", "labels"}, set(batch))
+        self.assertEqual(10, len(tokens))
 
     def test_create_batches_different_tensorizers(self):
         tensorizers = {"tokens": WordTensorizer(column="text")}
-        data = Data(self.data_source, tensorizers, RawBatcher(batch_size=16))
+        data = Data(self.data_source, tensorizers, Batcher(batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
         self.assertEqual({"tokens"}, set(batch))
         tokens, seq_lens = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
+        self.assertEqual(10, len(tokens))
 
     def test_data_initializes_tensorsizers(self):
         tensorizers = {
@@ -87,10 +88,11 @@ class DataTest(unittest.TestCase):
         self.assertEqual(batch1, batch2)
 
 
-class RawBatcherTest(unittest.TestCase):
-    def test_raw_batcher(self):
-        data = range(10)
-        batcher = RawBatcher(batch_size=3)
-        self.assertEqual(
-            [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]], list(batcher.batchify(data))
-        )
+class BatcherTest(unittest.TestCase):
+    def test_batcher(self):
+        data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
+        batcher = Batcher(batch_size=3)
+        batches = list(batcher.batchify(data))
+        self.assertEqual(len(batches), 4)
+        self.assertEqual(batches[1]["a"], [3, 4, 5])
+        self.assertEqual(batches[3]["b"], [19])

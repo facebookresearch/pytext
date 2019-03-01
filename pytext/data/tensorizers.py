@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import torch
 from pytext.config.component import Component, ComponentType, create_component
 
-from .utils import PAD, Tokenizer, VocabBuilder, pad
+from .utils import PAD, Tokenizer, VocabBuilder, pad_and_tensorize
 
 
 class Tensorizer(Component):
@@ -32,6 +31,13 @@ class Tensorizer(Component):
 
     def __init__(self, column):
         self.column = column
+
+    def numberize(self, row):
+        raise NotImplementedError
+
+    def tensorize(self, batch):
+        """Tensorizer knows how to pad and tensorize a batch of it's own output."""
+        return batch
 
     def initialize(self):
         """
@@ -92,36 +98,37 @@ class WordTensorizer(Tensorizer):
         except GeneratorExit:
             self.vocab = builder.make_vocab()
 
-    def create_training_tensors(self, batch):
-        """Tokenize, look up in vocabulary, and pad."""
-        tokenized_texts = [
-            [t.value for t in self.tokenizer.tokenize(row[self.column])]
-            for row in batch
-        ]
+    def numberize(self, row):
+        """Tokenize, look up in vocabulary."""
+        tokenized_texts = [t.value for t in self.tokenizer.tokenize(row[self.column])]
         tokens = self.vocab.lookup_all(tokenized_texts)
-        seq_lens = [len(tokenized) for tokenized in tokenized_texts]
-        padded_tokens = pad(tokens, self.vocab.idx[PAD])
+        seq_len = len(tokenized_texts)
+        return tokens, seq_len
+
+    def tensorize(self, batch):
+        tokens, seq_lens = zip(*batch)
         return (
-            torch.tensor(padded_tokens, dtype=torch.long),
-            torch.tensor(seq_lens, dtype=torch.long),
+            pad_and_tensorize(tokens, self.vocab.idx[PAD]),
+            pad_and_tensorize(seq_lens),
         )
 
 
 class ByteTensorizer(Tensorizer):
     """Turn characters into ints based on their ascii values."""
 
-    PAD_IDX = 0
-
     class Config(Tensorizer.Config):
         #: The name of the text column to parse from the data source.
         column: str = "text"
 
-    def create_training_tensors(self, batch):
-        """Convert text to characters, pad batch."""
-        texts = [[ord(c) for c in row[self.column]] for row in batch]
-        seq_lens = [len(text) for text in texts]
-        padded_texts = pad(texts, self.PAD_IDX)
-        return torch.LongTensor(padded_texts), torch.LongTensor(seq_lens)
+    def numberize(self, row):
+        """Convert text to characters."""
+        text = [ord(c) for c in row[self.column]]
+        seq_len = len(text)
+        return text, seq_len
+
+    def tensorize(self, batch):
+        tokens, seq_lens = zip(*batch)
+        return pad_and_tensorize(tokens, 0), pad_and_tensorize(seq_lens)
 
 
 class WordCharacterTensorizer(WordTensorizer):
@@ -130,19 +137,20 @@ class WordCharacterTensorizer(WordTensorizer):
     of each token, 0 for pad token.
     """
 
-    PAD_IDX = 0
+    def initialize(self):
+        while True:
+            yield
 
-    def create_training_tensors(self, batch):
+    def numberize(self, row):
         """Convert text to characters, pad batch."""
-        all_tokens = [self.tokenizer.tokenize(row[self.column]) for row in batch]
-        lengths = [[len(token.value) for token in tokens] for tokens in all_tokens]
-        characters = [
-            [[ord(c) for c in token.value] for token in tokens] for tokens in all_tokens
-        ]
-        return (
-            torch.LongTensor(pad(characters, self.PAD_IDX)),
-            torch.LongTensor(pad(lengths, self.PAD_IDX)),
-        )
+        tokens = self.tokenizer.tokenize(row[self.column])
+        lengths = [len(token.value) for token in tokens]
+        characters = [[ord(c) for c in token.value] for token in tokens]
+        return characters, lengths
+
+    def tensorize(self, batch):
+        characters, lengths = zip(*batch)
+        return (pad_and_tensorize(characters), pad_and_tensorize(lengths))
 
 
 class LabelTensorizer(Tensorizer):
@@ -177,10 +185,12 @@ class LabelTensorizer(Tensorizer):
         except GeneratorExit:
             self.labels = builder.make_vocab()
 
-    def create_training_tensors(self, batch):
+    def numberize(self, row):
         """Numberize labels."""
-        labels = [row[self.column] for row in batch]
-        return torch.tensor(self.labels.lookup_all(labels), dtype=torch.long)
+        return self.labels.lookup_all(row[self.column])
+
+    def tensorize(self, batch):
+        return pad_and_tensorize(batch)
 
 
 class MetaInput(Tensorizer):
@@ -191,8 +201,8 @@ class MetaInput(Tensorizer):
         #: The name of the text column to parse from the data source.
         column: str = "text"
 
-    def create_training_tensors(self, batch):
-        return [row[self.column] for row in batch]
+    def numberize(self, row):
+        return row[self.column]
 
 
 def initialize_tensorizers(tensorizers, data_source):
