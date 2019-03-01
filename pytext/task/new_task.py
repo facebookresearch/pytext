@@ -13,7 +13,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import ModelExporter
 from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
 from pytext.models.doc_model import NewDocModel as DocModel
-from pytext.models.new_model import Model
+from pytext.models.model import BaseModel as Model
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
@@ -121,7 +121,7 @@ class NewTask(TaskBase):
             ComponentType.DATA_HANDLER, config.data, cls.DATA_SCHEMA, tensorizers
         )
         # Initialized tensorizers can be used to create the model
-        model = create_component(ComponentType.MODEL2, config.model, tensorizers)
+        model = create_component(ComponentType.MODEL, config.model, tensorizers)
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
         # This is the only place right now that the task actually cares about which

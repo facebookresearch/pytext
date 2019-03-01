@@ -7,17 +7,33 @@ from typing import Dict, List
 import torch
 import torch.nn as nn
 from pytext.common.constants import Stage
-from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
+from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
 from pytext.data import CommonMetadata
+from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
 
 from .decoders import DecoderBase
 from .embeddings import EmbeddingBase, EmbeddingList
 from .output_layers import OutputLayerBase
 from .representations.representation_base import RepresentationBase
+
+
+class ModelInputMeta(ConfigBaseMeta):
+    def __new__(metacls, typename, bases, namespace):
+        annotations = namespace.get("__annotations__", {})
+        for type in annotations.values():
+            if not issubclass(type, Tensorizer.Config):
+                raise TypeError(
+                    "ModelInput configuration should only include tensorizers"
+                )
+        return super().__new__(metacls, typename, bases, namespace)
+
+
+class ModelInputBase(ConfigBase, metaclass=ModelInputMeta):
+    """Base class for model inputs."""
 
 
 class BaseModel(nn.Module, Component):
@@ -32,7 +48,10 @@ class BaseModel(nn.Module, Component):
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
     class Config(Component.Config):
-        pass
+        class ModelInput(ModelInputBase):
+            pass
+
+        inputs: ModelInput = ModelInput()
 
     def __init__(self, stage: Stage = Stage.TRAIN) -> None:
         nn.Module.__init__(self)
@@ -112,6 +131,31 @@ class BaseModel(nn.Module, Component):
 
         model_params = [{"params": params.values()} for params in model_params]
         return model_params
+
+    ##################################
+    #    New Model functions         #
+    ##################################
+    # TODO: add back after migration
+    # @classmethod
+    # def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+    #     raise NotImplementedError
+
+    def train_batch(self, batch):
+        model_inputs = self.arrange_model_inputs(batch)
+        model_outputs = self(*model_inputs)
+        loss = self.get_loss(model_outputs, self.arrange_targets(batch), None)
+        predictions, scores = self.get_pred(model_outputs)
+        targets = self.arrange_targets(batch)
+        metric_data = (predictions, targets, scores, loss, model_inputs)
+        return loss, metric_data
+
+    def arrange_model_inputs(self, tensor_dict):
+        # should raise NotImplementedError after migration is done
+        pass
+
+    def arrange_targets(self, tensor_dict):
+        # should raise NotImplementedError after migration is done
+        pass
 
 
 class Model(BaseModel):
