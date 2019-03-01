@@ -42,27 +42,22 @@ class DataTest(unittest.TestCase):
         data = Data(self.data_source, self.tensorizers, RawBatcher(batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
-        batch, batch_tensors = next(iter(batches))
-        self.assertEqual(set(self.tensorizers), set(batch_tensors))
-        tokens, seq_lens = batch_tensors["tokens"]
+        batch = next(iter(batches))
+        self.assertEqual(set(self.tensorizers), set(batch))
+        tokens, seq_lens = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
-        self.assertEqual((10,), batch_tensors["labels"].size())
-        self.assertEqual(10, len(batch))
-        example = next(iter(batch))
-        self.assertEqual({"text", "label"}, set(example))
+        self.assertEqual((10,), batch["labels"].size())
+        self.assertEqual({"tokens", "labels"}, set(batch))
 
     def test_create_batches_different_tensorizers(self):
         tensorizers = {"tokens": WordTensorizer(column="text")}
         data = Data(self.data_source, tensorizers, RawBatcher(batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
-        batch, batch_tensors = next(iter(batches))
-        self.assertEqual({"tokens"}, set(batch_tensors))
-        tokens, seq_lens = batch_tensors["tokens"]
+        batch = next(iter(batches))
+        self.assertEqual({"tokens"}, set(batch))
+        tokens, seq_lens = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
-        self.assertEqual(10, len(batch))
-        example = next(iter(batch))
-        self.assertEqual({"text", "label"}, set(example))
 
     def test_data_initializes_tensorsizers(self):
         tensorizers = {
