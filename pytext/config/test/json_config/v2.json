@@ -4,6 +4,25 @@
       "task": {
         "DocClassificationTask": {
           "scheduler": {
+            "type": "none",
+            "step_size": 10,
+            "gamma": 0.00001
+          }
+        }
+      },
+      "version": 1
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {}
+      },
+      "version": 2
+    }
+  },{
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
             "type": "step_lr",
             "step_size": 10,
             "gamma": 0.00001

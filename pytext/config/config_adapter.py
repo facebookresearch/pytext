@@ -42,20 +42,16 @@ def v1_to_v2(json_config):
     if (
         "scheduler" not in task
         or task["scheduler"] is None
-        or "LmFineTuning" in task["scheduler"]
-        or "StepLR" in task["scheduler"]
-        or "ReduceLROnPlateau" in task["scheduler"]
-        or "CosineAnnealingLR" in task["scheduler"]
-        or "ExponentialLR" in task["scheduler"]
+        or task["scheduler"].get("type") is None
     ):
         return json_config
     op_type = task["scheduler"].get("type")
-    assert op_type is not None
     if op_type == "step_lr":
         op_config = {"StepLR": {}}
         for key in ["step_size", "gamma"]:
             if key in task["scheduler"]:
                 op_config["StepLR"][key] = task["scheduler"][key]
+        task["scheduler"] = op_config
     elif op_type == "lm_fine_tuning":
         op_config = {"LmFineTuning": {}}
         for key in [
@@ -69,6 +65,7 @@ def v1_to_v2(json_config):
         ]:
             if key in task["scheduler"]:
                 op_config["LmFineTuning"][key] = task["scheduler"][key]
+        task["scheduler"] = op_config
     elif op_type == "reduce_lr_on_plateau":
         op_config = {"ReduceLROnPlateau": {}}
         for key in [
@@ -82,21 +79,23 @@ def v1_to_v2(json_config):
         ]:
             if key in task["scheduler"]:
                 op_config["ReduceLROnPlateau"][key] = task["scheduler"][key]
+        task["scheduler"] = op_config
     elif op_type == "cosine_annealing_lr":
         op_config = {"CosineAnnealingLR": {}}
         for key in ["t_max", "eta_min"]:
             if key in task["scheduler"]:
                 op_config["CosineAnnealingLR"][key] = task["scheduler"][key]
+        task["scheduler"] = op_config
     elif op_type == "exponential_lr":
         op_config = {"ExponentialLR": {}}
         for key in ["gamma"]:
             if key in task["scheduler"]:
                 op_config["ExponentialLR"][key] = task["scheduler"][key]
+        task["scheduler"] = op_config
+    elif op_type == "none":
+        del task["scheduler"]
     else:
-        raise ValueError(
-            "Migration for your scheduler not supported. Please add it here."
-        )
-    task["scheduler"] = op_config
+        raise ValueError("Migration for your scheduler %s not supported." % op_type)
     json_config["version"] = 2
     return json_config
 
