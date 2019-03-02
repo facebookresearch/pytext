@@ -6,7 +6,6 @@ from pytext.common.constants import DatasetFieldName
 from pytext.config import (
     contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
-    kd_doc_classification as KDDocClassification,
     pair_classification as PairClassification,
     query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
 )
@@ -17,7 +16,6 @@ from pytext.data import (
     ContextualIntentSlotModelDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
-    KDDocClassificationDataHandler,
     LanguageModelDataHandler,
     PairClassificationDataHandler,
     QueryDocumentPairwiseRankingDataHandler,
@@ -250,17 +248,6 @@ class SemanticParsingTask(Task):
         metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
 
 
-class KDDocClassificationTask(Task):
-    class Config(Task.Config):
-        model: DocModel.Config = DocModel.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        features: DocClassification.ModelInputConfig = (
-            DocClassification.ModelInputConfig()
-        )
-        labels: KDDocClassification.TargetConfig = KDDocClassification.TargetConfig()
-        data_handler: KDDocClassificationDataHandler.Config = (
-            KDDocClassificationDataHandler.Config()
-        )
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
+class KDDocClassificationTask(DocClassificationTask):
+    class Config(DocClassificationTask.Config):
+        pass

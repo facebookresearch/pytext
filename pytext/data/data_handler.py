@@ -21,12 +21,14 @@ from typing import (
 )
 
 import torch
-from pytext.common.constants import BatchContext, DatasetFieldName, VocabMeta
+from pytext.common.constants import BatchContext, DatasetFieldName, DFColumn, VocabMeta
 from pytext.config.component import Component, ComponentType
+from pytext.config.field_config import Target
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
 from pytext.utils import cuda_utils, dist_utils, embeddings_utils
+from pytext.utils.data_utils import parse_json_array
 from torchtext import data as textdata
 
 
@@ -466,6 +468,8 @@ class DataHandler(Component):
         self.metadata.target = []
         # build vocabs for label fields
         for name, label in self.labels.items():
+            if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
+                continue
             # Need test data to make sure we cover all of the labels in it
             # It is particularly important when BIO is enabled as a B-[Label] can
             # appear in train and eval but test can have B-[Label] and I-[Label]
@@ -743,11 +747,53 @@ class DataHandler(Component):
             self._context_from_batch(batch) if include_context else None,
         )
 
+    def _add_target_prob_to_res(self, res, row_data):
+        res[Target.TARGET_PROB_FIELD] = parse_json_array(
+            row_data[DFColumn.TARGET_PROBS]
+        )
+        res[Target.TARGET_LABEL_FIELD] = parse_json_array(
+            row_data[DFColumn.TARGET_LABELS]
+        )
+        res[Target.TARGET_LOGITS_FIELD] = parse_json_array(
+            row_data[DFColumn.TARGET_LOGITS]
+        )
+
+    def _align_target_label(self, target, label_list, batch_label_list):
+        """
+        align the target in the order of label_list, batch_label_list stores the
+        original target order.
+        """
+        if sorted(label_list) != sorted(batch_label_list[0]):
+            raise Exception(
+                "label list %s is not matched with doc label %s",
+                (str(batch_label_list), str(label_list)),
+            )
+
+        def get_sort_idx(l):
+            return [i[0] for i in sorted(enumerate(l), key=lambda x: x[1])]
+
+        def reorder(l, o):
+            return [l[i] for i in o]
+
+        unsort_idx = get_sort_idx(get_sort_idx(label_list))
+        align_target = [
+            reorder(reorder(t, get_sort_idx(b)), unsort_idx)
+            for t, b in zip(target, batch_label_list)
+        ]
+        return align_target
+
     def _target_from_batch(self, batch):
-        targets = tuple(getattr(batch, name) for name in self.labels)
+        targets = []
+        for name in self.labels:
+            target = getattr(batch, name)
+            if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
+                label_list = self.metadata.target.vocab.itos
+                batch_label_list = getattr(batch, Target.TARGET_LABEL_FIELD)
+                target = self._align_target_label(target, label_list, batch_label_list)
+            targets.append(target)
         if len(targets) == 1:
             return targets[0]
-        return targets
+        return tuple(targets)
 
     def _input_from_batch(self, batch, is_train=True):
         return (

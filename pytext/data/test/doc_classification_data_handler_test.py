@@ -3,7 +3,7 @@
 
 import unittest
 
-from pytext.config.doc_classification import ModelInput, ModelInputConfig
+from pytext.config.doc_classification import ModelInput, ModelInputConfig, TargetConfig
 from pytext.config.field_config import FeatureConfig
 from pytext.data import DocClassificationDataHandler, RawData
 from pytext.data.featurizer import SimpleFeaturizer
@@ -20,7 +20,7 @@ class DocClassificationDataHandlerTest(unittest.TestCase):
         self.data_handler = DocClassificationDataHandler.from_config(
             DocClassificationDataHandler.Config(),
             ModelInputConfig(),
-            [],
+            TargetConfig(),
             featurizer=SimpleFeaturizer.from_config(
                 SimpleFeaturizer.Config(), FeatureConfig()
             ),
