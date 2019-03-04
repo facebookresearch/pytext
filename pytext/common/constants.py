@@ -50,6 +50,9 @@ class DFColumn:
     SOURCE_FEATS = "source_feats"
     TARGET_TOKENS = "target_tokens"
     SEQLOGICAL = "seqlogical"
+    TARGET_PROBS = "target_probs"
+    TARGET_LOGITS = "target_logits"
+    TARGET_LABELS = "target_labels"
 
 
 class Padding:

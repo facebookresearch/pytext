@@ -9,7 +9,7 @@ from pytext.config.doc_classification import (
     ModelInputConfig,
     TargetConfig,
 )
-from pytext.config.field_config import DocLabelConfig
+from pytext.config.field_config import DocLabelConfig, Target
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
@@ -92,6 +92,10 @@ class DocClassificationDataHandler(DataHandler):
             target_config, {DocLabelConfig._name: DocLabelField}
         )
         extra_fields: Dict[str, Field] = {ExtraField.RAW_TEXT: RawField()}
+        if target_config.target_prob:
+            target_fields[Target.TARGET_PROB_FIELD] = RawField()
+            target_fields[Target.TARGET_LOGITS_FIELD] = RawField()
+            extra_fields[Target.TARGET_LABEL_FIELD] = RawField()
         kwargs.update(config.items())
         return cls(
             raw_columns=config.columns_to_read,
@@ -109,7 +113,7 @@ class DocClassificationDataHandler(DataHandler):
             return model_feature.tokens
 
     def _get_chars(self, model_feature):
-        if self.max_seq_len > 0:
+        if model_feature.characters is not None and self.max_seq_len > 0:
             # truncate tokens if max_seq_len is set
             return model_feature.characters[: self.max_seq_len]
         else:
@@ -138,6 +142,9 @@ class DocClassificationDataHandler(DataHandler):
             # extra data
             ExtraField.RAW_TEXT: row_data.get(RawData.TEXT),
         }
+        if Target.TARGET_PROB_FIELD in self.labels:
+            self._add_target_prob_to_res(res, row_data)
+
         return res
 
     def _train_input_from_batch(self, batch):
