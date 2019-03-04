@@ -90,6 +90,11 @@ class ModelExporter(Component):
             torch.tensor([1, 1], dtype=torch.long)
         )  # token lengths
         input_names.append("tokens_lens")
+        if "seq_tokens_vals" in input_names:
+            dummy_model_input.append(
+                torch.tensor([1, 1], dtype=torch.long)
+            )  # seq lengths
+            input_names.append("seq_tokens_lens")
         return input_names, tuple(dummy_model_input), feature_itos_map
 
     def __init__(self, config, input_names, dummy_model_input, vocab_map, output_names):
