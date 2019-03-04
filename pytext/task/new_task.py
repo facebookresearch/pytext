@@ -111,7 +111,7 @@ class NewTask(TaskBase):
         exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
-    def from_config(cls, config: Config, unused_metadata=None, unused_model_state=None):
+    def from_config(cls, config: Config, unused_metadata=None, model_state=None):
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer)
             for name, tensorizer in config.model.inputs._asdict().items()
@@ -122,6 +122,8 @@ class NewTask(TaskBase):
         )
         # Initialized tensorizers can be used to create the model
         model = create_component(ComponentType.MODEL, config.model, tensorizers)
+        if model_state:
+            model.load_state_dict(model_state)
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
         # This is the only place right now that the task actually cares about which
