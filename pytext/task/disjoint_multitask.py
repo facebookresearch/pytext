@@ -135,8 +135,7 @@ class DisjointMultitask(TaskBase):
         for name, model in multitask_model.models.items():
             model = model.cpu()
             if self.exporters[name]:
-                for mc in metric_channels or []:
-                    self.exporters[name].export_to_metrics(model, mc)
+                self.exporters[name].export_to_metrics(model, metric_channels)
                 if name == self.target_task_name:
                     model_export_path = export_path
                     model_export_onnx_path = export_onnx_path
