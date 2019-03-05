@@ -5,8 +5,10 @@ import functools
 import itertools
 from typing import Dict, Iterable, Optional
 
+import torch
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.utils import cuda_utils
 
 from .sources import DataSchema, DataSource, RawExample
 from .sources.data_source import GeneratorIterator
@@ -21,19 +23,37 @@ class Batcher(Component):
     class Config(Component.Config):
         #: Make batches of this size when possible. If there's not enough data,
         #: might generate some smaller batches.
-        batch_size: int = 16
+        train_batch_size: int = 16
+        eval_batch_size: int = 16
+        test_batch_size: int = 16
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.batch_size)
+        return cls(
+            config.train_batch_size, config.eval_batch_size, config.test_batch_size
+        )
 
-    def __init__(self, batch_size=Config.batch_size):
-        self.batch_size = batch_size
+    def __init__(
+        self,
+        train_batch_size=Config.train_batch_size,
+        eval_batch_size=Config.eval_batch_size,
+        test_batch_size=Config.test_batch_size,
+    ):
+        self.train_batch_size = train_batch_size
+        self.eval_batch_size = eval_batch_size
+        self.test_batch_size = test_batch_size
 
-    def batchify(self, iterable: Iterable[RawExample], sort_key=None):
+    def batchify(
+        self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
+    ):
         """Group rows by batch_size.  Assume iterable of dicts, yield dict of lists.
         The last batch will be of length len(iterable) % batch_size."""
-        iterators = [iter(iterable)] * self.batch_size
+        batch_size = {
+            Stage.TRAIN: self.train_batch_size,
+            Stage.TEST: self.eval_batch_size,
+            Stage.EVAL: self.test_batch_size,
+        }[stage]
+        iterators = [iter(iterable)] * batch_size
         for batch in itertools.zip_longest(*iterators):
             res = [ex for ex in batch if ex is not None]
             if sort_key:
@@ -98,7 +118,6 @@ class Data(Component):
     """
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
-    __EXPANSIBLE__ = True
 
     class Config(Component.Config):
         #: Specify where training/test/eval data come from. The default value

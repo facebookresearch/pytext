@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing import Optional
+
 from pytext.config.component import Component, ComponentType, create_component
 
 from .utils import BOS, EOS, PAD, Tokenizer, VocabBuilder, pad_and_tensorize
@@ -81,7 +83,8 @@ class WordTensorizer(Tensorizer):
         tokenizer: Tokenizer.Config = Tokenizer.Config()
         add_bos_token: bool = False
         add_eos_token: bool = False
-        use_eos_token_for_bos = False
+        use_eos_token_for_bos: bool = False
+        max_seq_len: Optional[int] = None
 
     @classmethod
     def from_config(cls, config: Config):
@@ -92,6 +95,7 @@ class WordTensorizer(Tensorizer):
             add_bos_token=config.add_bos_token,
             add_eos_token=config.add_eos_token,
             use_eos_token_for_bos=config.use_eos_token_for_bos,
+            max_seq_len=config.max_seq_len,
         )
 
     def __init__(
@@ -101,6 +105,7 @@ class WordTensorizer(Tensorizer):
         add_bos_token=Config.add_bos_token,
         add_eos_token=Config.add_eos_token,
         use_eos_token_for_bos=Config.use_eos_token_for_bos,
+        max_seq_len=Config.max_seq_len,
         vocab=None,
     ):
         super().__init__(column)
@@ -109,9 +114,11 @@ class WordTensorizer(Tensorizer):
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
+        self.max_seq_len = max_seq_len or float("Inf")
 
-    def _lookup_tokens(self, tokens):
-        tokens = self.vocab.lookup_all(tokens)
+    def _lookup_tokens(self, row):
+        tokenized_texts = [t.value for t in self.tokenizer.tokenize(row[self.column])]
+        tokens = self.vocab.lookup_all(tokenized_texts)
         if self.add_eos_token:
             tokens.append(self.vocab.idx[EOS])
         if self.add_bos_token:
@@ -121,6 +128,8 @@ class WordTensorizer(Tensorizer):
                 else self.vocab.idx[BOS]
             )
             tokens = [bos_token] + tokens
+        if len(tokens) > self.max_seq_len:
+            tokens = tokens[: self.max_seq_len]
         return tokens
 
     def initialize(self):
@@ -141,8 +150,7 @@ class WordTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
-        tokenized_texts = [t.value for t in self.tokenizer.tokenize(row[self.column])]
-        tokens = self._lookup_tokens(tokenized_texts)
+        tokens = self._lookup_tokens(row)
         return tokens, len(tokens)
 
     def tensorize(self, batch):
@@ -172,7 +180,7 @@ class ByteTensorizer(Tensorizer):
 
     def tensorize(self, batch):
         tokens, seq_lens = zip(*batch)
-        return pad_and_tensorize(tokens, 0), pad_and_tensorize(seq_lens)
+        return (pad_and_tensorize(tokens, 0), pad_and_tensorize(seq_lens))
 
 
 class WordCharacterTensorizer(WordTensorizer):

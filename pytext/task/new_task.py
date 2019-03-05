@@ -17,7 +17,7 @@ from pytext.models.model import BaseModel as Model
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
-from pytext.utils import cuda_utils
+from pytext.utils import cuda_utils, time_utils
 
 from .task import TaskBase
 
@@ -41,13 +41,13 @@ class NewTaskTrainer(Trainer):
         """Our run_epoch is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
+        timer = time_utils.StageTimer()
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
 
         for batch_id, batch in enumerate(batches):
-            print(f"Batch {batch_id} has {len(batch)} examples")
             pre_batch()
             loss, metric_data = model.train_batch(batch)
-            backprop(loss)
+            backprop(loss, timer)
             if report_metric:
                 metric_reporter.add_batch_stats(
                     batch_id, *metric_data, **metric_reporter.batch_context(batch)
