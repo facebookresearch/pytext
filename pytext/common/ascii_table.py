@@ -4,8 +4,11 @@
 import itertools
 
 
-def ascii_table(data, human_column_names=None, footer=None, indentation=""):
+def ascii_table(
+    data, human_column_names=None, footer=None, indentation="", alignments=()
+):
     data = list(data)
+    column_alignments = dict(alignments)
     columns = human_column_names or set(itertools.chain.from_iterable(data))
     widths = {
         column: max(len(str(row.get(column))) for row in data) for column in columns
@@ -16,11 +19,15 @@ def ascii_table(data, human_column_names=None, footer=None, indentation=""):
 
     separator = "+" + "+".join("-" * (width + 2) for width in widths.values()) + "+"
 
-    def format_row(row, alignment=">"):
+    def format_row(row, alignment=None):
+        alignments = {
+            column: alignment or column_alignments.get(column, ">")
+            for column in columns
+        }
         return (
             "| "
             + " | ".join(
-                format(row.get(column, ""), f"{alignment}{width}")
+                format(row.get(column, ""), f"{alignments[column]}{width}")
                 for column, width in widths.items()
             )
             + " |"

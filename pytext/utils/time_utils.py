@@ -1,88 +1,167 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import contextlib
+import collections
+import functools
 import timeit
+import traceback
+import weakref
 
 from pytext.common.ascii_table import ascii_table
 
 
-class StageTime:
-    def __init__(self):
-        self.total = 0
-        self.count = 0
+class SnapshotList(list):
+    """lists are not weakref-able by default."""
 
-    def incr(self, elapsed):
-        self.total += elapsed
-        self.count += 1
+
+class Timings:
+    sum: float
+    count: int
+    max: float
+
+    def __init__(self, sum: float = 0.0, count: int = 0, max: float = -float("inf")):
+        self.sum = sum
+        self.count = count
+        self.max = max
 
     @property
     def average(self):
-        return self.total / self.count if self.count else 0
+        return self.sum / (self.count or 1)
+
+    def add(self, time):
+        self.sum += time
+        self.count += 1
+        self.max = max(self.max, time)
 
 
-class StageTimer:
-    """
-    Reports each stage Total Time, Average Time and Count format in ascii_table.
+SECONDS_IN_MINUTE = 60
+SECONDS_IN_HOUR = 60 * SECONDS_IN_MINUTE
+SECONDS_IN_DAY = 24 * SECONDS_IN_HOUR
 
-    Example:
-    [forward] total: 21.470, average: 0.031, count: 702
-    [add_metric] total: 15.764, average: 0.022, count: 702
-    [overall] total: 38.076, average: 38.076, count: 1
-    """
 
+def format_time(seconds):
+    if seconds > 60:
+        days, seconds = seconds // SECONDS_IN_DAY, seconds % SECONDS_IN_DAY
+        hours, seconds = seconds // SECONDS_IN_HOUR, seconds % SECONDS_IN_HOUR
+        minutes, seconds = seconds // SECONDS_IN_MINUTE, seconds % SECONDS_IN_MINUTE
+        if days:
+            return f"{days}d{hours}h"
+        elif hours:
+            return f"{hours}h{minutes}m"
+        else:
+            return f"{minutes}m{seconds}s"
+    elif seconds > 1:
+        return f"{seconds:.1f}s"
+    elif seconds > 0.001:
+        return f"{seconds * 1000:.1f}ms"
+    else:
+        return f"{seconds * 1000000:.1f}ns"
+
+
+class Snapshot:
     def __init__(self):
-        self.reset()
+        self.times = collections.defaultdict(Timings)
+        self.start = timeit.default_timer()
 
-    def add_stage(self, stage):
-        current = timeit.default_timer()
-        # increment stage total time
-        if stage not in self.per_stage_time:
-            self.per_stage_time[stage] = StageTime()
-        self.per_stage_time[stage].incr(current - self.checkpoint)
+    def report(self):
+        snapshot_total = timeit.default_timer() - self.start
 
-        self.checkpoint = current
+        def path(key):
+            return " -> ".join(label for label, _ in key)
 
-    def report(self, header):
-        total = timeit.default_timer() - self.start
-        print(f"\n\t {header}")
+        results = [
+            {
+                "name": path(key),
+                "total": format_time(times.sum),
+                "avg": format_time(times.average),
+                "max": format_time(times.max),
+                "count": times.count,
+            }
+            for key, times in sorted(self.times.items())
+        ]
         print(
             ascii_table(
-                [
-                    {
-                        "stage": stage,
-                        "total": f"{stage_time.total:.3f}",
-                        "average": f"{stage_time.average:.3f}",
-                        "count": f"{stage_time.count}",
-                    }
-                    for stage, stage_time in self.per_stage_time.items()
-                ],
+                results,
                 human_column_names={
-                    "stage": "Stage",
-                    "total": "Total Time",
-                    "average": "Average Time",
+                    "name": "Stage",
+                    "total": "Total",
+                    "avg": "Average",
+                    "max": "Max",
                     "count": "Count",
                 },
-                footer={
-                    "stage": "Overall training",
-                    "total": f"{total:.3f}",
-                    "average": f"{total:.3f}",
-                    "count": "1",
-                },
-                indentation="\t",
+                footer={"name": "Total time", "total": format_time(snapshot_total)},
+                alignments={"name": "<"},
             )
         )
 
-    def reset(self):
-        self.start = timeit.default_timer()
-        self.checkpoint = self.start
-        self.per_stage_time = {}
+
+class HierarchicalTimer:
+    def __init__(self):
+        self.current_stack = []
+        self.all_snapshots = SnapshotList()
+
+    def snapshot(self):
+        snapshot = Snapshot()
+        self.all_snapshots.append(weakref.ref(snapshot))
+        return snapshot
+
+    def _clean_snapshots(self):
+        self.all_snapshots = [ref for ref in self.all_snapshots if ref() is not None]
+
+    def push(self, label, caller_id):
+        self.current_stack.append((label, caller_id, timeit.default_timer()))
+
+    def pop(self):
+        label, _, start_time = self.current_stack[-1]
+        key = tuple((label, caller) for label, caller, _ in self.current_stack)
+        delta = timeit.default_timer() - start_time
+        for ref in self.all_snapshots:
+            snapshot = ref()
+            if snapshot is not None:
+                snapshot.times[key].add(delta)
+        self.current_stack.pop()
+        # Need to put this somewhere
+        self._clean_snapshots()
+
+    def time(self, label):
+        return _TimerContextManager(label, self)
 
 
-@contextlib.contextmanager
-def time_context(header):
-    timer = StageTimer()
-    try:
-        yield timer
-    finally:
-        timer.report(header)
+class _TimerContextManager:
+    def __init__(self, label, timer, caller_id=None):
+        self.label = label
+        self.timer = timer
+        self.caller_id = caller_id
+
+    def __enter__(self):
+        if self.caller_id:
+            caller_id = self.caller_id
+        else:
+            stack = traceback.extract_stack()
+            caller = stack[-2]
+            caller_id = (caller.filename, caller.line)
+        self.timer.push(self.label, caller_id)
+
+    def __exit__(self, *exception_info):
+        self.timer.pop()
+
+    def __call__(self, fn):
+        """Decorator syntax"""
+        caller_id = (fn.__code__.co_filename, fn.__code__.co_firstlineno)
+        timer_context = _TimerContextManager(self.label, self.timer, caller_id)
+
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            with timer_context:
+                return fn(*args, **kwargs)
+
+        return wrapper
+
+
+TIMER = HierarchicalTimer()
+
+
+time = TIMER.time
+snapshot = TIMER.snapshot
+SNAPSHOT = TIMER.snapshot()
+report = SNAPSHOT.report

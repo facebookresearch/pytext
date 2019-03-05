@@ -34,32 +34,36 @@ class NewTaskTrainer(Trainer):
         model: Model,
         metric_reporter: MetricReporter,
         pre_batch=lambda: None,
-        backprop=lambda loss, timer=None: None,
-        num_samples_to_log_progress: int = None,
+        backprop=lambda loss: None,
         rank=0,
+        num_samples_to_log_progress: int = None,
     ):
         """Our run_epoch is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
-        timer = time_utils.StageTimer()
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
 
         for batch_id, batch in enumerate(batches):
             pre_batch()
-            loss, metric_data = model.train_batch(batch)
-            backprop(loss, timer)
+            with time_utils.time("model.train_batch"):
+                loss, metric_data = model.train_batch(batch)
+            with time_utils.time("backprop"):
+                backprop(loss)
             if report_metric:
-                metric_reporter.add_batch_stats(
-                    batch_id, *metric_data, **metric_reporter.batch_context(batch)
-                )
+                with time_utils.time("add metrics"):
+                    metric_reporter.add_batch_stats(
+                        batch_id, *metric_data, **metric_reporter.batch_context(batch)
+                    )
 
         metrics = None
         if report_metric:
-            metrics = metric_reporter.report_metric(
-                stage, epoch, print_to_channels=(rank == 0)
-            )
+            with time_utils.time("report metrics"):
+                metrics = metric_reporter.report_metric(
+                    stage, epoch, print_to_channels=(rank == 0)
+                )
         else:
             metric_reporter._reset()
+
         return metrics
 
     def _prepare_scheduler(self, training_batches, scheduler=None):
