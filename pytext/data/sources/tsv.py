@@ -24,7 +24,9 @@ class TSV:
         self.file.seek(0)
         try:
             reader = csv.DictReader(
-                self.file, fieldnames=self.field_names, delimiter=self.delimiter
+                (line.replace("\0", "") for line in self.file),
+                fieldnames=self.field_names,
+                delimiter=self.delimiter,
             )
             yield from reader
         finally:

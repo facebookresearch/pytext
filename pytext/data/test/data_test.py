@@ -38,7 +38,7 @@ class DataTest(unittest.TestCase):
         self.assertTrue(batch)
 
     def test_create_batches(self):
-        data = Data(self.data_source, self.tensorizers, Batcher(batch_size=16))
+        data = Data(self.data_source, self.tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
@@ -51,7 +51,7 @@ class DataTest(unittest.TestCase):
 
     def test_create_batches_different_tensorizers(self):
         tensorizers = {"tokens": WordTensorizer(column="text")}
-        data = Data(self.data_source, tensorizers, Batcher(batch_size=16))
+        data = Data(self.data_source, tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
@@ -90,7 +90,7 @@ class DataTest(unittest.TestCase):
         data = Data(
             self.data_source,
             self.tensorizers,
-            Batcher(batch_size=16),
+            Batcher(train_batch_size=16),
             sort_key="tokens",
         )
         batches = list(data.batches(Stage.TRAIN))
@@ -112,7 +112,7 @@ class DataTest(unittest.TestCase):
 class BatcherTest(unittest.TestCase):
     def test_batcher(self):
         data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
-        batcher = Batcher(batch_size=3)
+        batcher = Batcher(train_batch_size=3)
         batches = list(batcher.batchify(data))
         self.assertEqual(len(batches), 4)
         self.assertEqual(batches[1]["a"], [3, 4, 5])
