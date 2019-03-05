@@ -214,20 +214,20 @@ class Node:
         0 indexed
         Like array slicing: For the first 3 tokens, returns 0, 3
         """
-        indices = self._get_token_indices()
+        indices = self.get_token_indices()
         if len(indices) > 0:
             return min(indices), max(indices) + 1
         else:
             return None
 
-    def _get_token_indices(self):
+    def get_token_indices(self):
         indices = []
         if self.children:
             for child in self.children:
                 if type(child) == Token:
                     indices.append(child.index)
                 else:
-                    indices += child._get_token_indices()
+                    indices += child.get_token_indices()
         return indices
 
     def list_nonTerminals(self):
@@ -437,7 +437,7 @@ class Node_Info:
             if (type(a) == Slot) or (type(a) == Intent):
                 self.children.append(a.label)
 
-        self.token_indices = node._get_token_indices()
+        self.token_indices = node.get_token_indices()
         self.ancestors = [a.label for a in node.list_ancestors()]
         # This is only non-temrinal descendents. Did you want tokens too?
         self.descendents = [d.label for d in node.list_nonTerminals()]
