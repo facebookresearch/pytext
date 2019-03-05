@@ -86,6 +86,28 @@ class DataTest(unittest.TestCase):
         # dicts is non-trivial, but they should also be equal
         self.assertEqual(batch1, batch2)
 
+    def test_sort(self):
+        data = Data(
+            self.data_source,
+            self.tensorizers,
+            Batcher(batch_size=16),
+            sort_key="tokens",
+        )
+        batches = list(data.batches(Stage.TRAIN))
+        batch = next(iter(batches))
+        _, seq_lens = batch["tokens"]
+        seq_lens = seq_lens.tolist()
+        for i in range(len(seq_lens) - 1):
+            self.assertTrue(seq_lens[i] >= seq_lens[i + 1])
+        # make sure labels are also in the same order of sorted tokens
+        self.assertEqual(
+            self.tensorizers["labels"].labels[batch["labels"][1]],
+            "reminder/set_reminder",
+        )
+        self.assertEqual(
+            self.tensorizers["labels"].labels[batch["labels"][8]], "alarm/snooze_alarm"
+        )
+
 
 class BatcherTest(unittest.TestCase):
     def test_batcher(self):

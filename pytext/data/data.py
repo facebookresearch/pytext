@@ -3,7 +3,7 @@
 
 import functools
 import itertools
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Optional
 
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
@@ -30,12 +30,15 @@ class Batcher(Component):
     def __init__(self, batch_size=Config.batch_size):
         self.batch_size = batch_size
 
-    def batchify(self, iterable: Iterable[RawExample]):
+    def batchify(self, iterable: Iterable[RawExample], sort_key=None):
         """Group rows by batch_size.  Assume iterable of dicts, yield dict of lists.
         The last batch will be of length len(iterable) % batch_size."""
         iterators = [iter(iterable)] * self.batch_size
         for batch in itertools.zip_longest(*iterators):
-            yield zip_dicts([ex for ex in batch if ex is not None])
+            res = [ex for ex in batch if ex is not None]
+            if sort_key:
+                res.sort(reverse=True, key=sort_key)
+            yield zip_dicts(res)
 
 
 def numberize_rows(tensorizers, rows):
@@ -103,6 +106,7 @@ class Data(Component):
         source: DataSource.Config = DataSource.Config()
         #: How training examples are split into batches for the optimizer.
         batcher: Batcher.Config = Batcher.Config()
+        sort_key: Optional[str] = None
 
     @classmethod
     def from_config(
@@ -110,19 +114,21 @@ class Data(Component):
     ):
         data_source = create_component(ComponentType.DATA_SOURCE, config.source, schema)
         batcher = create_component(ComponentType.BATCHER, config.batcher)
-        return cls(data_source, tensorizers, batcher=batcher)
+        return cls(data_source, tensorizers, batcher=batcher, sort_key=config.sort_key)
 
     def __init__(
         self,
         data_source: DataSource,
         tensorizers: Dict[str, Tensorizer],
         batcher: Batcher = None,
+        sort_key: Optional[str] = None,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
         self.data_source = data_source
         self.tensorizers = tensorizers
         self.batcher = batcher or Batcher()
+        self.sort_key = sort_key
         self.__initialize_tensorizers()
 
     def __initialize_tensorizers(self):
@@ -152,5 +158,12 @@ class Data(Component):
         }[stage]
 
         numberized_rows = numberize_rows(self.tensorizers, rows)
-        batches = self.batcher.batchify(numberized_rows)
+        batches = self.batcher.batchify(
+            numberized_rows,
+            sort_key=(
+                lambda row: self.tensorizers[self.sort_key].sort_key(row[self.sort_key])
+            )
+            if self.sort_key
+            else None,
+        )
         return pad_and_tensorize_batches(self.tensorizers, batches)

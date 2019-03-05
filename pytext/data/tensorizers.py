@@ -35,6 +35,9 @@ class Tensorizer(Component):
     def numberize(self, row):
         raise NotImplementedError
 
+    def sort_key(self, row):
+        raise NotImplementedError
+
     def tensorize(self, batch):
         """Tensorizer knows how to pad and tensorize a batch of it's own output."""
         return batch
@@ -148,6 +151,10 @@ class WordTensorizer(Tensorizer):
             pad_and_tensorize(tokens, self.vocab.idx[PAD]),
             pad_and_tensorize(seq_lens),
         )
+
+    def sort_key(self, row):
+        # use seq_len as sort key
+        return row[1]
 
 
 class ByteTensorizer(Tensorizer):
