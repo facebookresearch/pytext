@@ -115,6 +115,8 @@ class TestConfig(ConfigBase):
     use_cuda_if_available: bool = True
     # Whether to use TensorBoard
     use_tensorboard: bool = True
+    # Output path where metric reporter writes to.
+    test_out_path: str = ""
 
 
 LATEST_VERSION = 2

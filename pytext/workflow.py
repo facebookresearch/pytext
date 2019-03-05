@@ -146,13 +146,16 @@ def export_saved_model_to_caffe2(
 
 
 def test_model(
-    test_config: TestConfig, metric_channels: Optional[List[Channel]]
+    test_config: TestConfig,
+    metric_channels: Optional[List[Channel]],
+    test_out_path: str,
 ) -> Any:
     return test_model_from_snapshot_path(
         test_config.load_snapshot_path,
         test_config.use_cuda_if_available,
         test_config.test_path,
         metric_channels,
+        test_out_path,
     )
 
 
@@ -161,6 +164,7 @@ def test_model_from_snapshot_path(
     use_cuda_if_available: bool,
     test_path: Optional[str] = None,
     metric_channels: Optional[List[Channel]] = None,
+    test_out_path: str = "",
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
@@ -168,13 +172,24 @@ def test_model_from_snapshot_path(
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
 
+    # Overwrite the test output path because you might not have permission to
+    # write to the original test output path that was created when model was trained.
+    if test_out_path:
+        if hasattr(task.metric_reporter, "output_path"):
+            task.metric_reporter.output_path = test_out_path
+        for channel in task.metric_reporter.channels:
+            if hasattr(channel, "file_path"):
+                channel.file_path = test_out_path
+    else:
+        test_out_path = train_config.task.metric_reporter.output_path
+
     if isinstance(task, NewTask):
         test_results = task.test()
     else:
         if not test_path:
             test_path = train_config.task.data_handler.test_path
         test_results = task.test(test_path)
-    return test_results, train_config.task.metric_reporter.output_path, metric_channels
+    return test_results, test_out_path, metric_channels
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
