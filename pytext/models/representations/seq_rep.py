@@ -39,9 +39,27 @@ class SeqRepresentation(RepresentationBase):
         self, embedded_seqs: torch.Tensor, seq_lengths: torch.Tensor, *args
     ) -> torch.Tensor:
         # embedded_seqs: (bsz, max_num_sen, max_seq_len, dim)
-        (bsz, max_num_sen, max_seq_len, dim) = embedded_seqs.size()
-        rep = self.doc_rep(embedded_seqs.reshape((bsz * max_num_sen, max_seq_len, dim)))
-        sentence_reps = rep.reshape((bsz, max_num_sen, self.doc_representation_dim))
+        (bsz, max_num_sen, max_seq_len, dim) = torch.onnx.operators.shape_as_tensor(
+            embedded_seqs
+        )
+        rep = self.doc_rep(
+            torch.onnx.operators.reshape_from_tensor_shape(
+                embedded_seqs,
+                torch.cat(
+                    ((bsz * max_num_sen).view(1), max_seq_len.view(1), dim.view(1))
+                ),
+            )
+        )
+        sentence_reps = torch.onnx.operators.reshape_from_tensor_shape(
+            rep,
+            torch.cat(
+                (
+                    bsz.view(1),
+                    max_num_sen.view(1),
+                    torch.tensor(self.doc_representation_dim).view(1),
+                )
+            ),
+        )
         if isinstance(self.seq_rep, BiLSTMDocAttention):
             return self.seq_rep(embedded_tokens=sentence_reps, seq_lengths=seq_lengths)
         else:

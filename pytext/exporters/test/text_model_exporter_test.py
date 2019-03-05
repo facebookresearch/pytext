@@ -13,7 +13,12 @@ import torch
 import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
-from pytext.builtin_task import DocClassificationTask, JointTextTask, WordTaggingTask
+from pytext.builtin_task import (
+    DocClassificationTask,
+    JointTextTask,
+    SeqNNTask,
+    WordTaggingTask,
+)
 from pytext.common.constants import DatasetFieldName
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
@@ -23,6 +28,7 @@ from pytext.fields import (
     CharFeatureField,
     DictFeatureField,
     FieldMeta,
+    SeqFeatureField,
     TextFeatureField,
 )
 from pytext.utils.onnx_utils import CAFFE2_DB_TYPE
@@ -250,6 +256,27 @@ WORD_CONFIGS = [
 }
 """,
 ]
+
+
+SEQ_NN_CONFIG = """
+ {
+  "model": {
+    "representation": {
+      "doc_representation": {},
+      "seq_representation": {
+        "DocNNRepresentation": {}
+      }
+    }
+  },
+  "features": {
+    "word_feat": {"export_input_names": ["seq_tokens_vals"]}
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
+  "exporter": {}
+}
+"""
 
 W_VOCAB_SIZE = 10
 UNK_IDX = 0
@@ -540,6 +567,102 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 np.array(c2_word_out).flatten(),
             )
 
+    @given(
+        export_num_words=st.integers(1, 5),
+        export_num_dict_feat=st.integers(1, 6),
+        num_doc_classes=st.integers(2, 5),
+        num_word_classes=st.integers(2, 4),
+        test_num_words=st.integers(1, 7),
+        test_num_dict_feat=st.integers(1, 8),
+        num_predictions=st.integers(1, 5),
+        test_num_chars=st.integers(1, 7),
+        test_num_seq=st.integers(1, 7),
+    )
+    def test_seq_nn_export_to_caffe2(
+        self,
+        export_num_words,
+        export_num_dict_feat,
+        num_doc_classes,
+        num_word_classes,
+        test_num_words,
+        test_num_dict_feat,
+        num_predictions,
+        test_num_chars,
+        test_num_seq,
+    ):
+        config = self._get_config(SeqNNTask.Config, SEQ_NN_CONFIG)
+        metadata = self._get_seq_metadata(num_doc_classes, 0)
+        py_model = create_model(config.model, config.features, metadata)
+        exporter = create_exporter(
+            config.exporter, config.features, config.labels, metadata
+        )
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".{}".format(".predictor")
+        ) as pred_file:
+            print(pred_file.name)
+            output_names = exporter.export_to_caffe2(py_model, pred_file.name)
+            workspace.ResetWorkspace()
+
+        pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
+        for _i in range(num_predictions):
+            test_inputs = self._get_seq_nn_rand_input(
+                config.features,
+                BATCH_SIZE,
+                W_VOCAB_SIZE,
+                DICT_VOCAB_SIZE,
+                CHAR_VOCAB_SIZE,
+                test_num_words,
+                test_num_dict_feat,
+                test_num_chars,
+                test_num_seq,
+            )
+            self._feed_c2_input(
+                workspace, test_inputs, exporter.input_names, metadata.feature_itos_map
+            )
+            workspace.RunNetOnce(pred_net)
+            c2_out = [list(workspace.FetchBlob(o_name)) for o_name in output_names]
+
+            py_model.eval()
+            py_outs = py_model(*test_inputs)
+            # Do log_softmax since we do that before exporting predictor nets
+            py_outs = F.log_softmax(py_outs, 1)
+            np.testing.assert_array_almost_equal(
+                py_outs.view(-1).detach().numpy(), np.array(c2_out).flatten()
+            )
+
+    def _get_seq_metadata(self, num_doc_classes, num_word_classes):
+        labels = []
+        if num_doc_classes:
+            vocab = Vocab(Counter())
+            vocab.itos = ["C_{}".format(i) for i in range(num_doc_classes)]
+            label_meta = FieldMeta()
+            label_meta.vocab_size = num_doc_classes
+            label_meta.vocab = vocab
+            labels.append(label_meta)
+
+        w_vocab = Vocab(Counter())
+        w_vocab.itos = W_VOCAB
+
+        seq_feat_meta = FieldMeta()
+        seq_feat_meta.unk_token_idx = UNK_IDX
+        seq_feat_meta.pad_token_idx = PAD_IDX
+        seq_feat_meta.vocab_size = W_VOCAB_SIZE
+        seq_feat_meta.vocab = w_vocab
+        seq_feat_meta.vocab_export_name = "seq_tokens_vals"
+        seq_feat_meta.pretrained_embeds_weight = None
+        seq_feat_meta.dummy_model_input = SeqFeatureField.dummy_model_input
+
+        meta = CommonMetadata()
+        meta.features = {DatasetFieldName.TEXT_FIELD: seq_feat_meta}
+        meta.target = labels
+        if len(labels) == 1:
+            [meta.target] = meta.target
+        meta.label_names = [label.vocab.itos for label in labels]
+        meta.feature_itos_map = {
+            f.vocab_export_name: f.vocab.itos for _, f in meta.features.items()
+        }
+        return meta
+
     def _get_metadata(self, num_doc_classes, num_word_classes):
         labels = []
         if num_doc_classes:
@@ -603,6 +726,28 @@ class ModelExporterTest(hu.HypothesisTestCase):
             f.vocab_export_name: f.vocab.itos for _, f in meta.features.items()
         }
         return meta
+
+    def _get_seq_nn_rand_input(
+        self,
+        features,
+        batch_size,
+        w_vocab_size,
+        d_vocab_size,
+        c_vocab_size,
+        num_words,
+        num_dict_feats,
+        num_chars,
+        num_seq=1,
+    ):
+        seq = torch.from_numpy(
+            np.random.randint(
+                w_vocab_size, size=(batch_size, num_seq, num_words)
+            ).astype(np.int64)
+        )
+        seq_lengths = torch.from_numpy(
+            np.random.randint(num_seq, num_seq + 1, size=(batch_size)).astype(np.int64)
+        )
+        return [seq, seq_lengths]
 
     def _get_rand_input(
         self,
