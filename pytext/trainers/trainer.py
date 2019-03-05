@@ -57,6 +57,7 @@ class Trainer(TrainerBase):
         # Number of samples for logging training progress.
         num_samples_to_log_progress = 1000
 
+    @time_utils.time("Trainer.test")
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
         with torch.no_grad():
@@ -65,6 +66,7 @@ class Trainer(TrainerBase):
             )
         return test_metric
 
+    @time_utils.time("Trainer.train")
     def train(
         self,
         train_iter: BatchIterator,
@@ -103,28 +105,25 @@ class Trainer(TrainerBase):
         Returns:
             model, best_metric: the trained model together with the best metric
         """
-        timer = time_utils.StageTimer()
-        world_size = 1
-        if cuda_utils.CUDA_ENABLED:
-            model = model.cuda()
-            world_size = cuda_utils.DISTRIBUTED_WORLD_SIZE
-            if world_size > 1:
-                device_id = torch.cuda.current_device()
-                model = DistributedModel(
-                    module=model,
-                    device_ids=[device_id],
-                    output_device=device_id,
-                    broadcast_buffers=False,
-                )
-            timer.add_stage(stage="init_distributed_model")
+        with time_utils.time("pre-training"):
+            world_size = 1
+            if cuda_utils.CUDA_ENABLED:
+                model = model.cuda()
+                world_size = cuda_utils.DISTRIBUTED_WORLD_SIZE
+                if world_size > 1:
+                    device_id = torch.cuda.current_device()
+                    model = DistributedModel(
+                        module=model,
+                        device_ids=[device_id],
+                        output_device=device_id,
+                        broadcast_buffers=False,
+                    )
 
-        best_metric = None
-        last_best_epoch = 0
-
-        if scheduler:
-            scheduler.prepare(train_iter, self.config.epochs)
-        optimizer = precision_utils.wrap_optimizer(optimizer)
-        timer.add_stage(stage="pre_training")
+            best_metric = None
+            last_best_epoch = 0
+            if scheduler:
+                scheduler.prepare(train_iter, self.config.epochs)
+            optimizer = precision_utils.wrap_optimizer(optimizer)
 
         def training_pre_batch_callback():
             if world_size > 1:
@@ -140,14 +139,14 @@ class Trainer(TrainerBase):
             else:
                 optimizer.zero_grad()
 
-        def training_backprop(loss, timer=None):
-            precision_utils.backward(optimizer, loss)
-            if world_size > 1:
-                # DDP fix when some parameters don't receive grads
-                for p in model.parameters():
-                    if p.requires_grad and p.grad is None:
-                        p.backward(torch.zeros_like(p.data))
-            timer.add_stage("backward")
+        def training_backprop(loss):
+            with time_utils.time("loss.backward"):
+                precision_utils.backward(optimizer, loss)
+                if world_size > 1:
+                    # DDP fix when some parameters don't receive grads
+                    for p in model.parameters():
+                        if p.requires_grad and p.grad is None:
+                            p.backward(torch.zeros_like(p.data))
 
             if scheduler:
                 scheduler.step_batch()
@@ -159,8 +158,8 @@ class Trainer(TrainerBase):
             else:
                 grad_norm = None
 
-            optimizer.step()
-            timer.add_stage("update_grads")
+            with time_utils.time("optimizer.step"):
+                optimizer.step()
             # grad_norm could be used to check grads sync in distributed training
             return grad_norm
 
@@ -184,20 +183,24 @@ class Trainer(TrainerBase):
             model.train()
             lrs = (str(lr) for lr in learning_rates(optimizer))
             print(f"Learning rate(s): {', '.join(lrs)}")
-            self._run_epoch(
-                Stage.TRAIN,
-                epoch,
-                train_iter,
-                model,
-                metric_reporter,
-                pre_batch=training_pre_batch_callback,
-                backprop=training_backprop,
-                rank=rank,
-                num_samples_to_log_progress=self.config.num_samples_to_log_progress,
-            )
-            timer.add_stage(stage=f"epoch_train")
 
-            if self.config.do_eval:
+            with time_utils.time("epoch train"):
+                self._run_epoch(
+                    Stage.TRAIN,
+                    epoch,
+                    train_iter,
+                    model,
+                    metric_reporter,
+                    pre_batch=training_pre_batch_callback,
+                    backprop=training_backprop,
+                    rank=rank,
+                    num_samples_to_log_progress=self.config.num_samples_to_log_progress,
+                )
+
+            if not self.config.do_eval:
+                continue
+
+            with time_utils.time("epoch eval"):
                 model.eval(Stage.EVAL)
                 with torch.no_grad():
                     eval_metric = self._run_epoch(
@@ -207,20 +210,22 @@ class Trainer(TrainerBase):
                         model,
                         metric_reporter,
                         rank=rank,
-                        num_samples_to_log_progress=self.config.num_samples_to_log_progress,
-                    )
-                timer.add_stage(stage=f"epoch_eval")
-
-                # Step the learning rate scheduler(s)
-                if scheduler:
-                    assert eval_metric is not None
-                    scheduler.step_epoch(
-                        metrics=metric_reporter.get_model_select_metric(eval_metric),
-                        epoch=epoch,
+                        num_samples_to_log_progress=(
+                            self.config.num_samples_to_log_progress
+                        ),
                     )
 
-                # choose best model.
-                if metric_reporter.compare_metric(eval_metric, best_metric):
+            # Step the learning rate scheduler(s)
+            if scheduler:
+                assert eval_metric is not None
+                scheduler.step_epoch(
+                    metrics=metric_reporter.get_model_select_metric(eval_metric),
+                    epoch=epoch,
+                )
+
+            # choose best model.
+            if metric_reporter.compare_metric(eval_metric, best_metric):
+                with time_utils.time("save checkpoint model"):
                     last_best_epoch = epoch
                     best_metric = eval_metric
                     # Only rank = 0 trainer saves modules.
@@ -238,16 +243,16 @@ class Trainer(TrainerBase):
                             for key, state in model_state.items():
                                 model_state[key] = state.cpu()
                         best_model_state = model_state
-                    timer.add_stage(stage=f"epoch_save/load_module")
 
-                if self.config.early_stop_after > 0 and (
-                    epoch - last_best_epoch == self.config.early_stop_after
-                ):
-                    print(
-                        f"Rank {rank} worker: Eval metric hasn't changed for "
-                        + f"{self.config.early_stop_after} epochs. Stopping now."
-                    )
-                    break
+            if self.config.early_stop_after > 0 and (
+                epoch - last_best_epoch == self.config.early_stop_after
+            ):
+                print(
+                    f"Rank {rank} worker: Eval metric hasn't changed for "
+                    + f"{self.config.early_stop_after} epochs. Stopping now."
+                )
+                break
+            sys.stdout.flush()
 
         if rank == 0 and best_model_state is not None:
             if cuda_utils.CUDA_ENABLED:
@@ -255,7 +260,6 @@ class Trainer(TrainerBase):
                     best_model_state[key] = state.cuda()
             model.load_state_dict(best_model_state)
 
-        timer.report("Trainer train timer")
         return model, best_metric
 
     def _run_epoch(
@@ -266,33 +270,36 @@ class Trainer(TrainerBase):
         model,
         metric_reporter,
         pre_batch=lambda: None,
-        backprop=lambda loss, timer=None: None,
+        backprop=lambda loss: None,
         rank=0,
         num_samples_to_log_progress=1000,
     ):
         print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
         report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
 
-        timer = time_utils.StageTimer()
         for batch_id, (inputs, targets, context) in enumerate(data_iter):
             pre_batch()
             # pass context to model to use in forward call if needed
             model.contextualize(context)
-            logits = model(*inputs)
-            timer.add_stage("forward")
+            with time_utils.time("model.forward"):
+                logits = model(*inputs)
 
-            loss = model.get_loss(logits, targets, context)
-            if BatchContext.IGNORE_LOSS in context:
-                loss *= 0
-            timer.add_stage("compute_loss")
+            with time_utils.time("compute loss"):
+                loss = model.get_loss(logits, targets, context)
+                if BatchContext.IGNORE_LOSS in context:
+                    loss *= 0
 
-            backprop(loss, timer)
+            with time_utils.time("backprop"):
+                backprop(loss)
+
             if report_metric:
-                preds, scores = model.get_pred(logits, targets, context, stage, *inputs)
-                metric_reporter.add_batch_stats(
-                    batch_id, preds, targets, scores, loss.item(), inputs, **context
-                )
-                timer.add_stage("add_metric")
+                with time_utils.time("add metrics"):
+                    preds, scores = model.get_pred(
+                        logits, targets, context, stage, *inputs
+                    )
+                    metric_reporter.add_batch_stats(
+                        batch_id, preds, targets, scores, loss.item(), inputs, **context
+                    )
 
             if rank == 0 and (batch_id + 1) % num_samples_to_log_progress == 0:
                 print(
@@ -302,12 +309,11 @@ class Trainer(TrainerBase):
 
         metrics = None
         if report_metric:
-            metrics = metric_reporter.report_metric(
-                stage, epoch, print_to_channels=(rank == 0)
-            )
-            timer.add_stage("report_metric")
+            with time_utils.time("report metrics"):
+                metrics = metric_reporter.report_metric(
+                    stage, epoch, print_to_channels=(rank == 0)
+                )
         else:
             metric_reporter._reset()
 
-        timer.report("Trainer epoch timer")
         return metrics

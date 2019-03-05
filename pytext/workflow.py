@@ -12,7 +12,7 @@ from pytext.task import NewTask, Task, create_task, load, save
 from pytext.utils.dist_utils import dist_init
 from pytext.utils.python_utils import set_random_seeds
 
-from .utils import cuda_utils, precision_utils
+from .utils import cuda_utils, precision_utils, time_utils
 
 
 def _set_cuda(
@@ -82,6 +82,8 @@ def train_model(
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
         save_and_export(config, task, metric_channels)
+    print("Training timings")
+    time_utils.report()
     return trained_model, best_metric
 
 
