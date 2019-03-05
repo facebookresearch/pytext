@@ -666,6 +666,7 @@ class DataHandler(Component):
             ),
             self._postprocess_batch,
             is_train=False,
+            num_batches=math.ceil(len(test_dataset) / float(batch_size)),
         )
 
     def get_predict_iter(

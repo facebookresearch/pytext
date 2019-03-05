@@ -4,43 +4,51 @@ import itertools
 from collections import OrderedDict
 from typing import Dict, Optional, Tuple
 
+import numpy as np
 from pytext.common.constants import BatchContext
 
 from .data_handler import BatchIterator, DataHandler
 
 
 class RoundRobinBatchIterator(BatchIterator):
-    """We take a dictionary of BatchIterators and do round robin over
-    them in a cycle.  If upsample is True, each iterator is also
-    wrapped in a cycle so that they never run out.  Otherwise, a single
-    pass is done over each iterator at each epoch.  Iterators that run
-    out are filtered out.
+    """
+    We take a dictionary of BatchIterators and do round robin over them in a cycle.
+    The below describes the behavior for one epoch, with the example
 
-    e.g.  Iterator 1: [A, B, C, D],  Iterator 2: [a, b]
-    Case 1, upsample = True:
+    Iterator 1: [A, B, C, D],  Iterator 2: [a, b]
 
-        Output: [A, a, B, b, C, a, D, b, A, ...]
-        Here, tasks with less data are effectively upsampled and data is
-        balanced across tasks.
+    If `upsample` is True:
+        If `iter_to_set_epoch` is set, cycle batches from each iterator until one epoch
+        of the target iterator is fulfilled. Iterators with fewer batches than the
+        target iterator are repeated, so they never run out.
 
-    Case 2, upsample = False:
+        iter_to_set_epoch = "Iterator 1"
+        Output: [A, a, B, b, C, a, D, b]
 
-        Output: [A, a, B, b, C, D, A, a, B, b, ...]
+        If `iter_to_set_epoch` is None, cycle over batches from each iterator until the
+        shortest iterator completes one epoch.
+
+        Output: [A, a, B, b]
+
+    If `upsample` is False:
+        Iterate over batches from one epoch of each iterator, with the order among
+        iterators uniformly shuffled.
+
+        Possible output: [a, A, B, C, b, D]
 
     Args:
         iterators (Dict[str, BatchIterator]): Iterators to do roundrobin over.
         upsample (bool): If upsample, keep cycling over each iterator in round-robin.
           Iterators with less batches will get more passes.  If False, we do single
-          pass over each iterator, the ones which run out will sit idle.  This is
-          used for evaluation.  Default True.
+          pass over each iterator, in random order. Evaluation will use upsample=False.
+          Default True.
         iter_to_set_epoch (Optional[str]): Name of iterator to define epoch size.
-          If upsample is False, this is not used.  If upsample is True and this is
-          not set, defaults to the length of the shortest iterator.
-
+          If upsample is True and this is not set, epoch size defaults to the length of
+          the shortest iterator. If upsample is False, this argument is not used.
     Attributes:
-        iterators (type): Iterators to do roundrobin over.
-        batch_per_epoch (type): Size of epoch in number of batches.
-
+        iterators (Dict[str, BatchIterator]): Iterators to do roundrobin over.
+        upsample (bool): Whether to upsample iterators with fewer batches.
+        iter_to_set_epoch (str): Name of iterator to define epoch size.
     """
 
     def __init__(
@@ -50,47 +58,55 @@ class RoundRobinBatchIterator(BatchIterator):
         iter_to_set_epoch: Optional[str] = None,
     ) -> None:
         self.iterators = iterators
-        num_iterators = len(list(iterators.items()))
-        self.batch_per_epoch = (
-            float("inf")
-            if not upsample
-            else num_iterators
-            * (
-                len(iterators[iter_to_set_epoch])
-                if iter_to_set_epoch
-                else min(len(iterator) for iterator in iterators.values())
-            )
-        )
+        self.upsample = upsample
+        self.iter_to_set_epoch = iter_to_set_epoch
 
     def __iter__(self):
+        return iter(self._upsample_iter() if self.upsample else self._shuffle_iter())
+
+    def _upsample_iter(self):
+        if self.iter_to_set_epoch:
+            batch_per_iter = len(self.iterators[self.iter_to_set_epoch])
+        else:
+            batch_per_iter = min(len(iterator) for iterator in self.iterators.values())
+        total_batches = len(self.iterators) * batch_per_iter
         iterators = {
-            name: iter(
-                self.cycle(iterator)
-                if (self.batch_per_epoch < float("inf"))
-                else iterator
-            )
+            name: iter(self.cycle(iterator))
             for name, iterator in self.iterators.items()
         }
 
-        round_robin = itertools.filterfalse(  # filter iterators that run out
-            lambda x: not bool(x),
-            # chain list of tuples, resulting in round robin
-            itertools.chain.from_iterable(
-                # zip list of iterators,
-                # return tuples with one element from each iterator
-                itertools.zip_longest(
-                    *[  # turn into iterator of (name, batch) tuples
-                        zip(itertools.repeat(name), iterator)
-                        for name, iterator in iterators.items()
-                    ]
-                )
-            ),
+        # chain list of tuples, resulting in round robin
+        round_robin = itertools.chain.from_iterable(
+            # zip list of iterators,
+            # return tuples with one element from each iterator
+            itertools.zip_longest(
+                *[  # turn into iterator of (name, batch) tuples
+                    zip(itertools.repeat(name), iterator)
+                    for name, iterator in iterators.items()
+                ]
+            )
         )
 
         for i, (name, (input, target, context)) in enumerate(round_robin):
-            if i >= self.batch_per_epoch:
+            if i >= total_batches:
                 # end of epoch
                 return
+            context[BatchContext.TASK_NAME] = name
+            yield input, target, context
+
+    def _shuffle_iter(self):
+        indices = []
+        iterators = []
+        for i, (name, it) in enumerate(self.iterators.items()):
+            indices.extend([i] * len(it))
+            iterators.append((name, iter(it)))
+
+        indices = np.array(indices)
+        np.random.shuffle(indices)
+
+        for i in indices:
+            name, iterator = iterators[i]
+            input, target, context = next(iterator)
             context[BatchContext.TASK_NAME] = name
             yield input, target, context
 
