@@ -19,6 +19,7 @@ class ConfigAdapterTest(unittest.TestCase):
         for p in glob.iglob(
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
         ):
+            print("Trying to upgrade file:" + p)
             with open(p) as f:
                 test_data = json.load(f)
                 for test_case in test_data:
@@ -31,6 +32,7 @@ class ConfigAdapterTest(unittest.TestCase):
         for p in glob.iglob(
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
         ):
+            print("Trying to upgrade file:" + p)
             with open(p) as f:
                 test_data = json.load(f)
                 for test_case in test_data:

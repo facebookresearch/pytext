@@ -1,0 +1,232 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          }
+        }
+      },
+      "version": 2
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "trainer": {
+            "optimizer": {
+              "Adam": {
+                "lr": 0.05,
+                "weight_decay": 0.00001
+              }
+            }
+          }
+        }
+      },
+      "version": 3
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          },
+          "trainer": {
+            "epochs": 10
+          }
+        }
+      },
+      "version" : 2
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "trainer": {
+            "epochs": 10,
+            "optimizer": {
+              "Adam": {
+                "lr": 0.05,
+                "weight_decay": 0.00001
+              }
+            }
+          }
+        }
+      },
+      "version": 3
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "scheduler": {
+            "LmFineTuning": {
+              "cut_frac": 0.1,
+              "ratio": 32,
+              "non_pretrained_param_groups": 2,
+              "lm_lr_multiplier": 1.0,
+              "lm_use_per_layer_lr": false,
+              "lm_gradual_unfreezing": true,
+              "last_epoch": -1
+            }
+          }
+        }
+      },
+      "version" : 2
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "trainer" : {
+            "scheduler": {
+              "LmFineTuning": {
+                "cut_frac": 0.1,
+                "ratio": 32,
+                "non_pretrained_param_groups": 2,
+                "lm_lr_multiplier": 1.0,
+                "lm_use_per_layer_lr": false,
+                "lm_gradual_unfreezing": true,
+                "last_epoch": -1
+              }
+            }
+          }
+        }
+      },
+      "version": 3
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          },
+          "scheduler": {
+            "LmFineTuning": {
+              "cut_frac": 0.1,
+              "ratio": 32,
+              "non_pretrained_param_groups": 2,
+              "lm_lr_multiplier": 1.0,
+              "lm_use_per_layer_lr": false,
+              "lm_gradual_unfreezing": true,
+              "last_epoch": -1
+            }
+          }
+        }
+      },
+      "version" : 2
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "trainer" : {
+            "optimizer": {
+              "Adam": {
+                "lr": 0.05,
+                "weight_decay": 0.00001
+              }
+            },
+            "scheduler": {
+              "LmFineTuning": {
+                "cut_frac": 0.1,
+                "ratio": 32,
+                "non_pretrained_param_groups": 2,
+                "lm_lr_multiplier": 1.0,
+                "lm_use_per_layer_lr": false,
+                "lm_gradual_unfreezing": true,
+                "last_epoch": -1
+              }
+            }
+          }
+        }
+      },
+      "version": 3
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "SemanticParsingTask": {
+          "model": {
+            "ablation": {},
+            "constraints": {},
+            "lstm": {}
+          },
+          "features": {
+            "word_feat": {
+              "embed_dim": 100,
+              "min_freq": 2
+            },
+            "dict_feat": {
+              "embed_dim": 10
+            }
+          },
+          "optimizer": {
+            "Adam": {
+              "lr": 0.05,
+              "weight_decay": 0.00001
+            }
+          },
+          "trainer": {
+            "real_trainer": {
+              "epochs": 1,
+              "report_train_metrics": false
+            },
+            "num_workers": 4
+          },
+          "data_handler": {
+          }
+        }
+      },
+      "version": 2
+    },
+    "adapted": {
+      "task": {
+        "SemanticParsingTask": {
+          "model": {
+            "ablation": {},
+            "constraints": {},
+            "lstm": {}
+          },
+          "features": {
+            "word_feat": {
+              "embed_dim": 100,
+              "min_freq": 2
+            },
+            "dict_feat": {
+              "embed_dim": 10
+            }
+          },
+          "trainer": {
+            "real_trainer": {
+              "epochs": 1,
+              "report_train_metrics": false,
+              "optimizer": {
+                "Adam": {
+                  "lr": 0.05,
+                  "weight_decay": 0.00001
+                }
+              }
+            },
+            "num_workers": 4
+          },
+          "data_handler": {
+          }
+        }
+      },
+      "version": 3
+    }
+  }
+]

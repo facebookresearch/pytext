@@ -162,8 +162,10 @@ def create_featurizer(featurizer_config, *args, **kwargs):
     )
 
 
-def create_trainer(trainer_config, *args, **kwargs):
-    return create_component(ComponentType.TRAINER, trainer_config, *args, **kwargs)
+def create_trainer(trainer_config, model: torch.nn.Module, *args, **kwargs):
+    return create_component(
+        ComponentType.TRAINER, trainer_config, model, *args, **kwargs
+    )
 
 
 def create_model(model_config, *args, **kwargs):

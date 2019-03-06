@@ -100,7 +100,32 @@ def v1_to_v2(json_config):
     return json_config
 
 
-adapters = {0: v0_to_v1, 1: v1_to_v2}
+def v2_to_v3(json_config):
+    """Optimizer and Scheduler configs used to be part of the task config,
+    they now live in the trainer's config.
+    """
+    [task] = json_config["task"].values()
+    for section_str in ["optimizer", "scheduler"]:
+        if section_str in task:
+            if "trainer" not in task:
+                task["trainer"] = {}
+            trainer = task["trainer"]
+            # a hack to support an older hack:
+            # some tasks like ensemble have a 'real_trainer' section inside trainer
+            # that has the actual trainer config
+            if "real_trainer" in trainer:
+                real_trainer = trainer["real_trainer"]
+                real_trainer[section_str] = task[section_str]
+            else:
+                trainer[section_str] = task[section_str]
+            # remove from task config
+            task.pop(section_str)
+
+    json_config["version"] = 3
+    return json_config
+
+
+adapters = {0: v0_to_v1, 1: v1_to_v2, 2: v2_to_v3}
 
 
 def upgrade_one_version(json_config):

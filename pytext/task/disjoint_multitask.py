@@ -99,18 +99,13 @@ class DisjointMultitask(TaskBase):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
 
-        optimizer = create_optimizer(task_config.optimizer, model)
         return cls(
             target_task_name=task_config.target_task_name,
             exporters=exporters,
-            trainer=create_trainer(task_config.trainer),
+            trainer=create_trainer(task_config.trainer, model),
             data_handler=data_handler,
             model=model,
             metric_reporter=metric_reporter,
-            optimizer=optimizer,
-            lr_scheduler=Scheduler(
-                optimizer, task_config.scheduler, metric_reporter.lower_is_better
-            ),
         )
 
     def __init__(self, target_task_name, exporters, **kwargs):
