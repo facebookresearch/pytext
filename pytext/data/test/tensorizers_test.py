@@ -71,7 +71,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(3, seq_len)
 
     def test_create_byte_tensors(self):
-        tensorizer = ByteTensorizer(column="text")
+        tensorizer = ByteTensorizer(column="text", lower=False)
         # not initializing because initializing is a no-op for ByteTensorizer
 
         s1 = "I want some coffee"

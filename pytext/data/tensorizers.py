@@ -25,7 +25,7 @@ class Tensorizer(Component):
     __EXPANSIBLE__ = True
 
     class Config(Component.Config):
-        pass
+        column: str
 
     @classmethod
     def from_config(cls, config: Config):
@@ -166,21 +166,43 @@ class WordTensorizer(Tensorizer):
 
 
 class ByteTensorizer(Tensorizer):
-    """Turn characters into ints based on their ascii values."""
+    """Turn characters into sequence of int8 bytes. One character will have one
+    or more bytes depending on it's encoding
+    """
+
+    UNK_BYTE = 0
+    PAD_BYTE = 0
+    NUM = 256
 
     class Config(Tensorizer.Config):
         #: The name of the text column to parse from the data source.
         column: str = "text"
+        lower: bool = True
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column, config.lower)
+
+    def __init__(self, column, lower=True):
+        self.column = column
+        self.lower = lower
 
     def numberize(self, row):
         """Convert text to characters."""
-        text = [ord(c) for c in row[self.column]]
-        seq_len = len(text)
-        return text, seq_len
+        text = row[self.column]
+        if self.lower:
+            text = text.lower()
+        bytes = [c for c in text.encode()]
+        bytes_len = len(bytes)
+        return bytes, bytes_len
 
     def tensorize(self, batch):
-        tokens, seq_lens = zip(*batch)
-        return (pad_and_tensorize(tokens, 0), pad_and_tensorize(seq_lens))
+        bytes, bytes_len = zip(*batch)
+        return pad_and_tensorize(bytes, self.PAD_BYTE), pad_and_tensorize(bytes_len)
+
+    def sort_key(self, row):
+        # use bytes_len as sort key
+        return row[1]
 
 
 class WordCharacterTensorizer(WordTensorizer):

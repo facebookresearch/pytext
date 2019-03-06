@@ -58,7 +58,7 @@ class NewDocModel(DocModel):
             raw_text: MetaInput.Config = MetaInput.Config(column="text")
 
         inputs: ModelInput = ModelInput()
-        embedding: WordFeatConfig = WordFeatConfig()
+        embedding: WordEmbedding.Config = WordEmbedding.Config()
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens = tensor_dict["tokens"]
@@ -68,13 +68,16 @@ class NewDocModel(DocModel):
         return tensor_dict["labels"]
 
     @classmethod
-    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+    def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         vocab = tensorizers["tokens"].vocab
-        labels = tensorizers["labels"].labels
-
-        embedding = WordEmbedding(
+        return WordEmbedding(
             len(vocab), config.embedding.embed_dim, None, None, vocab.idx[UNK], []
         )
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        labels = tensorizers["labels"].labels
+        embedding = cls.create_embedding(config, tensorizers)
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
