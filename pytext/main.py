@@ -281,7 +281,6 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
 @click.pass_context
 def train(context):
     """Train a model and save the best snapshot."""
-
     config = context.obj.load_config()
     print("\n===Starting training...")
     metric_channels = []
