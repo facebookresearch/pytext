@@ -90,6 +90,8 @@ class RNNGParser(Model, Component):
 
         # version 0 - initial implementation
         # version 1 - beam search
+        # version 2 - use zero init state rather than random
+        # TODO change to 2
         version: int = 1
         lstm: BiLSTM.Config = BiLSTM.Config()
         ablation: AblationParams = AblationParams()
