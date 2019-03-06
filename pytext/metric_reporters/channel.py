@@ -133,9 +133,7 @@ class FileChannel(Channel):
             )
 
             tsv_writer.writerow(self.get_title())
-            for row in self.gen_content(
-                metrics, loss, preds, targets, scores, context, *args
-            ):
+            for row in self.gen_content(metrics, loss, preds, targets, scores, context):
                 tsv_writer.writerow(row)
 
     def get_title(self):
@@ -157,6 +155,7 @@ class TensorBoardChannel(Channel):
             https://tensorboardx.readthedocs.io/en/latest/tensorboard.html
         metric_name: The name of the default metric to display on the
             TensorBoard dashboard, defaults to "accuracy"
+        train_step: The training step count
     """
 
     def __init__(self, summary_writer=None, metric_name="accuracy"):
@@ -176,6 +175,7 @@ class TensorBoardChannel(Channel):
         scores,
         context,
         meta,
+        model,
         *args,
     ):
         """
@@ -183,6 +183,9 @@ class TensorBoardChannel(Channel):
         writer. In the current implementation, during the train/eval phase we
         recursively report each metric field as scalars, and during the test
         phase we report the final metrics to be displayed as texts.
+
+        Also visualizes the internal model states (weights, biases) as
+        histograms in TensorBoard.
 
         Args:
             stage (Stage): train, eval or test
@@ -196,6 +199,7 @@ class TensorBoardChannel(Channel):
             context (Dict[str, List[Any]]): dict of any additional context data,
                 each context is a list of data that maps to each example
             meta (Dict[str, Any]): global metadata, such as target names
+            model (nn.Module): the PyTorch neural network model
         """
         if stage == Stage.TEST:
             tag = "test"
@@ -213,6 +217,10 @@ class TensorBoardChannel(Channel):
                 )
             else:
                 self.add_scalars(prefix, metrics, epoch)
+
+        if stage == Stage.TRAIN:
+            for key, val in model.state_dict().items():
+                self.summary_writer.add_histogram(key, val, epoch)
 
     def add_texts(self, tag, metrics):
         """
@@ -254,7 +262,18 @@ class TensorBoardChannel(Channel):
                 self.add_scalars(f"{prefix}/{field_name}", field_value, epoch)
 
     def close(self):
+        """
+        Closes the summary writer.
+        """
         self.summary_writer.close()
 
     def export(self, model, input_to_model=None):
+        """
+        Draws the neural network representation graph in TensorBoard.
+
+        Args:
+            model (Any): the model object.
+            input_to_model (Any): the input to the model (required for PyTorch
+                models, since its execution graph is defined by run).
+        """
         self.summary_writer.add_graph(model, input_to_model)

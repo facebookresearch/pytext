@@ -66,12 +66,12 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         else:  # default to training loss
             return new_metric[AVRG_LOSS] < old_metric[AVRG_LOSS]
 
-    def report_metric(self, stage, epoch, reset=True, print_to_channels=True):
+    def report_metric(self, model, stage, epoch, reset=True, print_to_channels=True):
         metrics_dict = {AVRG_LOSS: self.total_loss / self.num_batches}
         for name, reporter in self.reporters.items():
             print(f"Reporting on task: {name}")
             metrics_dict[name] = reporter.report_metric(
-                stage, epoch, reset, print_to_channels
+                model, stage, epoch, reset, print_to_channels
             )
         if reset:
             self._reset()

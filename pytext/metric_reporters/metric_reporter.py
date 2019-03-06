@@ -141,11 +141,12 @@ class MetricReporter(Component):
         """
         return {}
 
-    def report_metric(self, stage, epoch, reset=True, print_to_channels=True):
+    def report_metric(self, model, stage, epoch, reset=True, print_to_channels=True):
         """
         Calculate metrics and average loss, report all statistic data to channels
 
         Args:
+            model (nn.Module): the PyTorch neural network model.
             stage (Stage): training, evaluation or test
             epoch (int): current epoch
             reset (bool): if all data should be reset after report, default is True
@@ -170,6 +171,7 @@ class MetricReporter(Component):
                         self.all_scores,
                         self.all_context,
                         self.get_meta(),
+                        model,
                     )
 
         if reset:

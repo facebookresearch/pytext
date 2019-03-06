@@ -311,7 +311,7 @@ class Trainer(TrainerBase):
         if report_metric:
             with time_utils.time("report metrics"):
                 metrics = metric_reporter.report_metric(
-                    stage, epoch, print_to_channels=(rank == 0)
+                    model, stage, epoch, print_to_channels=(rank == 0)
                 )
         else:
             metric_reporter._reset()
