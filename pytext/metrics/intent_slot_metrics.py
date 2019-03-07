@@ -3,7 +3,19 @@
 
 from collections import Counter as counter, defaultdict
 from copy import deepcopy
-from typing import Any, Counter, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import (
+    AbstractSet,
+    Any,
+    Counter,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+)
+
+from pytext.data.data_structures.node import Node as NodeBase, Span
 
 from . import (
     AllConfusions,
@@ -20,51 +32,28 @@ Metric classes and functions for intent-slot prediction problems.
 """
 
 
-class Span(NamedTuple):
+class Node(NodeBase):
     """
-    Span of a node in a text.
+    Subclass of the base Node class, used for metric purposes. It is immutable so that
+    hashing can be done on the class.
 
     Attributes:
-        start: Start position of the node.
-        end: End position of the node (exclusive).
+        label (str): Label of the node.
+        span (Span): Span of the node.
+        children (:obj:`frozenset` of :obj:`Node`): frozenset of the node's children,
+            left empty when computing bracketing metrics.
     """
 
-    start: int
-    end: int
+    def __init__(
+        self, label: str, span: Span, children: Optional[AbstractSet["Node"]] = None
+    ) -> None:
+        super().__init__(label, span, frozenset(children) if children else frozenset())
 
-
-class Node:
-    """
-    Node in an intent-slot tree, representing either an intent or a slot.
-
-    Attributes:
-        label: Label of the node.
-        span: Span of the node.
-        children: Children of the node.
-    """
-
-    __slots__ = "label", "span", "children"
-
-    def __init__(self, label: str, span: Span, children: Set["Node"] = None) -> None:
-        self.label: str = label
-        self.span: Span = span
-        # This will be left empty when computing bracketing metrics.
-        self.children: Set[Node] = children or set()
+    def __setattr__(self, name: str, value: Any) -> None:
+        raise AttributeError("Node class is immutable.")
 
     def __hash__(self):
         return hash((self.label, self.span))
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Node):
-            return NotImplemented
-        return (
-            self.label == other.label
-            and self.span == other.span
-            and self.children == other.children
-        )
-
-    def get_depth(self) -> int:
-        return 1 + max((child.get_depth() for child in self.children), default=0)
 
 
 class FramePredictionPair(NamedTuple):
