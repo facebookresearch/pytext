@@ -346,12 +346,10 @@ FRAME_PAIRS = [
 
 
 class MetricsTest(MetricsTestBase):
-    def test_nodes_equal(self) -> None:
-        child = Node(label="slot", span=Span(1, 2))
-        node1 = Node(label="intent1", span=Span(0, 5), children={child})
-        child.children.add(Node(label="intent2", span=Span(1, 2)))
-        node2 = Node(label="intent1", span=Span(0, 5), children={child})
-        self.assertEqual(node1, node2)
+    def test_immutable_node(self) -> None:
+        node = Node(label="", span=Span(start=0, end=5))
+        with self.assertRaises(AttributeError):
+            node.label = "intent"
 
     def test_compare_frames(self) -> None:
         i = 0
