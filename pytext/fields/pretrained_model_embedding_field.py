@@ -20,10 +20,13 @@ class PretrainedModelEmbeddingField(Field):
             unk_token=None,
             pad_token=None,
         )
+        batch_size = TextFeatureField.dummy_model_input.size(0)
+        num_tokens = TextFeatureField.dummy_model_input.size(1)
         embed_dim = kwargs.get("embed_dim", 0)
-        num_tokens = TextFeatureField.dummy_model_input.size(0)
         self.dummy_model_input = torch.tensor(
-            [[1.0] * embed_dim * num_tokens], dtype=torch.float, device="cpu"
+            [[1.0] * embed_dim * num_tokens] * batch_size,
+            dtype=torch.float,
+            device="cpu",
         )
 
     def pad(self, minibatch: List[List[List[float]]]) -> List[List[List[float]]]:
