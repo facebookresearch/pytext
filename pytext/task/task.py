@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
+from pprint import pprint
 from typing import List, Optional
 
-import torch
 from pytext.common.constants import BatchContext
-from pytext.config import ConfigBase
+from pytext.config import ConfigBase, config_to_json
 from pytext.config.component import (
     Component,
     ComponentType,
@@ -15,8 +14,6 @@ from pytext.config.component import (
     create_featurizer,
     create_metric_reporter,
     create_model,
-    create_optimizer,
-    create_scheduler,
     create_trainer,
 )
 from pytext.config.field_config import FeatureConfig
@@ -26,8 +23,6 @@ from pytext.exporters import ModelExporter
 from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss, SoftHardBCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
-from pytext.optimizer import Adam, Optimizer
-from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
 from pytext.utils import cuda_utils, precision_utils
 
@@ -54,8 +49,6 @@ class TaskBase(Component):
         featurizer: Featurizer.Config = SimpleFeaturizer.Config()
         data_handler: DataHandler.Config
         trainer: Trainer.Config = Trainer.Config()
-        optimizer: Optimizer.Config = Adam.Config()
-        scheduler: Optional[Scheduler.Config] = None
         exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
@@ -63,8 +56,8 @@ class TaskBase(Component):
         """
         Create the task from config, and optionally load metadata/model_state
         This function will create components including :class:`~DataHandler`,
-        :class:`~Trainer`, :class:`~Optimizer`, :class:`~Scheduler`,
-        :class:`~MetricReporter`, :class:`~Exporter`, and wire them up.
+        :class:`~Trainer`, :class:`~MetricReporter`,
+        :class:`~Exporter`, and wire them up.
 
         Args:
             task_config (Task.Config): the config of the current task
@@ -103,12 +96,6 @@ class TaskBase(Component):
         if cuda_utils.CUDA_ENABLED:
             model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
-        optimizer = create_optimizer(task_config.optimizer, model)
-        if task_config.scheduler:
-            scheduler = create_scheduler(task_config.scheduler, optimizer)
-        else:
-            scheduler = None
-
         exporter = (
             create_exporter(
                 task_config.exporter,
@@ -121,12 +108,10 @@ class TaskBase(Component):
             else None
         )
         return cls(
-            trainer=create_trainer(task_config.trainer),
+            trainer=create_trainer(task_config.trainer, model),
             data_handler=data_handler,
             model=model,
             metric_reporter=metric_reporter,
-            optimizer=optimizer,
-            lr_scheduler=scheduler,
             exporter=exporter,
         )
 
@@ -136,16 +121,12 @@ class TaskBase(Component):
         data_handler: DataHandler,
         model: Model,
         metric_reporter: MetricReporter,
-        optimizer: torch.optim.Optimizer,
-        lr_scheduler: Scheduler,
         exporter: Optional[ModelExporter],
     ) -> None:
         self.trainer: Trainer = trainer
         self.data_handler: DataHandler = data_handler
         self.model: Model = model
         self.metric_reporter: MetricReporter = metric_reporter
-        self.optimizer: torch.optim.Optimizer = optimizer
-        self.lr_scheduler: Scheduler = lr_scheduler
         self.exporter = exporter
 
     def train(self, train_config, rank=0, world_size=1):
@@ -164,8 +145,6 @@ class TaskBase(Component):
             self.model,
             self.metric_reporter,
             train_config,
-            self.optimizer,
-            self.lr_scheduler,
             rank=rank,
         )
         return result

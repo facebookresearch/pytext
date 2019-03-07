@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
 
@@ -17,8 +18,8 @@ class EnsembleTrainer(TrainerBase):
         real_trainer: Trainer.Config = Trainer.Config()
 
     @classmethod
-    def from_config(cls, config: Config, *args, **kwargs):
-        return cls(create_trainer(config.real_trainer, *args, **kwargs))
+    def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
+        return cls(create_trainer(config.real_trainer, model, *args, **kwargs))
 
     def __init__(self, real_trainer):
         self.real_trainer = real_trainer

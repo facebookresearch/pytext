@@ -8,13 +8,18 @@ from typing import Any, Optional, Tuple
 import torch
 from pytext.common.constants import BatchContext, Stage
 from pytext.config import PyTextConfig
-from pytext.config.component import Component, ComponentType
+from pytext.config.component import (
+    Component,
+    ComponentType,
+    create_optimizer,
+    create_scheduler,
+)
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
-from pytext.optimizer import learning_rates
+from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda_utils, precision_utils, time_utils
 
@@ -56,6 +61,23 @@ class Trainer(TrainerBase):
         do_eval: bool = True
         # Number of samples for logging training progress.
         num_samples_to_log_progress = 1000
+        # config for optimizer, used in parameter update
+        optimizer: Optimizer.Config = Adam.Config()
+        scheduler: Optional[Scheduler.Config] = None
+
+    def __init__(self, config: Config, model: torch.nn.Module):
+        self.optimizer: torch.optim.Optimizer = create_optimizer(
+            config.optimizer, model
+        )
+        self.lr_scheduler: torch.optim.lr_scheduler = None
+        if config.scheduler:
+            self.lr_scheduler = create_scheduler(config.scheduler, self.optimizer)
+
+        self.config = config
+
+    @classmethod
+    def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
+        return cls(config, model)
 
     @time_utils.time("Trainer.test")
     def test(self, test_iter, model, metric_reporter: MetricReporter):
@@ -74,8 +96,6 @@ class Trainer(TrainerBase):
         model: Model,
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
-        optimizer: torch.optim.Optimizer,
-        scheduler: Scheduler = None,
         rank: int = 0,
     ) -> Tuple[torch.nn.Module, Any]:
         """
@@ -94,9 +114,6 @@ class Trainer(TrainerBase):
             metric_reporter (MetricReporter): compute metric based on training
                 output and report results to console, file.. etc
             train_config (PyTextConfig): training config
-            optimizer (torch.optim.Optimizer): torch optimizer to be used
-            scheduler (Scheduler): learning rate scheduler,
-                default is None
             training_result (Optional): only meaningful for Hogwild training. default
                 is None
             rank (int): only used in distributed training, the rank of the current
@@ -121,9 +138,9 @@ class Trainer(TrainerBase):
 
             best_metric = None
             last_best_epoch = 0
-            if scheduler:
-                scheduler.prepare(train_iter, self.config.epochs)
-            optimizer = precision_utils.wrap_optimizer(optimizer)
+            if self.lr_scheduler:
+                self.lr_scheduler.prepare(train_iter, self.config.epochs)
+            self.optimizer = precision_utils.wrap_optimizer(self.optimizer)
 
         def training_pre_batch_callback():
             if world_size > 1:
@@ -137,19 +154,19 @@ class Trainer(TrainerBase):
                         p.grad.detach_()
                         p.grad = None
             else:
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
         def training_backprop(loss):
             with time_utils.time("loss.backward"):
-                precision_utils.backward(optimizer, loss)
+                precision_utils.backward(self.optimizer, loss)
                 if world_size > 1:
                     # DDP fix when some parameters don't receive grads
                     for p in model.parameters():
                         if p.requires_grad and p.grad is None:
                             p.backward(torch.zeros_like(p.data))
 
-            if scheduler:
-                scheduler.step_batch()
+            if self.lr_scheduler:
+                self.lr_scheduler.step_batch()
 
             if self.config.max_clip_norm is not None:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -159,7 +176,7 @@ class Trainer(TrainerBase):
                 grad_norm = None
 
             with time_utils.time("optimizer.step"):
-                optimizer.step()
+                self.optimizer.step()
             # grad_norm could be used to check grads sync in distributed training
             return grad_norm
 
@@ -181,7 +198,7 @@ class Trainer(TrainerBase):
 
             print(f"Rank {rank} worker: Starting epoch #{epoch}")
             model.train()
-            lrs = (str(lr) for lr in learning_rates(optimizer))
+            lrs = (str(lr) for lr in learning_rates(self.optimizer))
             print(f"Learning rate(s): {', '.join(lrs)}")
 
             with time_utils.time("epoch train"):
@@ -216,9 +233,9 @@ class Trainer(TrainerBase):
                     )
 
             # Step the learning rate scheduler(s)
-            if scheduler:
+            if self.lr_scheduler:
                 assert eval_metric is not None
-                scheduler.step_epoch(
+                self.lr_scheduler.step_epoch(
                     metrics=metric_reporter.get_model_select_metric(eval_metric),
                     epoch=epoch,
                 )

@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
-from pytext.config.component import ComponentType, create_component
+from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data import types as data_types
 from pytext.data.data import Data
 from pytext.data.sources import DataSchema
@@ -14,8 +14,6 @@ from pytext.exporters import ModelExporter
 from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
 from pytext.models.doc_model import NewDocModel as DocModel
 from pytext.models.model import BaseModel as Model
-from pytext.optimizer import Adam, Optimizer
-from pytext.optimizer.scheduler import Scheduler
 from pytext.trainers import Trainer
 from pytext.utils import cuda_utils, time_utils
 
@@ -110,8 +108,6 @@ class NewTask(TaskBase):
         data: Data.Config = Data.Config()
         model: Model.Config
         trainer: NewTaskTrainer.Config = NewTaskTrainer.Config()
-        optimizer: Optimizer.Config = Adam.Config()
-        scheduler: Scheduler.Config = Scheduler.Config()
         exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
@@ -134,18 +130,12 @@ class NewTask(TaskBase):
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
         metric_reporter = cls.create_metric_reporter(config, tensorizers)
-        trainer = create_component(ComponentType.TRAINER, config.trainer)
-        optimizer = create_component(ComponentType.OPTIMIZER, config.optimizer, model)
-        scheduler = Scheduler(
-            optimizer, config.scheduler, metric_reporter.lower_is_better
-        )
+        trainer = create_trainer(config.trainer, model)
         if config.exporter:
             exporter = create_component(ComponentType.EXPORTER, config.exporter)
         else:
             exporter = None
-        return cls(
-            data, model, metric_reporter, trainer, optimizer, scheduler, exporter
-        )
+        return cls(data, model, metric_reporter, trainer, exporter)
 
     def __init__(
         self,
@@ -153,8 +143,6 @@ class NewTask(TaskBase):
         model: Model,
         metric_reporter: Optional[MetricReporter] = None,
         trainer: Optional[NewTaskTrainer] = None,
-        optimizer: Optional[Optimizer] = None,
-        scheduler: Optional[Scheduler] = None,
         exporter: Optional[ModelExporter] = None,
     ):
         self.data = data
@@ -164,10 +152,6 @@ class NewTask(TaskBase):
             self.Config.metric_reporter, model
         )
         self.trainer = trainer or NewTaskTrainer()
-        self.optimizer = optimizer or Adam(
-            model.parameters(), **Adam.Config()._asdict()
-        )
-        self.scheduler = scheduler
         self.exporter = exporter
 
     def train(self, config: PyTextConfig, rank: int = 0, unused_world_size: int = 1):
@@ -177,8 +161,6 @@ class NewTask(TaskBase):
             self.model,
             self.metric_reporter,
             config,
-            optimizer=self.optimizer,
-            scheduler=self.scheduler,
             rank=rank,
         )
 

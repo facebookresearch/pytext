@@ -119,4 +119,4 @@ class TestConfig(ConfigBase):
     test_out_path: str = ""
 
 
-LATEST_VERSION = 2
+LATEST_VERSION = 3

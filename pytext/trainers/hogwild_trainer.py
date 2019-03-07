@@ -20,14 +20,16 @@ class HogwildTrainer(Trainer):
         num_workers: int = 1
 
     @classmethod
-    def from_config(cls, config: Config, *args, **kwargs):
+    def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
         # can't run hogwild on cuda
         if cuda_utils.CUDA_ENABLED or config.num_workers == 1:
             return Trainer(config.real_trainer, *args, **kwargs)
-        return cls(config.real_trainer, config.num_workers, *args, **kwargs)
+        return cls(config.real_trainer, config.num_workers, model, *args, **kwargs)
 
-    def __init__(self, real_trainer_config, num_workers, *args, **kwargs):
-        super().__init__(real_trainer_config, *args, **kwargs)
+    def __init__(
+        self, real_trainer_config, num_workers, model: torch.nn.Module, *args, **kwargs
+    ):
+        super().__init__(real_trainer_config, model, *args, **kwargs)
         self.num_workers = num_workers
 
     def _run_epoch(
@@ -85,9 +87,7 @@ class HogwildTrainer(Trainer):
         eval_iter: Iterator,
         model: Model,
         metric_reporter: MetricReporter,
-        optimizer: torch.optim.Optimizer,
         pytext_config: PyTextConfig,
-        scheduler=None,
         *args,
         **kwargs
     ) -> Tuple[torch.nn.Module, Any]:
@@ -99,11 +99,5 @@ class HogwildTrainer(Trainer):
                 param.share_memory_()
 
         return super().train(
-            train_iter,
-            eval_iter,
-            model,
-            metric_reporter,
-            optimizer,
-            pytext_config,
-            scheduler,
+            train_iter, eval_iter, model, metric_reporter, pytext_config
         )
