@@ -23,7 +23,7 @@ class HogwildTrainer(Trainer):
     def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
         # can't run hogwild on cuda
         if cuda_utils.CUDA_ENABLED or config.num_workers == 1:
-            return Trainer(config.real_trainer, *args, **kwargs)
+            return Trainer(config.real_trainer, model)
         return cls(config.real_trainer, config.num_workers, model, *args, **kwargs)
 
     def __init__(
