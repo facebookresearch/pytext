@@ -13,9 +13,14 @@ def ascii_table(
     widths = {
         column: max(len(str(row.get(column))) for row in data) for column in columns
     }
+
     if human_column_names:
         for column, human in human_column_names.items():
             widths[column] = max(widths[column], len(human))
+
+    if footer:
+        for column, footer_value in footer.items():
+            widths[column] = max(widths[column], len(footer_value))
 
     separator = "+" + "+".join("-" * (width + 2) for width in widths.values()) + "+"
 
