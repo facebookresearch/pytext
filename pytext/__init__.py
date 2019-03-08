@@ -12,7 +12,7 @@ from .builtin_task import register_builtin_tasks
 from .config import PyTextConfig, pytext_config_from_json
 from .config.component import create_featurizer
 from .data.featurizer import InputRecord
-from .utils.onnx_utils import CAFFE2_DB_TYPE, convert_caffe2_blob_name
+from .utils.onnx import CAFFE2_DB_TYPE, convert_caffe2_blob_name
 
 
 register_builtin_tasks()

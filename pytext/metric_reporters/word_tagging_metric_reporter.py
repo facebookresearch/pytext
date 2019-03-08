@@ -11,8 +11,7 @@ from pytext.metrics.intent_slot_metrics import (
     Span,
     compute_prf1_metrics,
 )
-from pytext.utils.data_utils import parse_slot_string
-from pytext.utils.test_utils import merge_token_labels_to_slot
+from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter

@@ -11,7 +11,7 @@ from pytext.config.component import Component, ComponentType
 from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
-from pytext.utils import onnx_utils
+from pytext.utils import onnx
 
 
 class ModelExporter(Component):
@@ -126,9 +126,7 @@ class ModelExporter(Component):
             c2_prepared (Caffe2Rep): caffe2 net with prepended operators
             input_names (List[str]): list of input names for the new net
         """
-        return onnx_utils.add_feats_numericalize_ops(
-            c2_prepared, self.vocab_map, input_names
-        )
+        return onnx.add_feats_numericalize_ops(c2_prepared, self.vocab_map, input_names)
 
     def postprocess_output(
         self,
@@ -189,7 +187,7 @@ class ModelExporter(Component):
         Returns:
             final_output_names: list of caffe2 model output names
         """
-        c2_prepared = onnx_utils.pytorch_to_caffe2(
+        c2_prepared = onnx.pytorch_to_caffe2(
             model,
             self.dummy_model_input,
             self.input_names,
@@ -215,7 +213,7 @@ class ModelExporter(Component):
             c2_prepared.init_net = init_net.Proto()
 
         # Save predictor net to file
-        onnx_utils.export_nets_to_predictor_file(
+        onnx.export_nets_to_predictor_file(
             c2_prepared,
             final_input_names,
             final_out_names,

@@ -4,7 +4,7 @@ import copy
 from typing import List
 
 import torch
-from pytext.utils import data_utils
+from pytext.utils import data
 
 from .field import Field, TextFeatureField
 
@@ -15,7 +15,7 @@ class PretrainedModelEmbeddingField(Field):
             sequential=True,
             use_vocab=False,
             batch_first=True,
-            tokenize=data_utils.no_tokenize,
+            tokenize=data.no_tokenize,
             dtype=torch.float,
             unk_token=None,
             pad_token=None,

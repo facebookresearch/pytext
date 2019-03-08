@@ -5,7 +5,7 @@ from typing import Any, List, Sized, Tuple
 
 import torch as torch
 import torch.nn as nn
-from pytext.utils.cuda_utils import FloatTensor, xaviervar
+from pytext.utils.cuda import FloatTensor, xaviervar
 
 
 class Element:

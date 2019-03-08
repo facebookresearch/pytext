@@ -15,8 +15,8 @@ from pytext.config.field_config import (
 )
 from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
-from pytext.utils.embeddings_utils import PretrainedEmbedding
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.embeddings import PretrainedEmbedding
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

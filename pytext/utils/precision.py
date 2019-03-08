@@ -11,7 +11,7 @@ except AttributeError as e:
     print(f"Fail to import apex: {e}")
     _APEX_DISABLED = True
 
-from pytext.utils import cuda_utils
+from . import cuda
 
 
 """
@@ -62,7 +62,7 @@ def set_fp16(fp16_enabled: bool):
 
     _FP16_ENABLED = fp16_enabled
     if _FP16_ENABLED:
-        if not cuda_utils.CUDA_ENABLED:
+        if not cuda.CUDA_ENABLED:
             raise RuntimeError("Cuda is not available, should not running fp16...")
 
         _amp_handle = amp.init(enabled=fp16_enabled)

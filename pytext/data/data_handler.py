@@ -27,8 +27,8 @@ from pytext.config.field_config import Target
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
-from pytext.utils import cuda_utils, dist_utils, embeddings_utils
-from pytext.utils.data_utils import parse_json_array
+from pytext.utils import cuda, distributed, embeddings as embeddings_utils
+from pytext.utils.data import parse_json_array
 from torchtext import data as textdata
 
 
@@ -317,7 +317,7 @@ class DataHandler(Component):
             return self._data_cache[path]
 
         shard_range = (
-            dist_utils.get_shard_range(
+            distributed.get_shard_range(
                 self.metadata.dataset_sizes[path], rank, world_size
             )
             if world_size > 1
@@ -602,7 +602,7 @@ class DataHandler(Component):
         rank: int = 0,
         world_size: int = 1,
     ) -> BatchIterator:
-        shard_range = dist_utils.get_shard_range(len(train_data), rank, world_size)
+        shard_range = distributed.get_shard_range(len(train_data), rank, world_size)
         return self._get_train_iter(
             self.gen_dataset(train_data, shard_range=shard_range),
             batch_size,
@@ -638,7 +638,7 @@ class DataHandler(Component):
                 shard_dataset,
                 batch_size=batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
-                if cuda_utils.CUDA_ENABLED
+                if cuda.CUDA_ENABLED
                 else "cpu",
                 sort_within_batch=self.sort_within_batch,
                 repeat=False,
@@ -657,7 +657,7 @@ class DataHandler(Component):
                 test_dataset,
                 batch_size=batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
-                if cuda_utils.CUDA_ENABLED
+                if cuda.CUDA_ENABLED
                 else "cpu",
                 sort=True,
                 repeat=False,
@@ -678,7 +678,7 @@ class DataHandler(Component):
                 ds,
                 batch_size=len(ds) if batch_size is None else batch_size,
                 device="cuda:{}".format(torch.cuda.current_device())
-                if cuda_utils.CUDA_ENABLED
+                if cuda.CUDA_ENABLED
                 else "cpu",
                 sort=True,
                 repeat=False,

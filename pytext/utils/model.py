@@ -3,7 +3,7 @@
 
 import torch
 
-from .cuda_utils import Variable, zerovar
+from .cuda import Variable, zerovar
 
 
 def to_onehot(feat: Variable, size: int) -> Variable:

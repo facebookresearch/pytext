@@ -9,21 +9,21 @@ from pytext.config.component import create_exporter
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import NewTask, Task, create_task, load, save
-from pytext.utils.dist_utils import dist_init
-from pytext.utils.python_utils import set_random_seeds
+from pytext.utils import set_random_seeds
+from pytext.utils.distributed import dist_init
 
-from .utils import cuda_utils, precision_utils, time_utils
+from .utils import cuda, precision, timing
 
 
 def _set_cuda(
     use_cuda_if_available: bool, device_id: int = 0, world_size: int = 1
 ) -> None:
-    cuda_utils.CUDA_ENABLED = use_cuda_if_available and torch.cuda.is_available()
-    cuda_utils.DISTRIBUTED_WORLD_SIZE = world_size
+    cuda.CUDA_ENABLED = use_cuda_if_available and torch.cuda.is_available()
+    cuda.DISTRIBUTED_WORLD_SIZE = world_size
 
-    if use_cuda_if_available and not cuda_utils.CUDA_ENABLED:
+    if use_cuda_if_available and not cuda.CUDA_ENABLED:
         print("Cuda is not available, running on CPU...")
-    elif cuda_utils.CUDA_ENABLED:
+    elif cuda.CUDA_ENABLED:
         torch.cuda.set_device(device_id)
 
     print(
@@ -33,23 +33,23 @@ def _set_cuda(
     device_id: {}
     world_size: {}
     torch.cuda.is_available(): {}
-    cuda_utils.CUDA_ENABLED: {}
-    cuda_utils.DISTRIBUTED_WORLD_SIZE: {}
+    cuda.CUDA_ENABLED: {}
+    cuda.DISTRIBUTED_WORLD_SIZE: {}
     """.format(
             use_cuda_if_available,
             device_id,
             world_size,
             torch.cuda.is_available(),
-            cuda_utils.CUDA_ENABLED,
-            cuda_utils.DISTRIBUTED_WORLD_SIZE,
+            cuda.CUDA_ENABLED,
+            cuda.DISTRIBUTED_WORLD_SIZE,
         )
     )
 
 
 def _set_fp16(use_fp16: bool) -> None:
     # only support single GPU training at this moment.
-    precision_utils.set_fp16(fp16_enabled=use_fp16)
-    print(f"# for debug of FP16: fp16_enabled={precision_utils._FP16_ENABLED}")
+    precision.set_fp16(fp16_enabled=use_fp16)
+    print(f"# for debug of FP16: fp16_enabled={precision._FP16_ENABLED}")
 
 
 def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
@@ -83,7 +83,7 @@ def train_model(
     if rank == 0:
         save_and_export(config, task, metric_channels)
     print("Training timings")
-    time_utils.report()
+    timing.report()
     return trained_model, best_metric
 
 

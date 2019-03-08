@@ -9,7 +9,7 @@ import six
 import torch
 from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
-from pytext.utils.data_utils import is_number, unkify
+from pytext.utils.data import is_number, unkify
 from torchtext.data import Dataset
 
 

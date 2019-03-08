@@ -7,7 +7,7 @@ from typing import Any, Dict, Mapping, Tuple, Union
 import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
-from pytext.utils import data_utils, precision_utils
+from pytext.utils import data as data_utils, precision
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
 
@@ -77,7 +77,7 @@ class Field(textdata.Field):
         """
         Override to make pad_length to be multiple of 8 to support fp16 training
         """
-        return precision_utils.pad_length(n)
+        return precision.pad_length(n)
 
 
 class NestedField(Field, textdata.NestedField):

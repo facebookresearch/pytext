@@ -31,7 +31,7 @@ from pytext.fields import (
     SeqFeatureField,
     TextFeatureField,
 )
-from pytext.utils.onnx_utils import CAFFE2_DB_TYPE
+from pytext.utils.onnx import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
 

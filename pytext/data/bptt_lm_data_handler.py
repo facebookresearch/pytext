@@ -10,7 +10,7 @@ from pytext.common.constants import DatasetFieldName, DFColumn, VocabMeta
 from pytext.config.field_config import FeatureConfig, WordLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import TextFeatureField
-from pytext.utils import cuda_utils
+from pytext.utils import cuda
 from torchtext import data as textdata
 
 from .data_handler import BatchIterator, DataHandler
@@ -156,7 +156,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
                 batch_size=batch_size,
                 bptt_len=self.bptt_len,
                 device="cuda:{}".format(torch.cuda.curren_device())
-                if cuda_utils.CUDA_ENABLED
+                if cuda.CUDA_ENABLED
                 else "cpu",
                 sort_within_batch=True,
                 repeat=False,
@@ -196,7 +196,7 @@ class BPTTLanguageModelDataHandler(DataHandler):
                 batch_size=batch_size,
                 bptt_len=self.bptt_len,
                 device="cuda:{}".format(torch.cuda.curren_device())
-                if cuda_utils.CUDA_ENABLED
+                if cuda.CUDA_ENABLED
                 else "cpu",
                 sort=True,
                 repeat=False,

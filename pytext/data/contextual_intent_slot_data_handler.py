@@ -25,7 +25,7 @@ from pytext.fields import (
     create_fields,
     create_label_fields,
 )
-from pytext.utils import data_utils
+from pytext.utils import data
 
 from .joint_data_handler import JointModelDataHandler
 
@@ -179,7 +179,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                     length of the feature.
 
         """
-        sequence = data_utils.parse_json_array(row_data[RawData.TEXT])
+        sequence = data.parse_json_array(row_data[RawData.TEXT])
 
         # ignore dictionary feature for context sentences other than the last one
         features_list = [
@@ -220,7 +220,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
         }
         if WordLabelConfig._name in self.labels:
             # TODO move it into word label field
-            res[WordLabelConfig._name] = data_utils.align_slot_labels(
+            res[WordLabelConfig._name] = data.align_slot_labels(
                 features_list[-1].token_ranges,
                 row_data[RawData.WORD_LABEL],
                 self.labels[WordLabelConfig._name].use_bio_labels,

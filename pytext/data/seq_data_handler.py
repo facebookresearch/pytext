@@ -8,7 +8,7 @@ from pytext.config import ConfigBase
 from pytext.config.field_config import DocLabelConfig, FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
-from pytext.utils import data_utils
+from pytext.utils import data
 
 from .joint_data_handler import JointModelDataHandler
 
@@ -61,7 +61,7 @@ class SeqModelDataHandler(JointModelDataHandler):
         )
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
-        sequence = data_utils.parse_json_array(row_data[DFColumn.UTTERANCE])
+        sequence = data.parse_json_array(row_data[DFColumn.UTTERANCE])
 
         features_list = [
             self.featurizer.featurize(InputRecord(raw_text=utterance))

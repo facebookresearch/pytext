@@ -4,10 +4,14 @@
 import json
 import unittest
 
-from pytext.utils import test_utils
-from pytext.utils.data_utils import align_slot_labels, unkify
-from pytext.utils.dist_utils import get_shard_range
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.data import (
+    align_slot_labels,
+    merge_token_labels_to_slot,
+    strip_bio_prefix,
+    unkify,
+)
+from pytext.utils.distributed import get_shard_range
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()
@@ -25,13 +29,12 @@ class UtilTest(unittest.TestCase):
         data = get_test_sample()
         for i in data:
             self.assertEqual(
-                test_utils.merge_token_labels_to_slot(i["token_ranges"], i["labels"]),
-                i["output"],
+                merge_token_labels_to_slot(i["token_ranges"], i["labels"]), i["output"]
             )
             self.assertEqual(
-                test_utils.merge_token_labels_to_slot(
+                merge_token_labels_to_slot(
                     i["token_ranges"],
-                    [test_utils.strip_bio_prefix(l) for l in i["labels"]],
+                    [strip_bio_prefix(l) for l in i["labels"]],
                     use_bio_label=False,
                 ),
                 i["output"],

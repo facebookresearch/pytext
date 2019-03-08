@@ -5,10 +5,8 @@ import functools
 import itertools
 from typing import Dict, Iterable, Optional
 
-import torch
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
-from pytext.utils import cuda_utils
 
 from .sources import DataSchema, DataSource, RawExample
 from .sources.data_source import GeneratorIterator

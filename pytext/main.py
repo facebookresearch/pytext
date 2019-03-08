@@ -22,7 +22,7 @@ from pytext.config.serialize import (
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.task import load
-from pytext.utils.documentation_helper import (
+from pytext.utils.documentation import (
     ROOT_CONFIG,
     eprint,
     find_config_class,

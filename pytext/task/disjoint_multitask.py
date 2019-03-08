@@ -20,7 +20,7 @@ from pytext.metric_reporters.disjoint_multitask_metric_reporter import (
 )
 from pytext.models.disjoint_multitask_model import DisjointMultitaskModel
 from pytext.optimizer.scheduler import Scheduler
-from pytext.utils import cuda_utils
+from pytext.utils import cuda
 
 from . import Task, TaskBase
 
@@ -99,7 +99,7 @@ class DisjointMultitask(TaskBase):
         )
         if model_state:
             model.load_state_dict(model_state)
-        if cuda_utils.CUDA_ENABLED:
+        if cuda.CUDA_ENABLED:
             model = model.cuda()
 
         return cls(
@@ -129,7 +129,7 @@ class DisjointMultitask(TaskBase):
         """
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
-        cuda_utils.CUDA_ENABLED = False
+        cuda.CUDA_ENABLED = False
         for name, model in multitask_model.models.items():
             model = model.cpu()
             if self.exporters[name]:

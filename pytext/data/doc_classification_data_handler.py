@@ -23,7 +23,7 @@ from pytext.fields import (
     create_fields,
     create_label_fields,
 )
-from pytext.utils.python_utils import cls_vars
+from pytext.utils import cls_vars
 
 from .data_handler import DataHandler
 

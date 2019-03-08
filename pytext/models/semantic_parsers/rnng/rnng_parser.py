@@ -5,7 +5,7 @@ from enum import Enum
 from typing import List, Optional, Tuple
 
 import numpy as np
-import pytext.utils.cuda_utils as cuda_utils
+import pytext.utils.cuda as cuda_utils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
