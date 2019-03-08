@@ -15,7 +15,7 @@ from pytext.loss import (
     KLDivergenceCELoss,
     SoftHardBCELoss,
 )
-from pytext.utils.cuda_utils import FloatTensor
+from pytext.utils.cuda import FloatTensor
 
 from .output_layer_base import OutputLayerBase
 from .utils import OutputLayerUtils

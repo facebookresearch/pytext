@@ -3,8 +3,8 @@
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-from pytext.utils import loss_utils, precision_utils
-from pytext.utils.cuda_utils import FloatTensor
+from pytext.utils import loss as loss_utils, precision
+from pytext.utils.cuda import FloatTensor
 from torch import nn
 
 
@@ -62,7 +62,7 @@ class BinaryCrossEntropyLoss(Loss):
         # weights = total_positive.unsqueeze(0) / examples_per_class
 
         loss = F.binary_cross_entropy_with_logits(
-            precision_utils.maybe_float(m_out), one_hot_targets, reduction="none"
+            precision.maybe_float(m_out), one_hot_targets, reduction="none"
         )
 
         if self.config.reweight_negative:

@@ -10,7 +10,7 @@ from pytext.config.field_config import FeatureConfig, WordFeatConfig
 from pytext.data.data_handler import DataHandler
 from pytext.data.doc_classification_data_handler import DocClassificationDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

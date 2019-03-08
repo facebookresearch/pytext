@@ -15,7 +15,7 @@ from pytext.models.query_document_pairwise_ranking_model import (
 from pytext.models.representations.query_document_pairwise_ranking_rep import (
     QueryDocumentPairwiseRankingRep,
 )
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

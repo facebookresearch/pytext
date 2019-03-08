@@ -10,7 +10,7 @@ from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import Model
 from pytext.trainers.trainer import Trainer
-from pytext.utils import cuda_utils
+from pytext.utils import cuda
 from torchtext.data import Iterator
 
 
@@ -22,7 +22,7 @@ class HogwildTrainer(Trainer):
     @classmethod
     def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
         # can't run hogwild on cuda
-        if cuda_utils.CUDA_ENABLED or config.num_workers == 1:
+        if cuda.CUDA_ENABLED or config.num_workers == 1:
             return Trainer(config.real_trainer, model)
         return cls(config.real_trainer, config.num_workers, model, *args, **kwargs)
 

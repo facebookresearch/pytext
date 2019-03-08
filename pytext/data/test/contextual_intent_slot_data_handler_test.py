@@ -8,7 +8,7 @@ from pytext.config.contextual_intent_slot import ModelInputConfig, TargetConfig
 from pytext.config.field_config import DocLabelConfig, WordLabelConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

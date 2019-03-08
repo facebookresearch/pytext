@@ -21,7 +21,7 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.scheduler import Scheduler
-from pytext.utils import cuda_utils, precision_utils, time_utils
+from pytext.utils import cuda, precision, timing
 
 
 class TrainerBase(Component):
@@ -79,7 +79,7 @@ class Trainer(TrainerBase):
     def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
         return cls(config, model)
 
-    @time_utils.time("Trainer.test")
+    @timing.time("Trainer.test")
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         model.eval()
         with torch.no_grad():
@@ -88,7 +88,7 @@ class Trainer(TrainerBase):
             )
         return test_metric
 
-    @time_utils.time("Trainer.train")
+    @timing.time("Trainer.train")
     def train(
         self,
         train_iter: BatchIterator,
@@ -122,11 +122,11 @@ class Trainer(TrainerBase):
         Returns:
             model, best_metric: the trained model together with the best metric
         """
-        with time_utils.time("pre-training"):
+        with timing.time("pre-training"):
             world_size = 1
-            if cuda_utils.CUDA_ENABLED:
+            if cuda.CUDA_ENABLED:
                 model = model.cuda()
-                world_size = cuda_utils.DISTRIBUTED_WORLD_SIZE
+                world_size = cuda.DISTRIBUTED_WORLD_SIZE
                 if world_size > 1:
                     device_id = torch.cuda.current_device()
                     model = DistributedModel(
@@ -140,7 +140,7 @@ class Trainer(TrainerBase):
             last_best_epoch = 0
             if self.lr_scheduler:
                 self.lr_scheduler.prepare(train_iter, self.config.epochs)
-            self.optimizer = precision_utils.wrap_optimizer(self.optimizer)
+            self.optimizer = precision.wrap_optimizer(self.optimizer)
 
         def training_pre_batch_callback():
             if world_size > 1:
@@ -157,8 +157,8 @@ class Trainer(TrainerBase):
                 self.optimizer.zero_grad()
 
         def training_backprop(loss):
-            with time_utils.time("loss.backward"):
-                precision_utils.backward(self.optimizer, loss)
+            with timing.time("loss.backward"):
+                precision.backward(self.optimizer, loss)
                 if world_size > 1:
                     # DDP fix when some parameters don't receive grads
                     for p in model.parameters():
@@ -175,7 +175,7 @@ class Trainer(TrainerBase):
             else:
                 grad_norm = None
 
-            with time_utils.time("optimizer.step"):
+            with timing.time("optimizer.step"):
                 self.optimizer.step()
             # grad_norm could be used to check grads sync in distributed training
             return grad_norm
@@ -201,7 +201,7 @@ class Trainer(TrainerBase):
             lrs = (str(lr) for lr in learning_rates(self.optimizer))
             print(f"Learning rate(s): {', '.join(lrs)}")
 
-            with time_utils.time("epoch train"):
+            with timing.time("epoch train"):
                 self._run_epoch(
                     Stage.TRAIN,
                     epoch,
@@ -217,7 +217,7 @@ class Trainer(TrainerBase):
             if not self.config.do_eval:
                 continue
 
-            with time_utils.time("epoch eval"):
+            with timing.time("epoch eval"):
                 model.eval(Stage.EVAL)
                 with torch.no_grad():
                     eval_metric = self._run_epoch(
@@ -242,7 +242,7 @@ class Trainer(TrainerBase):
 
             # choose best model.
             if metric_reporter.compare_metric(eval_metric, best_metric):
-                with time_utils.time("save checkpoint model"):
+                with timing.time("save checkpoint model"):
                     last_best_epoch = epoch
                     best_metric = eval_metric
                     # Only rank = 0 trainer saves modules.
@@ -256,7 +256,7 @@ class Trainer(TrainerBase):
                         print(f"Rank {rank} worker: Found a better model!")
                         model_state = model.state_dict()
                         # save to cpu to avoid multiple model copies in gpu memory
-                        if cuda_utils.CUDA_ENABLED:
+                        if cuda.CUDA_ENABLED:
                             for key, state in model_state.items():
                                 model_state[key] = state.cpu()
                         best_model_state = model_state
@@ -272,7 +272,7 @@ class Trainer(TrainerBase):
             sys.stdout.flush()
 
         if rank == 0 and best_model_state is not None:
-            if cuda_utils.CUDA_ENABLED:
+            if cuda.CUDA_ENABLED:
                 for key, state in best_model_state.items():
                     best_model_state[key] = state.cuda()
             model.load_state_dict(best_model_state)
@@ -298,19 +298,19 @@ class Trainer(TrainerBase):
             pre_batch()
             # pass context to model to use in forward call if needed
             model.contextualize(context)
-            with time_utils.time("model.forward"):
+            with timing.time("model.forward"):
                 logits = model(*inputs)
 
-            with time_utils.time("compute loss"):
+            with timing.time("compute loss"):
                 loss = model.get_loss(logits, targets, context)
                 if BatchContext.IGNORE_LOSS in context:
                     loss *= 0
 
-            with time_utils.time("backprop"):
+            with timing.time("backprop"):
                 backprop(loss)
 
             if report_metric:
-                with time_utils.time("add metrics"):
+                with timing.time("add metrics"):
                     preds, scores = model.get_pred(
                         logits, targets, context, stage, *inputs
                     )
@@ -326,7 +326,7 @@ class Trainer(TrainerBase):
 
         metrics = None
         if report_metric:
-            with time_utils.time("report metrics"):
+            with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
                     model, stage, epoch, print_to_channels=(rank == 0)
                 )

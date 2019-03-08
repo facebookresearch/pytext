@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 from pytext.common.constants import VocabMeta
 from pytext.fields.dict_field import DictFeatureField
-from pytext.utils import precision_utils
+from pytext.utils import precision
 
 
 FEATS_VOCAB = [[["texasHandler_cities"]], [["cities"]], [["time"]]]
@@ -62,8 +62,8 @@ class DictFieldTest(unittest.TestCase):
         )
         np.testing.assert_array_equal(feats.data.numpy(), NUMERICAL_FEATS)
 
-        precision_utils._FP16_ENABLED = True
+        precision._FP16_ENABLED = True
         padded_feats, padded_weights, padded_lengths = self.dict_field.pad(minibatch)
         self.assertTrue(len(padded_feats[0]) % 8 == 0)
         self.assertTrue(len(padded_weights[0]) % 8 == 0)
-        precision_utils._FP16_ENABLED = False
+        precision._FP16_ENABLED = False

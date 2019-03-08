@@ -6,8 +6,8 @@ import unittest
 
 import numpy as np
 import torch
-from pytext.utils.cuda_utils import Variable
-from pytext.utils.model_utils import to_onehot
+from pytext.utils.cuda import Variable
+from pytext.utils.model import to_onehot
 
 
 class ModelUtilsTest(unittest.TestCase):

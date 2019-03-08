@@ -25,7 +25,7 @@ from pytext.fields import (
     create_fields,
     create_label_fields,
 )
-from pytext.utils import data_utils
+from pytext.utils import data
 
 from .data_handler import DataHandler
 
@@ -140,7 +140,7 @@ class JointModelDataHandler(DataHandler):
             res[DatasetFieldName.DOC_LABEL_FIELD] = row_data.get(DFColumn.DOC_LABEL)
         if DatasetFieldName.WORD_LABEL_FIELD in self.labels:
             # TODO move it into word label field
-            res[DatasetFieldName.WORD_LABEL_FIELD] = data_utils.align_slot_labels(
+            res[DatasetFieldName.WORD_LABEL_FIELD] = data.align_slot_labels(
                 features.token_ranges,
                 row_data.get(DFColumn.WORD_LABEL),
                 self.labels[DatasetFieldName.WORD_LABEL_FIELD].use_bio_labels,

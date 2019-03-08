@@ -8,7 +8,7 @@ from pytext.data import Batcher, Data, types
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, WordTensorizer
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

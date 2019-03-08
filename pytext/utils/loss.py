@@ -2,7 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import numpy
 import torch
-from pytext.utils.cuda_utils import FloatTensor
+
+from .cuda import FloatTensor
 
 
 def range_to_anchors_and_delta(precision_range, num_anchors):

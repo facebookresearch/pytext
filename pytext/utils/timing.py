@@ -7,7 +7,7 @@ import timeit
 import traceback
 import weakref
 
-from pytext.common.ascii_table import ascii_table
+from .ascii_table import ascii_table
 
 
 class SnapshotList(list):

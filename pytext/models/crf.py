@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from caffe2.python.crf_predict import apply_crf
 from pytext.common.constants import Padding
-from pytext.utils.cuda_utils import GetTensor
+from pytext.utils.cuda import GetTensor
 from torch.autograd import Variable
 
 

@@ -14,7 +14,7 @@ from pytext.data.tensorizers import (
     WordTensorizer,
     initialize_tensorizers,
 )
-from pytext.utils.test_utils import import_tests_module
+from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()

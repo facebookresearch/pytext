@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import copy
-import math
-import os
-import signal
-from typing import Any, List
-
 import torch
 import torch.distributed as dist_c10d
 

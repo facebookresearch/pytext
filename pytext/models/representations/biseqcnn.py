@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import CNNParams
-from pytext.utils import cuda_utils
+from pytext.utils import cuda
 
 from .representation_base import RepresentationBase
 
@@ -31,7 +31,7 @@ class BSeqCNNRepresentation(RepresentationBase):
         self.fwd_bwd_ctxt_len = config.fwd_bwd_context_len
         self.surr_ctxt_len = config.surrounding_context_len
         self.ctxt_pad_len = max(self.fwd_bwd_ctxt_len, self.surr_ctxt_len)
-        self.padding_tensor = cuda_utils.Variable(
+        self.padding_tensor = cuda.Variable(
             torch.Tensor(1, self.fwd_bwd_ctxt_len, embed_dim), requires_grad=False
         )
         self.padding_tensor.fill_(0)
@@ -92,9 +92,7 @@ class BSeqCNNRepresentation(RepresentationBase):
         start_idx = word_idx - self.surr_ctxt_len
         word_with_surr_context = inputs.narrow(1, start_idx, 2 * self.surr_ctxt_len + 1)
 
-        padding = cuda_utils.Variable(
-            torch.cat([self.padding_tensor] * inputs.size()[0])
-        )
+        padding = cuda.Variable(torch.cat([self.padding_tensor] * inputs.size()[0]))
         conv_in_bwd_context = torch.cat((word_with_bwd_context, padding), dim=1)
         conv_in_fwd_context = torch.cat((padding, word_with_fwd_context), dim=1)
 

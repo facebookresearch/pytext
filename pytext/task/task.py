@@ -24,7 +24,7 @@ from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss, SoftHardBCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda_utils, precision_utils
+from pytext.utils import cuda, precision
 
 
 def create_task(task_config, metadata=None, model_state=None):
@@ -93,8 +93,6 @@ class TaskBase(Component):
         model = create_model(task_config.model, task_config.features, metadata)
         if model_state:
             model.load_state_dict(model_state)
-        if cuda_utils.CUDA_ENABLED:
-            model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
         exporter = (
             create_exporter(
@@ -171,8 +169,8 @@ class TaskBase(Component):
         """
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
-        cuda_utils.CUDA_ENABLED = False
-        precision_utils.deactivate()
+        cuda.CUDA_ENABLED = False
+        precision.deactivate()
 
         model = model.cpu()
         if self.exporter:

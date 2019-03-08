@@ -6,9 +6,9 @@ import itertools
 import re
 from typing import List, NamedTuple, Tuple
 
-import pytext.utils.cuda_utils as cuda_utils
 import torch
 from pytext.config.component import Component, ComponentType
+from pytext.utils import cuda
 
 
 class Token(NamedTuple):
@@ -95,7 +95,7 @@ def pad_and_tensorize(batch, pad_token=0, dtype=torch.long):
     if not batch:
         return torch.Tensor()
 
-    return cuda_utils.tensor(pad(batch, pad_token=pad_token), dtype=dtype)
+    return cuda.tensor(pad(batch, pad_token=pad_token), dtype=dtype)
 
 
 class SpecialToken(str):

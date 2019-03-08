@@ -15,7 +15,7 @@ from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
 from pytext.models.doc_model import NewDocModel as DocModel
 from pytext.models.model import BaseModel as Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda_utils, time_utils
+from pytext.utils import cuda, timing
 
 from .task import TaskBase
 
@@ -43,19 +43,19 @@ class NewTaskTrainer(Trainer):
 
         for batch_id, batch in enumerate(batches):
             pre_batch()
-            with time_utils.time("model.train_batch"):
+            with timing.time("model.train_batch"):
                 loss, metric_data = model.train_batch(batch)
-            with time_utils.time("backprop"):
+            with timing.time("backprop"):
                 backprop(loss)
             if report_metric:
-                with time_utils.time("add metrics"):
+                with timing.time("add metrics"):
                     metric_reporter.add_batch_stats(
                         batch_id, *metric_data, **metric_reporter.batch_context(batch)
                     )
 
         metrics = None
         if report_metric:
-            with time_utils.time("report metrics"):
+            with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
                     model, stage, epoch, print_to_channels=(rank == 0)
                 )
@@ -124,7 +124,7 @@ class NewTask(TaskBase):
         model = create_component(ComponentType.MODEL, config.model, tensorizers)
         if model_state:
             model.load_state_dict(model_state)
-        if cuda_utils.CUDA_ENABLED:
+        if cuda.CUDA_ENABLED:
             model = model.cuda()
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
