@@ -11,11 +11,17 @@ AVRG_LOSS = "_avrg_loss"
 
 
 class DisjointMultitaskMetricReporter(MetricReporter):
+    lower_is_better = False
+
+    class Config(MetricReporter.Config):
+        use_subtask_select_metric: bool = False
+
     def __init__(
         self,
         reporters: Dict[str, MetricReporter],
         loss_weights: Dict[str, float],
         target_task_name: Optional[str],
+        use_subtask_select_metric: bool,
     ) -> None:
         """Short summary.
 
@@ -35,6 +41,7 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         self.target_task_name = target_task_name or ""
         self.target_reporter = self.reporters.get(self.target_task_name, None)
         self.loss_weights = loss_weights
+        self.use_subtask_select_metric = use_subtask_select_metric
 
     def _reset(self):
         self.total_loss = 0
@@ -58,14 +65,6 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         for reporter in self.reporters.values():
             reporter.add_channel(channel)
 
-    def compare_metric(self, new_metric, old_metric):
-        if old_metric is None:
-            return True
-        if self.target_reporter:
-            return self.target_reporter.compare_metric(new_metric, old_metric)
-        else:  # default to training loss
-            return new_metric[AVRG_LOSS] < old_metric[AVRG_LOSS]
-
     def report_metric(self, model, stage, epoch, reset=True, print_to_channels=True):
         metrics_dict = {AVRG_LOSS: self.total_loss / self.num_batches}
         for name, reporter in self.reporters.items():
@@ -75,13 +74,27 @@ class DisjointMultitaskMetricReporter(MetricReporter):
             )
         if reset:
             self._reset()
+
         if self.target_reporter:
             return metrics_dict[self.target_task_name]
-        else:
-            return metrics_dict
+
+        for name, reporter in self.reporters.items():
+            metrics_dict[name] = reporter.get_model_select_metric(metrics_dict[name])
+        return metrics_dict
 
     def get_model_select_metric(self, metrics):
         if self.target_reporter:
-            return self.target_reporter.get_model_select_metric(metrics)
+            metric = self.target_reporter.get_model_select_metric(metrics)
+            if self.target_reporter.lower_is_better:
+                metric = -metric
+        elif self.use_subtask_select_metric:
+            metric = 0.0
+            for name, reporter in self.reporters.items():
+                sub_metric = metrics[name]
+                if reporter.lower_is_better:
+                    sub_metric = -sub_metric
+            metric += sub_metric
         else:  # default to training loss
-            return metrics[AVRG_LOSS]
+            metric = -metrics[AVRG_LOSS]
+
+        return metric

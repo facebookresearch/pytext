@@ -86,6 +86,9 @@ class DisjointMultitask(TaskBase):
             ),
             loss_weights=task_weights,
             target_task_name=task_config.target_task_name,
+            use_subtask_select_metric=(
+                task_config.metric_reporter.use_subtask_select_metric
+            ),
         )
         model = DisjointMultitaskModel(
             OrderedDict(
