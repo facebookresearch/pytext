@@ -27,6 +27,7 @@ class TSV:
                 (line.replace("\0", "") for line in self.file),
                 fieldnames=self.field_names,
                 delimiter=self.delimiter,
+                quoting=csv.QUOTE_NONE,
             )
             yield from reader
         finally:

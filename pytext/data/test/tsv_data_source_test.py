@@ -29,6 +29,18 @@ class TSVDataSourceTest(unittest.TestCase):
         self.assertEqual(2, len(example))
         self.assertEqual({"label", "text"}, set(example))
 
+    def test_quoting(self):
+        data_source = TSVDataSource(
+            SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            eval_file=None,
+            field_names=["label", "text"],
+            schema={"text": types.Text, "label": types.Label},
+        )
+
+        data = list(data_source.train)
+        self.assertEqual(4, len(data))
+
     def test_read_test_data_source(self):
         data = list(self.data.test)
         self.assertEqual(5, len(data))
