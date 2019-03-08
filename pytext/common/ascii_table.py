@@ -4,12 +4,17 @@
 import itertools
 
 
+def orderedUnique(sequence):
+    seen = []
+    return [x for x in sequence if not (x in seen or seen.append(x))]
+
+
 def ascii_table(
     data, human_column_names=None, footer=None, indentation="", alignments=()
 ):
     data = list(data)
     column_alignments = dict(alignments)
-    columns = human_column_names or set(itertools.chain.from_iterable(data))
+    columns = human_column_names or orderedUnique(itertools.chain.from_iterable(data))
     widths = {
         column: max(len(str(row.get(column))) for row in data) for column in columns
     }
