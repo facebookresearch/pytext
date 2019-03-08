@@ -116,20 +116,20 @@ class WordTensorizer(Tensorizer):
         self.use_eos_token_for_bos = use_eos_token_for_bos
         self.max_seq_len = max_seq_len or float("Inf")
 
-    def _lookup_tokens(self, row):
-        tokenized_texts = [t.value for t in self.tokenizer.tokenize(row[self.column])]
+    def _lookup_tokens(self, text):
+        tokenized_texts = [t.value for t in self.tokenizer.tokenize(text)]
         tokens = self.vocab.lookup_all(tokenized_texts)
-        if self.add_eos_token:
-            tokens.append(self.vocab.idx[EOS])
         if self.add_bos_token:
             bos_token = (
                 self.vocab.idx[EOS]
-                if (self.use_eos_token_for_bos and self.add_eos_token)
+                if self.use_eos_token_for_bos
                 else self.vocab.idx[BOS]
             )
             tokens = [bos_token] + tokens
         if len(tokens) > self.max_seq_len:
             tokens = tokens[: self.max_seq_len]
+        if self.add_eos_token:
+            tokens.append(self.vocab.idx[EOS])
         return tokens
 
     def initialize(self):
@@ -150,7 +150,7 @@ class WordTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
-        tokens = self._lookup_tokens(row)
+        tokens = self._lookup_tokens(row[self.column])
         return tokens, len(tokens)
 
     def tensorize(self, batch):
