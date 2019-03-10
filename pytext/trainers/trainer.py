@@ -81,6 +81,9 @@ class Trainer(TrainerBase):
 
     @timing.time("Trainer.test")
     def test(self, test_iter, model, metric_reporter: MetricReporter):
+        if cuda.CUDA_ENABLED:
+            model = model.cuda()
+
         model.eval()
         with torch.no_grad():
             test_metric = self._run_epoch(
