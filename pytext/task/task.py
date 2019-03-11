@@ -93,6 +93,8 @@ class TaskBase(Component):
         model = create_model(task_config.model, task_config.features, metadata)
         if model_state:
             model.load_state_dict(model_state)
+        if cuda.CUDA_ENABLED:
+            model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
         exporter = (
             create_exporter(
