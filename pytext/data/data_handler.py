@@ -348,6 +348,8 @@ class DataHandler(Component):
         to_process.update(self.extra_fields)
         if include_label_fields:
             to_process.update(self.labels)
+        else:
+            to_process.pop(Target.TARGET_LABEL_FIELD, None)
         fields = {name: (name, field) for name, field in to_process.items()}
         # generate example from dataframe
         examples = [
@@ -749,15 +751,18 @@ class DataHandler(Component):
         )
 
     def _add_target_prob_to_res(self, res, row_data):
-        res[Target.TARGET_PROB_FIELD] = parse_json_array(
-            row_data[DFColumn.TARGET_PROBS]
-        )
-        res[Target.TARGET_LABEL_FIELD] = parse_json_array(
-            row_data[DFColumn.TARGET_LABELS]
-        )
-        res[Target.TARGET_LOGITS_FIELD] = parse_json_array(
-            row_data[DFColumn.TARGET_LOGITS]
-        )
+        if DFColumn.TARGET_PROBS in row_data:
+            res[Target.TARGET_PROB_FIELD] = parse_json_array(
+                row_data[DFColumn.TARGET_PROBS]
+            )
+        if DFColumn.TARGET_LABELS in row_data:
+            res[Target.TARGET_LABEL_FIELD] = parse_json_array(
+                row_data[DFColumn.TARGET_LABELS]
+            )
+        if DFColumn.TARGET_LOGITS in row_data:
+            res[Target.TARGET_LOGITS_FIELD] = parse_json_array(
+                row_data[DFColumn.TARGET_LOGITS]
+            )
 
     def _align_target_label(self, target, label_list, batch_label_list):
         """
@@ -810,4 +815,8 @@ class DataHandler(Component):
         return self._train_input_from_batch(batch)
 
     def _context_from_batch(self, batch):
-        return {name: getattr(batch, name) for name in self.extra_fields}
+        return {
+            name: getattr(batch, name)
+            for name in self.extra_fields
+            if hasattr(batch, name)
+        }
