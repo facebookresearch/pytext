@@ -310,6 +310,9 @@ class FloatVectorField(Field):
             fix_length=dim,
             pad_token=0,  # For irregular sized vectors, pad the missing units with 0s.
         )
+        self.dummy_model_input = torch.tensor(
+            [[1.0] * dim], dtype=torch.float, device="cpu"
+        )
 
     @classmethod
     def _parse_vector(cls, s):

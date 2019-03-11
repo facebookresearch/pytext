@@ -67,6 +67,7 @@ class PretrainedModelEmbeddingConfig(ConfigBase):
 
 class FloatVectorConfig(ConfigBase):
     dim: int = 0  # Dimension of the vector in the dataset.
+    export_input_names: List[str] = ["float_vec_vals"]
 
 
 class FeatureConfig(ModuleConfig):  # type: ignore
