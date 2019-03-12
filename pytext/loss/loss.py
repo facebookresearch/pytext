@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import torch
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
@@ -33,6 +34,46 @@ class CrossEntropyLoss(Loss):
             reduction="elementwise_mean" if reduce else "none",
             weight=self.weight,
         )
+
+
+class LabelSmoothedCrossEntropyLoss(Loss):
+    class Config(ConfigBase):
+        beta: float = 0.1
+
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        # weight values other than 1. gives inconsistent behavior
+        # Refer: https://github.com/pytorch/pytorch/issues/17577
+        if weight is not None:
+            assert torch.sum(torch.abs(weight - 1.0)) < 1e-7
+
+        self.ignore_index = ignore_index
+        self.weight = weight
+        self.beta = config.beta
+
+    def __call__(self, logits, targets, reduce=True):
+        """
+        Returns the cross-entropy loss alongwith the KL divergence of the
+        discrete uniform distribution with the logits. Refer section 3.2 of
+        https://arxiv.org/pdf/1701.06548.pdf
+        """
+
+        log_probs = F.log_softmax(logits, dim=1)
+        cross_entropy_loss = F.nll_loss(
+            log_probs,
+            targets,
+            ignore_index=self.ignore_index,
+            reduction="mean" if reduce else "none",
+            weight=self.weight,
+        )
+
+        # negative KL-div has an additional log(num_classes) term but ignored
+        # here because it doesn't contribute to optimization
+        label_smoothing_loss = log_probs.mean(dim=1)
+        if reduce:
+            label_smoothing_loss = torch.mean(
+                label_smoothing_loss[targets != self.ignore_index]
+            )
+        return cross_entropy_loss + self.beta * label_smoothing_loss
 
 
 class BinaryCrossEntropyLoss(Loss):
