@@ -80,7 +80,7 @@ def train_model_distributed(config, metric_channels: Optional[List[Channel]]):
                     config.distributed_world_size,
                     dist_init_method,
                     metadata,
-                    metric_channels,
+                    [],
                 ),
                 config.distributed_world_size,
             )
