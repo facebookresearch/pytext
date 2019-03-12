@@ -13,7 +13,7 @@ from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
 from pytext.models.doc_model import NewDocModel as DocModel
 from pytext.models.model import BaseModel as Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda, timing
+from pytext.utils import cuda, precision, timing
 
 from .task import TaskBase
 
@@ -104,7 +104,6 @@ class NewTask(TaskBase):
         data: Data.Config = Data.Config()
         model: Model.Config
         trainer: NewTaskTrainer.Config = NewTaskTrainer.Config()
-        exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
     def from_config(cls, config: Config, unused_metadata=None, model_state=None):
@@ -134,11 +133,7 @@ class NewTask(TaskBase):
         # the implementation of the model and the metric reporter.
         metric_reporter = cls.create_metric_reporter(config, tensorizers)
         trainer = create_trainer(config.trainer, model)
-        if config.exporter:
-            exporter = create_component(ComponentType.EXPORTER, config.exporter)
-        else:
-            exporter = None
-        return cls(data, model, metric_reporter, trainer, exporter)
+        return cls(data, model, metric_reporter, trainer)
 
     def __init__(
         self,
@@ -146,7 +141,6 @@ class NewTask(TaskBase):
         model: Model,
         metric_reporter: Optional[MetricReporter] = None,
         trainer: Optional[NewTaskTrainer] = None,
-        exporter: Optional[ModelExporter] = None,
     ):
         self.data = data
         self.model = model
@@ -155,7 +149,6 @@ class NewTask(TaskBase):
             self.Config.metric_reporter, model
         )
         self.trainer = trainer or NewTaskTrainer()
-        self.exporter = exporter
 
     def train(self, config: PyTextConfig, rank: int = 0, unused_world_size: int = 1):
         return self.trainer.train(
@@ -170,6 +163,18 @@ class NewTask(TaskBase):
     def test(self):
         return self.trainer.test(
             self.data.batches(Stage.TEST), self.model, self.metric_reporter
+        )
+
+    def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
+        # Make sure to put the model on CPU and disable CUDA before exporting to
+        # ONNX to disable any data_parallel pieces
+        cuda.CUDA_ENABLED = False
+        precision.deactivate()
+        model = model.cpu()
+
+        batch = next(iter(self.data.batches(Stage.TRAIN)))
+        model.caffe2_export(
+            self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
 
 
