@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Optional
+from typing import List, Optional
 
+import torch
 from pytext.config.component import Component, ComponentType, create_component
 
 from .utils import BOS, EOS, PAD, Tokenizer, VocabBuilder, pad_and_tensorize
@@ -247,7 +248,9 @@ class LabelTensorizer(Tensorizer):
         self.allow_unknown = allow_unknown
 
     def initialize(self):
-        """Look through the dataset for all labels and create a vocab map for them."""
+        """
+        Look through the dataset for all labels and create a vocab map for them.
+        """
         builder = VocabBuilder()
         builder.use_pad = False
         builder.use_unk = self.allow_unknown
@@ -265,6 +268,44 @@ class LabelTensorizer(Tensorizer):
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch)
+
+
+class NumericLabelTensorizer(Tensorizer):
+    """Numberize numeric labels."""
+
+    class Config(Tensorizer.Config):
+        #: The name of the label column to parse from the data source.
+        column: str = "label"
+        #: If provided, the range of values the raw label can be. Will rescale the
+        #: label values to be within [0, 1].
+        rescale_range: Optional[List[float]] = None
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column, config.rescale_range)
+
+    def __init__(
+        self,
+        column: str = Config.column,
+        rescale_range: Optional[List[float]] = Config.rescale_range,
+    ):
+        self.column = column
+        if rescale_range is not None:
+            assert len(rescale_range) == 2
+            assert rescale_range[0] < rescale_range[1]
+        self.rescale_range = rescale_range
+
+    def numberize(self, row):
+        """Numberize labels."""
+        label = float(row[self.column])
+        if self.rescale_range is not None:
+            label -= self.rescale_range[0]
+            label /= self.rescale_range[1] - self.rescale_range[0]
+            assert 0 <= label <= 1
+        return label
+
+    def tensorize(self, batch):
+        return pad_and_tensorize(batch, dtype=torch.float)
 
 
 class MetaInput(Tensorizer):

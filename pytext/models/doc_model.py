@@ -8,6 +8,7 @@ from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import (
     LabelTensorizer,
     MetaInput,
+    NumericLabelTensorizer,
     Tensorizer,
     WordTensorizer,
 )
@@ -17,7 +18,7 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
-from pytext.models.output_layers import ClassificationOutputLayer
+from pytext.models.output_layers import ClassificationOutputLayer, RegressionOutputLayer
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
@@ -87,4 +88,31 @@ class NewDocModel(DocModel):
             out_dim=len(labels),
         )
         output_layer = ClassificationOutputLayer(labels, CrossEntropyLoss(None))
+        return cls(embedding, representation, decoder, output_layer)
+
+
+class NewDocRegressionModel(NewDocModel):
+    """
+    Model that's compatible with the new Model abstraction, and is configured for
+    regression tasks (specifically for labels, predictions, and loss).
+    """
+
+    class Config(NewDocModel.Config):
+        class RegressionModelInput(Model.Config.ModelInput):
+            tokens: WordTensorizer.Config = WordTensorizer.Config()
+            labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
+
+        inputs: RegressionModelInput = RegressionModelInput()
+        output_layer: RegressionOutputLayer.Config = RegressionOutputLayer.Config()
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        embedding = cls.create_embedding(config, tensorizers)
+        representation = create_module(
+            config.representation, embed_dim=embedding.embedding_dim
+        )
+        decoder = create_module(
+            config.decoder, in_dim=representation.representation_dim, out_dim=1
+        )
+        output_layer = RegressionOutputLayer.from_config(config.output_layer)
         return cls(embedding, representation, decoder, output_layer)

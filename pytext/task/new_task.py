@@ -11,8 +11,15 @@ from pytext.data.data import Data
 from pytext.data.sources import DataSchema
 from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import ModelExporter
-from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
-from pytext.models.doc_model import NewDocModel as DocModel
+from pytext.metric_reporters import (
+    ClassificationMetricReporter,
+    MetricReporter,
+    RegressionMetricReporter,
+)
+from pytext.models.doc_model import (
+    NewDocModel as DocModel,
+    NewDocRegressionModel as DocRegressionModel,
+)
 from pytext.models.model import BaseModel as Model
 from pytext.trainers import Trainer
 from pytext.utils import cuda, timing
@@ -186,3 +193,17 @@ class NewDocumentClassification(NewTask):
         return ClassificationMetricReporter.from_config_and_label_names(
             config.metric_reporter, list(tensorizers["labels"].labels)
         )
+
+
+class NewDocumentRegression(NewTask):
+    DATA_SCHEMA: DataSchema = {"text": data_types.Text, "label": data_types.Label}
+
+    class Config(NewTask.Config):
+        model: Model.Config = DocRegressionModel.Config()
+        metric_reporter: RegressionMetricReporter.Config = (
+            RegressionMetricReporter.Config()
+        )
+
+    @classmethod
+    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        return RegressionMetricReporter.from_config(config.metric_reporter)

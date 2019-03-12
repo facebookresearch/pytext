@@ -384,7 +384,7 @@ class PairwiseRankingMetrics(NamedTuple):
     Metric class for pairwise ranking
 
     Attributes:
-        count (int): number of samples
+        num_examples (int): number of samples
         accuracy (float): how many times did we rank in the correct order
         average_score_difference (float): average score(higherRank) - score(lowerRank)
 
@@ -398,6 +398,26 @@ class PairwiseRankingMetrics(NamedTuple):
         print(f"RankingAccuracy: {self.accuracy * 100:.2f}")
         print(f"AvgScoreDiff: {self.average_score_difference}")
         print(f"NumExamples: {self.num_examples}")
+
+
+class RegressionMetrics(NamedTuple):
+    """
+    Metrics for regression tasks.
+
+    Attributes:
+        num_examples (int): number of examples
+        pearson_correlation (float): correlation between predictions and labels
+        mse (float): mean-squared error between predictions and labels
+    """
+
+    num_examples: int
+    pearson_correlation: float
+    mse: float
+
+    def print_metrics(self):
+        print(f"Num examples: {self.num_examples}")
+        print(f"Pearson correlation: {self.pearson_correlation:.3f}")
+        print(f"Mean squared error: {self.mse:.3f}")
 
 
 def safe_division(n: Union[int, float], d: int) -> float:
@@ -650,7 +670,7 @@ def compute_classification_metrics(
 
 def compute_pairwise_ranking_metrics(
     predictions: Sequence[int], scores: Sequence[float]
-):
+) -> PairwiseRankingMetrics:
     """
     Computes metrics for pairwise ranking given sequences of predictions and scores
 
@@ -666,3 +686,25 @@ def compute_pairwise_ranking_metrics(
         accuracy=safe_division(sum(predictions), len(predictions)),
         average_score_difference=safe_division(sum(scores), len(predictions)),
     )
+
+
+def compute_regression_metrics(
+    predictions: Sequence[float], targets: Sequence[float]
+) -> RegressionMetrics:
+    """
+    Computes metrics for regression tasks.abs
+
+    Args:
+        predictions: 1-D sequence of float predictions
+        targets: 1-D sequence of float labels
+
+    Returns:
+        RegressionMetrics object
+    """
+    preds, targs = np.array(predictions), np.array(targets)
+    pred_mean, targ_mean = preds.mean(), targs.mean()
+    covariance = (preds - pred_mean).dot(targs - targ_mean) / preds.size
+    corr = covariance / preds.std() / targs.std()
+
+    mse = np.square(preds - targs).mean()
+    return RegressionMetrics(num_examples=len(preds), pearson_correlation=corr, mse=mse)

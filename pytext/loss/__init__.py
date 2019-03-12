@@ -6,6 +6,7 @@ from .loss import (
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
     Loss,
+    MSELoss,
     PairwiseRankingLoss,
     SoftHardBCELoss,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "BinaryCrossEntropyLoss",
     "KLDivergenceBCELoss",
     "KLDivergenceCELoss",
+    "MSELoss",
     "SoftHardBCELoss",
     "PairwiseRankingLoss",
 ]
