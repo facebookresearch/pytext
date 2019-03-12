@@ -298,11 +298,11 @@ class FloatField(Field):
 
 
 class FloatVectorField(Field):
-    def __init__(self, dim=0, **kwargs):
+    def __init__(self, dim=0, dim_error_check=False, **kwargs):
         super().__init__(
             use_vocab=False,
             batch_first=True,
-            tokenize=FloatVectorField._parse_vector,
+            tokenize=self._parse_vector,
             dtype=torch.float,
             preprocessing=textdata.Pipeline(
                 float
@@ -310,12 +310,12 @@ class FloatVectorField(Field):
             fix_length=dim,
             pad_token=0,  # For irregular sized vectors, pad the missing units with 0s.
         )
+        self.dim_error_check = dim_error_check  # dims in data should match config
         self.dummy_model_input = torch.tensor(
             [[1.0] * dim], dtype=torch.float, device="cpu"
         )
 
-    @classmethod
-    def _parse_vector(cls, s):
+    def _parse_vector(self, s):
         if not s:
             return None
         if s[0] == "[":
@@ -323,7 +323,16 @@ class FloatVectorField(Field):
         if s[-1] == "]":
             s = s[:-1]  # Remove ']'
         s_array = re.split("[, ]", s)  # Split on ',' or ' '
-        return [s for s in s_array if s]  # Filter non strings
+        ret_val = [s for s in s_array if s]  # Filter non strings
+        assert not self.dim_error_check or len(ret_val) == self.fix_length, (
+            "FloatVectorField has mismatched dimensions. Config dims:"
+            + str(self.fix_length)
+            + " data:"
+            + str(len(ret_val))
+            + ", actual vector:"
+            + str(ret_val)
+        )
+        return ret_val
 
 
 class ActionField(VocabUsingField):
