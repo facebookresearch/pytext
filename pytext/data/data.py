@@ -3,12 +3,12 @@
 
 import functools
 import itertools
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
 
-from .sources import DataSchema, DataSource, RawExample
+from .sources import DataSource, RawExample
 from .sources.data_source import GeneratorIterator
 from .tensorizers import Tensorizer
 
@@ -127,7 +127,7 @@ class Data(Component):
 
     @classmethod
     def from_config(
-        cls, config: Config, schema: DataSchema, tensorizers: Dict[str, Tensorizer]
+        cls, config: Config, schema: Dict[str, Type], tensorizers: Dict[str, Tensorizer]
     ):
         data_source = create_component(ComponentType.DATA_SOURCE, config.source, schema)
         batcher = create_component(ComponentType.BATCHER, config.batcher)

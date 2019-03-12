@@ -11,6 +11,7 @@ from .pytext_config import ConfigBase, PyTextConfig
 
 class ComponentType(enum.Enum):
     TASK = "task"
+    COLUMN = "column"
     DATA_TYPE = "data_type"
     DATA_HANDLER = "data_handler"
     DATA_SOURCE = "data_source"

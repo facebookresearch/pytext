@@ -4,7 +4,6 @@
 import unittest
 
 import torch
-from pytext.data import types
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import (
@@ -27,21 +26,21 @@ class TensorizersTest(unittest.TestCase):
             SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
             eval_file=None,
             field_names=["label", "slots", "text", "dense"],
-            schema={"text": types.Text, "label": types.Label},
+            schema={"text": str, "label": str},
         )
 
     def test_initialize_tensorizers(self):
         tensorizers = {
-            "tokens": WordTensorizer(column="text"),
-            "labels": LabelTensorizer(column="label"),
-            "chars": ByteTensorizer(column="text"),
+            "tokens": WordTensorizer(text_column="text"),
+            "labels": LabelTensorizer(label_column="label"),
+            "chars": ByteTensorizer(text_column="text"),
         }
         initialize_tensorizers(tensorizers, self.data.train)
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
         self.assertEqual(7, len(tensorizers["labels"].labels))
 
     def test_initialize_word_tensorizer(self):
-        tensorizer = WordTensorizer(column="text")
+        tensorizer = WordTensorizer(text_column="text")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
@@ -50,17 +49,14 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(49, len(tensorizer.vocab))
 
     def test_create_word_tensors(self):
-        tensorizer = WordTensorizer(column="text")
+        tensorizer = WordTensorizer(text_column="text")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
             init.send(row)
         init.close()
 
-        rows = [
-            {"text": types.Text("I want some coffee")},
-            {"text": types.Text("Turn it up")},
-        ]
+        rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
         tensors = (tensorizer.numberize(row) for row in rows)
         tokens, seq_len = next(tensors)
         self.assertEqual([24, 0, 0, 0], tokens)
@@ -71,27 +67,20 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(3, seq_len)
 
     def test_create_byte_tensors(self):
-        tensorizer = ByteTensorizer(column="text", lower=False)
+        tensorizer = ByteTensorizer(text_column="text", lower=False)
         # not initializing because initializing is a no-op for ByteTensorizer
 
         s1 = "I want some coffee"
         s2 = "Turn it up"
-        rows = [{"text": types.Text(s1)}, {"text": types.Text(s2)}]
-        expected = [[ord(c) for c in s1], [ord(c) for c in s2]]
+        s3 = "我不会说中文"
+        rows = [{"text": s1}, {"text": s2}, {"text": s3}]
+        expected = [list(s1.encode()), list(s2.encode()), list(s3.encode())]
 
-        tensors = (tensorizer.numberize(row) for row in rows)
-        chars, seq_len = next(tensors)
-        self.assertEqual(len(s1), len(chars))
-        self.assertEqual(expected[0], chars)
-        self.assertEqual(len(s1), seq_len)
-
-        chars, seq_len = next(tensors)
-        self.assertEqual(len(s2), len(chars))
-        self.assertEqual(expected[1], chars)
-        self.assertEqual(len(s2), seq_len)
+        tensors = [tensorizer.numberize(row) for row in rows]
+        self.assertEqual([(bytes, len(bytes)) for bytes in expected], tensors)
 
     def test_create_word_character_tensors(self):
-        tensorizer = WordCharacterTensorizer(column="text")
+        tensorizer = WordCharacterTensorizer(text_column="text")
         # not initializing because initializing is a no-op for ByteTensorizer
 
         s1 = "I want some coffee"
@@ -100,7 +89,7 @@ class TensorizersTest(unittest.TestCase):
         def ords(word, pad_to):
             return [ord(c) for c in word] + [0] * (pad_to - len(word))
 
-        batch = [{"text": types.Text(s1)}, {"text": types.Text(s2)}]
+        batch = [{"text": s1}, {"text": s2}]
         # Note that the tokenizer lowercases here
         expected = [
             [ords("i", 6), ords("want", 6), ords("some", 6), ords("coffee", 6)],
@@ -120,7 +109,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(expected_lens, seq_lens.tolist())
 
     def test_initialize_label_tensorizer(self):
-        tensorizer = LabelTensorizer(column="label")
+        tensorizer = LabelTensorizer(label_column="label")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
@@ -129,7 +118,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(7, len(tensorizer.labels))
 
     def test_create_label_tensors(self):
-        tensorizer = LabelTensorizer(column="label")
+        tensorizer = LabelTensorizer(label_column="label")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
@@ -137,9 +126,9 @@ class TensorizersTest(unittest.TestCase):
         init.close()
 
         rows = [
-            {"label": types.Label("weather/find")},
-            {"label": types.Label("alarm/set_alarm")},
-            {"label": types.Label("non/existent")},
+            {"label": "weather/find"},
+            {"label": "alarm/set_alarm"},
+            {"label": "non/existent"},
         ]
 
         tensors = (tensorizer.numberize(row) for row in rows)

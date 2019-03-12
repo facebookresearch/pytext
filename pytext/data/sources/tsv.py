@@ -3,11 +3,9 @@
 
 import csv
 import threading
-from typing import List, Optional
+from typing import Dict, List, Optional, Type
 
-from pytext.data import types
-
-from .data_source import DataSchema, RootDataSource, SafeFileWrapper
+from .data_source import RootDataSource, SafeFileWrapper
 
 
 class TSV:
@@ -51,7 +49,7 @@ class TSVDataSource(RootDataSource):
         delimiter: str = "\t"
 
     @classmethod
-    def from_config(cls, config: Config, schema: DataSchema):
+    def from_config(cls, config: Config, schema: Dict[str, Type]):
         args = config._asdict()
         train_filename = args.pop("train_filename")
         test_filename = args.pop("test_filename")
@@ -89,11 +87,6 @@ class TSVDataSource(RootDataSource):
         return iter(self._eval_tsv)
 
 
-@TSVDataSource.register_type(types.Text)
+@TSVDataSource.register_type(str)
 def load_text(s):
-    return types.Text(s)
-
-
-@TSVDataSource.register_type(types.Label)
-def load_label(s):
-    return types.Label(s)
+    return str(s)
