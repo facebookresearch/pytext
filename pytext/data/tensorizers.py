@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Optional
+from typing import List, Optional, Tuple, Type
 
 from pytext.config.component import Component, ComponentType, create_component
 
@@ -25,14 +25,10 @@ class Tensorizer(Component):
     __EXPANSIBLE__ = True
 
     class Config(Component.Config):
-        column: str
+        pass
 
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(config.column)
-
-    def __init__(self, column):
-        self.column = column
+    def __init__(self, column_schema: List[Tuple[str, Type]]):
+        self.column_schema = column_schema
 
     def numberize(self, row):
         raise NotImplementedError
@@ -90,7 +86,7 @@ class WordTensorizer(Tensorizer):
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
         return cls(
-            column=config.column,
+            text_column=config.column,
             tokenizer=tokenizer,
             add_bos_token=config.add_bos_token,
             add_eos_token=config.add_eos_token,
@@ -100,7 +96,7 @@ class WordTensorizer(Tensorizer):
 
     def __init__(
         self,
-        column,
+        text_column,
         tokenizer=None,
         add_bos_token=Config.add_bos_token,
         add_eos_token=Config.add_eos_token,
@@ -108,7 +104,8 @@ class WordTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         vocab=None,
     ):
-        super().__init__(column)
+        super().__init__([(text_column, str)])
+        self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.vocab = vocab
         self.add_bos_token = add_bos_token
@@ -141,7 +138,7 @@ class WordTensorizer(Tensorizer):
                     yield
                 else:
                     row = yield
-                    raw_text = row[self.column]
+                    raw_text = row[self.text_column]
                     tokenized = self.tokenizer.tokenize(raw_text)
                     builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
@@ -150,7 +147,7 @@ class WordTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
-        tokens = self._lookup_tokens(row[self.column])
+        tokens = self._lookup_tokens(row[self.text_column])
         return tokens, len(tokens)
 
     def tensorize(self, batch):
@@ -183,18 +180,19 @@ class ByteTensorizer(Tensorizer):
     def from_config(cls, config: Config):
         return cls(config.column, config.lower)
 
-    def __init__(self, column, lower=True):
-        self.column = column
+    def __init__(self, text_column, lower=True):
+        super().__init__([(text_column, str)])
+        self.text_column = text_column
         self.lower = lower
 
     def numberize(self, row):
         """Convert text to characters."""
-        text = row[self.column]
+        text = row[self.text_column]
         if self.lower:
             text = text.lower()
         bytes = [c for c in text.encode()]
-        bytes_len = len(bytes)
-        return bytes, bytes_len
+        seq_len = len(text)
+        return bytes, seq_len
 
     def tensorize(self, batch):
         bytes, bytes_len = zip(*batch)
@@ -211,13 +209,9 @@ class WordCharacterTensorizer(WordTensorizer):
     of each token, 0 for pad token.
     """
 
-    def initialize(self):
-        while True:
-            yield
-
     def numberize(self, row):
         """Convert text to characters, pad batch."""
-        tokens = self.tokenizer.tokenize(row[self.column])
+        tokens = self.tokenizer.tokenize(row[self.text_column])
         lengths = [len(token.value) for token in tokens]
         characters = [[ord(c) for c in token.value] for token in tokens]
         return characters, lengths
@@ -241,9 +235,10 @@ class LabelTensorizer(Tensorizer):
         return cls(config.column, config.allow_unknown)
 
     def __init__(
-        self, column: str = Config.column, allow_unknown: bool = Config.allow_unknown
+        self, label_column: str = "label", allow_unknown: bool = Config.allow_unknown
     ):
-        self.column = column
+        super().__init__([(label_column, str)])
+        self.label_column = label_column
         self.allow_unknown = allow_unknown
 
     def initialize(self):
@@ -254,14 +249,14 @@ class LabelTensorizer(Tensorizer):
         try:
             while True:
                 row = yield
-                labels = row[self.column]
+                labels = row[self.label_column]
                 builder.add_all(labels.split(","))
         except GeneratorExit:
             self.labels = builder.make_vocab()
 
     def numberize(self, row):
         """Numberize labels."""
-        return self.labels.lookup_all(row[self.column])
+        return self.labels.lookup_all(row[self.label_column])
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch)
@@ -272,8 +267,16 @@ class MetaInput(Tensorizer):
        Used mostly for metric reporting."""
 
     class Config(Tensorizer.Config):
-        #: The name of the text column to parse from the data source.
-        column: str = "text"
+        #: The name of the pass-through column to parse from the data source.
+        column: str
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column)
+
+    def __init__(self, column: str):
+        super().__init__([(column, str)])
+        self.column = column
 
     def numberize(self, row):
         return row[self.column]

@@ -3,7 +3,6 @@
 
 import unittest
 
-from pytext.data import types
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.utils.test import import_tests_module
@@ -19,7 +18,7 @@ class TSVDataSourceTest(unittest.TestCase):
             SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
             eval_file=None,
             field_names=["label", "slots", "text", "dense"],
-            schema={"text": types.Text, "label": types.Label},
+            schema={"text": str, "label": str},
         )
 
     def test_read_data_source(self):
@@ -35,7 +34,7 @@ class TSVDataSourceTest(unittest.TestCase):
             SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
             eval_file=None,
             field_names=["label", "text"],
-            schema={"text": types.Text, "label": types.Label},
+            schema={"text": str, "label": str},
         )
 
         data = list(data_source.train)
@@ -69,7 +68,7 @@ class TSVDataSourceTest(unittest.TestCase):
             eval_file=None,
             field_names=["remapped_label", "slots", "remapped_text", "dense"],
             column_mapping={"remapped_label": "label", "remapped_text": "text"},
-            schema={"text": types.Text, "label": types.Label},
+            schema={"text": str, "label": str},
         )
 
         data = list(data_source.train)

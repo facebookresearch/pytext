@@ -5,21 +5,15 @@ import logging
 from typing import Dict
 
 from pytext.config.component import Component, ComponentType
-from pytext.data import types
 
 
 class RawExample(dict):
     """A wrapper class for a single example row with a dict interface.
-    This is here for any logic we want row objects to have that dicts don't do.
-    The values of this dictionary are `pytext.data.types.DataType` objects."""
+    This is here for any logic we want row objects to have that dicts don't do."""
 
 
 # Map of registered types for data source subclasses
 DATA_SOURCE_TYPES = {}
-
-
-DataSchema = Dict[str, types.DataType]
-DataSchemaConfig = Dict[str, types.DataType.Config]
 
 
 class SafeFileWrapper:
@@ -124,8 +118,7 @@ class DataSource(Component):
     Data sources are simple components that stream data from somewhere using Python's
     iteration interface. It should expose 3 iterators, "train", "test", and "eval".
     Each of these should be able to be iterated over any number of times, and iterating
-    over it should yield dictionaries whose values are instances of
-    `pytext.data.types.DataType`.
+    over it should yield dictionaries whose values are deserialized python types.
 
     Simply, these data sources exist as an interface to read through datasets
     in a pythonic way, with pythonic types, and abstract away the form that they are
