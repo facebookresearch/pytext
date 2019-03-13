@@ -31,6 +31,7 @@ from pytext.utils.documentation import (
 )
 from pytext.workflow import (
     export_saved_model_to_caffe2,
+    export_saved_model_to_torchscript,
     prepare_task_metadata,
     test_model_from_snapshot_path,
     train_model,
@@ -318,6 +319,19 @@ def export(context, model, output_path, output_onnx_path):
         f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
     )
     export_saved_model_to_caffe2(model, output_path, output_onnx_path)
+
+
+@main.command()
+@click.option("--model", help="the pytext snapshot model file to load")
+@click.option("--output-path", help="where to save the exported torchscript model")
+@click.pass_context
+def torchscript_export(context, model, output_path):
+    """Convert a pytext model snapshot to a caffe2 model."""
+    config = context.obj.load_config()
+    model = model or config.save_snapshot_path
+    output_path = output_path or f"{config.save_snapshot_path}.torchscript"
+    print(f"Exporting {model} to torchscript file: {output_path}")
+    export_saved_model_to_torchscript(model, output_path)
 
 
 @main.command()

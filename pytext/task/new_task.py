@@ -14,6 +14,7 @@ from pytext.models.doc_model import NewDocModel as DocModel
 from pytext.models.model import BaseModel as Model
 from pytext.trainers import Trainer
 from pytext.utils import cuda, precision, timing
+from torch import jit
 
 from .task import TaskBase
 
@@ -176,6 +177,20 @@ class NewTask(TaskBase):
         model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
+
+    def torchscript_export(self, model, export_path):
+        # Make sure to put the model on CPU and disable CUDA before exporting to
+        # ONNX to disable any data_parallel pieces
+        cuda.CUDA_ENABLED = False
+        precision.deactivate()
+        model.cpu()
+        # Trace needs eval mode, to disable dropout etc
+        model.eval()
+
+        batch = next(iter(self.data.batches(Stage.TEST)))
+        inputs = model.arrange_model_inputs(batch)
+        trace = jit.trace(model, inputs)
+        trace.save(export_path)
 
 
 class NewDocumentClassification(NewTask):
