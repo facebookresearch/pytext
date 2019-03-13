@@ -147,6 +147,11 @@ def export_saved_model_to_caffe2(
     task.export(task.model, export_caffe2_path, export_onnx_path=output_onnx_path)
 
 
+def export_saved_model_to_torchscript(saved_model_path: str, path: str) -> None:
+    task, train_config = load(saved_model_path)
+    task.torchscript_export(task.model, path)
+
+
 def test_model(
     test_config: TestConfig,
     metric_channels: Optional[List[Channel]],
