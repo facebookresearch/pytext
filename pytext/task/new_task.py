@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
-from pytext.data import types as data_types
 from pytext.data.data import Data
-from pytext.data.sources import DataSchema
 from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import ModelExporter
 from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
@@ -102,8 +100,6 @@ class NewTask(TaskBase):
 
     __EXPANSIBLE__ = True
 
-    DATA_SCHEMA: DataSchema
-
     class Config(ConfigBase):
         data: Data.Config = Data.Config()
         model: Model.Config
@@ -116,9 +112,16 @@ class NewTask(TaskBase):
             name: create_component(ComponentType.TENSORIZER, tensorizer)
             for name, tensorizer in config.model.inputs._asdict().items()
         }
+        schema: Dict[str, Type] = {}
+        for tensorizer in tensorizers.values():
+            for name, type in tensorizer.column_schema:
+                if name in schema and type != schema[name]:
+                    raise TypeError(f"Expected two different types for column {name}")
+                schema[name] = type
+
         # This initializes the tensorizers
         data = create_component(
-            ComponentType.DATA_HANDLER, config.data, cls.DATA_SCHEMA, tensorizers
+            ComponentType.DATA_HANDLER, config.data, schema, tensorizers
         )
         # Initialized tensorizers can be used to create the model
         model = create_component(ComponentType.MODEL, config.model, tensorizers)
@@ -171,8 +174,6 @@ class NewTask(TaskBase):
 
 
 class NewDocumentClassification(NewTask):
-    DATA_SCHEMA: DataSchema = {"text": data_types.Text, "label": data_types.Label}
-
     class Config(NewTask.Config):
         model: Model.Config = DocModel.Config()
         metric_reporter: ClassificationMetricReporter.Config = (

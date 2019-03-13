@@ -4,7 +4,7 @@
 import unittest
 
 from pytext.common.constants import Stage
-from pytext.data import Batcher, Data, types
+from pytext.data import Batcher, Data
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, WordTensorizer
@@ -21,12 +21,12 @@ class DataTest(unittest.TestCase):
             SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
             eval_file=None,
             field_names=["label", "slots", "text", "dense"],
-            schema={"text": types.Text, "label": types.Label},
+            schema={"text": str, "label": str},
         )
 
         self.tensorizers = {
-            "tokens": WordTensorizer(column="text"),
-            "labels": LabelTensorizer(column="label", allow_unknown=True),
+            "tokens": WordTensorizer(text_column="text"),
+            "labels": LabelTensorizer(label_column="label", allow_unknown=True),
         }
 
     def test_create_data_no_batcher_provided(self):
@@ -50,7 +50,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(10, len(tokens))
 
     def test_create_batches_different_tensorizers(self):
-        tensorizers = {"tokens": WordTensorizer(column="text")}
+        tensorizers = {"tokens": WordTensorizer(text_column="text")}
         data = Data(self.data_source, tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
@@ -62,8 +62,8 @@ class DataTest(unittest.TestCase):
 
     def test_data_initializes_tensorsizers(self):
         tensorizers = {
-            "tokens": WordTensorizer(column="text"),
-            "labels": LabelTensorizer(column="label"),
+            "tokens": WordTensorizer(text_column="text"),
+            "labels": LabelTensorizer(label_column="label"),
         }
         # verify WordTensorizer isn't in an initialized state yet
         assert tensorizers["tokens"].vocab is None
