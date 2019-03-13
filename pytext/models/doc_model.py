@@ -12,6 +12,7 @@ from pytext.data.tensorizers import (
     WordTensorizer,
 )
 from pytext.data.utils import UNK
+from pytext.exporters.exporter import ModelExporter
 from pytext.loss import CrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
@@ -67,6 +68,16 @@ class NewDocModel(DocModel):
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            ["tokens", "tokens_lens"],
+            self.arrange_model_inputs(tensor_dict),
+            {"tokens": list(tensorizers["tokens"].vocab)},
+            ["scores"],
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
+
     @classmethod
     def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         vocab = tensorizers["tokens"].vocab
@@ -86,5 +97,5 @@ class NewDocModel(DocModel):
             in_dim=representation.representation_dim,
             out_dim=len(labels),
         )
-        output_layer = ClassificationOutputLayer(labels, CrossEntropyLoss(None))
+        output_layer = ClassificationOutputLayer(list(labels), CrossEntropyLoss(None))
         return cls(embedding, representation, decoder, output_layer)
