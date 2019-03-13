@@ -107,10 +107,10 @@ def prepare_task(
     if config.random_seed is not None:
         set_random_seeds(config.random_seed)
 
+    task = create_task(config.task, metadata=metadata)
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task = load(config.load_snapshot_path)
-    else:
-        task = create_task(config.task, metadata=metadata)
+        saved_task, _ = load(config.load_snapshot_path)
+        task.model = saved_task.model
 
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
