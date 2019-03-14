@@ -99,7 +99,6 @@ def prepare_task(
 
     if dist_init_url and world_size > 1:
         assert metadata is not None
-        dist_init(rank, world_size, dist_init_url)
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
