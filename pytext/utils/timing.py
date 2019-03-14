@@ -165,3 +165,14 @@ time = TIMER.time
 snapshot = TIMER.snapshot
 SNAPSHOT = TIMER.snapshot()
 report = SNAPSHOT.report
+
+
+def report_snapshot(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        snapshot = TIMER.snapshot()
+        result = fn(*args, **kwargs)
+        snapshot.report()
+        return result
+
+    return wrapper

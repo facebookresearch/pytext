@@ -282,6 +282,7 @@ class Trainer(TrainerBase):
 
         return model, best_metric
 
+    @timing.report_snapshot
     def _run_epoch(
         self,
         stage,
