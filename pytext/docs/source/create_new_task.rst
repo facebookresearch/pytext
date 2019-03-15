@@ -160,7 +160,7 @@ vectors in the forward method. We don't need to override anything in
 this example since the default behavior in base :class:`~Model` already does this::
 
 	@classmethod
-	def compose_embedding(cls, sub_embs):
+	def compose_embedding(cls, sub_embs, metadata):
 	  return EmbeddingList(sub_embs.values(), concat=True)
 
 the `sub_embs` parameter contains the embeddings we previously defined in the :class:`~ModelInputConfig`
@@ -170,7 +170,7 @@ If you're creating more complicated models, e.g PairNN, you can override this fu
 to reflect the embedding structure::
 
 	@classmethod
-	def compose_embedding(cls, sub_embs):
+	def compose_embedding(cls, sub_embs, metadata):
 	  return EmbeddingList(
 	    EmbeddingList(sub_embs["word_feat_1"], sub_embs["dict_feat_1"], concat=True),
 	    EmbeddingList(sub_embs["word_feat_2"], sub_embs["dict_feat_2"], concat=True),

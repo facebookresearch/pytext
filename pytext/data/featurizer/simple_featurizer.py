@@ -75,3 +75,6 @@ class SimpleFeaturizer(Featurizer):
         self, input_records: Sequence[InputRecord]
     ) -> Sequence[OutputRecord]:
         return [self.featurize(in_record) for in_record in input_records]
+
+    def get_sentence_markers(self, locale=None):
+        return self.config.sentence_markers

@@ -57,3 +57,8 @@ class Featurizer(Component):
         """Featurize a batch of instances/examples.
         """
         return [self.featurize(record) for record in input_record_list]
+
+    def get_sentence_markers(self, locale=None):
+        raise NotImplementedError(
+            "Featurizer.get_sentence_markers() method must be implemented."
+        )
