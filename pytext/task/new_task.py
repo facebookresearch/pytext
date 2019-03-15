@@ -19,7 +19,7 @@ from pytext.models.doc_model import (
     NewDocRegressionModel as DocRegressionModel,
 )
 from pytext.models.model import BaseModel as Model
-from pytext.trainers import Trainer
+from pytext.trainers import Trainer, TrainingState
 from pytext.utils import cuda, distributed, precision, timing
 from torch import jit
 
@@ -30,29 +30,18 @@ class NewTaskTrainer(Trainer):
     class Config(Trainer.Config):
         """Make mypy happy"""
 
-    def _run_epoch(
-        self,
-        stage: Stage,
-        epoch: int,
-        batches,
-        model: Model,
-        metric_reporter: MetricReporter,
-        pre_batch=lambda: None,
-        backprop=lambda loss: None,
-        rank=0,
-        num_samples_to_log_progress: int = None,
-    ):
+    @timing.time("train epoch")
+    def run_epoch(self, state: TrainingState, data, metric_reporter: MetricReporter):
         """Our run_epoch is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""
-        print(f"Rank {rank} worker: Running epoch #{epoch} for {stage}")
-        report_metric = stage != Stage.TRAIN or self.config.report_train_metrics
+        report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
+        model = state.model
 
-        for batch_id, batch in enumerate(batches):
-            pre_batch()
+        for batch_id, batch in enumerate(data):
+            self.zero_grads(state)
             with timing.time("model.train_batch"):
                 loss, metric_data = model.train_batch(batch)
-            with timing.time("backprop"):
-                backprop(loss)
+            self.backprop(state, loss)
             if report_metric:
                 with timing.time("add metrics"):
                     metric_reporter.add_batch_stats(
@@ -63,7 +52,7 @@ class NewTaskTrainer(Trainer):
         if report_metric:
             with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
-                    model, stage, epoch, print_to_channels=(rank == 0)
+                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
                 )
         else:
             metric_reporter._reset()
@@ -165,6 +154,7 @@ class NewTask(TaskBase):
         # when processing time between dist_init and first loss.backward() is short
         if dist_init_url and world_size > 1:
             distributed.dist_init(rank, world_size, dist_init_url)
+
         return self.trainer.train(
             self.data.batches(Stage.TRAIN),
             self.data.batches(Stage.EVAL),

@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from .ensemble_trainer import EnsembleTrainer
 from .hogwild_trainer import HogwildTrainer
-from .trainer import Trainer
+from .trainer import Trainer, TrainingState
 
 
-__all__ = ["Trainer", "EnsembleTrainer", "HogwildTrainer"]
+__all__ = ["Trainer", "TrainingState", "EnsembleTrainer", "HogwildTrainer"]
