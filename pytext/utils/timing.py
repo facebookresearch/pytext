@@ -41,14 +41,22 @@ SECONDS_IN_DAY = 24 * SECONDS_IN_HOUR
 
 def format_time(seconds):
     if seconds > 60:
-        days, seconds = seconds // SECONDS_IN_DAY, seconds % SECONDS_IN_DAY
-        hours, seconds = seconds // SECONDS_IN_HOUR, seconds % SECONDS_IN_HOUR
-        minutes, seconds = seconds // SECONDS_IN_MINUTE, seconds % SECONDS_IN_MINUTE
+        days, seconds = int(seconds // SECONDS_IN_DAY), seconds % SECONDS_IN_DAY
+        hours, seconds = int(seconds // SECONDS_IN_HOUR), seconds % SECONDS_IN_HOUR
+        minutes, seconds = (
+            int(seconds // SECONDS_IN_MINUTE),
+            seconds % SECONDS_IN_MINUTE,
+        )
         if days:
+            if minutes >= 30:
+                hours += 1
             return f"{days}d{hours}h"
         elif hours:
+            if seconds >= 30:
+                minutes += 1
             return f"{hours}h{minutes}m"
         else:
+            seconds = int(round(seconds))
             return f"{minutes}m{seconds}s"
     elif seconds > 1:
         return f"{seconds:.1f}s"

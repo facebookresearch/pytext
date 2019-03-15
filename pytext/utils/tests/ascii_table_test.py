@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import unittest
 
-from pytext.common.ascii_table import ascii_table
+from pytext.utils.ascii_table import ascii_table
 
 
 class TestTables(unittest.TestCase):
