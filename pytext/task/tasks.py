@@ -43,6 +43,7 @@ from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
+from pytext.utils import distributed
 
 
 class QueryDocumentPairwiseRankingTask(Task):
@@ -74,11 +75,19 @@ class EnsembleTask(Task):
         ] = ClassificationMetricReporter.Config()
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
 
-    def train_single_model(self, train_config, model_id, rank=0, world_size=1):
+    def train_single_model(
+        self, train_config, model_id, rank=0, world_size=1, dist_init_url=""
+    ):
         assert model_id >= 0 and model_id < len(self.model.models)
+
+        train_iter = self.data_handler.get_train_iter(rank, world_size)
+        eval_iter = self.data_handler.get_eval_iter()
+        if dist_init_url and world_size > 1:
+            distributed.dist_init(rank, world_size, dist_init_url)
+
         return self.trainer.train_single_model(
-            self.data_handler.get_train_iter(rank, world_size),
-            self.data_handler.get_eval_iter(),
+            train_iter,
+            eval_iter,
             self.model.models[model_id],
             self.metric_reporter,
             train_config,
