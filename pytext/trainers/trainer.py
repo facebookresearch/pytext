@@ -69,9 +69,11 @@ class Trainer(TrainerBase):
         self.optimizer: torch.optim.Optimizer = create_optimizer(
             config.optimizer, model
         )
-        self.lr_scheduler: torch.optim.lr_scheduler = None
-        if config.scheduler:
-            self.lr_scheduler = create_scheduler(config.scheduler, self.optimizer)
+        self.scheduler: torch.optim.lr_scheduler = (
+            create_scheduler(config.scheduler, self.optimizer)
+            if config.scheduler
+            else Scheduler()
+        )
 
         self.config = config
 
@@ -141,8 +143,7 @@ class Trainer(TrainerBase):
 
             best_metric = None
             last_best_epoch = 0
-            if self.lr_scheduler:
-                self.lr_scheduler.prepare(train_iter, self.config.epochs)
+            self.scheduler.prepare(train_iter, self.config.epochs)
             self.optimizer = precision.wrap_optimizer(self.optimizer)
 
         def training_pre_batch_callback():
@@ -168,8 +169,7 @@ class Trainer(TrainerBase):
                         if p.requires_grad and p.grad is None:
                             p.backward(torch.zeros_like(p.data))
 
-            if self.lr_scheduler:
-                self.lr_scheduler.step_batch()
+            self.scheduler.step_batch()
 
             if self.config.max_clip_norm is not None:
                 grad_norm = torch.nn.utils.clip_grad_norm_(
@@ -236,12 +236,11 @@ class Trainer(TrainerBase):
                     )
 
             # Step the learning rate scheduler(s)
-            if self.lr_scheduler:
-                assert eval_metric is not None
-                self.lr_scheduler.step_epoch(
-                    metrics=metric_reporter.get_model_select_metric(eval_metric),
-                    epoch=epoch,
-                )
+            assert eval_metric is not None
+            self.scheduler.step_epoch(
+                metrics=metric_reporter.get_model_select_metric(eval_metric),
+                epoch=epoch,
+            )
 
             # choose best model.
             if metric_reporter.compare_metric(eval_metric, best_metric):
