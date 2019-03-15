@@ -212,15 +212,21 @@ class ClassificationMetrics(NamedTuple):
         self.macro_prf1_metrics.print_metrics(indentation="\t")
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
-            soft_scores = {
-                label: f"{metrics.average_precision * 100:.2f}"
+            soft_scores = [
+                {
+                    "label": label,
+                    "avg_pr": f"{metrics.average_precision * 100:.2f}",
+                    "roc_auc": f"{(metrics.roc_auc or 0.0) * 100:.2f}",
+                }
                 for label, metrics in self.per_label_soft_scores.items()
+            ]
+            columns = {
+                "label": "Label",
+                "avg_pr": "Average precision",
+                "roc_auc": "ROC AUC",
             }
-            print(
-                ascii_table_from_dict(
-                    soft_scores, "Label", "Average precision", indentation="\t"
-                )
-            )
+            print(ascii_table(soft_scores, columns, indentation="\t"))
+
             all_thresholds = set(
                 itertools.chain.from_iterable(
                     metrics.recall_at_precision
