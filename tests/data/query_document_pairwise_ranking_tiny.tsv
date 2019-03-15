@@ -1,4 +1,4 @@
-query	response	response
-query	response1	response2
-query2	response2	response2
-query3	responseA	responseB
+query	response	response	user1
+query	response1	response2	user2
+query2	response2	response2	user1
+query3	responseA	responseB	user3
