@@ -447,6 +447,8 @@ def average_precision_score(
 
     Returns:
         Average precision score.
+
+    TODO: This is too slow, improve the performance
     """
     ap = 0.0
     tp = 0
@@ -456,7 +458,8 @@ def average_precision_score(
     added_positives = 0
 
     for k, (label, score) in enumerate(zip(y_true_sorted, y_score_sorted)):
-        added_positives += label
+        if label:
+            added_positives += 1
         if score != threshold:
             threshold = score
             recall_diff = added_positives / total_positive
@@ -593,8 +596,10 @@ def compute_roc_auc(
     n_correct_pair_order = 0
 
     for y in reversed(y_true_sorted):  # want low predicted to high predicted
-        n_false += 1 - y
-        n_correct_pair_order += y * n_false
+        if y:
+            n_correct_pair_order += n_false
+        else:
+            n_false += 1
 
     n_true = len(y_true) - n_false
     if n_true == 0 or n_false == 0:
