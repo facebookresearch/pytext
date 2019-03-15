@@ -93,7 +93,7 @@ class DisjointMultitaskMetricReporter(MetricReporter):
                 sub_metric = metrics[name]
                 if reporter.lower_is_better:
                     sub_metric = -sub_metric
-            metric += sub_metric
+                metric += sub_metric
         else:  # default to training loss
             metric = -metrics[AVRG_LOSS]
 
