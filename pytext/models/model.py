@@ -275,7 +275,7 @@ class Model(BaseModel):
 
     @classmethod
     def compose_embedding(
-        cls, sub_emb_module_dict: Dict[str, EmbeddingBase]
+        cls, sub_emb_module_dict: Dict[str, EmbeddingBase], metadata
     ) -> EmbeddingList:
         """Default implementation is to compose an instance of
         :class:`~EmbeddingList` with all the sub-embedding modules. You should
@@ -296,7 +296,7 @@ class Model(BaseModel):
     @classmethod
     def create_embedding(cls, feat_config: FeatureConfig, metadata: CommonMetadata):
         sub_emb_module_dict = cls.create_sub_embs(feat_config, metadata)
-        emb_module = cls.compose_embedding(sub_emb_module_dict)
+        emb_module = cls.compose_embedding(sub_emb_module_dict, metadata)
         emb_module.config = feat_config
         return emb_module
 

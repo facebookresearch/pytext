@@ -78,7 +78,7 @@ class QueryDocumentPairwiseRankingModel(Model):
         return sub_emb_module_dict
 
     @classmethod
-    def compose_embedding(cls, sub_embs):
+    def compose_embedding(cls, sub_embs, metadata):
         return EmbeddingList(sub_embs.values(), concat=False)
 
     def forward(self, *inputs) -> List[torch.Tensor]:

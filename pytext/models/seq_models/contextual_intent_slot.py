@@ -39,7 +39,7 @@ class ContextualIntentSlotModel(JointModel):
         representation: ContextualIntentSlotRepresentation.Config = ContextualIntentSlotRepresentation.Config()
 
     @classmethod
-    def compose_embedding(cls, sub_embs):
+    def compose_embedding(cls, sub_embs, metadata):
         """Compose embedding list for ContextualIntentSlot model training.
         The first is the word embedding of the last utterance concatenated with the
         word level dictionary feature. The second is the word embedding of a
