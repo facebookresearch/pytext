@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Any, Tuple
+
+import copy
 
 import torch
 import torch.multiprocessing as mp
 from pytext.common.constants import Stage
-from pytext.config import PyTextConfig
 from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
-from pytext.models.model import Model
-from pytext.trainers.trainer import Trainer
+from pytext.trainers.trainer import Trainer, TrainingState
 from pytext.utils import cuda
 from torchtext.data import Iterator
 
@@ -32,36 +31,18 @@ class HogwildTrainer(Trainer):
         super().__init__(real_trainer_config, model, *args, **kwargs)
         self.num_workers = num_workers
 
-    def _run_epoch(
-        self,
-        stage,
-        epoch,
-        data_iter,
-        model,
-        metric_reporter,
-        pre_batch=lambda: None,
-        backprop=lambda loss, timer=None: None,
-        rank=0,
-        num_samples_to_log_progress=1000,
+    def run_epoch(
+        self, state: TrainingState, data_iter: Iterator, metric_reporter: MetricReporter
     ):
-        if stage == Stage.TRAIN:
+        if state.stage == Stage.TRAIN:
             processes = []
             for worker_rank in range(self.num_workers):
                 # Initialize the batches with different random states.
+                worker_state = copy.copy(state)
+                worker_state.rank = worker_rank
                 data_iter.batches.init_epoch()
                 p = mp.Process(
-                    target=super()._run_epoch,
-                    args=(
-                        stage,
-                        epoch,
-                        data_iter,
-                        model,
-                        metric_reporter,
-                        pre_batch,
-                        backprop,
-                        worker_rank,
-                        num_samples_to_log_progress,
-                    ),
+                    target=super().run_epoch, args=(state, data_iter, metric_reporter)
                 )
 
                 processes.append(p)
@@ -69,35 +50,12 @@ class HogwildTrainer(Trainer):
             for p in processes:
                 p.join()
         else:
-            return super()._run_epoch(
-                stage,
-                epoch,
-                data_iter,
-                model,
-                metric_reporter,
-                pre_batch,
-                backprop,
-                rank,
-                num_samples_to_log_progress,
-            )
+            return super().run_epoch(state, data_iter, metric_reporter)
 
-    def train(
-        self,
-        train_iter: Iterator,
-        eval_iter: Iterator,
-        model: Model,
-        metric_reporter: MetricReporter,
-        pytext_config: PyTextConfig,
-        *args,
-        **kwargs
-    ) -> Tuple[torch.nn.Module, Any]:
-        print("Num of workers for Hogwild Training is {}".format(self.num_workers))
+    def set_up_training(self, state: TrainingState, training_data):
+        super().set_up_training(state, training_data)
 
         # Share memory of tensors for concurrent updates from multiple processes.
         if self.num_workers > 1:
-            for param in model.parameters():
+            for param in state.model.parameters():
                 param.share_memory_()
-
-        return super().train(
-            train_iter, eval_iter, model, metric_reporter, pytext_config
-        )
