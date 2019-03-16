@@ -591,6 +591,9 @@ class Tree:
         """
         return self.root.__str__().strip()
 
+    def __repr__(self):
+        return str(self)
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False

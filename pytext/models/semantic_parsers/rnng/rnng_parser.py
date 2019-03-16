@@ -619,18 +619,24 @@ class RNNGParser(Model, Component):
             np.exp(np.max(action_scores)).item() / np.sum(np.exp(action_scores)).item()
             for action_scores in predicted_action_scores.detach().squeeze(0).tolist()
         ]
-
-        return predicted_action_idx.tolist(), [predicted_scores]
+        # remove the batch dimension since it's only 1
+        return predicted_action_idx.tolist()[0], predicted_scores
 
     # Supports beam search by checking if top K exists return type
     def get_pred(self, logits: List[Tuple[torch.Tensor, torch.Tensor]], *args):
+        """
+        Return Shapes:
+            preds: batch (1) * topk * action_len
+            scores: batch (1) * topk * (action_len * number_of_actions)
+        """
         n = len(logits)
         all_action_idx: List[List[int]] = [[]] * n
         all_scores: List[List[float]] = [[]] * n
         for i, l in enumerate(logits):
             all_action_idx[i], all_scores[i] = self.get_single_pred(l, *args)
 
-        return all_action_idx, all_scores
+        # add back batch dimension
+        return [all_action_idx], [all_scores]
 
     def save_modules(self, *args, **kwargs):
         pass
