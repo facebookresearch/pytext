@@ -150,11 +150,13 @@ class RootDataSource(DataSource):
     be the only part of the system that actually needs to understand details about
     the underlying storage system.
 
-    A RootDataSource should implement `_iter_raw_train`, `_iter_raw_test`,
-    and `_iter_raw_eval`. These functions should yield dictionaries of raw objects
-    which the loading system can convert using the schema loading functions. If this
-    is not a helpful abstraction, feel free to just subclass DataSource and implement
-    `train`, `test`, and `eval` directly.
+    RootDataSource presents a simpler abstraction than DataSource where the rows
+    are automatically converted to the right DataTypes.
+
+    A RootDataSource should implement `raw_train_data_generator`,
+    `raw_test_data_generator`, and `raw_eval_data_generator`. These functions
+    should yield dictionaries of raw objects which the loading system can
+    convert using the schema loading functions.
     """
 
     class Config(Component.Config):
@@ -168,9 +170,10 @@ class RootDataSource(DataSource):
         self.column_mapping = dict(column_mapping)
 
     def _convert_raw_source(self, source):
-        """Convert a raw iterable source, ie. from `DataSource._iter_raw_train`,
-        to an iterable that will yield `pytext.data.type.DataType` objects
-        according to the schema and the converters for this DataSource.
+        """Convert a raw iterable source, ie. from
+        `DataSource.raw_train_data_generator`, to an iterable that will yield
+        `pytext.data.type.DataType` objects according to the schema and the
+        converters for this DataSource.
         """
         for row in source:
             example = RawExample()
@@ -198,23 +201,41 @@ class RootDataSource(DataSource):
         converter = DATA_SOURCE_TYPES[(type(self), schema_type)]
         return converter(value)
 
-    def _iter_raw_train(self):
+    def raw_train_data_generator(self):
+        """
+        Returns a generator that yields the TRAIN data one item at a time
+        in a dictionary where each key is a field and the value is of the
+        raw type from the source.
+        DataSources need to implement this.
+        """
         raise NotImplementedError
 
-    def _iter_raw_test(self):
+    def raw_test_data_generator(self):
+        """
+        Returns a generator that yields the TEST data one item at a time
+        in a dictionary where each key is a field and the value is of the
+        raw type from the source.
+        DataSources need to implement this.
+        """
         raise NotImplementedError
 
-    def _iter_raw_eval(self):
+    def raw_eval_data_generator(self):
+        """
+        Returns a generator that yields the EVAL data one item at a time
+        in a dictionary where each key is a field and the value is of the
+        raw type from the source.
+        DataSources need to implement this.
+        """
         raise NotImplementedError
 
     @generator_property
     def train(self):
-        return self._convert_raw_source(self._iter_raw_train())
+        return self._convert_raw_source(self.raw_train_data_generator())
 
     @generator_property
     def test(self):
-        return self._convert_raw_source(self._iter_raw_test())
+        return self._convert_raw_source(self.raw_test_data_generator())
 
     @generator_property
     def eval(self):
-        return self._convert_raw_source(self._iter_raw_eval())
+        return self._convert_raw_source(self.raw_eval_data_generator())
