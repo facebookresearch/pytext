@@ -156,8 +156,8 @@ class NewTask(TaskBase):
             distributed.dist_init(rank, world_size, dist_init_url)
 
         return self.trainer.train(
-            self.data.batches(Stage.TRAIN),
-            self.data.batches(Stage.EVAL),
+            self.data.batches(Stage.TRAIN, rank, world_size),
+            self.data.batches(Stage.EVAL, rank, world_size),
             self.model,
             self.metric_reporter,
             config,

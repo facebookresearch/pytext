@@ -96,6 +96,18 @@ def generator_iterator(fn):
     return wrapped
 
 
+def shard(rows, rank, num_workers):
+    """Only return every num_workers example for distributed training."""
+    queue = []
+    for row in rows:
+        queue.append(row)
+        # might discard remainder %num_workers rows because distributed
+        # training needs to be in sync
+        if len(queue) == num_workers:
+            yield queue[rank]
+            queue = []
+
+
 class Data(Component):
     """Data is an abstraction that handles all of the following:
 
@@ -160,7 +172,7 @@ class Data(Component):
                 initializer.send(row)
 
     @generator_iterator
-    def batches(self, stage: Stage):
+    def batches(self, stage: Stage, rank=0, world_size=1):
         """Create batches of tensors to pass to model train_batch.
         This function yields dictionaries that mirror the `tensorizers` dict passed to
         `__init__`, ie. the keys will be the same, and the tensors will be the shape
@@ -168,11 +180,15 @@ class Data(Component):
 
         `stage` is used to determine which data source is used to create batches.
         """
-        rows = {
-            Stage.TRAIN: self.data_source.train,
-            Stage.TEST: self.data_source.test,
-            Stage.EVAL: self.data_source.eval,
-        }[stage]
+        rows = shard(
+            {
+                Stage.TRAIN: self.data_source.train,
+                Stage.TEST: self.data_source.test,
+                Stage.EVAL: self.data_source.eval,
+            }[stage],
+            rank,
+            world_size,
+        )
 
         numberized_rows = numberize_rows(self.tensorizers, rows)
         batches = self.batcher.batchify(
