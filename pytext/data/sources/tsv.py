@@ -77,13 +77,13 @@ class TSVDataSource(RootDataSource):
         self._test_tsv = make_tsv(test_file) if test_file else []
         self._eval_tsv = make_tsv(eval_file) if eval_file else []
 
-    def _iter_raw_train(self):
+    def raw_train_data_generator(self):
         return iter(self._train_tsv)
 
-    def _iter_raw_test(self):
+    def raw_test_data_generator(self):
         return iter(self._test_tsv)
 
-    def _iter_raw_eval(self):
+    def raw_eval_data_generator(self):
         return iter(self._eval_tsv)
 
 
