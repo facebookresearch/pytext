@@ -103,7 +103,7 @@ class ModelExporter(Component):
         self.input_names = input_names
         self.output_names = output_names
         self.dummy_model_input = dummy_model_input
-        self.vocab_map = vocab_map
+        self.vocab_map = vocab_map or {}
         # validate feature vocab
         for name in self.vocab_map:
             if name not in self.input_names:
