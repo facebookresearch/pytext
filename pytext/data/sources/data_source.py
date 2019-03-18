@@ -181,7 +181,11 @@ class RootDataSource(DataSource):
                 example[name] = self.load(value, self.schema[name])
             if len(example) != len(self.schema):
                 # We might need to re-evaluate this for multi-task training
-                logging.warn("Skipping row missing values")
+                logging.warn(
+                    "Skipping row missing values: row {} -> schema {}".format(
+                        list(example.keys()), list(self.schema.keys())
+                    )
+                )
                 continue
             yield example
 

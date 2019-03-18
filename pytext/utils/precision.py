@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from sys import stderr
+
+from . import cuda
+
 
 _APEX_DISABLED = False
 try:
     from apex import amp
 except ImportError:
-    print("Install apex from https://github.com/NVIDIA/apex/.")
+    print("Install apex from https://github.com/NVIDIA/apex/.", file=stderr)
     _APEX_DISABLED = True
 except AttributeError as e:
     print(f"Fail to import apex: {e}")
     _APEX_DISABLED = True
-
-from . import cuda
 
 
 """

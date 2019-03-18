@@ -115,7 +115,7 @@ class MacroPRF1Metrics(NamedTuple):
                         "f1": f"{metrics.f1:.2f}",
                         "support": metrics.true_positives + metrics.false_negatives,
                     }
-                    for label, metrics in self.per_label_scores.items()
+                    for label, metrics in sorted(self.per_label_scores.items())
                 ],
                 human_column_names={
                     "label": "Label",
@@ -130,6 +130,7 @@ class MacroPRF1Metrics(NamedTuple):
                     "recall": f"{self.macro_scores.recall:.2f}",
                     "f1": f"{self.macro_scores.f1:.2f}",
                 },
+                alignments={"label": "<"},
                 indentation=indentation,
             )
         )
@@ -209,31 +210,30 @@ class ClassificationMetrics(NamedTuple):
     def print_metrics(self) -> None:
         print(f"Accuracy: {self.accuracy * 100:.2f}\n")
         print("Macro P/R/F1 Scores:")
-        self.macro_prf1_metrics.print_metrics(indentation="\t")
+        self.macro_prf1_metrics.print_metrics()
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
             soft_scores = [
                 {
                     "label": label,
-                    "avg_pr": f"{metrics.average_precision * 100:.2f}",
-                    "roc_auc": f"{(metrics.roc_auc or 0.0) * 100:.2f}",
+                    "avg_pr": f"{metrics.average_precision:.2f}",
+                    "roc_auc": f"{(metrics.roc_auc or 0.0):.2f}",
                 }
-                for label, metrics in self.per_label_soft_scores.items()
+                for label, metrics in sorted(self.per_label_soft_scores.items())
             ]
             columns = {
                 "label": "Label",
                 "avg_pr": "Average precision",
                 "roc_auc": "ROC AUC",
             }
-            print(ascii_table(soft_scores, columns, indentation="\t"))
-
+            print(ascii_table(soft_scores, columns))
             all_thresholds = set(
                 itertools.chain.from_iterable(
                     metrics.recall_at_precision
                     for metrics in self.per_label_soft_scores.values()
                 )
             )
-            print("\n\t Precision at Recall")
+            print("\nPrecision at Recall")
             print(
                 ascii_table(
                     (
@@ -244,13 +244,13 @@ class ClassificationMetrics(NamedTuple):
                                 for p, r in metrics.recall_at_precision.items()
                             },
                         )
-                        for label, metrics in self.per_label_soft_scores.items()
+                        for label, metrics in sorted(self.per_label_soft_scores.items())
                     ),
                     dict(
                         {"label": "Label"},
                         **{str(t): f"P@R {t}" for t in all_thresholds},
                     ),
-                    indentation="\t",
+                    alignments={"label": "<"},
                 )
             )
         if self.mcc:

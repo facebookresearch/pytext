@@ -61,4 +61,5 @@ def ascii_table_from_dict(dict, key_name, value_name, indentation=""):
         [{"key": key, "value": value} for key, value in dict.items()],
         {"key": key_name, "value": value_name},
         indentation=indentation,
+        alignments={"key": "<"},
     )
