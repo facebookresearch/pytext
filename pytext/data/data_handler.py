@@ -675,6 +675,9 @@ class DataHandler(Component):
         self, data: Iterable[Dict[str, Any]], batch_size: Optional[int] = None
     ):
         ds = self.gen_dataset(data, include_label_fields=False)
+        num_batches = (
+            1 if batch_size is None else math.ceil(len(ds) / float(batch_size))
+        )
         it = BatchIterator(
             textdata.Iterator(
                 ds,
@@ -687,10 +690,12 @@ class DataHandler(Component):
                 train=False,
                 sort_key=self.sort_key,
                 sort_within_batch=self.sort_within_batch,
+                shuffle=self.shuffle,
             ),
             self._postprocess_batch,
             include_target=False,
             is_train=False,
+            num_batches=num_batches,
         )
         if batch_size is not None:
             return it
