@@ -39,6 +39,7 @@ class DFColumn:
     UTTERANCE = "text"
     ALIGNMENT = "alignment"
     DICT_FEAT = "dict_feat"
+    DENSE_FEAT = "dense_feat"
     RAW_FEATS = "raw_feats"
     MODEL_FEATS = "model_feats"
     DOC_WEIGHT = "doc_weight"
