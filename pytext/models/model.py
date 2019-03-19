@@ -47,6 +47,8 @@ class BaseModel(nn.Module, Component):
     __EXPANSIBLE__ = True
     __COMPONENT_TYPE__ = ComponentType.MODEL
 
+    SUPPORT_FP16_OPTIMIZER = False
+
     class Config(Component.Config):
         class ModelInput(ModelInputBase):
             pass
