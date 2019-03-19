@@ -177,6 +177,7 @@ class NewTask(TaskBase):
         model = model.cpu()
 
         batch = next(iter(self.data.batches(Stage.TRAIN)))
+        print("Saving caffe2 model to: " + export_path)
         model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
