@@ -2,12 +2,14 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from sys import stderr
 
+import torch
+
 from . import cuda
 
 
 _APEX_DISABLED = False
 try:
-    from apex import amp
+    from apex import amp, fp16_utils
 except ImportError:
     print("Install apex from https://github.com/NVIDIA/apex/.", file=stderr)
     _APEX_DISABLED = True
@@ -52,50 +54,96 @@ Using amp require adding three lines of code.
 
 
 _FP16_ENABLED = False
+_USE_FP16_OPTIMIZER = False
 _amp_handle = None
 
 
 def set_fp16(fp16_enabled: bool):
     global _FP16_ENABLED
-    global _amp_handle
 
     if _APEX_DISABLED:
         return
 
-    _FP16_ENABLED = fp16_enabled
-    if _FP16_ENABLED:
+    if fp16_enabled:
         if not cuda.CUDA_ENABLED:
             raise RuntimeError("Cuda is not available, should not running fp16...")
 
-        _amp_handle = amp.init(enabled=fp16_enabled)
+        _FP16_ENABLED = fp16_enabled
+
+
+def activate(model):
+    # Warning: this function should be called before train.
+
+    global _amp_handle
+    global _USE_FP16_OPTIMIZER
+
+    if _FP16_ENABLED:
+        _USE_FP16_OPTIMIZER = model.SUPPORT_FP16_OPTIMIZER
+
+        if _USE_FP16_OPTIMIZER:
+            model.half()
+        else:
+            _amp_handle = amp.init(enabled=_FP16_ENABLED)
 
 
 def wrap_optimizer(optimizer):
     if _FP16_ENABLED:
-        return _amp_handle.wrap_optimizer(optimizer)
+        if _USE_FP16_OPTIMIZER:
+            return fp16_utils.FP16_Optimizer(optimizer, dynamic_loss_scale=True)
+        else:
+            return _amp_handle.wrap_optimizer(optimizer)
     else:
         return optimizer
 
 
+def unwrap_optimizer(wrapped_optimizer):
+    if _FP16_ENABLED:
+        if _USE_FP16_OPTIMIZER:
+            return wrapped_optimizer.optimizer
+        else:
+            return wrapped_optimizer._optimizer
+    else:
+        return wrapped_optimizer
+
+
 def backward(optimizer, loss):
     if _FP16_ENABLED:
-        # 1. Use automatic loss scaling to best use fp16 range (skip step if overflow)
-        # 2. Clear handle's cache of casted parameters before the next optimizer step
-        with optimizer.scale_loss(loss) as scaled_loss:
-            scaled_loss.backward()
+        if _USE_FP16_OPTIMIZER:
+            # 1. Manage master weights update
+            # 2. Manage dynamic loss scaling
+            optimizer.backward(loss)
+        else:
+            # 1. Use automatic loss scaling to best use fp16 range
+            # 2. Clear handle's cache of casted parameters
+            with optimizer.scale_loss(loss) as scaled_loss:
+                scaled_loss.backward()
     else:
         loss.backward()
 
 
-def deactivate():
+def clip_grad_norm(model, optimizer, max_clip_norm):
+    if _FP16_ENABLED and _USE_FP16_OPTIMIZER:
+        return optimizer.clip_master_grads(max_clip_norm)
+    else:
+        return torch.nn.utils.clip_grad_norm_(model.parameters(), max_clip_norm)
+
+
+def deactivate(model):
+    # Warning: this function is expected to be called after train finished.
+    # In case need to deactivate before train, should invoke unwrap_optimizer first.
+
     global _FP16_ENABLED
+    global _USE_FP16_OPTIMIZER
 
     if _FP16_ENABLED:
-        # restoring uncasted versions of functions
-        _amp_handle._deactivate()
+        if _USE_FP16_OPTIMIZER:
+            # convert model parameters back to fp32
+            model.float()
+            _USE_FP16_OPTIMIZER = False
+        else:
+            # restoring uncasted versions of functions
+            _amp_handle._deactivate()
         _FP16_ENABLED = False
-    else:
-        pass
 
 
 def maybe_float(tensor):

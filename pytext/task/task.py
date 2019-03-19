@@ -93,6 +93,8 @@ class TaskBase(Component):
         model = create_model(task_config.model, task_config.features, metadata)
         if model_state:
             model.load_state_dict(model_state)
+
+        precision.activate(model)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
@@ -177,9 +179,9 @@ class TaskBase(Component):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
-        precision.deactivate()
-
         model = model.cpu()
+        precision.deactivate(model)
+
         if self.exporter:
             if metric_channels:
                 print("Exporting metrics")

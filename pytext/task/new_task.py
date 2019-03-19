@@ -123,6 +123,8 @@ class NewTask(TaskBase):
         model = create_component(ComponentType.MODEL, config.model, tensorizers)
         if model_state:
             model.load_state_dict(model_state)
+
+        precision.activate(model)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
         # This is the only place right now that the task actually cares about which
@@ -173,8 +175,8 @@ class NewTask(TaskBase):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
-        precision.deactivate()
         model = model.cpu()
+        precision.deactivate(model)
 
         batch = next(iter(self.data.batches(Stage.TRAIN)))
         print("Saving caffe2 model to: " + export_path)
@@ -186,8 +188,8 @@ class NewTask(TaskBase):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
-        precision.deactivate()
         model.cpu()
+        precision.deactivate(model)
         # Trace needs eval mode, to disable dropout etc
         model.eval()
 

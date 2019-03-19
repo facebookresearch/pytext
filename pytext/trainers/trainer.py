@@ -160,8 +160,8 @@ class Trainer(TrainerBase):
         state.scheduler.step_batch()
 
         if self.config.max_clip_norm is not None:
-            grad_norm = torch.nn.utils.clip_grad_norm_(
-                state.model.parameters(), self.config.max_clip_norm
+            grad_norm = precision.clip_grad_norm(
+                state.model, self.optimizer, self.config.max_clip_norm
             )
         else:
             grad_norm = None
