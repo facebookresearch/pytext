@@ -6,7 +6,7 @@ from inspect import getmembers, isclass, isfunction
 from sys import modules, stderr
 from typing import Union
 
-from pytext.config.component import get_component_name
+from pytext.config.component import Component, get_component_name
 from pytext.config.pytext_config import ConfigBase
 from pytext.models.module import Module
 
@@ -130,6 +130,19 @@ def pretty_print_config_class(obj):
             print(f"    {k} = null")
 
 
+def get_subclasses(klass, stop_klass=Component):
+    ret = set()
+
+    def add_subclasses(k):
+        for b in getattr(k, "__bases__"):
+            if b != stop_klass:
+                ret.add(b)
+                add_subclasses(b)
+
+    add_subclasses(klass)
+    return ret
+
+
 def find_config_class(class_name):
     """
         Return the set of PyText classes matching that name.
@@ -145,7 +158,10 @@ def find_config_class(class_name):
     for _, mod in list(modules.items()):
         try:
             for name, obj in getmembers(mod, isclass):
-                if name == class_name:
+                if name == class_name and any(
+                    base.__module__.startswith("pytext.")
+                    for base in get_subclasses(obj, object)
+                ):
                     if not module_part or obj.__module__ == module_part:
                         ret.add(obj)
         except ModuleNotFoundError:
@@ -173,7 +189,7 @@ def replace_components(root, component, base_class):
                     return found
 
                 # Not found in options, try to match base classes
-                # Except ConfigBase, which gives false matches
-                bases = list(filter(lambda x: x != ConfigBase, v_comp_obj.__bases__))
+                bases = get_subclasses(v_comp_obj)
+                bases.add(v_comp_obj)
                 if base_class & set(bases):
                     return [k]

@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Union
 import click
 import torch
 from pytext import create_predictor
+from pytext.builtin_task import add_include
 from pytext.config import LATEST_VERSION, PyTextConfig
 from pytext.config.component import register_tasks
 from pytext.config.serialize import (
@@ -26,6 +27,7 @@ from pytext.utils.documentation import (
     ROOT_CONFIG,
     eprint,
     find_config_class,
+    get_subclasses,
     pretty_print_config_class,
     replace_components,
 )
@@ -135,7 +137,7 @@ def gen_config_impl(task_name, options):
         elif len(replace_class_set) > 1:
             raise Exception(f"Multiple component named {opt}: {replace_class_set}")
         replace_class = next(iter(replace_class_set))
-        found = replace_components(root, opt, set(replace_class.__bases__))
+        found = replace_components(root, opt, get_subclasses(replace_class))
         if found:
             eprint("INFO - Applying option:", "->".join(reversed(found)), "=", opt)
             obj = root
@@ -151,13 +153,14 @@ def gen_config_impl(task_name, options):
 
 
 @click.group()
+@click.option("--include", multiple=True)
 @click.option("--config-file", default="")
 @click.option("--config-json", default="")
 @click.option(
     "--config-module", default="", help="python module that contains the config object"
 )
 @click.pass_context
-def main(context, config_file, config_json, config_module):
+def main(context, config_file, config_json, config_module, include):
     """Configs can be passed by file or directly from json.
     If neither --config-file or --config-json is passed,
     attempts to read the file from stdin.
@@ -166,6 +169,9 @@ def main(context, config_file, config_json, config_module):
 
       pytext train < demos/docnn.json
     """
+    for path in include or []:
+        add_include(path)
+
     context.obj = Attrs()
 
     def load_config():
@@ -282,6 +288,7 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
 @click.pass_context
 def train(context):
     """Train a model and save the best snapshot."""
+
     config = context.obj.load_config()
     print("\n===Starting training...")
     metric_channels = []
