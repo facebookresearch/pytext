@@ -28,6 +28,7 @@ from pytext.fields import (
     CharFeatureField,
     DictFeatureField,
     FieldMeta,
+    FloatVectorField,
     SeqFeatureField,
     TextFeatureField,
 )
@@ -95,6 +96,41 @@ JOINT_CONFIG = """
 """
 
 DOC_CONFIGS = [
+    """
+{
+  "model": {
+    "representation": {
+      "DocNNRepresentation": {}
+    },
+    "output_layer": {
+      "loss": {
+        "CrossEntropyLoss": {}
+      }
+    }
+  },
+  "features": {
+    "word_feat": {},
+    "dict_feat": {},
+    "char_feat": {
+      "embed_dim": 5,
+      "cnn": {
+        "kernel_num": 2,
+        "kernel_sizes": [2, 3]
+        }
+      },
+      "dense_feat": {
+        "dim":10
+      }
+  },
+  "featurizer": {
+    "SimpleFeaturizer": {}
+  },
+  "trainer": {
+    "epochs": 1
+  },
+  "exporter": {}
+}
+""",
     """
 {
   "model": {
@@ -291,6 +327,9 @@ CHAR_VOCAB = ["<UNK>", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
 # Need to remove this and make it a random input once ONNX is able to
 # Handle different batch_sizes
 BATCH_SIZE = 1
+
+# Fixed dimension of dense_features since it needs to be specified in config
+DENSE_FEATURE_DIM = 10
 
 
 class ModelExporterTest(hu.HypothesisTestCase):
@@ -685,9 +724,11 @@ class ModelExporterTest(hu.HypothesisTestCase):
         w_vocab = Vocab(Counter())
         dict_vocab = Vocab(Counter())
         c_vocab = Vocab(Counter())
+        d_vocab = Vocab(Counter())
         w_vocab.itos = W_VOCAB
         dict_vocab.itos = DICT_VOCAB
         c_vocab.itos = CHAR_VOCAB
+        d_vocab.itos = []
 
         text_feat_meta = FieldMeta()
         text_feat_meta.unk_token_idx = UNK_IDX
@@ -712,11 +753,24 @@ class ModelExporterTest(hu.HypothesisTestCase):
         char_feat_meta.pretrained_embeds_weight = None
         char_feat_meta.dummy_model_input = CharFeatureField.dummy_model_input
 
+        dense_feat_meta = FieldMeta()
+        dense_feat_meta.vocab_size = 0
+        dense_feat_meta.vocab = d_vocab
+        dense_feat_meta.vocab_export_name = "dense_vals"
+        dense_feat_meta.pretrained_embeds_weight = None
+        # ugh, dims are fixed
+        dense_feat_meta.dummy_model_input = torch.tensor(
+            [[1.0] * DENSE_FEATURE_DIM, [1.0] * DENSE_FEATURE_DIM],
+            dtype=torch.float,
+            device="cpu",
+        )
+
         meta = CommonMetadata()
         meta.features = {
             DatasetFieldName.TEXT_FIELD: text_feat_meta,
             DatasetFieldName.DICT_FIELD: dict_feat_meta,
             DatasetFieldName.CHAR_FIELD: char_feat_meta,
+            DatasetFieldName.DENSE_FIELD: dense_feat_meta,
         }
         meta.target = labels
         if len(labels) == 1:
@@ -788,6 +842,9 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 c_vocab_size, size=(batch_size, num_words, num_chars)
             ).astype(np.int64)
         )
+        dense_features = torch.from_numpy(
+            np.random.rand(batch_size, DENSE_FEATURE_DIM).astype(np.float32)
+        )
         inputs = []
         if features.word_feat:
             inputs.append(text)
@@ -796,6 +853,8 @@ class ModelExporterTest(hu.HypothesisTestCase):
         if features.char_feat:
             inputs.append(chars)
         inputs.append(lengths)
+        if features.dense_feat:
+            inputs.append(dense_features)
         return tuple(inputs)
 
     def _get_config(self, cls, config_str):
