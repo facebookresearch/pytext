@@ -3,6 +3,8 @@
 
 import functools
 import itertools
+import math
+import random
 from typing import Dict, Iterable, Optional, Type
 
 from pytext.common.constants import Stage
@@ -17,6 +19,7 @@ class Batcher(Component):
     """Batcher designed to batch rows of data, before padding."""
 
     __COMPONENT_TYPE__ = ComponentType.BATCHER
+    __EXPANSIBLE__ = True
 
     class Config(Component.Config):
         #: Make batches of this size when possible. If there's not enough data,
@@ -40,23 +43,82 @@ class Batcher(Component):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.test_batch_size = test_batch_size
+        self._batch_sizes = {
+            Stage.TRAIN: self.train_batch_size,
+            Stage.TEST: self.eval_batch_size,
+            Stage.EVAL: self.test_batch_size,
+        }
 
     def batchify(
         self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
     ):
         """Group rows by batch_size.  Assume iterable of dicts, yield dict of lists.
         The last batch will be of length len(iterable) % batch_size."""
-        batch_size = {
-            Stage.TRAIN: self.train_batch_size,
-            Stage.TEST: self.eval_batch_size,
-            Stage.EVAL: self.test_batch_size,
-        }[stage]
-        iterators = [iter(iterable)] * batch_size
-        for batch in itertools.zip_longest(*iterators):
-            res = [ex for ex in batch if ex is not None]
+        batch_size = self._batch_sizes[stage]
+        for batch in self._group_iter(iterable, batch_size, sort_key):
+            yield zip_dicts(batch)
+
+    def _group_iter(self, iterable: Iterable[RawExample], group_size, sort_key=None):
+        iterators = [iter(iterable)] * group_size
+        for group in itertools.zip_longest(*iterators):
+            group = [ex for ex in group if ex is not None]
             if sort_key:
-                res.sort(reverse=True, key=sort_key)
-            yield zip_dicts(res)
+                group.sort(key=sort_key, reverse=True)
+            yield group
+
+
+class PoolingBatcher(Batcher):
+    """
+    Batcher that looks at pools of data, and sorts, batches, and shuffles them, before
+    padding.
+    """
+
+    class Config(Batcher.Config):
+        #: Number of batches in a pool, to load at one time.
+        pool_num_batches: int = 10000
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            config.train_batch_size,
+            config.eval_batch_size,
+            config.test_batch_size,
+            config.pool_num_batches,
+        )
+
+    def __init__(
+        self,
+        train_batch_size=Config.train_batch_size,
+        eval_batch_size=Config.eval_batch_size,
+        test_batch_size=Config.test_batch_size,
+        pool_num_batches=Config.pool_num_batches,
+    ):
+        super().__init__(train_batch_size, eval_batch_size, test_batch_size)
+        self.pool_num_batches = pool_num_batches or 1
+
+    def batchify(
+        self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
+    ):
+        """
+        From an iterable of dicts, yield dicts of lists, by
+
+        1. Load pool of batch_size * pool_num_batches examples.
+        2. Sort rows, if necessary.
+        3. Form batches with batch_size examples each.
+        4. Shuffle batches and yield all batches.
+        """
+        batch_size = self._batch_sizes[stage]
+        pool_size = batch_size * self.pool_num_batches
+
+        for pool in self._group_iter(iterable, pool_size, sort_key):
+            batch_indices = list(range(math.ceil(len(pool) / batch_size)))
+            if sort_key:
+                random.shuffle(batch_indices)
+            else:
+                random.shuffle(pool)
+            for batch_index in batch_indices:
+                batch = pool[batch_size * batch_index : batch_size * (batch_index + 1)]
+                yield zip_dicts(batch)
 
 
 def numberize_rows(tensorizers, rows):
@@ -134,7 +196,7 @@ class Data(Component):
         #: will not provide any data.
         source: DataSource.Config = DataSource.Config()
         #: How training examples are split into batches for the optimizer.
-        batcher: Batcher.Config = Batcher.Config()
+        batcher: Batcher.Config = PoolingBatcher.Config()
         sort_key: Optional[str] = None
 
     @classmethod

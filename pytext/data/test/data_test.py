@@ -4,7 +4,7 @@
 import unittest
 
 from pytext.common.constants import Stage
-from pytext.data import Batcher, Data
+from pytext.data import Batcher, Data, PoolingBatcher
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, WordTensorizer
@@ -117,3 +117,19 @@ class BatcherTest(unittest.TestCase):
         self.assertEqual(len(batches), 4)
         self.assertEqual(batches[1]["a"], [3, 4, 5])
         self.assertEqual(batches[3]["b"], [19])
+
+    def test_pooling_batcher(self):
+        data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
+        batcher = PoolingBatcher(train_batch_size=3, pool_num_batches=2)
+        batches = list(batcher.batchify(data, sort_key=lambda x: x["a"]))
+
+        self.assertEqual(len(batches), 4)
+        a_vals = {a for batch in batches for a in batch["a"]}
+        self.assertSetEqual(a_vals, set(range(10)))
+        for batch in batches[:2]:
+            self.assertGreater(batch["a"][0], batch["a"][-1])
+            for a in batch["a"]:
+                self.assertLess(a, 6)
+        for batch in batches[2:]:
+            for a in batch["a"]:
+                self.assertGreaterEqual(a, 6)
