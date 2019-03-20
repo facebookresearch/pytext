@@ -21,6 +21,7 @@ from pytext.data import (
     QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
+from pytext.exporters import DenseFeatureExporter
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     CompositionalMetricReporter,
@@ -115,6 +116,7 @@ class DocClassificationTask(Task):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
         )
+        exporter: Optional[DenseFeatureExporter.Config] = None
 
     @classmethod
     def format_prediction(cls, predictions, scores, context, target_meta):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import torch
 from caffe2.python import core
@@ -73,29 +73,14 @@ class ModelExporter(Component):
     ):
         # The number of names in input_names *must* be equal to the number of
         # tensors passed in dummy_input
-        input_names: List[str] = []
-        dummy_model_input: List = []
-        feature_itos_map = {}
-
-        for name, feat_config in feature_config._asdict().items():
-            if isinstance(feat_config, ConfigBase):
-                input_names.extend(feat_config.export_input_names)
-                if getattr(feature_meta[name], "vocab", None):
-                    feature_itos_map[feat_config.export_input_names[0]] = feature_meta[
-                        name
-                    ].vocab.itos
-                dummy_model_input.append(feature_meta[name].dummy_model_input)
-
-        if "tokens_vals" in input_names:
-            dummy_model_input.append(
-                torch.tensor([1, 1], dtype=torch.long)
-            )  # token lengths
-            input_names.append("tokens_lens")
-        if "seq_tokens_vals" in input_names:
-            dummy_model_input.append(
-                torch.tensor([1, 1], dtype=torch.long)
-            )  # seq lengths
-            input_names.append("seq_tokens_lens")
+        (
+            input_names,
+            dummy_model_input,
+            feature_itos_map,
+        ) = cls._get_exportable_metadata(
+            lambda x: isinstance(x, ConfigBase), feature_config, feature_meta
+        )
+        cls._add_feature_lengths(input_names, dummy_model_input)
         return input_names, tuple(dummy_model_input), feature_itos_map
 
     def __init__(self, config, input_names, dummy_model_input, vocab_map, output_names):
@@ -233,3 +218,43 @@ class ModelExporter(Component):
 
         for mc in metric_channels or []:
             mc.export(model, self.dummy_model_input)
+
+    @classmethod
+    def _get_exportable_metadata(
+        cls,
+        exportable_filter: Callable,
+        feature_config: FeatureConfig,
+        feature_meta: Dict[str, FieldMeta],
+    ) -> Tuple[List[str], List, Dict]:
+        # The number of names in input_names *must* be equal to the number of
+        # tensors passed in dummy_input
+        input_names: List[str] = []
+        dummy_model_input: List = []
+        feature_itos_map = {}
+
+        for name, feat_config in feature_config._asdict().items():
+            if exportable_filter(feat_config):
+                input_names.extend(feat_config.export_input_names)
+                if getattr(feature_meta[name], "vocab", None):
+                    feature_itos_map[feat_config.export_input_names[0]] = feature_meta[
+                        name
+                    ].vocab.itos
+                dummy_model_input.append(feature_meta[name].dummy_model_input)
+        return input_names, dummy_model_input, feature_itos_map
+
+    @classmethod
+    def _add_feature_lengths(cls, input_names: List[str], dummy_model_input: List):
+        """If any of the input_names have tokens or seq_tokens, add the length
+        of those tokens to dummy_input
+        """
+
+        if "tokens_vals" in input_names:
+            dummy_model_input.append(
+                torch.tensor([1, 1], dtype=torch.long)
+            )  # token lengths
+            input_names.append("tokens_lens")
+        if "seq_tokens_vals" in input_names:
+            dummy_model_input.append(
+                torch.tensor([1, 1], dtype=torch.long)
+            )  # seq lengths
+            input_names.append("seq_tokens_lens")

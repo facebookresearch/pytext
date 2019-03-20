@@ -312,7 +312,7 @@ class FloatVectorField(Field):
         )
         self.dim_error_check = dim_error_check  # dims in data should match config
         self.dummy_model_input = torch.tensor(
-            [[1.0] * dim], dtype=torch.float, device="cpu"
+            [[1.0] * dim, [1.0] * dim], dtype=torch.float, device="cpu"
         )
 
     def _parse_vector(self, s):
