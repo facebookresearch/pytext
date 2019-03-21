@@ -10,7 +10,7 @@ from typing import Dict, Iterable, Optional, Type
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, create_component
 
-from .sources import DataSource, RawExample
+from .sources import DataSource, RawExample, TSVDataSource
 from .sources.data_source import GeneratorIterator
 from .tensorizers import Tensorizer
 
@@ -194,7 +194,7 @@ class Data(Component):
     class Config(Component.Config):
         #: Specify where training/test/eval data come from. The default value
         #: will not provide any data.
-        source: DataSource.Config = DataSource.Config()
+        source: DataSource.Config = TSVDataSource.Config()
         #: How training examples are split into batches for the optimizer.
         batcher: Batcher.Config = PoolingBatcher.Config()
         sort_key: Optional[str] = None
