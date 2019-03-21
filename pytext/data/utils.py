@@ -155,8 +155,7 @@ class Vocabulary:
            Used for replacing special strings for special tokens.
            e.g. '[UNK]' for UNK"""
         for token, replacement in replacements.items():
-            idx = self.idx[token]
-            del (self.idx[token])
+            idx = self.idx.pop(token)
             self._vocab[idx] = replacement
             self.idx[replacement] = idx
 
