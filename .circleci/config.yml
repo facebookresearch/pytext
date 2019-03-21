@@ -76,7 +76,7 @@ jobs:
               sudo pip install black isort
       - run:
           name: run black
-          command: black pytext --check
+          command: black pytext --check --diff
       - run:
           name: run isort
           command: |
