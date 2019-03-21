@@ -73,12 +73,3 @@ class KDDocClassificationDataHandlerTest(unittest.TestCase):
             data[0][Target.TARGET_PROB_FIELD],
             [-0.005602254066616297, -5.430975914001465],
         )
-
-    def test_align_target_label(self):
-        target = [[0.1, 0.2, 0.3], [0.1, 0.2, 0.3]]
-        label_list = ["l1", "l2", "l3"]
-        batch_label_list = [["l3", "l2", "l1"], ["l1", "l3", "l2"]]
-        align_target = self.data_handler._align_target_label(
-            target, label_list, batch_label_list
-        )
-        self.assertListEqual(align_target, [[0.3, 0.2, 0.1], [0.1, 0.3, 0.2]])

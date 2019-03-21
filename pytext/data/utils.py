@@ -98,6 +98,33 @@ def pad_and_tensorize(batch, pad_token=0, dtype=torch.long):
     return cuda.tensor(pad(batch, pad_token=pad_token), dtype=dtype)
 
 
+def align_target_label(
+    target: List[float], label_list: List[str], batch_label_list: List[List[str]]
+):
+    """
+    align the target in the order of label_list, batch_label_list stores the
+    original target order.
+    """
+    if sorted(label_list) != sorted(batch_label_list[0]):
+        raise Exception(
+            "label list %s is not matched with doc label %s",
+            (str(batch_label_list), str(label_list)),
+        )
+
+    def get_sort_idx(l):
+        return [i[0] for i in sorted(enumerate(l), key=lambda x: x[1])]
+
+    def reorder(l, o):
+        return [l[i] for i in o]
+
+    unsort_idx = get_sort_idx(get_sort_idx(label_list))
+    align_target = [
+        reorder(reorder(t, get_sort_idx(b)), unsort_idx)
+        for t, b in zip(target, batch_label_list)
+    ]
+    return align_target
+
+
 class SpecialToken(str):
     def __eq__(self, other):
         # We don't want to compare as equal to actual strings, but we want to behave

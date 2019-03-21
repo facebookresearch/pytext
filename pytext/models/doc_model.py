@@ -4,6 +4,7 @@
 from typing import Dict, Union
 
 from pytext.config import ConfigBase
+from pytext.config.component import create_loss
 from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import (
     LabelTensorizer,
@@ -14,7 +15,6 @@ from pytext.data.tensorizers import (
 )
 from pytext.data.utils import UNK
 from pytext.exporters.exporter import ModelExporter
-from pytext.loss import CrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
@@ -51,6 +51,8 @@ class DocModel(Model):
 class NewDocModel(DocModel):
     """DocModel that's compatible with the new Model abstraction, which is responsible
     for describing which inputs it expects and arranging its input tensors."""
+
+    __EXPANSIBLE__ = True
 
     class Config(DocModel.Config):
         class ModelInput(Model.Config.ModelInput):
@@ -98,7 +100,10 @@ class NewDocModel(DocModel):
             in_dim=representation.representation_dim,
             out_dim=len(labels),
         )
-        output_layer = ClassificationOutputLayer(list(labels), CrossEntropyLoss(None))
+        # TODO change from_config function of ClassificationOutputLayer after migriting to new design
+        output_layer = ClassificationOutputLayer(
+            list(labels), create_loss(config.output_layer.loss)
+        )
         return cls(embedding, representation, decoder, output_layer)
 
 
