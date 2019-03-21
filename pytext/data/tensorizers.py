@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import json
 from typing import List, Optional, Tuple, Type
 
 import torch
@@ -176,15 +177,17 @@ class ByteTensorizer(Tensorizer):
         #: The name of the text column to parse from the data source.
         column: str = "text"
         lower: bool = True
+        max_seq_len: Optional[int] = None
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.lower)
+        return cls(config.column, config.lower, config.max_seq_len)
 
-    def __init__(self, text_column, lower=True):
+    def __init__(self, text_column, lower=True, max_seq_len=None):
         super().__init__([(text_column, str)])
         self.text_column = text_column
         self.lower = lower
+        self.max_seq_len = max_seq_len
 
     def numberize(self, row):
         """Convert text to characters."""
@@ -192,6 +195,8 @@ class ByteTensorizer(Tensorizer):
         if self.lower:
             text = text.lower()
         bytes = list(text.encode())
+        if self.max_seq_len:
+            bytes = bytes[: self.max_seq_len]
         return bytes, len(bytes)
 
     def tensorize(self, batch):
@@ -303,6 +308,31 @@ class NumericLabelTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.float)
 
 
+class JsonFloatListTensorizer(Tensorizer):
+    """Numberize numeric labels."""
+
+    class Config(Tensorizer.Config):
+        #: The name of the label column to parse from the data source.
+        column: str
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column)
+
+    def __init__(self, column: str):
+        super().__init__([(column, str)])
+        self.column = column
+
+    def numberize(self, row):
+        res = json.loads(row[self.column])
+        if type(res) is not list:
+            raise ValueError(f"{res} is not a valid float list")
+        return [float(n) for n in res]
+
+    def tensorize(self, batch):
+        return pad_and_tensorize(batch, dtype=torch.float)
+
+
 class MetaInput(Tensorizer):
     """A pass-through tensorizer to include raw fields from datasource in the batch.
        Used mostly for metric reporting."""
@@ -321,6 +351,11 @@ class MetaInput(Tensorizer):
 
     def numberize(self, row):
         return row[self.column]
+
+
+class JsonMetaInput(MetaInput):
+    def numberize(self, row):
+        return json.loads(row[self.column])
 
 
 def initialize_tensorizers(tensorizers, data_source):

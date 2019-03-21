@@ -6,6 +6,15 @@ import unittest
 from pytext.data import utils
 
 
+class TargetTest(unittest.TestCase):
+    def test_align_target_label(self):
+        target = [[0.1, 0.2, 0.3], [0.1, 0.2, 0.3]]
+        label_list = ["l1", "l2", "l3"]
+        batch_label_list = [["l3", "l2", "l1"], ["l1", "l3", "l2"]]
+        align_target = utils.align_target_label(target, label_list, batch_label_list)
+        self.assertListEqual(align_target, [[0.3, 0.2, 0.1], [0.1, 0.3, 0.2]])
+
+
 class PaddingTest(unittest.TestCase):
     def testPadding(self):
         self.assertEqual(

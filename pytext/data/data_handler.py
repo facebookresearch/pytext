@@ -31,6 +31,8 @@ from pytext.utils import cuda, distributed, embeddings as embeddings_utils
 from pytext.utils.data import parse_json_array
 from torchtext import data as textdata
 
+from .utils import align_target_label
+
 
 class CommonMetadata:
     features: Dict[str, FieldMeta]
@@ -769,30 +771,6 @@ class DataHandler(Component):
                 row_data[DFColumn.TARGET_LOGITS]
             )
 
-    def _align_target_label(self, target, label_list, batch_label_list):
-        """
-        align the target in the order of label_list, batch_label_list stores the
-        original target order.
-        """
-        if sorted(label_list) != sorted(batch_label_list[0]):
-            raise Exception(
-                "label list %s is not matched with doc label %s",
-                (str(batch_label_list), str(label_list)),
-            )
-
-        def get_sort_idx(l):
-            return [i[0] for i in sorted(enumerate(l), key=lambda x: x[1])]
-
-        def reorder(l, o):
-            return [l[i] for i in o]
-
-        unsort_idx = get_sort_idx(get_sort_idx(label_list))
-        align_target = [
-            reorder(reorder(t, get_sort_idx(b)), unsort_idx)
-            for t, b in zip(target, batch_label_list)
-        ]
-        return align_target
-
     def _target_from_batch(self, batch):
         targets = []
         for name in self.labels:
@@ -800,7 +778,7 @@ class DataHandler(Component):
             if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
                 label_list = self.metadata.target.vocab.itos
                 batch_label_list = getattr(batch, Target.TARGET_LABEL_FIELD)
-                target = self._align_target_label(target, label_list, batch_label_list)
+                target = align_target_label(target, label_list, batch_label_list)
             targets.append(target)
         if len(targets) == 1:
             return targets[0]
