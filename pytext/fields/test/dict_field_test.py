@@ -9,12 +9,21 @@ from pytext.fields.dict_field import DictFeatureField
 from pytext.utils import precision
 
 
-FEATS_VOCAB = [[["texasHandler_cities"]], [["cities"]], [["time"]]]
+FEATS_VOCAB = [[["name"]], [["cities"]], [["time"]]]
+# The featurizer supplies dict feats str that are padded appropriately at
+# the utterance level; the test should reflect the same too
 DICT_FEATS_STR = [
-    [VocabMeta.PAD_TOKEN, VocabMeta.PAD_TOKEN, "texasHandler_cities", "cities"],
+    [
+        VocabMeta.PAD_TOKEN,
+        VocabMeta.PAD_TOKEN,
+        VocabMeta.PAD_TOKEN,
+        VocabMeta.PAD_TOKEN,
+        "name",
+        "cities",
+    ],
     [VocabMeta.PAD_TOKEN, "time"],
 ]
-WEIGHTS = [[0.0, 0.0, 1.0, 1.0], [0.0, 1.0]]
+WEIGHTS = [[0.0, 0.0, 0.0, 0.0, 1.0, 1.0], [0.0, 1.0]]
 LENGTHS = [[1, 1, 2], [1, 1]]
 PADDED_DICT_FEATS = [
     [
@@ -22,7 +31,7 @@ PADDED_DICT_FEATS = [
         VocabMeta.PAD_TOKEN,
         VocabMeta.PAD_TOKEN,
         VocabMeta.PAD_TOKEN,
-        "texasHandler_cities",
+        "name",
         "cities",
     ],
     [
