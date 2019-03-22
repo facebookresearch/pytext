@@ -74,13 +74,21 @@ class DictFeatureField(VocabUsingField):
         for i, ex_len in enumerate(ex_lengths):
             ex_feats, ex_weights = [], []
             feats_lengths, feats_vals, feats_weights = lengths[i], feats[i], weights[i]
+            max_feat_len_example = max(feats_lengths)
             r_offset = 0
-            for feat_len in feats_lengths:
-                ex_feats.extend(feats_vals[r_offset : r_offset + feat_len])
-                ex_feats.extend([self.pad_token] * (max_feat_len - feat_len))
-                ex_weights.extend(feats_weights[r_offset : r_offset + feat_len])
-                ex_weights.extend([0.0] * (max_feat_len - feat_len))
-                r_offset += feat_len
+            for _ in feats_lengths:
+                # The dict feats obtained from the featurizer will have necessary
+                # padding at the utterance level. Therefore we move the offset by
+                # max feature length in the example.
+                ex_feats.extend(feats_vals[r_offset : r_offset + max_feat_len_example])
+                ex_feats.extend(
+                    [self.pad_token] * (max_feat_len - max_feat_len_example)
+                )
+                ex_weights.extend(
+                    feats_weights[r_offset : r_offset + max_feat_len_example]
+                )
+                ex_weights.extend([0.0] * (max_feat_len - max_feat_len_example))
+                r_offset += max_feat_len_example
             all_lengths.extend(feats_lengths)
             # Pad examples
             ex_padding = (max_ex_len - ex_len) * max_feat_len
@@ -101,5 +109,4 @@ class DictFeatureField(VocabUsingField):
             arr.t_()
             weights.t_()
         feats = feats.contiguous()
-
         return feats, weights, lengths
