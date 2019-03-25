@@ -27,11 +27,16 @@ class Batcher(Component):
         train_batch_size: int = 16
         eval_batch_size: int = 16
         test_batch_size: int = 16
+        #: Load this many batches of data together for shuffling.
+        shuffle_num_batches: Optional[int] = 10000
 
     @classmethod
     def from_config(cls, config: Config):
         return cls(
-            config.train_batch_size, config.eval_batch_size, config.test_batch_size
+            config.train_batch_size,
+            config.eval_batch_size,
+            config.test_batch_size,
+            config.shuffle_num_batches,
         )
 
     def __init__(
@@ -39,6 +44,7 @@ class Batcher(Component):
         train_batch_size=Config.train_batch_size,
         eval_batch_size=Config.eval_batch_size,
         test_batch_size=Config.test_batch_size,
+        shuffle_num_batches=Config.shuffle_num_batches,
     ):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
@@ -48,53 +54,41 @@ class Batcher(Component):
             Stage.TEST: self.eval_batch_size,
             Stage.EVAL: self.test_batch_size,
         }
+        self.shuffle_num_batches = shuffle_num_batches or 1
 
     def batchify(
         self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
     ):
-        """Group rows by batch_size.  Assume iterable of dicts, yield dict of lists.
-        The last batch will be of length len(iterable) % batch_size."""
+        """
+        Group rows by batch_size. Assume iterable of dicts, yield dict of lists.
+        Will shuffle every group of `shuffle_num_batches` * `batch_size` rows, before
+        batching. If sort key is provided, will sort rows within one batch.
+        """
         batch_size = self._batch_sizes[stage]
-        for batch in self._group_iter(iterable, batch_size, sort_key):
-            yield zip_dicts(batch)
+        pool_size = self.shuffle_num_batches * batch_size
+        for pool in self._group_iter(iterable, pool_size, shuffle=True):
+            for batch in self._group_iter(pool, batch_size, sort_key=sort_key):
+                yield zip_dicts(batch)
 
-    def _group_iter(self, iterable: Iterable[RawExample], group_size, sort_key=None):
+    def _group_iter(
+        self, iterable: Iterable[RawExample], group_size, sort_key=None, shuffle=False
+    ):
         iterators = [iter(iterable)] * group_size
         for group in itertools.zip_longest(*iterators):
             group = [ex for ex in group if ex is not None]
             if sort_key:
                 group.sort(key=sort_key, reverse=True)
+            elif shuffle:
+                random.shuffle(group)
             yield group
 
 
 class PoolingBatcher(Batcher):
     """
-    Batcher that looks at pools of data, and sorts, batches, and shuffles them, before
-    padding.
+    Batcher that sorts and batches data rows, then shuffles the batches, before padding.
+    This provides more efficient padding than the regular Batcher, when the given
+    sort_key sorts by length.
     """
-
-    class Config(Batcher.Config):
-        #: Number of batches in a pool, to load at one time.
-        pool_num_batches: int = 10000
-
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(
-            config.train_batch_size,
-            config.eval_batch_size,
-            config.test_batch_size,
-            config.pool_num_batches,
-        )
-
-    def __init__(
-        self,
-        train_batch_size=Config.train_batch_size,
-        eval_batch_size=Config.eval_batch_size,
-        test_batch_size=Config.test_batch_size,
-        pool_num_batches=Config.pool_num_batches,
-    ):
-        super().__init__(train_batch_size, eval_batch_size, test_batch_size)
-        self.pool_num_batches = pool_num_batches or 1
 
     def batchify(
         self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
@@ -102,15 +96,15 @@ class PoolingBatcher(Batcher):
         """
         From an iterable of dicts, yield dicts of lists, by
 
-        1. Load pool of batch_size * pool_num_batches examples.
+        1. Load pool of shuffle_num_batches * batch_size examples.
         2. Sort rows, if necessary.
         3. Form batches with batch_size examples each.
         4. Shuffle batches and yield all batches.
         """
         batch_size = self._batch_sizes[stage]
-        pool_size = batch_size * self.pool_num_batches
+        pool_size = self.shuffle_num_batches * batch_size
 
-        for pool in self._group_iter(iterable, pool_size, sort_key):
+        for pool in self._group_iter(iterable, pool_size, sort_key=sort_key):
             batch_indices = list(range(math.ceil(len(pool) / batch_size)))
             if sort_key:
                 random.shuffle(batch_indices)

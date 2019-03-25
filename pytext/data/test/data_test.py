@@ -38,7 +38,11 @@ class DataTest(unittest.TestCase):
         self.assertTrue(batch)
 
     def test_create_batches(self):
-        data = Data(self.data_source, self.tensorizers, Batcher(train_batch_size=16))
+        data = Data(
+            self.data_source,
+            self.tensorizers,
+            Batcher(train_batch_size=16, shuffle_num_batches=1),
+        )
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
@@ -51,7 +55,11 @@ class DataTest(unittest.TestCase):
 
     def test_create_batches_different_tensorizers(self):
         tensorizers = {"tokens": WordTensorizer(text_column="text")}
-        data = Data(self.data_source, tensorizers, Batcher(train_batch_size=16))
+        data = Data(
+            self.data_source,
+            tensorizers,
+            Batcher(train_batch_size=16, shuffle_num_batches=1),
+        )
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
@@ -90,7 +98,7 @@ class DataTest(unittest.TestCase):
         data = Data(
             self.data_source,
             self.tensorizers,
-            Batcher(train_batch_size=16),
+            Batcher(train_batch_size=16, shuffle_num_batches=1),
             sort_key="tokens",
         )
         batches = list(data.batches(Stage.TRAIN))
@@ -99,28 +107,29 @@ class DataTest(unittest.TestCase):
         seq_lens = seq_lens.tolist()
         for i in range(len(seq_lens) - 1):
             self.assertTrue(seq_lens[i] >= seq_lens[i + 1])
-        # make sure labels are also in the same order of sorted tokens
+        # make sure labels are also in the same order of sorted tokens. Must pick
+        # examples with unique lengths (since there is both shuffling and sorting).
         self.assertEqual(
-            self.tensorizers["labels"].labels[batch["labels"][1]],
-            "reminder/set_reminder",
+            self.tensorizers["labels"].labels[batch["labels"][2]],
+            "alarm/time_left_on_alarm",
         )
         self.assertEqual(
-            self.tensorizers["labels"].labels[batch["labels"][8]], "alarm/snooze_alarm"
+            self.tensorizers["labels"].labels[batch["labels"][6]], "weather/find"
         )
 
 
 class BatcherTest(unittest.TestCase):
     def test_batcher(self):
         data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
-        batcher = Batcher(train_batch_size=3)
+        batcher = Batcher(train_batch_size=3, shuffle_num_batches=1)
         batches = list(batcher.batchify(data))
         self.assertEqual(len(batches), 4)
-        self.assertEqual(batches[1]["a"], [3, 4, 5])
+        self.assertSetEqual(set(batches[1]["a"]), {3, 4, 5})
         self.assertEqual(batches[3]["b"], [19])
 
     def test_pooling_batcher(self):
         data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
-        batcher = PoolingBatcher(train_batch_size=3, pool_num_batches=2)
+        batcher = PoolingBatcher(train_batch_size=3, shuffle_num_batches=2)
         batches = list(batcher.batchify(data, sort_key=lambda x: x["a"]))
 
         self.assertEqual(len(batches), 4)
