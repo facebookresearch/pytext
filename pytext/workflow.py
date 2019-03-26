@@ -78,7 +78,7 @@ def train_model(
     task = prepare_task(
         config, dist_init_url, device_id, rank, world_size, metric_channels, metadata
     )
-    trained_model, best_metric = task.train(config, rank, world_size)
+    trained_model, best_metric = task.train(config, rank, world_size, dist_init_url)
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
         save_and_export(config, task, metric_channels)

@@ -75,7 +75,7 @@ class MetricReporter(Component):
                 self.all_context[key] = []
             self.aggregate_data(self.all_context[key], val)
         self.all_loss.append(loss)
-        self.batch_size.append(len(targets))
+        self.batch_size.append(len(m_input[0]))
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -114,6 +114,9 @@ class MetricReporter(Component):
 
     def add_channel(self, channel):
         self.channels.append(channel)
+
+    def batch_context(self, batch):
+        return {}
 
     def calculate_loss(self):
         """

@@ -138,6 +138,7 @@ UNK = SpecialToken("__UNKNOWN__")
 PAD = SpecialToken("__PAD__")
 BOS = SpecialToken("__BEGIN_OF_SENTENCE__")
 EOS = SpecialToken("__END_OF_SENTENCE__")
+MASK = SpecialToken("__MASK__")
 
 
 class Vocabulary:

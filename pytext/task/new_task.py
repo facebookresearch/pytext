@@ -130,7 +130,11 @@ class NewTask(TaskBase):
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
-        metric_reporter = cls.create_metric_reporter(config, tensorizers)
+        metric_reporter = create_component(
+            ComponentType.METRIC_REPORTER,
+            config.metric_reporter,
+            tensorizers=tensorizers,
+        )
         trainer = create_trainer(config.trainer, model)
         return cls(data, model, metric_reporter, trainer)
 
@@ -206,14 +210,6 @@ class NewDocumentClassification(NewTask):
             ClassificationMetricReporter.Config()
         )
 
-    # The existence of this function is a pretty good argument for having
-    # the metric reporter be owned internally at least in some way by the model
-    @classmethod
-    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return ClassificationMetricReporter.from_config_and_label_names(
-            config.metric_reporter, list(tensorizers["labels"].labels)
-        )
-
 
 class NewDocumentRegression(NewTask):
     class Config(NewTask.Config):
@@ -221,7 +217,3 @@ class NewDocumentRegression(NewTask):
         metric_reporter: RegressionMetricReporter.Config = (
             RegressionMetricReporter.Config()
         )
-
-    @classmethod
-    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return RegressionMetricReporter.from_config(config.metric_reporter)

@@ -15,7 +15,7 @@ class RegressionMetricReporter(MetricReporter):
         pass
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, tensorizers=None):
         return cls([ConsoleChannel()])
 
     def calculate_metric(self):
