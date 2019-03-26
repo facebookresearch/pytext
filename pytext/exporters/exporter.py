@@ -42,6 +42,7 @@ class ModelExporter(Component):
 
     class Config(ConfigBase):
         export_logits: bool = False
+        export_raw_to_metrics: bool = False
 
     @classmethod
     def from_config(
@@ -217,7 +218,10 @@ class ModelExporter(Component):
         """
 
         for mc in metric_channels or []:
-            mc.export(model, self.dummy_model_input)
+            if self.config.export_raw_to_metrics:
+                mc.export(model, self.dummy_model_input, operator_export_type="RAW")
+            else:
+                mc.export(model, self.dummy_model_input)
 
     @classmethod
     def _get_exportable_metadata(

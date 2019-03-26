@@ -58,7 +58,7 @@ class Channel:
     def close(self):
         pass
 
-    def export(self, model, input_to_model=None):
+    def export(self, model, input_to_model=None, **kwargs):
         pass
 
 
@@ -267,7 +267,7 @@ class TensorBoardChannel(Channel):
         """
         self.summary_writer.close()
 
-    def export(self, model, input_to_model=None):
+    def export(self, model, input_to_model=None, **kwargs):
         """
         Draws the neural network representation graph in TensorBoard.
 
@@ -276,4 +276,4 @@ class TensorBoardChannel(Channel):
             input_to_model (Any): the input to the model (required for PyTorch
                 models, since its execution graph is defined by run).
         """
-        self.summary_writer.add_graph(model, input_to_model)
+        self.summary_writer.add_graph(model, input_to_model, **kwargs)
