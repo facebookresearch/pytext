@@ -8,7 +8,6 @@ from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
 from pytext.data.tensorizers import Tensorizer
-from pytext.exporters import ModelExporter
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     MetricReporter,
@@ -183,8 +182,8 @@ class NewTask(TaskBase):
         precision.deactivate(model)
 
         batch = next(iter(self.data.batches(Stage.TRAIN)))
-        print("Saving caffe2 model to: " + export_path)
-        model.caffe2_export(
+        print(f"Saving caffe2 model to: {export_path}")
+        return model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
 

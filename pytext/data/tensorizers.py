@@ -308,12 +308,13 @@ class NumericLabelTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.float)
 
 
-class JsonFloatListTensorizer(Tensorizer):
+class FloatListTensorizer(Tensorizer):
     """Numberize numeric labels."""
 
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str
+        dim: Optional[int] = None
 
     @classmethod
     def from_config(cls, config: Config):
@@ -324,7 +325,7 @@ class JsonFloatListTensorizer(Tensorizer):
         self.column = column
 
     def numberize(self, row):
-        res = json.loads(row[self.column])
+        res = json.loads(row[self.column].replace(" ", ","))
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
         return [float(n) for n in res]
