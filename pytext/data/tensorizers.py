@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Type
 import torch
 from pytext.config.component import Component, ComponentType, create_component
 
-from .utils import BOS, EOS, PAD, Tokenizer, VocabBuilder, pad_and_tensorize
+from .utils import BOS, EOS, PAD, Token, Tokenizer, VocabBuilder, pad_and_tensorize
 
 
 class Tensorizer(Component):
@@ -113,23 +113,23 @@ class WordTensorizer(Tensorizer):
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
-        self.max_seq_len = max_seq_len or float("Inf")
+        self.max_seq_len = max_seq_len or 2 ** 30  # large number
 
     def _lookup_tokens(self, text):
-        tokenized_texts = [t.value for t in self.tokenizer.tokenize(text)]
-        tokens = self.vocab.lookup_all(tokenized_texts)
+        tokenized = self.tokenizer.tokenize(text)[: self.max_seq_len]
         if self.add_bos_token:
-            bos_token = (
-                self.vocab.idx[EOS]
-                if self.use_eos_token_for_bos
-                else self.vocab.idx[BOS]
-            )
-            tokens = [bos_token] + tokens
-        if len(tokens) > self.max_seq_len:
-            tokens = tokens[: self.max_seq_len]
+            bos = EOS if self.use_eos_token_for_bos else BOS
+            tokenized = [Token(bos, -1, -1)] + tokenized
         if self.add_eos_token:
-            tokens.append(self.vocab.idx[EOS])
-        return tokens
+            tokenized.append(Token(EOS, -1, -1))
+        tokenized_texts, start_idx, end_idx = zip(
+            *((t.value, t.start, t.end) for t in tokenized)
+        )
+        tokens = self.vocab.lookup_all(tokenized_texts)
+        return tokens, start_idx, end_idx
+
+    def _reverse_lookup(self, token_ids):
+        return [self.vocab[id] for id in token_ids]
 
     def initialize(self):
         """Build vocabulary based on training corpus."""
@@ -149,7 +149,7 @@ class WordTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
-        tokens = self._lookup_tokens(row[self.text_column])
+        tokens, _, _ = self._lookup_tokens(row[self.text_column])
         return tokens, len(tokens)
 
     def tensorize(self, batch):
