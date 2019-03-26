@@ -5,9 +5,8 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 import torch.nn.functional as F
-from pytext.common.constants import DatasetFieldName
 from pytext.config.component import create_loss
-from pytext.fields import FieldMeta
+from pytext.data.utils import PAD
 from pytext.loss import CrossEntropyLoss, Loss
 
 from .output_layer_base import OutputLayerBase
@@ -29,11 +28,13 @@ class LMOutputLayer(OutputLayerBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config: Config, metadata: FieldMeta):
+    def from_config(cls, config: Config, metadata=None, labels=None):
+        vocab = labels or metadata.vocab.itos
+        pad_token_idx = metadata.pad_token_idx if metadata else vocab.idx[PAD]
         return cls(
-            metadata.vocab.itos,
-            create_loss(config.loss, ignore_index=metadata.pad_token_idx),
-            pad_token_idx=metadata.pad_token_idx,
+            vocab,
+            create_loss(config.loss, ignore_index=pad_token_idx),
+            pad_token_idx=pad_token_idx,
         )
 
     def __init__(
@@ -67,12 +68,14 @@ class LMOutputLayer(OutputLayerBase):
             torch.Tensor: Word prediction loss.
 
         """
+        if isinstance(target, tuple):
+            target = target[0]
         # flatten the logit from [batch_size, seq_lens, dim] to
         # [batch_size * seq_lens, dim]
         return self.loss_fn(logit.view(-1, logit.size()[-1]), target.view(-1), reduce)
 
     def get_pred(
-        self, logit: torch.Tensor, target: torch.Tensor, context: Dict[str, Any]
+        self, logit: torch.Tensor, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute and return prediction and scores from the model.
         Prediction is computed using argmax over the word label/target space.
@@ -91,19 +94,9 @@ class LMOutputLayer(OutputLayerBase):
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
 
         """
-        # Shape of logit: (bsize x seq_len x vocab)
-        # Reshape m_out to (bsize x vocab x seq_len) for cross_entropy_loss
-        logit = logit.transpose(1, 2)
-        # loss dim: (bsize x seq_len)
-        loss = F.cross_entropy(
-            logit, target, reduce=False, ignore_index=self.pad_token_idx
-        )
-        # context[DatasetFieldName.SEQ_LENS] s the length of each sequence
-        # sequence_loss is the loss per word for each sequence in the batch
-        # sequence_loss dim: (bsize,)
-        sequence_loss = loss.sum(1) / context[DatasetFieldName.TARGET_SEQ_LENS].float()
-        scores = self.calculate_perplexity(sequence_loss)
-        return scores, scores
+        preds = torch.max(logit, 2)[1]
+        scores = F.log_softmax(logit, 2)
+        return preds, scores
 
     @staticmethod
     def calculate_perplexity(sequence_loss: torch.Tensor) -> torch.Tensor:

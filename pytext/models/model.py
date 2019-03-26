@@ -145,9 +145,9 @@ class BaseModel(nn.Module, Component):
     def train_batch(self, batch):
         model_inputs = self.arrange_model_inputs(batch)
         model_outputs = self(*model_inputs)
-        loss = self.get_loss(model_outputs, self.arrange_targets(batch), None)
-        predictions, scores = self.get_pred(model_outputs)
         targets = self.arrange_targets(batch)
+        loss = self.get_loss(model_outputs, targets, None)
+        predictions, scores = self.get_pred(model_outputs)
         metric_data = (predictions, targets, scores, loss, model_inputs)
         return loss, metric_data
 
@@ -157,6 +157,9 @@ class BaseModel(nn.Module, Component):
 
     def arrange_targets(self, tensor_dict):
         # should raise NotImplementedError after migration is done
+        pass
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
 
 

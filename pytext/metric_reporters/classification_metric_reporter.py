@@ -65,8 +65,13 @@ class ClassificationMetricReporter(MetricReporter):
         self.target_label = target_label
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        return cls.from_config_and_label_names(config, meta.target.vocab.itos)
+    def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
+        # TODO: refactor metric reporting and remove this hack
+        if tensorizers:
+            labels = list(tensorizers["labels"].labels)
+        else:
+            labels = meta.target.vocab.itos
+        return cls.from_config_and_label_names(config, labels)
 
     @classmethod
     def from_config_and_label_names(cls, config, label_names: List[str]):
