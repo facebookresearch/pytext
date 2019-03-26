@@ -64,6 +64,9 @@ class NewDocModel(DocModel):
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
 
+    input_names = ["tokens", "tokens_lens"]
+    output_names = ["scores"]
+
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens = tensor_dict["tokens"]
         return (tokens, seq_lens)
@@ -71,13 +74,16 @@ class NewDocModel(DocModel):
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
+    def vocab_to_export(self, tensorizers):
+        return {"tokens": list(tensorizers["tokens"].vocab)}
+
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         exporter = ModelExporter(
             ModelExporter.Config(),
-            ["tokens", "tokens_lens"],
+            self.input_names,
             self.arrange_model_inputs(tensor_dict),
-            {"tokens": list(tensorizers["tokens"].vocab)},
-            ["scores"],
+            self.vocab_to_export(tensorizers),
+            self.output_names,
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
@@ -89,16 +95,20 @@ class NewDocModel(DocModel):
         )
 
     @classmethod
+    def create_decoder(cls, config: Config, representation_dim: int, num_labels: int):
+        return create_module(
+            config.decoder, in_dim=representation_dim, out_dim=num_labels
+        )
+
+    @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         labels = tensorizers["labels"].labels
         embedding = cls.create_embedding(config, tensorizers)
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
-        decoder = create_module(
-            config.decoder,
-            in_dim=representation.representation_dim,
-            out_dim=len(labels),
+        decoder = cls.create_decoder(
+            config, representation.representation_dim, len(labels)
         )
         # TODO change from_config function of ClassificationOutputLayer after migriting to new design
         output_layer = ClassificationOutputLayer(
