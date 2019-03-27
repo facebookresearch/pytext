@@ -8,9 +8,9 @@ from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import (
     ByteTensorizer,
+    CharacterTokenTensorizer,
     LabelTensorizer,
-    WordCharacterTensorizer,
-    WordTensorizer,
+    TokenTensorizer,
     initialize_tensorizers,
 )
 from pytext.utils.test import import_tests_module
@@ -31,7 +31,7 @@ class TensorizersTest(unittest.TestCase):
 
     def test_initialize_tensorizers(self):
         tensorizers = {
-            "tokens": WordTensorizer(text_column="text"),
+            "tokens": TokenTensorizer(text_column="text"),
             "labels": LabelTensorizer(label_column="label"),
             "chars": ByteTensorizer(text_column="text"),
         }
@@ -40,7 +40,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(7, len(tensorizers["labels"].labels))
 
     def test_initialize_word_tensorizer(self):
-        tensorizer = WordTensorizer(text_column="text")
+        tensorizer = TokenTensorizer(text_column="text")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
@@ -49,7 +49,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(49, len(tensorizer.vocab))
 
     def test_create_word_tensors(self):
-        tensorizer = WordTensorizer(text_column="text")
+        tensorizer = TokenTensorizer(text_column="text")
         init = tensorizer.initialize()
         init.send(None)  # kick
         for row in self.data.train:
@@ -80,7 +80,7 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual([(bytes, len(bytes)) for bytes in expected], tensors)
 
     def test_create_word_character_tensors(self):
-        tensorizer = WordCharacterTensorizer(text_column="text")
+        tensorizer = CharacterTokenTensorizer(text_column="text")
         # not initializing because initializing is a no-op for ByteTensorizer
 
         s1 = "I want some coffee"

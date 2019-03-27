@@ -68,7 +68,7 @@ class Tensorizer(Component):
             yield
 
 
-class WordTensorizer(Tensorizer):
+class TokenTensorizer(Tensorizer):
     """Convert text to a list of tokens. Do this based on a tokenizer configuration,
     and build a vocabulary for numberization. Finally, pad the batch to create
     a square tensor of the correct size.
@@ -208,7 +208,7 @@ class ByteTensorizer(Tensorizer):
         return row[1]
 
 
-class WordCharacterTensorizer(WordTensorizer):
+class CharacterTokenTensorizer(TokenTensorizer):
     """Turn words into 2-dimensional tensors of ints based on their ascii values.
     Words are padded to the maximum word length. Sequence lengths are the lengths
     of each token, 0 for pad token.
@@ -224,6 +224,10 @@ class WordCharacterTensorizer(WordTensorizer):
     def tensorize(self, batch):
         characters, lengths = zip(*batch)
         return (pad_and_tensorize(characters), pad_and_tensorize(lengths))
+
+
+class FloatVectorTensorizer(Tensorizer):
+    """TODO: support for dense features."""
 
 
 class LabelTensorizer(Tensorizer):

@@ -7,7 +7,7 @@ from pytext.common.constants import Stage
 from pytext.data import Batcher, Data, PoolingBatcher
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
-from pytext.data.tensorizers import LabelTensorizer, WordTensorizer
+from pytext.data.tensorizers import LabelTensorizer, TokenTensorizer
 from pytext.utils.test import import_tests_module
 
 
@@ -25,7 +25,7 @@ class DataTest(unittest.TestCase):
         )
 
         self.tensorizers = {
-            "tokens": WordTensorizer(text_column="text"),
+            "tokens": TokenTensorizer(text_column="text"),
             "labels": LabelTensorizer(label_column="label", allow_unknown=True),
         }
 
@@ -50,7 +50,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(10, len(tokens))
 
     def test_create_batches_different_tensorizers(self):
-        tensorizers = {"tokens": WordTensorizer(text_column="text")}
+        tensorizers = {"tokens": TokenTensorizer(text_column="text")}
         data = Data(self.data_source, tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
@@ -62,10 +62,10 @@ class DataTest(unittest.TestCase):
 
     def test_data_initializes_tensorsizers(self):
         tensorizers = {
-            "tokens": WordTensorizer(text_column="text"),
+            "tokens": TokenTensorizer(text_column="text"),
             "labels": LabelTensorizer(label_column="label"),
         }
-        # verify WordTensorizer isn't in an initialized state yet
+        # verify TokenTensorizer isn't in an initialized state yet
         assert tensorizers["tokens"].vocab is None
         Data(self.data_source, tensorizers)
         # Tensorizers should have been initialized
