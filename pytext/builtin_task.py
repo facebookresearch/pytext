@@ -15,7 +15,6 @@ from pytext.task.tasks import (
     DocClassificationTask,
     EnsembleTask,
     JointTextTask,
-    KDDocClassificationTask,
     LMTask,
     PairClassification,
     SemanticParsingTask,
@@ -68,6 +67,5 @@ def register_builtin_tasks():
             ContextualIntentSlotTask,
             SemanticParsingTask,
             DisjointMultitask,
-            KDDocClassificationTask,
         )
     )
