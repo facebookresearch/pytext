@@ -11,7 +11,7 @@ from pytext.data.tensorizers import (
     MetaInput,
     NumericLabelTensorizer,
     Tensorizer,
-    WordTensorizer,
+    TokenTensorizer,
 )
 from pytext.data.utils import UNK
 from pytext.exporters.exporter import ModelExporter
@@ -56,7 +56,7 @@ class NewDocModel(DocModel):
 
     class Config(DocModel.Config):
         class ModelInput(Model.Config.ModelInput):
-            tokens: WordTensorizer.Config = WordTensorizer.Config()
+            tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
             # for metric reporter
             raw_text: MetaInput.Config = MetaInput.Config(column="text")
@@ -125,7 +125,7 @@ class NewDocRegressionModel(NewDocModel):
 
     class Config(NewDocModel.Config):
         class RegressionModelInput(Model.Config.ModelInput):
-            tokens: WordTensorizer.Config = WordTensorizer.Config()
+            tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
 
         inputs: RegressionModelInput = RegressionModelInput()
