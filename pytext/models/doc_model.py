@@ -8,8 +8,8 @@ from pytext.config.component import create_loss
 from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import (
     LabelTensorizer,
-    MetaInput,
     NumericLabelTensorizer,
+    RawString,
     Tensorizer,
     TokenTensorizer,
 )
@@ -59,7 +59,7 @@ class NewDocModel(DocModel):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
             # for metric reporter
-            raw_text: MetaInput.Config = MetaInput.Config(column="text")
+            raw_text: RawString.Config = RawString.Config(column="text")
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
