@@ -255,8 +255,3 @@ class SemanticParsingTask(Task):
         data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
         labels: Optional[WordLabelConfig] = None
         metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
-
-
-class KDDocClassificationTask(DocClassificationTask):
-    class Config(DocClassificationTask.Config):
-        pass
