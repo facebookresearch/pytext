@@ -64,9 +64,6 @@ class NewDocModel(DocModel):
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
 
-    input_names = ["tokens", "tokens_lens"]
-    output_names = ["scores"]
-
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens = tensor_dict["tokens"]
         return (tokens, seq_lens)
@@ -74,16 +71,22 @@ class NewDocModel(DocModel):
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
+    def get_export_input_names(self, tensorizers):
+        return ["tokens", "tokens_lens"]
+
+    def get_export_output_names(self, tensorizers):
+        return ["scores"]
+
     def vocab_to_export(self, tensorizers):
         return {"tokens": list(tensorizers["tokens"].vocab)}
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         exporter = ModelExporter(
             ModelExporter.Config(),
-            self.input_names,
+            self.get_export_input_names(tensorizers),
             self.arrange_model_inputs(tensor_dict),
             self.vocab_to_export(tensorizers),
-            self.output_names,
+            self.get_export_output_names(tensorizers),
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
