@@ -338,7 +338,7 @@ class FloatListTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.float)
 
 
-class MetaInput(Tensorizer):
+class RawString(Tensorizer):
     """A pass-through tensorizer to include raw fields from datasource in the batch.
        Used mostly for metric reporting."""
 
@@ -358,7 +358,7 @@ class MetaInput(Tensorizer):
         return row[self.column]
 
 
-class JsonMetaInput(MetaInput):
+class RawJson(RawString):
     def numberize(self, row):
         return json.loads(row[self.column])
 
