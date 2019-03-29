@@ -11,6 +11,7 @@ from pytext.config.component import Component, ComponentType
 from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
 from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
+from pytext.config.serialize import _is_optional
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
@@ -25,6 +26,8 @@ class ModelInputMeta(ConfigBaseMeta):
     def __new__(metacls, typename, bases, namespace):
         annotations = namespace.get("__annotations__", {})
         for type in annotations.values():
+            if _is_optional(type):
+                type = type.__args__[0]
             if not issubclass(type, Tensorizer.Config):
                 raise TypeError(
                     "ModelInput configuration should only include tensorizers"

@@ -106,6 +106,7 @@ class NewTask(TaskBase):
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer)
             for name, tensorizer in config.model.inputs._asdict().items()
+            if tensorizer
         }
         schema: Dict[str, Type] = {}
         for tensorizer in tensorizers.values():
