@@ -115,8 +115,11 @@ def backward(optimizer, loss):
         else:
             # 1. Use automatic loss scaling to best use fp16 range
             # 2. Clear handle's cache of casted parameters
-            with optimizer.scale_loss(loss) as scaled_loss:
-                scaled_loss.backward()
+            if loss > 0:
+                with optimizer.scale_loss(loss) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
     else:
         loss.backward()
 

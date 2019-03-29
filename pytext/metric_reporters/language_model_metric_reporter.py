@@ -67,8 +67,12 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         self.batch_size.append(len(m_input[0]))
         self.aggregate_data(self.all_num_tokens, targets[1])
         now = time.time()
-        total_tokens = float(sum(targets[2]))
-        print(f"Tokens/s: {total_tokens / (now - self.time)}, ppl: {math.exp(loss)}")
+        if not n_batches % 1000:
+            total_tokens = float(sum(targets[2]))
+            print(
+                f"Tokens/s: {total_tokens / (now - self.time):.0f}, ppl: {math.exp(loss):.2f}",
+                flush=True,
+            )
         self.time = now
 
     def _reset(self):
