@@ -7,6 +7,8 @@ import torch
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import create_exporter
 from pytext.data.data_handler import CommonMetadata
+from pytext.data.sources.data_source import SafeFileWrapper
+from pytext.data.sources.tsv import TSVDataSource
 from pytext.metric_reporters.channel import Channel
 from pytext.task import NewTask, Task, create_task, load, save
 from pytext.utils import set_random_seeds
@@ -162,6 +164,7 @@ def test_model(
         test_config.test_path,
         metric_channels,
         test_out_path,
+        test_config.field_names,
     )
 
 
@@ -171,6 +174,7 @@ def test_model_from_snapshot_path(
     test_path: Optional[str] = None,
     metric_channels: Optional[List[Channel]] = None,
     test_out_path: str = "",
+    field_names: Optional[List[str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
@@ -190,7 +194,15 @@ def test_model_from_snapshot_path(
         test_out_path = train_config.task.metric_reporter.output_path
 
     if isinstance(task, NewTask):
-        test_results = task.test()
+        if test_path:
+            data_source = TSVDataSource(
+                test_file=SafeFileWrapper(test_path),
+                schema=task.data.data_source.schema,
+                field_names=field_names,
+            )
+        else:
+            data_source = task.data.data_source
+        test_results = task.test(data_source)
     else:
         if not test_path:
             test_path = train_config.task.data_handler.test_path

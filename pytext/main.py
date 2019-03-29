@@ -250,8 +250,14 @@ def gen_default_config(context, task_name, options):
     default=True,
     help="Whether to visualize test metrics using TensorBoard.",
 )
+@click.option(
+    "--field_names",
+    default=None,
+    help="""Field names for the test-path. If this is not set, the first line of
+         each file will be assumed to be a header containing the field names.""",
+)
 @click.pass_context
-def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
+def test(context, model_snapshot, test_path, use_cuda, use_tensorboard, field_names):
     """Test a trained model snapshot.
 
     If model-snapshot is provided, the models and configuration will then be
@@ -277,7 +283,11 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard):
         metric_channels.append(TensorBoardChannel())
     try:
         test_model_from_snapshot_path(
-            model_snapshot, use_cuda, test_path, metric_channels
+            model_snapshot,
+            use_cuda,
+            test_path,
+            metric_channels,
+            field_names=field_names,
         )
     finally:
         for mc in metric_channels:

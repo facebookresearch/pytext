@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 
 class ConfigBaseMeta(type):
@@ -112,6 +112,9 @@ class TestConfig(ConfigBase):
     load_snapshot_path: str
     # Test data path
     test_path: str = "test.tsv"
+    #: Field names for the TSV. If this is not set, the first line of each file
+    #: will be assumed to be a header containing the field names.
+    field_names: Optional[List[str]] = None
     use_cuda_if_available: bool = True
     # Whether to use TensorBoard
     use_tensorboard: bool = True

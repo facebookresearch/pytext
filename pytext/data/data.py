@@ -234,19 +234,22 @@ class Data(Component):
                 initializer.send(row)
 
     @generator_iterator
-    def batches(self, stage: Stage, rank=0, world_size=1):
+    def batches(self, stage: Stage, rank=0, world_size=1, data_source=None):
         """Create batches of tensors to pass to model train_batch.
         This function yields dictionaries that mirror the `tensorizers` dict passed to
         `__init__`, ie. the keys will be the same, and the tensors will be the shape
         expected from the respective tensorizers.
 
         `stage` is used to determine which data source is used to create batches.
+        if data_source is provided, it is used instead of the configured data_sorce
+        this is to allow setting a different data_source for testing a model
         """
+        data_source = data_source or self.data_source
         rows = shard(
             {
-                Stage.TRAIN: self.data_source.train,
-                Stage.TEST: self.data_source.test,
-                Stage.EVAL: self.data_source.eval,
+                Stage.TRAIN: data_source.train,
+                Stage.TEST: data_source.test,
+                Stage.EVAL: data_source.eval,
             }[stage],
             rank,
             world_size,
