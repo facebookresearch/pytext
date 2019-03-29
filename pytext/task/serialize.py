@@ -44,6 +44,7 @@ def load(load_path: str):
     print(f"Loading model from {load_path}...")
     state = torch.load(load_path, map_location=lambda storage, loc: storage)
     config = pytext_config_from_json(state[CONFIG_JSON])
+
     task = create_task(
         config.task, metadata=state[DATA_STATE], model_state=state[MODEL_STATE]
     )

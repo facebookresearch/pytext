@@ -170,9 +170,11 @@ class NewTask(TaskBase):
             rank=rank,
         )
 
-    def test(self):
+    def test(self, data_source):
         return self.trainer.test(
-            self.data.batches(Stage.TEST), self.model, self.metric_reporter
+            self.data.batches(Stage.TEST, data_source=data_source),
+            self.model,
+            self.metric_reporter,
         )
 
     def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
