@@ -34,6 +34,7 @@ from pytext.utils.documentation import (
 from pytext.workflow import (
     export_saved_model_to_caffe2,
     export_saved_model_to_torchscript,
+    get_logits as workflow_get_logits,
     prepare_task_metadata,
     test_model_from_snapshot_path,
     train_model,
@@ -264,19 +265,9 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard, field_na
     loaded from the snapshot rather than any passed config file.
     Otherwise, a config file will be loaded.
     """
-    if model_snapshot:
-        print(f"Loading model snapshot and config from {model_snapshot}")
-        if use_cuda is None:
-            raise Exception(
-                "if --model-snapshot is set --use-cuda/--no-cuda must be set"
-            )
-    else:
-        print(f"No model snapshot provided, loading from config")
-        config = context.obj.load_config()
-        model_snapshot = config.save_snapshot_path
-        use_cuda = config.use_cuda_if_available
-        use_tensorboard = config.use_tensorboard
-        print(f"Configured model snapshot {model_snapshot}")
+    model_snapshot, use_cuda, use_tensorboard = _get_model_snapshot(
+        context, model_snapshot, use_cuda, use_tensorboard
+    )
     print("\n=== Starting testing...")
     metric_channels = []
     if use_tensorboard:
@@ -292,6 +283,23 @@ def test(context, model_snapshot, test_path, use_cuda, use_tensorboard, field_na
     finally:
         for mc in metric_channels:
             mc.close()
+
+
+def _get_model_snapshot(context, model_snapshot, use_cuda, use_tensorboard):
+    if model_snapshot:
+        print(f"Loading model snapshot and config from {model_snapshot}")
+        if use_cuda is None:
+            raise Exception(
+                "if --model-snapshot is set --use-cuda/--no-cuda must be set"
+            )
+    else:
+        print(f"No model snapshot provided, loading from config")
+        config = context.obj.load_config()
+        model_snapshot = config.save_snapshot_path
+        use_cuda = config.use_cuda_if_available
+        use_tensorboard = config.use_tensorboard
+        print(f"Configured model snapshot {model_snapshot}")
+    return model_snapshot, use_cuda, use_tensorboard
 
 
 @main.command()
@@ -388,6 +396,37 @@ def predict_py(context, model_file):
                 pprint.pprint(task.predict([json.loads(line)])[0])
         except EOFError:
             break
+
+
+@main.command()
+@click.option(
+    "--model-snapshot",
+    default="",
+    help="load model snapshot and test configuration from this file",
+)
+@click.option("--test-path", default="", help="path to test data")
+@click.option("--output-path", default="", help="path to save logits")
+@click.option(
+    "--use-cuda/--no-cuda",
+    default=None,
+    help="Run supported parts of the model on GPU if available.",
+)
+@click.option(
+    "--field_names",
+    default=None,
+    help="""Field names for the test-path. If this is not set, the first line of
+         each file will be assumed to be a header containing the field names.""",
+)
+@click.pass_context
+def get_logits(context, model_snapshot, test_path, use_cuda, output_path, field_names):
+    """print logits from  a trained model snapshot to output_path
+    """
+
+    model_snapshot, use_cuda, _ = _get_model_snapshot(
+        context, model_snapshot, use_cuda, False
+    )
+    print("\n=== Starting get_logits...")
+    workflow_get_logits(model_snapshot, use_cuda, output_path, test_path, field_names)
 
 
 if __name__ == "__main__":
