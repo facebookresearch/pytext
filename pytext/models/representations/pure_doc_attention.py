@@ -57,7 +57,7 @@ class PureDocAttention(RepresentationBase):
             self.representation_dim = self.dense.out_dim
 
     def forward(
-        self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor, *args
+        self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor = None, *args
     ) -> Any:
         rep = self.dropout(embedded_tokens)
 
