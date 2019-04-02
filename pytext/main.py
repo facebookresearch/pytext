@@ -328,10 +328,11 @@ def train(context):
 @click.pass_context
 def export(context, model, output_path, output_onnx_path):
     """Convert a pytext model snapshot to a caffe2 model."""
-    config = context.obj.load_config()
-    model = model or config.save_snapshot_path
-    output_path = output_path or config.export_caffe2_path
-    output_onnx_path = output_onnx_path or config.export_onnx_path
+    if not model:
+        config = context.obj.load_config()
+        model = config.save_snapshot_path
+        output_path = config.export_caffe2_path
+        output_onnx_path = config.export_onnx_path
     print(
         f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
     )
