@@ -104,7 +104,7 @@ def prepare_task(
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
-    _set_fp16(config.use_fp16 and world_size == 1)
+    _set_fp16(config.use_fp16)
     if config.random_seed is not None:
         set_random_seeds(config.random_seed)
 

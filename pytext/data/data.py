@@ -190,6 +190,7 @@ class Data(Component):
     """
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
+    __EXPANSIBLE__ = True
 
     class Config(Component.Config):
         #: Specify where training/test/eval data come from. The default value
