@@ -7,7 +7,6 @@ from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
-from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     MetricReporter,

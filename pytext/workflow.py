@@ -4,15 +4,17 @@ import os
 from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 
 import torch
+from pytext.common.constants import Stage
 from pytext.config import PyTextConfig, TestConfig
 from pytext.config.component import create_exporter
+from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.metric_reporters.channel import Channel
+from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.task import NewTask, Task, create_task, load, save
 from pytext.utils import set_random_seeds
-from pytext.utils.distributed import dist_init
 
 from .utils import cuda, precision, timing
 
@@ -194,20 +196,49 @@ def test_model_from_snapshot_path(
         test_out_path = train_config.task.metric_reporter.output_path
 
     if isinstance(task, NewTask):
-        if test_path:
-            data_source = TSVDataSource(
-                test_file=SafeFileWrapper(test_path),
-                schema=task.data.data_source.schema,
-                field_names=field_names,
-            )
-        else:
-            data_source = task.data.data_source
+        data_source = _get_data_source(test_path, field_names, task)
         test_results = task.test(data_source)
     else:
         if not test_path:
             test_path = train_config.task.data_handler.test_path
         test_results = task.test(test_path)
     return test_results, test_out_path, metric_channels
+
+
+def _get_data_source(test_path, field_names, task):
+    if test_path:
+        data_source = TSVDataSource(
+            test_file=SafeFileWrapper(test_path),
+            schema=task.data.data_source.schema,
+            field_names=field_names,
+        )
+    else:
+        data_source = task.data.data_source
+    return data_source
+
+
+def get_logits(
+    snapshot_path: str,
+    use_cuda_if_available: bool,
+    output_path: Optional[str] = None,
+    test_path: Optional[str] = None,
+    field_names: Optional[List[str]] = None,
+):
+    _set_cuda(use_cuda_if_available)
+    task, train_config = load(snapshot_path)
+    if isinstance(task, NewTask):
+        task.model.eval()
+        data_source = _get_data_source(test_path, field_names, task)
+        task.data.batcher = Batcher()
+        batches = task.data.batches(Stage.TEST, data_source=data_source)
+        results = []
+        for batch in batches:
+            model_inputs = task.model.arrange_model_inputs(batch)
+            model_outputs = task.model(*model_inputs)
+            MetricReporter.aggregate_data(results, model_outputs)
+        with open(output_path, "w", encoding="utf-8") as fout:
+            for row in results:
+                fout.write(f"{row}\n")
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
