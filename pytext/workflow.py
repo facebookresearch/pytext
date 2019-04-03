@@ -177,6 +177,7 @@ def test_model_from_snapshot_path(
     metric_channels: Optional[List[Channel]] = None,
     test_out_path: str = "",
     field_names: Optional[List[str]] = None,
+    column_mapping: Optional[Dict[str, str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
@@ -196,7 +197,7 @@ def test_model_from_snapshot_path(
         test_out_path = train_config.task.metric_reporter.output_path
 
     if isinstance(task, NewTask):
-        data_source = _get_data_source(test_path, field_names, task)
+        data_source = _get_data_source(test_path, field_names, task, column_mapping)
         test_results = task.test(data_source)
     else:
         if not test_path:
@@ -205,12 +206,13 @@ def test_model_from_snapshot_path(
     return test_results, test_out_path, metric_channels
 
 
-def _get_data_source(test_path, field_names, task):
+def _get_data_source(test_path, field_names, task, column_mapping):
     if test_path:
         data_source = TSVDataSource(
             test_file=SafeFileWrapper(test_path),
             schema=task.data.data_source.schema,
             field_names=field_names,
+            column_mapping=column_mapping or task.data.data_source.column_mapping,
         )
     else:
         data_source = task.data.data_source
