@@ -12,10 +12,6 @@ class RawExample(dict):
     This is here for any logic we want row objects to have that dicts don't do."""
 
 
-# Map of registered types for data source subclasses
-DATA_SOURCE_TYPES = {}
-
-
 class SafeFileWrapper:
     """
     A simple wrapper class for files which allows filedescriptors to be managed
@@ -159,6 +155,8 @@ class RootDataSource(DataSource):
     convert using the schema loading functions.
     """
 
+    DATA_SOURCE_TYPES = {}
+
     class Config(Component.Config):
         #: An optional column mapping, allowing the columns in the raw data source
         #: to not map directly to the column names in the schema. This mapping will
@@ -195,15 +193,21 @@ class RootDataSource(DataSource):
     @classmethod
     def register_type(cls, type):
         def decorator(fn):
-            DATA_SOURCE_TYPES[(cls, type)] = fn
+            cls.DATA_SOURCE_TYPES[type] = fn
             return fn
 
         return decorator
 
     def load(self, value, schema_type):
-        # It would be nice for subclasses of data sources to work better with this
-        converter = DATA_SOURCE_TYPES[(type(self), schema_type)]
-        return converter(value)
+        if schema_type in self.DATA_SOURCE_TYPES:
+            converter = self.DATA_SOURCE_TYPES[schema_type]
+            return converter(value)
+        try:
+            return super().load(value, schema_type)
+        except AttributeError:  # super lower than RootDataSource without load()
+            raise Exception(
+                'Type not registered in data source: "{}"'.format(schema_type)
+            )
 
     def raw_train_data_generator(self):
         """
@@ -243,3 +247,8 @@ class RootDataSource(DataSource):
     @generator_property
     def eval(self):
         return self._convert_raw_source(self.raw_eval_data_generator())
+
+
+@RootDataSource.register_type(str)
+def load_text(s):
+    return s

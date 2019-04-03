@@ -85,8 +85,3 @@ class TSVDataSource(RootDataSource):
 
     def raw_eval_data_generator(self):
         return iter(self._eval_tsv)
-
-
-@TSVDataSource.register_type(str)
-def load_text(s):
-    return str(s)
