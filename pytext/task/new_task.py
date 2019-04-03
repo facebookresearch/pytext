@@ -102,6 +102,24 @@ class NewTask(TaskBase):
 
     @classmethod
     def from_config(cls, config: Config, unused_metadata=None, model_state=None):
+        tensorizers, data = NewTask._init_tensorizers(config)
+
+        # Initialized tensorizers can be used to create the model
+        model = NewTask._init_model(config, tensorizers, model_state)
+
+        # This is the only place right now that the task actually cares about which
+        # features and tensors are being used. This is a strong tie between
+        # the implementation of the model and the metric reporter.
+        metric_reporter = create_component(
+            ComponentType.METRIC_REPORTER,
+            config.metric_reporter,
+            tensorizers=tensorizers,
+        )
+        trainer = create_trainer(config.trainer, model)
+        return cls(data, model, metric_reporter, trainer)
+
+    @classmethod
+    def _init_tensorizers(cls, config: Config):
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer)
             for name, tensorizer in config.model.inputs._asdict().items()
@@ -118,7 +136,10 @@ class NewTask(TaskBase):
         data = create_component(
             ComponentType.DATA_HANDLER, config.data, schema, tensorizers
         )
-        # Initialized tensorizers can be used to create the model
+        return tensorizers, data
+
+    @classmethod
+    def _init_model(cls, config: Config, tensorizers, model_state=None):
         model = create_component(ComponentType.MODEL, config.model, tensorizers)
         if model_state:
             model.load_state_dict(model_state)
@@ -126,16 +147,7 @@ class NewTask(TaskBase):
         precision.activate(model)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
-        # This is the only place right now that the task actually cares about which
-        # features and tensors are being used. This is a strong tie between
-        # the implementation of the model and the metric reporter.
-        metric_reporter = create_component(
-            ComponentType.METRIC_REPORTER,
-            config.metric_reporter,
-            tensorizers=tensorizers,
-        )
-        trainer = create_trainer(config.trainer, model)
-        return cls(data, model, metric_reporter, trainer)
+        return model
 
     def __init__(
         self,
