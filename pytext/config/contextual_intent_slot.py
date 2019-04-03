@@ -5,6 +5,7 @@ from typing import List, Optional
 from .field_config import (
     CharFeatConfig,
     DictFeatConfig,
+    FloatVectorConfig,
     PretrainedModelEmbeddingConfig,
     TargetConfigBase,
     WordFeatConfig,
@@ -18,6 +19,7 @@ class ModelInputConfig(ModuleConfig):
     char_feat: Optional[CharFeatConfig] = None
     pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
     seq_word_feat: Optional[WordFeatConfig] = WordFeatConfig()
+    dense_feat: Optional[FloatVectorConfig] = None
 
 
 TargetConfig = List[TargetConfigBase]
@@ -29,6 +31,7 @@ class ModelInput:
     CHAR = "char_feat"
     PRETRAINED = "pretrained_model_embedding"
     SEQ = "seq_word_feat"
+    DENSE = "dense_feat"
 
 
 class ExtraField:
