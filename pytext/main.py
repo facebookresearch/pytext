@@ -36,6 +36,7 @@ from pytext.workflow import (
     export_saved_model_to_torchscript,
     get_logits as workflow_get_logits,
     prepare_task_metadata,
+    preprocess_task,
     test_model_from_snapshot_path,
     train_model,
 )
@@ -313,6 +314,7 @@ def train(context):
     if config.use_tensorboard:
         metric_channels.append(TensorBoardChannel())
     try:
+        preprocess_task(config)
         if config.distributed_world_size == 1:
             train_model(config, metric_channels=metric_channels)
         else:
