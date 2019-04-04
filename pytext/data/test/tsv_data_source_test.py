@@ -76,3 +76,14 @@ class TSVDataSourceTest(unittest.TestCase):
         example = next(iter(data))
         self.assertEqual(2, len(example))
         self.assertEqual({"label", "text"}, set(example))
+
+    def test_read_data_source_with_utf8_issues(self):
+        schema = {"text": str, "label": str}
+        data_source = TSVDataSource.from_config(
+            TSVDataSource.Config(
+                train_filename=tests_module.test_file("test_utf8_errors.tsv"),
+                field_names=["label", "text"],
+            ),
+            schema,
+        )
+        list(data_source.train)

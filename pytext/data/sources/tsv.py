@@ -54,9 +54,21 @@ class TSVDataSource(RootDataSource):
         train_filename = args.pop("train_filename")
         test_filename = args.pop("test_filename")
         eval_filename = args.pop("eval_filename")
-        train_file = SafeFileWrapper(train_filename) if train_filename else None
-        test_file = SafeFileWrapper(test_filename) if test_filename else None
-        eval_file = SafeFileWrapper(eval_filename) if eval_filename else None
+        train_file = (
+            SafeFileWrapper(train_filename, encoding="utf-8", errors="replace")
+            if train_filename
+            else None
+        )
+        test_file = (
+            SafeFileWrapper(test_filename, encoding="utf-8", errors="replace")
+            if test_filename
+            else None
+        )
+        eval_file = (
+            SafeFileWrapper(eval_filename, encoding="utf-8", errors="replace")
+            if eval_filename
+            else None
+        )
         return cls(train_file, test_file, eval_file, schema=schema, **args)
 
     def __init__(
