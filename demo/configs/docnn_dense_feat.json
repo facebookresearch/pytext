@@ -1,0 +1,17 @@
+{
+  "task": {
+    "DocClassificationTask": {
+      "features" : {
+        "dense_feat" : {
+          "dim": 10
+        }
+      },
+      "data_handler": {
+        "columns_to_read": ["doc_label", "text", "dict_feat", "dense_feat"],
+        "train_path": "tests/data/train_dense_features_tiny.tsv",
+        "eval_path": "tests/data/test_dense_features_tiny.tsv",
+        "test_path": "tests/data/test_dense_features_tiny.tsv"
+      }
+    }
+  }
+}
