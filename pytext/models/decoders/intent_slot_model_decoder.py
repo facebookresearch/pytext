@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import List, Optional
 
 import torch
 import torch.nn as nn
@@ -67,14 +67,25 @@ class IntentSlotModelDecoder(DecoderBase):
 
         self.word_decoder = nn.Linear(in_dim_word, out_dim_word)
 
-    def forward(self, x_d: torch.Tensor, x_w: torch.Tensor) -> List[torch.Tensor]:
-        logit_d = self.doc_decoder(x_d)
+    def forward(
+        self, x_d: torch.Tensor, x_w: torch.Tensor, dense: Optional[torch.Tensor] = None
+    ) -> List[torch.Tensor]:
+        if dense is not None:
+            logit_d = self.doc_decoder(torch.cat((x_d, dense), 1))
+        else:
+            logit_d = self.doc_decoder(x_d)
+
         if self.use_doc_probs_in_word:
             # Get doc probability distribution
             doc_prob = F.softmax(logit_d, 1)
             word_input_shape = x_w.size()
             doc_prob = doc_prob.unsqueeze(1).repeat(1, word_input_shape[1], 1)
             x_w = torch.cat((x_w, doc_prob), 2)
+
+        if dense is not None:
+            word_input_shape = x_w.size()
+            dense = dense.unsqueeze(1).repeat(1, word_input_shape[1], 1)
+            x_w = torch.cat((x_w, dense), 2)
 
         return [logit_d, self.word_decoder(x_w)]
 

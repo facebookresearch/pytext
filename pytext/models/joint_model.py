@@ -3,6 +3,7 @@
 from typing import Union
 
 from pytext.config import ConfigBase
+from pytext.config.contextual_intent_slot import ModelInput
 from pytext.data import CommonMetadata
 from pytext.models.model import Model
 from pytext.models.module import create_module
@@ -39,14 +40,22 @@ class JointModel(Model):
         representation = create_module(
             model_config.representation, embed_dim=embedding.embedding_dim
         )
+        dense_feat_dim = 0
+        for decoder_feat in (ModelInput.DENSE,):  # Only 1 right now.
+            if getattr(feat_config, decoder_feat, False):
+                dense_feat_dim = getattr(feat_config, ModelInput.DENSE).dim
+
         doc_label_meta, word_label_meta = metadata.target
         decoder = create_module(
             model_config.decoder,
-            in_dim_doc=representation.doc_representation_dim,
-            in_dim_word=representation.word_representation_dim,
+            in_dim_doc=representation.doc_representation_dim + dense_feat_dim,
+            in_dim_word=representation.word_representation_dim + dense_feat_dim,
             out_dim_doc=doc_label_meta.vocab_size,
             out_dim_word=word_label_meta.vocab_size,
         )
+
+        if dense_feat_dim > 0:
+            decoder.num_decoder_modules = 1
         output_layer = create_module(
             model_config.output_layer, doc_label_meta, word_label_meta
         )

@@ -4,7 +4,7 @@
 import unittest
 
 from pytext.common.constants import DFColumn
-from pytext.config.contextual_intent_slot import ModelInputConfig, TargetConfig
+from pytext.config.contextual_intent_slot import ModelInput, ModelInputConfig
 from pytext.config.field_config import DocLabelConfig, WordLabelConfig
 from pytext.data import ContextualIntentSlotModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
@@ -56,3 +56,23 @@ class ContextualIntentSlotModelDataHandlerTest(unittest.TestCase):
         self.assertEqual(data.examples[0].raw_word_label, "")
         self.assertListEqual(data.examples[0].token_range, [(0, 4), (5, 9), (10, 14)])
         self.assertEqual(data.examples[0].utterance, '["Hey", "Youd love this"]')
+
+
+class ContextualIntentSlotModelDataHandlerDenseTest(unittest.TestCase):
+    def test_read_file_with_dense_features(self):
+        data_handler_config = ContextualIntentSlotModelDataHandler.Config()
+        data_handler_config.columns_to_read.append(ModelInput.DENSE)
+        dense_file_name = tests_module.test_file(
+            "contextual_intent_slot_train_tiny_dense.tsv"
+        )
+        data_handler = ContextualIntentSlotModelDataHandler.from_config(
+            data_handler_config,
+            ModelInputConfig(),
+            [DocLabelConfig(), WordLabelConfig()],
+            featurizer=SimpleFeaturizer(SimpleFeaturizer.Config(), ModelInputConfig()),
+        )
+
+        dense_data = list(
+            data_handler.read_from_file(dense_file_name, data_handler.raw_columns)
+        )
+        self.assertEqual(dense_data[0][ModelInput.DENSE], "[0,1,2,3,4]")
