@@ -17,6 +17,7 @@ from pytext.fields import (
     DocLabelField,
     Field,
     FloatField,
+    FloatVectorField,
     PretrainedModelEmbeddingField,
     RawField,
     SeqFeatureField,
@@ -37,6 +38,7 @@ class RawData:
     DICT_FEAT = "dict_feat"
     DOC_WEIGHT = "doc_weight"
     WORD_WEIGHT = "word_weight"
+    DENSE_FEAT = "dense_feat"
 
 
 class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
@@ -112,6 +114,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 ModelInput.CHAR: CharFeatureField,
                 ModelInput.PRETRAINED: PretrainedModelEmbeddingField,
                 ModelInput.SEQ: SeqFeatureField,
+                ModelInput.DENSE: FloatVectorField,
             },
         )
 
@@ -218,6 +221,10 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             ExtraField.UTTERANCE: row_data[RawData.TEXT],
             ExtraField.TOKEN_RANGE: features_list[-1].token_ranges,
         }
+
+        if RawData.DENSE_FEAT in row_data:
+            res[ModelInput.DENSE] = row_data.get(RawData.DENSE_FEAT)
+
         if WordLabelConfig._name in self.labels:
             # TODO move it into word label field
             res[WordLabelConfig._name] = data.align_slot_labels(
@@ -230,16 +237,20 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
     def _train_input_from_batch(self, batch):
         text_input = getattr(batch, ModelInput.TEXT)
         seq_input = getattr(batch, ModelInput.SEQ)
-        return (
+        result = (
             # text_input[0] contains the word embeddings,
             # text_input[1] contains the lengths of each word
             text_input[0],
             *(
                 getattr(batch, key)
                 for key in self.features
-                if key not in [ModelInput.TEXT, ModelInput.SEQ]
+                if key not in [ModelInput.TEXT, ModelInput.SEQ, ModelInput.DENSE]
             ),
             seq_input[0],
             text_input[1],
             seq_input[1],
         )
+        # Append dense faeture to decoder layer at the end.
+        if ModelInput.DENSE in self.features:
+            result = result + (getattr(batch, ModelInput.DENSE),)
+        return result
