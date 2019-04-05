@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import re
 from typing import List, Optional, Tuple, Type
 
 import torch
@@ -226,10 +227,6 @@ class CharacterTokenTensorizer(TokenTensorizer):
         return (pad_and_tensorize(characters), pad_and_tensorize(lengths))
 
 
-class FloatVectorTensorizer(Tensorizer):
-    """TODO: support for dense features."""
-
-
 class LabelTensorizer(Tensorizer):
     """Numberize labels."""
 
@@ -329,7 +326,7 @@ class FloatListTensorizer(Tensorizer):
         self.column = column
 
     def numberize(self, row):
-        res = json.loads(row[self.column].replace(" ", ","))
+        res = json.loads(re.sub(r",? +", ",", row[self.column]))
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
         return [float(n) for n in res]

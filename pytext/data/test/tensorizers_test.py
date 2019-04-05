@@ -9,6 +9,7 @@ from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import (
     ByteTensorizer,
     CharacterTokenTensorizer,
+    FloatListTensorizer,
     LabelTensorizer,
     TokenTensorizer,
     initialize_tensorizers,
@@ -138,3 +139,17 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(1, tensor)
         with self.assertRaises(Exception):
             tensor = next(tensors)
+
+    def test_create_float_list_tensor(self):
+        tensorizer = FloatListTensorizer(column="dense")
+        rows = [
+            {"dense": "[0.1,0.2]"},  # comma
+            {"dense": "[0.1, 0.2]"},  # comma with single space
+            {"dense": "[0.1,  0.2]"},  # comma with multiple spaces
+            {"dense": "[0.1 0.2]"},  # space
+            {"dense": "[0.1  0.2]"},  # multiple spaces
+        ]
+
+        tensors = (tensorizer.numberize(row) for row in rows)
+        for tensor in tensors:
+            self.assertEqual([0.1, 0.2], tensor)
