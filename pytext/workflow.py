@@ -119,15 +119,6 @@ def prepare_task(
     return task
 
 
-def preprocess_task(config: PyTextConfig):
-    if hasattr(config.task, "data") and hasattr(config.task.data, "numberized_dir"):
-        if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-            task = load(config.load_snapshot_path)
-        else:
-            task = create_task(config.task)
-        task.data.initialize_numberized_data()
-
-
 def save_and_export(
     config: PyTextConfig, task: Task, metric_channels: Optional[List[Channel]] = None
 ) -> None:
