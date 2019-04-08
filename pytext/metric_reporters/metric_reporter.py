@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, List
 
+import numpy as np
 import torch
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
@@ -74,7 +75,9 @@ class MetricReporter(Component):
             if key not in self.all_context:
                 self.all_context[key] = []
             self.aggregate_data(self.all_context[key], val)
-        self.all_loss.append(loss)
+        # some loss functions (eg: in NewBertRegressionTask) return a tensor
+        # convert tensor to float
+        self.all_loss.append(float(loss))
         self.batch_size.append(len(m_input[0]))
 
     def aggregate_preds(self, new_batch):
@@ -122,7 +125,7 @@ class MetricReporter(Component):
         """
         Calculate the average loss for all aggregated batch
         """
-        return sum(self.all_loss) / float(len(self.all_loss))
+        return np.average(self.all_loss, weights=self.batch_size)
 
     def calculate_metric(self):
         """
