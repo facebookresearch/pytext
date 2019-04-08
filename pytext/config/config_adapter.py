@@ -3,6 +3,25 @@
 from .pytext_config import LATEST_VERSION
 
 
+ADAPTERS = {}
+
+
+def register_adapter(from_version):
+    def decorator(fn):
+        if from_version in ADAPTERS:
+            raise Exception(
+                "Duplicated adapter from_version={}: '{}' and '{}'".format(
+                    from_version, fn.__name__, ADAPTERS[from_version].__name__
+                )
+            )
+        else:
+            ADAPTERS[from_version] = fn
+        return fn
+
+    return decorator
+
+
+@register_adapter(from_version=0)
 def v0_to_v1(json_config):
     # migrate optimizer and random_seed params
     [task] = json_config["task"].values()
@@ -43,6 +62,7 @@ def v0_to_v1(json_config):
     return json_config
 
 
+@register_adapter(from_version=1)
 def v1_to_v2(json_config):
     # migrate optimizer params
     [task] = json_config["task"].values()
@@ -107,6 +127,7 @@ def v1_to_v2(json_config):
     return json_config
 
 
+@register_adapter(from_version=2)
 def v2_to_v3(json_config):
     """Optimizer and Scheduler configs used to be part of the task config,
     they now live in the trainer's config.
@@ -132,12 +153,9 @@ def v2_to_v3(json_config):
     return json_config
 
 
-adapters = {0: v0_to_v1, 1: v1_to_v2, 2: v2_to_v3}
-
-
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
-    adapter = adapters.get(current_version)
+    adapter = ADAPTERS.get(current_version)
     if not adapter:
         raise Exception(f"no adapter found for version {current_version}")
     json_config = adapter(json_config)
