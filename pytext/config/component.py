@@ -18,6 +18,7 @@ class ComponentType(enum.Enum):
     TOKENIZER = "tokenizer"
     TENSORIZER = "tensorizer"
     BATCHER = "batcher"
+    BATCH_SAMPLER = "batch_sampler"
     FEATURIZER = "featurizer"
     TRAINER = "trainer"
     LOSS = "loss"
