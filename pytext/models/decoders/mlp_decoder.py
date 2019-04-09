@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -53,8 +53,12 @@ class MLPDecoder(DecoderBase):
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
 
-    def forward(self, *input: torch.Tensor) -> torch.Tensor:
-        return self.mlp(torch.cat(input, 1))
+    def forward(self, *inputs: Tuple[torch.Tensor]) -> torch.Tensor:
+        mlp_input = list(inputs)
+        for i, inp in enumerate(inputs):
+            if len(inp.size()) == 1:
+                mlp_input[i] = inp.unsqueeze(0)  # Add fake batch dimension
+        return self.mlp(torch.cat(mlp_input, 1))
 
     def get_decoder(self) -> List[nn.Module]:
         """Returns the MLP module that is used as a decoder.
