@@ -86,9 +86,12 @@ class CharFeatureField(VocabUsingField):
 
         for i, sentence in enumerate(minibatch):
             for j, word in enumerate(sentence):
-                char_padding = [self.pad_token] * (max_word_length - len(word))
-                padded_minibatch[i][j].extend(char_padding)
-                padded_minibatch[i][j] = padded_minibatch[i][j][:max_word_length]
+                if len(word) < max_word_length:
+                    char_padding = [self.pad_token] * (max_word_length - len(word))
+                    padded_minibatch[i][j].extend(char_padding)
+                elif len(word) > max_word_length:
+                    padded_minibatch[i][j] = padded_minibatch[i][j][:max_word_length]
+
             if len(sentence) < max_sentence_length:
                 for _ in range(max_sentence_length - len(sentence)):
                     char_padding = [self.pad_token] * max_word_length
