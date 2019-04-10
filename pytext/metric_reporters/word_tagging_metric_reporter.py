@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import itertools
 from collections import Counter
 from typing import List
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
+from pytext.metrics import LabelPrediction, compute_classification_metrics
 from pytext.metrics.intent_slot_metrics import (
     Node,
     NodesPredictionPair,
@@ -81,3 +83,40 @@ class WordTaggingMetricReporter(MetricReporter):
 
     def get_model_select_metric(self, metrics):
         return metrics.micro_scores.f1
+
+
+class SimpleWordTaggingMetricReporter(MetricReporter):
+    def __init__(self, label_names, channels):
+        super().__init__(channels)
+        self.label_names = label_names
+
+    @classmethod
+    def from_config(cls, config, tensorizers):
+        print(
+            "WARNING - SimpleWordTaggingMetricReporter ignoring output_path:",
+            config.output_path,
+        )
+        return SimpleWordTaggingMetricReporter(
+            channels=[ConsoleChannel()], label_names=tensorizers["labels"].vocab
+        )
+
+    def calculate_metric(self):
+        return compute_classification_metrics(
+            list(
+                itertools.chain.from_iterable(
+                    (LabelPrediction(s, p, e) for s, p, e in zip(scores, pred, expect))
+                    for scores, pred, expect in zip(
+                        self.all_scores, self.all_preds, self.all_targets
+                    )
+                )
+            ),
+            self.label_names,
+            self.calculate_loss(),
+        )
+
+    def batch_context(self, batch):
+        return {}
+
+    @staticmethod
+    def get_model_select_metric(metrics):
+        return metrics.accuracy

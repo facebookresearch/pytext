@@ -121,9 +121,9 @@ class NewTask(TaskBase):
     @classmethod
     def _init_tensorizers(cls, config: Config):
         tensorizers = {
-            name: create_component(ComponentType.TENSORIZER, tensorizer)
-            for name, tensorizer in config.model.inputs._asdict().items()
-            if tensorizer
+            name: create_component(ComponentType.TENSORIZER, tensorizer_config)
+            for name, tensorizer_config in config.model.inputs._asdict().items()
+            if tensorizer_config
         }
         schema: Dict[str, Type] = {}
         for tensorizer in tensorizers.values():
@@ -140,13 +140,16 @@ class NewTask(TaskBase):
 
     @classmethod
     def _init_model(cls, config: Config, tensorizers, model_state=None):
-        model = create_component(ComponentType.MODEL, config.model, tensorizers)
+        model = create_component(
+            ComponentType.MODEL, config.model, tensorizers=tensorizers
+        )
         if model_state:
             model.load_state_dict(model_state)
 
         precision.activate(model)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
+
         return model
 
     def __init__(

@@ -1,0 +1,16 @@
+{
+  "task": {
+    "NewWordTaggingTask": {
+      "data": {
+        "source": {
+          "TSVDataSource": {
+            "field_names": ["label", "slots", "text"],
+            "train_filename": "pytext/tests/data/train_data_tiny.tsv",
+            "test_filename": "pytext/tests/data/test_data_tiny.tsv",
+            "eval_filename": "pytext/tests/data/test_data_tiny.tsv"
+          }
+        }
+      }
+    }
+  }
+}
