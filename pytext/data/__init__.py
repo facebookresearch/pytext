@@ -6,6 +6,7 @@ from .compositional_data_handler import CompositionalDataHandler
 from .contextual_intent_slot_data_handler import ContextualIntentSlotModelDataHandler
 from .data import Batcher, Data, PoolingBatcher, generator_iterator
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
+from .disjoint_multitask_data import DisjointMultitaskData
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
 from .doc_classification_data_handler import DocClassificationDataHandler, RawData
 from .joint_data_handler import JointModelDataHandler
@@ -26,6 +27,7 @@ __all__ = [
     "ContextualIntentSlotModelDataHandler",
     "Data",
     "DataHandler",
+    "DisjointMultitaskData",
     "DisjointMultitaskDataHandler",
     "DocClassificationDataHandler",
     "generator_iterator",

@@ -70,7 +70,7 @@ class RoundRobinBatchSampler(BaseBatchSampler):
 
     @classmethod
     def from_config(cls, config: Config, iterators: Dict[str, Iterator]):
-        cls(iterators, config.iter_to_set_epoch)
+        return cls(iterators, config.iter_to_set_epoch)
 
     def __init__(
         self, iterators: Dict[str, Iterator], iter_to_set_epoch: Optional[str] = None
@@ -114,26 +114,40 @@ class DisjointMultitaskData(Data):
 
     """
 
-    class Config(Data.Config):
+    class Config(Component.Config):
         sampler: BaseBatchSampler.Config = RoundRobinBatchSampler.Config()
 
     def __init__(
-        self, config: Config, data_dict: Dict[str, Data], *args, **kwargs
+        self,
+        config: Config,
+        data_dict: Dict[str, Data],
+        rank=0,
+        world_size=1,
+        *args,
+        **kwargs
     ) -> None:
-        self.data_dict = data_dict
-        self.sampler_config = config.sampler
+        batches = {
+            stage: {
+                name: task.batches(stage, rank, world_size)
+                for name, task in data_dict.items()
+            }
+            for stage in [Stage.TRAIN, Stage.TEST, Stage.EVAL]
+        }
+        self.samplers = {
+            Stage.TRAIN: create_component(
+                ComponentType.BATCH_SAMPLER,
+                config.sampler,
+                iterators=batches[Stage.TRAIN],
+            ),
+            Stage.EVAL: EvalBatchSampler(batches[Stage.EVAL]),
+            Stage.TEST: EvalBatchSampler(batches[Stage.TEST]),
+        }
+
+    def _add_batch_context(self, batches):
+        for name, batch in batches:
+            batch[BatchContext.TASK_NAME] = name
+            yield batch
 
     @generator_iterator
     def batches(self, stage: Stage, rank=0, world_size=1, data_source=None):
-        all_batches = {
-            name: task.batches(stage, rank, world_size)
-            for name, task in self.data_dict.items()
-        }
-        if stage == Stage.TRAIN:
-            sampler = create_component(self.sampler_config, iterators=all_batches)
-        else:
-            sampler = EvalBatchSampler(all_batches)
-
-        for name, batch in sampler:
-            batch[BatchContext.TASK_NAME] = name
-            yield batch
+        return self._add_batch_context(iter(self.samplers[stage]))

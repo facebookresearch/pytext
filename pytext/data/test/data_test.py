@@ -4,7 +4,7 @@
 import unittest
 
 from pytext.common.constants import Stage
-from pytext.data import Batcher, Data, PoolingBatcher
+from pytext.data import Batcher, Data, DisjointMultitaskData, PoolingBatcher
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, TokenTensorizer
@@ -18,6 +18,14 @@ class DataTest(unittest.TestCase):
     def setUp(self):
         self.data_source = TSVDataSource(
             SafeFileWrapper(tests_module.test_file("train_dense_features_tiny.tsv")),
+            SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
+            eval_file=None,
+            field_names=["label", "slots", "text", "dense"],
+            schema={"text": str, "label": str},
+        )
+
+        self.data_source2 = TSVDataSource(
+            SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
             SafeFileWrapper(tests_module.test_file("test_dense_features_tiny.tsv")),
             eval_file=None,
             field_names=["label", "slots", "text", "dense"],
@@ -107,6 +115,18 @@ class DataTest(unittest.TestCase):
         self.assertEqual(
             self.tensorizers["labels"].labels[batch["labels"][8]], "alarm/snooze_alarm"
         )
+
+    def test_disjoint_multitask_data(self):
+        data_dict = {
+            "data1": Data(self.data_source, self.tensorizers),
+            "data2": Data(self.data_source2, self.tensorizers),
+        }
+        multi_data = DisjointMultitaskData(DisjointMultitaskData.Config(), data_dict)
+        batches = list(multi_data.batches(Stage.TRAIN))
+        self.assertEqual(len(batches), 2)
+        # test iterate once more
+        batches = list(multi_data.batches(Stage.TRAIN))
+        self.assertEqual(len(batches), 2)
 
 
 class BatcherTest(unittest.TestCase):
