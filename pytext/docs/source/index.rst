@@ -63,6 +63,7 @@ If you want to use PyText as a library and build your own models, please check t
   :maxdepth: 1
   :caption: Training More Advanced Models
 
+  datasource_tutorial
   atis_tutorial
   hierarchical_intent_slot_tutorial
   disjoint_multitask_tutorial
