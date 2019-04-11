@@ -105,6 +105,7 @@ class TaskBase(Component):
                 task_config.labels,
                 data_handler.metadata,
                 task_config.model,
+                task_config.featurizer,
             )
             if task_config.exporter
             else None
