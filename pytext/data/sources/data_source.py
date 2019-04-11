@@ -2,9 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import logging
-from typing import Dict
+from typing import Dict, List
 
 from pytext.config.component import Component, ComponentType
+from pytext.utils.data import Slot, parse_slot_string
 
 
 class RawExample(dict):
@@ -252,3 +253,8 @@ class RootDataSource(DataSource):
 @RootDataSource.register_type(str)
 def load_text(s):
     return s
+
+
+@RootDataSource.register_type(List[Slot])
+def load_slots(s):
+    return parse_slot_string(s)
