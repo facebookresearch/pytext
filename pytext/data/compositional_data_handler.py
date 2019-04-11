@@ -146,6 +146,8 @@ class CompositionalDataHandler(DataHandler):
             if name == ACTION_FEATURE_FIELD:
                 input = input.tolist()  # Action needn't be passed as Tensor obj.
             m_inputs.append(input)
+        # beam size and topk
+        m_inputs.extend([1, 1])
         return m_inputs
 
     def _test_input_from_batch(self, batch):
@@ -156,6 +158,8 @@ class CompositionalDataHandler(DataHandler):
             getattr(batch, DatasetFieldName.DICT_FIELD, None),
             None,
             getattr(batch, DatasetFieldName.PRETRAINED_MODEL_EMBEDDING, None),
+            1,
+            1,
         ]
 
     def preprocess_row(self, row_data: Dict[str, Any]) -> Dict[str, Any]:
