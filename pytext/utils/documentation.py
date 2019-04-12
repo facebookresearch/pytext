@@ -7,7 +7,6 @@ from sys import modules, stderr
 from typing import Union
 
 from pytext.config.component import Component, get_component_name
-from pytext.config.pytext_config import ConfigBase
 from pytext.models.module import Module
 
 
