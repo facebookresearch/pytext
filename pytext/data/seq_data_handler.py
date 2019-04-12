@@ -4,7 +4,6 @@
 from typing import Any, Dict, List
 
 from pytext.common.constants import DatasetFieldName, DFColumn
-from pytext.config import ConfigBase
 from pytext.config.field_config import DocLabelConfig, FeatureConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
