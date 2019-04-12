@@ -4,7 +4,6 @@
 from typing import List
 
 import torch
-from pytext.config import ConfigBase
 
 from .biseqcnn import BSeqCNNRepresentation
 from .docnn import DocNNRepresentation
