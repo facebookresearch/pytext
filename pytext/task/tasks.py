@@ -37,7 +37,6 @@ from pytext.models.doc_model import DocModel
 from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
-from pytext.models.model import Model
 from pytext.models.pair_classification_model import PairClassificationModel
 from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocumentPairwiseRankingModel,
