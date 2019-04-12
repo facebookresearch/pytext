@@ -5,7 +5,6 @@ from typing import Dict, Union
 
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
-from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import (
     LabelTensorizer,
     NumericLabelTensorizer,
