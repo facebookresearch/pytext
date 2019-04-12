@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.config import ConfigBase
 from pytext.config.module_config import CNNParams
 from pytext.utils import cuda
 
