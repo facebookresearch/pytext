@@ -91,6 +91,7 @@ class RNNGParser(Model, Component):
         # version 0 - initial implementation
         # version 1 - beam search
         # version 2 - use zero init state rather than random
+        # version 3 - add beam search input params
         version: int = 2
         lstm: BiLSTM.Config = BiLSTM.Config()
         ablation: AblationParams = AblationParams()
@@ -125,8 +126,6 @@ class RNNGParser(Model, Component):
             lstm_dim=model_config.lstm.lstm_dim,
             max_open_NT=model_config.max_open_NT,
             dropout=model_config.dropout,
-            beam_size=model_config.beam_size,
-            top_k=model_config.top_k,
             actions_vocab=metadata.actions_vocab,
             shift_idx=metadata.shift_idx,
             reduce_idx=metadata.reduce_idx,
@@ -146,8 +145,6 @@ class RNNGParser(Model, Component):
         lstm_dim: int,
         max_open_NT: int,
         dropout: float,
-        beam_size: int,
-        top_k: int,
         actions_vocab,
         shift_idx: int,
         reduce_idx: int,
@@ -238,9 +235,6 @@ class RNNGParser(Model, Component):
         self.valid_IN_idxs = valid_IN_idxs
         self.valid_SL_idxs = valid_SL_idxs
 
-        self.beam_size = beam_size
-        self.top_k = top_k
-
         num_actions = len(actions_vocab)
         lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
         if lstm_count == 0:
@@ -278,6 +272,8 @@ class RNNGParser(Model, Component):
         dict_feat: Optional[Tuple[torch.Tensor, ...]] = None,
         actions: Optional[List[List[int]]] = None,
         contextual_token_embeddings: Optional[torch.Tensor] = None,
+        beam_size=1,
+        top_k=1,
     ) -> List[Tuple[torch.Tensor, torch.Tensor]]:
         """RNNG forward function.
 
@@ -295,8 +291,6 @@ class RNNGParser(Model, Component):
             (batch_size, action_length)
             (batch_size, action_length, number_of_actions)
         """
-        beam_size = self.beam_size
-        top_k = self.top_k
 
         if self.stage != Stage.TEST:
             beam_size = 1

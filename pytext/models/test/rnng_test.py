@@ -79,8 +79,6 @@ class RNNGParserTest(unittest.TestCase):
             lstm_dim=20,
             max_open_NT=10,
             dropout=0.2,
-            beam_size=3,
-            top_k=3,
             actions_vocab=actions_vocab,
             shift_idx=4,
             reduce_idx=3,
@@ -218,7 +216,9 @@ class RNNGParserTest(unittest.TestCase):
 
         # Beam Search Test
         self.parser.eval(Stage.TEST)
-        results = self.parser(tokens=tokens, seq_lens=seq_lens, dict_feat=dict_feat)
+        results = self.parser(
+            tokens=tokens, seq_lens=seq_lens, dict_feat=dict_feat, beam_size=3, top_k=3
+        )
         self.assertEqual(len(results), 3)
         for actions, scores in results:
             self.assertGreater(actions.shape[1], tokens.shape[1])
