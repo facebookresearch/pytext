@@ -4,7 +4,6 @@
 from typing import List, Tuple, Union
 
 import torch
-from pytext.config import ConfigBase
 from pytext.models.module import create_module
 
 from .bilstm_doc_slot_attention import BiLSTMDocSlotAttention
