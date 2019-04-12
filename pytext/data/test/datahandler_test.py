@@ -7,7 +7,6 @@ from pytext.common.constants import DFColumn, VocabMeta
 from pytext.config.component import create_featurizer
 from pytext.config.doc_classification import ModelInput, ModelInputConfig, TargetConfig
 from pytext.config.field_config import FeatureConfig, WordFeatConfig
-from pytext.data.data_handler import DataHandler
 from pytext.data.doc_classification_data_handler import DocClassificationDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.test import import_tests_module
