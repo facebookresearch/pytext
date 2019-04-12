@@ -4,7 +4,6 @@
 from typing import Union
 
 import torch
-from pytext.config import ConfigBase
 from pytext.models.module import create_module
 
 from .bilstm_doc_attention import BiLSTMDocAttention
