@@ -93,11 +93,10 @@ class BiLSTMSlotAttention(RepresentationBase):
         rep = self.dropout(embedded_tokens)
 
         # LSTM representation
-        rep, _ = self.lstm(rep, seq_lengths, states)
+        rep, state = self.lstm(rep, seq_lengths, states)
 
         # Attention
         if self.attention:
             rep = self.attention(rep)
-
         # Non-linear projection
-        return self.dense(rep) if self.dense else rep
+        return (self.dense(rep) if self.dense else rep, state)
