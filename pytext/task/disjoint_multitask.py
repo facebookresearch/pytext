@@ -19,7 +19,6 @@ from pytext.metric_reporters.disjoint_multitask_metric_reporter import (
     DisjointMultitaskMetricReporter,
 )
 from pytext.models.disjoint_multitask_model import DisjointMultitaskModel
-from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda
 
 from . import Task, TaskBase
