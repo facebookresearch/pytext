@@ -16,7 +16,7 @@ from typing import (
 )
 
 import numpy as np
-from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
+from pytext.utils.ascii_table import ascii_table
 
 
 RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
