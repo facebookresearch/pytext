@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.5
+
+*Note:* this is a last release in 0.1.x. The next release will deprecate Task and Model base classes and make the improved API of the new data handler the default. You can start using it already by inheriting from NewTask. NewDocumentClassification and NewWordTaggingTask use this new API, and you can get the first example in the tutorial "Custom Data Format".
+
+**New Stuff**
+- add config adapter
+  - PyText is very young and its API is still in flux, making the config files brittle
+  - config files now have a version number reflecting the API at the time it was created
+  - older versions can be loaded and internally transformed into newer versions
+- better metrics and reporting
+  - better training time tracking
+  - cool new visualization of model state in TensorBoard
+  - pretty results in the terminal
+- improved distributed training
+- torchscript export
+- support for SQuAD dataset
+- add AugmentedLSTM
+- add dense features support
+- new plugin system: command line option --include to import custom user classes (see tutorial "Custom Data Format" for example)
+
+*Many bug fixes and code clean-ups*
+
+
 ## v0.1.4
 **New Stuff**
 - Refactor Metric Reporters to reduce coupling
