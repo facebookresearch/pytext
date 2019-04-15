@@ -3,7 +3,7 @@
 
 import unittest
 
-from pytext.data.disjoint_multitask_data import EvalBatchSampler, RoundRobinBatchSampler
+from pytext.data import EvalBatchSampler, RoundRobinBatchSampler
 
 
 class BatchSamplerTest(unittest.TestCase):
@@ -12,18 +12,20 @@ class BatchSamplerTest(unittest.TestCase):
         iteratorB = ["a", "b", "c"]
 
         # no iter_to_set_epoch
-        round_robin_iterator = RoundRobinBatchSampler({"A": iteratorA, "B": iteratorB})
+        round_robin_iterator = RoundRobinBatchSampler().batchify(
+            {"A": iteratorA, "B": iteratorB}
+        )
         expected_items = ["1", "a", "2", "b", "3", "c", "4"]
         self._check_iterator(round_robin_iterator, expected_items)
 
         # iter_to_set_epoch = "A"
-        round_robin_iterator = RoundRobinBatchSampler(
-            {"A": iteratorA, "B": iteratorB}, iter_to_set_epoch="A"
+        round_robin_iterator = RoundRobinBatchSampler(iter_to_set_epoch="A").batchify(
+            {"A": iteratorA, "B": iteratorB}
         )
         expected_items = ["1", "a", "2", "b", "3", "c", "4", "a", "5", "b"]
         self._check_iterator(round_robin_iterator, expected_items)
 
-        eval_iterator = EvalBatchSampler({"A": iteratorA, "B": iteratorB})
+        eval_iterator = EvalBatchSampler().batchify({"A": iteratorA, "B": iteratorB})
         expected_items = ["1", "2", "3", "4", "5", "a", "b", "c"]
         self._check_iterator(eval_iterator, expected_items)
 
