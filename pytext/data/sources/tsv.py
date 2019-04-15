@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import csv
+import sys
 import threading
 from typing import Dict, List, Optional, Type
 
@@ -14,6 +15,7 @@ class TSV:
         self.field_names = field_names
         self.delimiter = delimiter
         self._access_lock = threading.Lock()
+        csv.field_size_limit(sys.maxsize)
 
     def __iter__(self):
         can_acquire = self._access_lock.acquire(blocking=False)
