@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from .batch_sampler import BaseBatchSampler, EvalBatchSampler, RoundRobinBatchSampler
+from .batch_sampler import (
+    BaseBatchSampler,
+    EvalBatchSampler,
+    ProbabalisticBatchSampler,
+    RoundRobinBatchSampler,
+)
 from .bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from .compositional_data_handler import CompositionalDataHandler
 from .contextual_intent_slot_data_handler import ContextualIntentSlotModelDataHandler
@@ -36,6 +41,7 @@ __all__ = [
     "LanguageModelDataHandler",
     "PairClassificationDataHandler",
     "PoolingBatcher",
+    "ProbabalisticBatchSampler",
     "QueryDocumentPairwiseRankingDataHandler",
     "RawData",
     "RoundRobinBatchSampler",
