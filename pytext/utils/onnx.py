@@ -38,14 +38,16 @@ def pytorch_to_caffe2(
         print(f"Saving onnx model to: {export_onnx_path}")
     else:
         export_onnx_path = export_path
-    torch.onnx.export(
-        model,
-        export_input,
-        export_onnx_path,
-        input_names=all_input_names,
-        output_names=output_names,
-        export_params=True,
-    )
+    model.eval()
+    with torch.no_grad():
+        torch.onnx.export(
+            model,
+            export_input,
+            export_onnx_path,
+            input_names=all_input_names,
+            output_names=output_names,
+            export_params=True,
+        )
     onnx_model = onnx.load(export_onnx_path)
     onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
