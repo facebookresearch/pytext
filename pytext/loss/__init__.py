@@ -5,6 +5,7 @@ from .loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
+    LabelSmoothedCrossEntropyLoss,
     Loss,
     MSELoss,
     PairwiseRankingLoss,
@@ -22,4 +23,5 @@ __all__ = [
     "MSELoss",
     "SoftHardBCELoss",
     "PairwiseRankingLoss",
+    "LabelSmoothedCrossEntropyLoss",
 ]
