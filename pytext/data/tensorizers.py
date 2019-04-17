@@ -7,18 +7,10 @@ from typing import List, Optional, Tuple, Type
 
 import torch
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils.data import Slot
 
-from .utils import (
-    BOS,
-    EOS,
-    PAD,
-    SpecialToken,
-    Token,
-    Tokenizer,
-    VocabBuilder,
-    pad_and_tensorize,
-)
+from .utils import BOS, EOS, PAD, SpecialToken, VocabBuilder, pad_and_tensorize
 
 
 class Tensorizer(Component):
