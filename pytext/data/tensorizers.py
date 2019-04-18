@@ -328,7 +328,12 @@ class FloatListTensorizer(Tensorizer):
         self.column = column
 
     def numberize(self, row):
-        res = json.loads(re.sub(r",? +", ",", row[self.column]))
+        str = row[self.column]
+        # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
+        str = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", str)
+        # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
+        str = re.sub(r"(?<=\d)\.(?![\d])", "", str)
+        res = json.loads(str)
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
         return [float(n) for n in res]
