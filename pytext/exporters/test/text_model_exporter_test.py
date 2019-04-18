@@ -41,8 +41,9 @@ JOINT_CONFIG = """
   "model": {
     "representation": {
       "BiLSTMDocSlotAttention": {
-        "lstm": {
-          "lstm_dim": 30,
+        "rnn": {
+          "rnn_type": "bilstm",
+          "hidden_size": 30,
           "num_layers": 1
         },
         "pooling": {

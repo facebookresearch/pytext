@@ -326,7 +326,7 @@ class AugmentedLSTM(RepresentationBase):
         Configuration class for `AugmentedLSTM`.
 
         Attributes:
-            dropout_rate (float): Variational dropout probability to use.
+            dropout (float): Variational dropout probability to use.
                 Defaults to 0.0.
             hidden_size (int): Number of features in the hidden state of the LSTM.
                 Defaults to 32.
@@ -342,7 +342,7 @@ class AugmentedLSTM(RepresentationBase):
                 we don't.
         """
 
-        dropout_rate: float = 0.0
+        dropout: float = 0.0
         hidden_size: int = 32
         use_highway: bool = True
         bidirectional: bool = False
@@ -360,7 +360,7 @@ class AugmentedLSTM(RepresentationBase):
         self.hidden_size = self.config.hidden_size
         self.num_layers = self.config.num_layers
         self.bidirectional = self.config.bidirectional
-        self.dropout_rate = self.config.dropout_rate
+        self.dropout_rate = self.config.dropout
         self.use_highway = self.config.use_highway
         self.use_bias = self.config.use_bias
 

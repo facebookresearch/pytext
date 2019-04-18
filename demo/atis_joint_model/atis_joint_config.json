@@ -5,9 +5,10 @@
         "model": {
           "representation": {
             "BiLSTMDocSlotAttention": {
-              "lstm": {
+              "rnn": {
+                "rnn_type": "bilstm",
+                "hidden_size": 366,
                 "dropout": 0.5,
-                "lstm_dim": 366,
                 "num_layers": 2,
                 "bidirectional": true
               },

@@ -44,12 +44,15 @@ class BiLSTM(RepresentationBase):
                 computing the final result. Defaults to 1.
             bidirectional (bool): If `True`, becomes a bidirectional LSTM. Defaults
                 to `True`.
+            bias (bool): If `False`, then the layer does not use bias weights
+                b_ih and b_hh. Default: True
         """
 
         dropout: float = 0.4
         lstm_dim: int = 32
         num_layers: int = 1
         bidirectional: bool = True
+        bias: bool = True
 
     def __init__(
         self, config: Config, embed_dim: int, padding_value: float = 0.0
@@ -63,6 +66,7 @@ class BiLSTM(RepresentationBase):
             config.lstm_dim,
             num_layers=config.num_layers,
             bidirectional=config.bidirectional,
+            bias=config.bias,
         )
         self.representation_dim: int = config.lstm_dim * (
             2 if config.bidirectional else 1
