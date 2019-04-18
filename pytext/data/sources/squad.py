@@ -25,7 +25,7 @@ def unflatten(fname, ignore_impossible):
                         "question": question["question"],
                         "answers": [answer["text"] for answer in answers],
                         "answer_starts": [int(ans["answer_start"]) for ans in answers],
-                        "label": label,
+                        "label": str(label),
                     }
 
 

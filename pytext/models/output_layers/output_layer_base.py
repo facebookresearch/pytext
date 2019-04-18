@@ -29,10 +29,6 @@ class OutputLayerBase(Module):
 
     """
 
-    @classmethod
-    def from_config(cls, config, metadata: FieldMeta):
-        return cls(metadata.vocab.itos, create_loss(config.loss), config)
-
     def __init__(
         self,
         target_names: Optional[List[str]] = None,

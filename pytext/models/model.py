@@ -147,8 +147,8 @@ class BaseModel(nn.Module, Component):
 
     def train_batch(self, batch):
         model_inputs = self.arrange_model_inputs(batch)
-        model_outputs = self(*model_inputs)
         targets = self.arrange_targets(batch)
+        model_outputs = self(*model_inputs)
         loss = self.get_loss(model_outputs, targets, None)
         predictions, scores = self.get_pred(model_outputs)
         metric_data = (predictions, targets, scores, loss, model_inputs)
