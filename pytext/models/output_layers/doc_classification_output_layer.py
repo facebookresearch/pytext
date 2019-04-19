@@ -46,13 +46,12 @@ class ClassificationOutputLayer(OutputLayerBase):
         ] = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config: Config, metadata: FieldMeta):
+    def from_config(cls, config: Config, metadata: FieldMeta = None, labels=None):
         label_weights = getattr(metadata, "label_weights", None)
         if label_weights is not None:
             label_weights = FloatTensor(label_weights)
-        return cls(
-            metadata.vocab.itos, create_loss(config.loss, weight=label_weights), config
-        )
+        vocab = metadata.vocab.itos if metadata else labels
+        return cls(vocab, create_loss(config.loss, weight=label_weights), config)
 
     def get_pred(self, logit, *args, **kwargs):
         """Compute and return prediction and scores from the model.
