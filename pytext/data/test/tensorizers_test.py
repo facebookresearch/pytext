@@ -148,6 +148,8 @@ class TensorizersTest(unittest.TestCase):
             {"dense": "[0.1,  0.2]"},  # comma with multiple spaces
             {"dense": "[0.1 0.2]"},  # space
             {"dense": "[0.1  0.2]"},  # multiple spaces
+            {"dense": "[ 0.1  0.2]"},  # space after [
+            {"dense": "[0.1  0.2 ]"},  # space before ]
         ]
 
         tensors = (tensorizer.numberize(row) for row in rows)
