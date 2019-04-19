@@ -141,7 +141,7 @@ class TensorizersTest(unittest.TestCase):
             tensor = next(tensors)
 
     def test_create_float_list_tensor(self):
-        tensorizer = FloatListTensorizer(column="dense")
+        tensorizer = FloatListTensorizer(column="dense", dim=2, error_check=True)
         rows = [
             {"dense": "[0.1,0.2]"},  # comma
             {"dense": "[0.1, 0.2]"},  # comma with single space

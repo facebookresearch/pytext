@@ -317,20 +317,33 @@ class FloatListTensorizer(Tensorizer):
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str
+        error_check: bool = False
         dim: Optional[int] = None
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column)
+        return cls(config.column, config.error_check, config.dim)
 
-    def __init__(self, column: str):
+    def __init__(self, column: str, error_check: bool, dim: Optional[int]):
         super().__init__([(column, str)])
         self.column = column
+        self.error_check = error_check
+        self.dim = dim
+        assert not self.error_check or self.dim is not None, "Error check requires dim"
 
     def numberize(self, row):
         res = json.loads(re.sub(r",? +", ",", row[self.column]))
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
+        if self.error_check:
+            assert len(res) == self.dim, (
+                "Expected dimension:"
+                + str(self.dim)
+                + ", got:"
+                + str(len(res))
+                + ", dense-feature:"
+                + str(res)
+            )
         return [float(n) for n in res]
 
     def tensorize(self, batch):
