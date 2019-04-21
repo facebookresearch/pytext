@@ -6,7 +6,7 @@ from pytext.config.field_config import ContextualTokenEmbeddingConfig
 from .embedding_base import EmbeddingBase
 
 
-class PretrainedModelEmbedding(EmbeddingBase):
+class ContextualTokenEmbedding(EmbeddingBase):
     """Module for providing token embeddings from a pretrained model."""
 
     Config = ContextualTokenEmbeddingConfig
