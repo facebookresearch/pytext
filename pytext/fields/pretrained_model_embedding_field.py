@@ -9,7 +9,7 @@ from pytext.utils import data
 from .field import Field, TextFeatureField
 
 
-class PretrainedModelEmbeddingField(Field):
+class ContextualTokenEmbeddingField(Field):
     def __init__(self, **kwargs):
         super().__init__(
             sequential=True,
