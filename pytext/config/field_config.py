@@ -62,7 +62,7 @@ class CharFeatConfig(ModuleConfig):
 class PretrainedModelEmbeddingConfig(ConfigBase):
     embed_dim: int = 0
     model_paths: Optional[Dict[str, str]] = None
-    export_input_names: List[str] = ["pretrained_embeds"]
+    export_input_names: List[str] = ["contextual_token_embedding"]
 
 
 class FloatVectorConfig(ConfigBase):
