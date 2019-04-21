@@ -61,7 +61,7 @@ class ContextualIntentSlotModel(JointModel):
                         sub_embs.get(ModelInput.TEXT),
                         sub_embs.get(ModelInput.DICT),
                         sub_embs.get(ModelInput.CHAR),
-                        sub_embs.get(ModelInput.PRETRAINED),
+                        sub_embs.get(ModelInput.CONTEXTUAL_TOKEN_EMBEDDING),
                     ],
                     concat=True,
                 ),

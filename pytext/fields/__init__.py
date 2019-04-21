@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .char_field import CharFeatureField
+from .contextual_token_embedding_field import ContextualTokenEmbeddingField
 from .dict_field import DictFeatureField
 from .field import (
     ActionField,
@@ -20,7 +21,6 @@ from .field import (
     create_fields,
     create_label_fields,
 )
-from .pretrained_model_embedding_field import ContextualTokenEmbeddingField
 from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
 
 

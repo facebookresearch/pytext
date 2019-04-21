@@ -23,7 +23,7 @@ class OutputRecord(NamedTuple):
     gazetteer_feat_lengths: Optional[List[int]] = None
     gazetteer_feat_weights: Optional[List[float]] = None
     characters: Optional[List[List[str]]] = None
-    pretrained_token_embedding: Optional[List[List[float]]] = None
+    contextual_token_embedding: Optional[List[List[float]]] = None
     dense_feats: Optional[List[float]] = None
 
 

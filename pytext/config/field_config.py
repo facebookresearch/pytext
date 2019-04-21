@@ -77,7 +77,7 @@ class FeatureConfig(ModuleConfig):  # type: ignore
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
     dense_feat: Optional[FloatVectorConfig] = None
-    pretrained_model_embedding: Optional[ContextualTokenEmbeddingConfig] = None
+    contextual_token_embedding: Optional[ContextualTokenEmbeddingConfig] = None
 
 
 class WordLabelConfig(ConfigBase):
