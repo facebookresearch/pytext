@@ -251,7 +251,6 @@ class ModelExporter(Component):
         """If any of the input_names have tokens or seq_tokens, add the length
         of those tokens to dummy_input
         """
-
         if "tokens_vals" in input_names:
             dummy_model_input.append(
                 torch.tensor([1, 1], dtype=torch.long)
