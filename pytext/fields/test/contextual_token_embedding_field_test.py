@@ -4,7 +4,7 @@
 import unittest
 
 import numpy as np
-from pytext.fields.pretrained_model_embedding_field import ContextualTokenEmbeddingField
+from pytext.fields.contextual_token_embedding_field import ContextualTokenEmbeddingField
 
 
 class ContextualTokenEmbeddingFieldTest(unittest.TestCase):

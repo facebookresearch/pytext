@@ -60,7 +60,7 @@ class JointModelDataHandler(DataHandler):
                 DatasetFieldName.DICT_FIELD: DictFeatureField,
                 DatasetFieldName.CHAR_FIELD: CharFeatureField,
                 DatasetFieldName.DENSE_FIELD: FloatVectorField,
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: ContextualTokenEmbeddingField,
+                DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING: ContextualTokenEmbeddingField,
             },
         )
 
@@ -126,7 +126,7 @@ class JointModelDataHandler(DataHandler):
                 features.gazetteer_feat_lengths,
             ),
             DatasetFieldName.CHAR_FIELD: self._get_chars(features),
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING: features.contextual_token_embedding,
             # extra data
             # TODO move the logic to FloatField
             DatasetFieldName.DOC_WEIGHT_FIELD: row_data.get(DFColumn.DOC_WEIGHT) or 1.0,

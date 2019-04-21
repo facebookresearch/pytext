@@ -112,7 +112,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 ModelInput.TEXT: TextFeatureField,
                 ModelInput.DICT: DictFeatureField,
                 ModelInput.CHAR: CharFeatureField,
-                ModelInput.PRETRAINED: ContextualTokenEmbeddingField,
+                ModelInput.CONTEXTUAL_TOKEN_EMBEDDING: ContextualTokenEmbeddingField,
                 ModelInput.SEQ: SeqFeatureField,
                 ModelInput.DENSE: FloatVectorField,
             },
@@ -210,7 +210,9 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 features_list[-1].gazetteer_feat_lengths,
             ),
             ModelInput.CHAR: features_list[-1].characters,
-            ModelInput.PRETRAINED: features_list[-1].pretrained_token_embedding,
+            ModelInput.CONTEXTUAL_TOKEN_EMBEDDING: features_list[
+                -1
+            ].contextual_token_embedding,
             # labels
             DocLabelConfig._name: row_data[RawData.DOC_LABEL],
             # extra data

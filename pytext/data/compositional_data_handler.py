@@ -48,7 +48,7 @@ class CompositionalDataHandler(DataHandler):
         DatasetFieldName.TEXT_FIELD,
         DatasetFieldName.DICT_FIELD,
         ACTION_FEATURE_FIELD,
-        DatasetFieldName.PRETRAINED_MODEL_EMBEDDING,
+        DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING,
     ]
 
     @classmethod
@@ -77,11 +77,11 @@ class CompositionalDataHandler(DataHandler):
         action_field = ActionField()  # Use the same field for label too.
         features[ACTION_FEATURE_FIELD] = action_field
 
-        if feature_config.pretrained_model_embedding:
+        if feature_config.contextual_token_embedding:
             features[
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
+                DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING
             ] = ContextualTokenEmbeddingField(
-                embed_dim=feature_config.pretrained_model_embedding.embed_dim
+                embed_dim=feature_config.contextual_token_embedding.embed_dim
             )
 
         extra_fields: Dict[str, Field] = {
@@ -157,7 +157,7 @@ class CompositionalDataHandler(DataHandler):
             text_input[1],
             getattr(batch, DatasetFieldName.DICT_FIELD, None),
             None,
-            getattr(batch, DatasetFieldName.PRETRAINED_MODEL_EMBEDDING, None),
+            getattr(batch, DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING, None),
             1,
             1,
         ]
@@ -203,12 +203,12 @@ class CompositionalDataHandler(DataHandler):
                 )
                 return {}
 
-        pretrained_model_embedding = 0
+        contextual_token_embedding = 0
         if (
-            features.pretrained_token_embedding
-            and len(features.pretrained_token_embedding) > 0
+            features.contextual_token_embedding
+            and len(features.contextual_token_embedding) > 0
         ):
-            pretrained_model_embedding = features.pretrained_token_embedding
+            contextual_token_embedding = features.contextual_token_embedding
 
         return {
             DatasetFieldName.TEXT_FIELD: features.tokens,
@@ -221,5 +221,5 @@ class CompositionalDataHandler(DataHandler):
             ACTION_LABEL_FIELD: copy.deepcopy(actions),
             DatasetFieldName.TOKENS: features.tokens,
             DatasetFieldName.UTTERANCE_FIELD: utterance,
-            DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: pretrained_model_embedding,
+            DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING: contextual_token_embedding,
         }

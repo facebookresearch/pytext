@@ -17,7 +17,7 @@ class ModelInputConfig(ModuleConfig):
     word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
-    pretrained_model_embedding: Optional[ContextualTokenEmbeddingConfig] = None
+    contextual_token_embedding: Optional[ContextualTokenEmbeddingConfig] = None
     seq_word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     dense_feat: Optional[FloatVectorConfig] = None
 
@@ -29,7 +29,7 @@ class ModelInput:
     TEXT = "word_feat"
     DICT = "dict_feat"
     CHAR = "char_feat"
-    PRETRAINED = "pretrained_model_embedding"
+    CONTEXTUAL_TOKEN_EMBEDDING = "contextual_token_embedding"
     SEQ = "seq_word_feat"
     DENSE = "dense_feat"
 

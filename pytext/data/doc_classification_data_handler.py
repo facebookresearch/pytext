@@ -84,7 +84,7 @@ class DocClassificationDataHandler(DataHandler):
                 ModelInput.WORD_FEAT: TextFeatureField,
                 ModelInput.DICT_FEAT: DictFeatureField,
                 ModelInput.CHAR_FEAT: CharFeatureField,
-                ModelInput.PRETRAINED_MODEL_EMBEDDING: ContextualTokenEmbeddingField,
+                ModelInput.CONTEXTUAL_TOKEN_EMBEDDING: ContextualTokenEmbeddingField,
                 ModelInput.DENSE_FEAT: FloatVectorField,
             },
         )
@@ -135,7 +135,7 @@ class DocClassificationDataHandler(DataHandler):
                 features.gazetteer_feat_lengths,
             ),
             ModelInput.CHAR_FEAT: self._get_chars(features),
-            ModelInput.PRETRAINED_MODEL_EMBEDDING: features.pretrained_token_embedding,
+            ModelInput.CONTEXTUAL_TOKEN_EMBEDDING: features.contextual_token_embedding,
             ModelInput.DENSE_FEAT: row_data.get(ModelInput.DENSE_FEAT),
             # target
             DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
