@@ -59,7 +59,7 @@ class CharFeatConfig(ModuleConfig):
     min_freq: int = 1
 
 
-class PretrainedModelEmbeddingConfig(ConfigBase):
+class ContextualTokenEmbeddingConfig(ConfigBase):
     embed_dim: int = 0
     model_paths: Optional[Dict[str, str]] = None
     export_input_names: List[str] = ["contextual_token_embedding"]
@@ -77,7 +77,7 @@ class FeatureConfig(ModuleConfig):  # type: ignore
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
     dense_feat: Optional[FloatVectorConfig] = None
-    pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
+    pretrained_model_embedding: Optional[ContextualTokenEmbeddingConfig] = None
 
 
 class WordLabelConfig(ConfigBase):
