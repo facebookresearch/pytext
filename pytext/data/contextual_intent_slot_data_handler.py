@@ -13,12 +13,12 @@ from pytext.config.field_config import DocLabelConfig, WordLabelConfig
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
+    ContextualTokenEmbeddingField,
     DictFeatureField,
     DocLabelField,
     Field,
     FloatField,
     FloatVectorField,
-    PretrainedModelEmbeddingField,
     RawField,
     SeqFeatureField,
     TextFeatureField,
@@ -112,7 +112,7 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
                 ModelInput.TEXT: TextFeatureField,
                 ModelInput.DICT: DictFeatureField,
                 ModelInput.CHAR: CharFeatureField,
-                ModelInput.PRETRAINED: PretrainedModelEmbeddingField,
+                ModelInput.PRETRAINED: ContextualTokenEmbeddingField,
                 ModelInput.SEQ: SeqFeatureField,
                 ModelInput.DENSE: FloatVectorField,
             },

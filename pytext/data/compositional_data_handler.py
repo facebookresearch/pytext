@@ -18,9 +18,9 @@ from pytext.data.data_structures.annotation import (
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     ActionField,
+    ContextualTokenEmbeddingField,
     DictFeatureField,
     Field,
-    PretrainedModelEmbeddingField,
     RawField,
     TextFeatureFieldWithSpecialUnk,
 )
@@ -80,7 +80,7 @@ class CompositionalDataHandler(DataHandler):
         if feature_config.pretrained_model_embedding:
             features[
                 DatasetFieldName.PRETRAINED_MODEL_EMBEDDING
-            ] = PretrainedModelEmbeddingField(
+            ] = ContextualTokenEmbeddingField(
                 embed_dim=feature_config.pretrained_model_embedding.embed_dim
             )
 

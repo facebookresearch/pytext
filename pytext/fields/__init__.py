@@ -20,7 +20,7 @@ from .field import (
     create_fields,
     create_label_fields,
 )
-from .pretrained_model_embedding_field import PretrainedModelEmbeddingField
+from .pretrained_model_embedding_field import ContextualTokenEmbeddingField
 from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
 
 
@@ -29,6 +29,7 @@ __all__ = [
     "create_label_fields",
     "ActionField",
     "CharFeatureField",
+    "ContextualTokenEmbeddingField",
     "DictFeatureField",
     "DocLabelField",
     "Field",
@@ -39,7 +40,6 @@ __all__ = [
     "TextFeatureField",
     "VocabUsingField",
     "WordLabelField",
-    "PretrainedModelEmbeddingField",
     "NestedField",
     "VocabUsingNestedField",
     "SeqFeatureField",
