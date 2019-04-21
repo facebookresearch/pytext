@@ -13,12 +13,12 @@ from pytext.config.field_config import (
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
+    ContextualTokenEmbeddingField,
     DictFeatureField,
     DocLabelField,
     Field,
     FloatField,
     FloatVectorField,
-    PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
     WordLabelField,
@@ -60,7 +60,7 @@ class JointModelDataHandler(DataHandler):
                 DatasetFieldName.DICT_FIELD: DictFeatureField,
                 DatasetFieldName.CHAR_FIELD: CharFeatureField,
                 DatasetFieldName.DENSE_FIELD: FloatVectorField,
-                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
+                DatasetFieldName.PRETRAINED_MODEL_EMBEDDING: ContextualTokenEmbeddingField,
             },
         )
 
