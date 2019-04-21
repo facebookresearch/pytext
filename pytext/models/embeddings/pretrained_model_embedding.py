@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch
-from pytext.config.field_config import PretrainedModelEmbeddingConfig
+from pytext.config.field_config import ContextualTokenEmbeddingConfig
 
 from .embedding_base import EmbeddingBase
 
@@ -9,10 +9,10 @@ from .embedding_base import EmbeddingBase
 class PretrainedModelEmbedding(EmbeddingBase):
     """Module for providing token embeddings from a pretrained model."""
 
-    Config = PretrainedModelEmbeddingConfig
+    Config = ContextualTokenEmbeddingConfig
 
     @classmethod
-    def from_config(cls, config: PretrainedModelEmbeddingConfig, *args, **kwargs):
+    def from_config(cls, config: ContextualTokenEmbeddingConfig, *args, **kwargs):
         return cls(config.embed_dim)
 
     def forward(self, embedding: torch.Tensor) -> torch.Tensor:
