@@ -4,9 +4,9 @@ from typing import List, Optional
 
 from .field_config import (
     CharFeatConfig,
+    ContextualTokenEmbeddingConfig,
     DictFeatConfig,
     FloatVectorConfig,
-    PretrainedModelEmbeddingConfig,
     TargetConfigBase,
     WordFeatConfig,
 )
@@ -17,7 +17,7 @@ class ModelInputConfig(ModuleConfig):
     word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
-    pretrained_model_embedding: Optional[PretrainedModelEmbeddingConfig] = None
+    pretrained_model_embedding: Optional[ContextualTokenEmbeddingConfig] = None
     seq_word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     dense_feat: Optional[FloatVectorConfig] = None
 
