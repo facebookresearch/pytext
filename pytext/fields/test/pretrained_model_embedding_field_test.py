@@ -4,12 +4,12 @@
 import unittest
 
 import numpy as np
-from pytext.fields.pretrained_model_embedding_field import PretrainedModelEmbeddingField
+from pytext.fields.pretrained_model_embedding_field import ContextualTokenEmbeddingField
 
 
-class PretrainedModelEmbeddingFieldTest(unittest.TestCase):
+class ContextualTokenEmbeddingFieldTest(unittest.TestCase):
     def setUp(self):
-        self.field = PretrainedModelEmbeddingField(
+        self.field = ContextualTokenEmbeddingField(
             pad_token=None, unk_token=None, batch_first=True
         )
         self.unpadded_batch = [

@@ -13,11 +13,11 @@ from pytext.config.field_config import DocLabelConfig, Target
 from pytext.data.featurizer import InputRecord
 from pytext.fields import (
     CharFeatureField,
+    ContextualTokenEmbeddingField,
     DictFeatureField,
     DocLabelField,
     Field,
     FloatVectorField,
-    PretrainedModelEmbeddingField,
     RawField,
     TextFeatureField,
     create_fields,
@@ -84,7 +84,7 @@ class DocClassificationDataHandler(DataHandler):
                 ModelInput.WORD_FEAT: TextFeatureField,
                 ModelInput.DICT_FEAT: DictFeatureField,
                 ModelInput.CHAR_FEAT: CharFeatureField,
-                ModelInput.PRETRAINED_MODEL_EMBEDDING: PretrainedModelEmbeddingField,
+                ModelInput.PRETRAINED_MODEL_EMBEDDING: ContextualTokenEmbeddingField,
                 ModelInput.DENSE_FEAT: FloatVectorField,
             },
         )
