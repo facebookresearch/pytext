@@ -62,23 +62,28 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
-        self.n_batches = n_batches
-        self.all_loss.append(loss)
-        self.batch_size.append(len(m_input[0]))
-        self.aggregate_data(self.all_num_tokens, targets[1])
         now = time.time()
+
+        num_words_in_batch = targets[1].sum().item()
+        self.aggregate_loss += loss.item() * num_words_in_batch
+        self.total_num_tokens += num_words_in_batch
+
         if not n_batches % 1000:
-            total_tokens = float(sum(targets[2]))
+            total_tokens = float(targets[2].sum())
             print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, ppl: {math.exp(loss):.2f}",
+                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
+                f"batch ppl: {math.exp(loss.item()):.2f}, "
+                f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
+                f"number of batches: {n_batches}",
                 flush=True,
             )
         self.time = now
 
+    def calculate_loss(self) -> float:
+        return self.aggregate_loss / float(self.total_num_tokens)
+
     def _reset(self):
         super()._reset()
-        self.all_num_tokens = []
+        self.aggregate_loss = 0.0
+        self.total_num_tokens = 0
         self.time = time.time()
-
-    def _get_target_seq_lens(self):
-        return self.all_num_tokens
