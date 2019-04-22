@@ -98,6 +98,8 @@ class PyTextConfig(ConfigBase):
     use_tensorboard: bool = True
     #: Seed value to seed torch, python, and numpy random generators.
     random_seed: Optional[int] = None
+    # Run eval set after model has been trained - for hyperparameter search
+    report_eval_results: bool = False
     # config version
     version: int
 
