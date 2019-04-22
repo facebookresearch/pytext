@@ -11,9 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
-from pytext.config.component import Component, ComponentType
+from pytext.config.component import ComponentType
 from pytext.data import CommonMetadata
-from pytext.models import Model
+from pytext.models import BaseModel, Model
 from pytext.models.embeddings import EmbeddingList
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
@@ -25,7 +25,7 @@ from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
 )
 
 
-class RNNGParser(Model, Component):
+class RNNGParser(BaseModel):
     """
     The Recurrent Neural Network Grammar (RNNG) parser from
     Dyer et al.: https://arxiv.org/abs/1602.07776 and
@@ -202,7 +202,7 @@ class RNNGParser(Model, Component):
 
         """
 
-        nn.Module.__init__(self)
+        super().__init__()
 
         self.embedding = embedding
         # self.embedding.config: FeatureConfig object cannot be pickled but,

@@ -121,6 +121,7 @@ class Trainer(TrainerBase):
                 device_ids=[device_id],
                 output_device=device_id,
                 broadcast_buffers=False,
+                find_unused_parameters=state.model.find_unused_parameters,
             )
 
         state.optimizer = precision.wrap_optimizer(state.optimizer)
@@ -131,18 +132,7 @@ class Trainer(TrainerBase):
         if state.stage != Stage.TRAIN:
             return
 
-        if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-            # replace optimizer.zero_grad() here to work with DDP
-            # in cases where some parameters don't receive grads at each step
-            # loss.backward will set grad for params in the computation graph
-            # we can thus follow which params are left out and call .backward
-            # on them manually
-            for p in state.model.parameters():
-                if p.grad is not None:
-                    p.grad.detach_()
-                    p.grad = None
-        else:
-            state.optimizer.zero_grad()
+        state.optimizer.zero_grad()
 
     @timing.time("backprop")
     def backprop(self, state, loss):
@@ -151,11 +141,6 @@ class Trainer(TrainerBase):
 
         with timing.time("loss.backward"):
             precision.backward(state.optimizer, loss)
-            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-                # DDP fix when some parameters don't receive grads
-                for p in state.model.parameters():
-                    if p.requires_grad and p.grad is None:
-                        p.backward(torch.zeros_like(p.data))
 
         state.scheduler.step_batch()
 

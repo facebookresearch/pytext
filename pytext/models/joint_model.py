@@ -10,6 +10,7 @@ from pytext.models.module import create_module
 
 from .decoders import IntentSlotModelDecoder
 from .output_layers.intent_slot_output_layer import IntentSlotOutputLayer
+from .output_layers.word_tagging_output_layer import CRFOutputLayer
 from .representations.bilstm_doc_slot_attention import BiLSTMDocSlotAttention
 from .representations.jointcnn_rep import JointCNNRepresentation
 
@@ -33,6 +34,16 @@ class JointModel(Model):
         decoder: IntentSlotModelDecoder.Config = IntentSlotModelDecoder.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # CRF module has parameters and it's forward function is not called in
+        # model's forward function because of ONNX compatibility issue. This will
+        # not work with DDP, thus setting find_unused_parameters to False to work
+        # around, can be removed once DDP support params not used in model forward
+        # function
+        if isinstance(self.output_layer.word_output, CRFOutputLayer):
+            self.find_unused_parameters = False
 
     @classmethod
     def from_config(cls, model_config, feat_config, metadata: CommonMetadata):

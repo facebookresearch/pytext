@@ -62,6 +62,7 @@ class BaseModel(nn.Module, Component):
         nn.Module.__init__(self)
         self.stage = stage
         self.module_list: List[nn.Module] = []
+        self.find_unused_parameters = True
 
     def train(self, mode=True):
         """Override to explicitly maintain the stage (train, eval, test)."""
