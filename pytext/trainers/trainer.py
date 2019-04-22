@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -78,7 +78,10 @@ class Trainer(TrainerBase):
         #: Whether to do evaluation and model selection based on it.
         do_eval: bool = True
         #: Number of samples for logging training progress.
-        num_samples_to_log_progress = 1000
+        num_samples_to_log_progress: int = 1000
+        #: Number of forward & backward before update gradients, the total
+        # effective batch_size = batch_size x grads_update_freq
+        grads_update_freq: int = 1
         # config for optimizer, used in parameter update
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
@@ -134,13 +137,24 @@ class Trainer(TrainerBase):
 
         state.optimizer.zero_grad()
 
-    @timing.time("backprop")
     def backprop(self, state, loss):
         if state.stage != Stage.TRAIN:
             return
 
         with timing.time("loss.backward"):
             precision.backward(state.optimizer, loss)
+
+    @timing.time("optimizer")
+    def optimizer_step(self, state, sample_size):
+        if state.stage != Stage.TRAIN:
+            return
+
+        if sample_size > 1:
+            # normalize gradients (e.g average per sample)
+            normalize_v = 1.0 / sample_size
+            for p in state.model.parameters():
+                if p.requires_grad:
+                    p.grad.mul_(normalize_v)
 
         state.scheduler.step_batch()
 
@@ -306,11 +320,54 @@ class Trainer(TrainerBase):
         # This method is due for some refactoring, pushing it off because it interacts
         # with the metric reporter too much. Much of the logic here either changes in
         # the NewTaskTrainer or should change with a better metric reporter design.
-        report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
         model = state.model
+        samples = []
+        report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
 
-        for batch_id, (inputs, targets, context) in enumerate(data):
-            self.zero_grads(state)
+        for sample in enumerate(data):
+            samples.append(sample)
+            # ignore grads_update_freq flag when EVAL or TEST
+            if (
+                len(samples) == self.config.grads_update_freq
+                or state.stage != Stage.TRAIN
+            ):
+                self.run_step(samples, state, metric_reporter, report_metric)
+                samples = []
+        if samples:
+            self.run_step(samples, state, metric_reporter, report_metric)
+            samples = []
+
+        metrics = None
+        if report_metric:
+            with timing.time("report metrics"):
+                metrics = metric_reporter.report_metric(
+                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
+                )
+        else:
+            metric_reporter._reset()
+
+        return metrics
+
+    @timing.time("run_step")
+    def run_step(
+        self,
+        samples: List[Any],
+        state: TrainingState,
+        metric_reporter: MetricReporter,
+        report_metric: bool,
+    ):
+        assert len(samples) <= self.config.grads_update_freq
+
+        model = state.model
+        self.zero_grads(state)
+        for i, (batch_id, (inputs, targets, context)) in enumerate(samples):
+            # Whenever *samples* contains more than one mini-batch, we
+            # want to accumulate gradients locally and only call
+            # all-reduce in the last backwards pass.
+            if state.stage == Stage.TRAIN and cuda.DISTRIBUTED_WORLD_SIZE > 1:
+                # kick off all-reduction in the last sample
+                model.accumulate_grads = i != len(samples) - 1
+
             # pass context to model to use in forward call if needed
             model.contextualize(context)
             with timing.time("model.forward"):
@@ -331,22 +388,11 @@ class Trainer(TrainerBase):
                     metric_reporter.add_batch_stats(
                         batch_id, preds, targets, scores, loss.item(), inputs, **context
                     )
+            self.report_step(state, batch_id)
 
-            if (
-                state.rank == 0
-                and batch_id % self.config.num_samples_to_log_progress == 0
-            ):
-                print(
-                    f"Evaluating batch {batch_id} for epoch {state.epoch}", flush=True
-                )
+        # update gradients after len(samples) forward & backward
+        self.optimizer_step(state, len(samples))
 
-        metrics = None
-        if report_metric:
-            with timing.time("report metrics"):
-                metrics = metric_reporter.report_metric(
-                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
-                )
-        else:
-            metric_reporter._reset()
-
-        return metrics
+    def report_step(self, state, batch_id):
+        if batch_id % self.config.num_samples_to_log_progress == 0:
+            print(f"Evaluating batch {batch_id} for epoch {state.epoch}", flush=True)
