@@ -39,6 +39,16 @@ class WordTaggingModel(Model):
         ] = WordTaggingOutputLayer.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # CRF module has parameters and it's forward function is not called in
+        # model's forward function because of ONNX compatibility issue. This will
+        # not work with DDP, thus setting find_unused_parameters to False to work
+        # around, can be removed once DDP support params not used in model forward
+        # function
+        if isinstance(self.output_layer, CRFOutputLayer):
+            self.find_unused_parameters = False
+
 
 class NewWordTaggingModel(Model):
     class Config(Model.Config):
@@ -83,6 +93,16 @@ class NewWordTaggingModel(Model):
         # TODO after migration: create_module(config.output_layer, tensorizers=tensorizers)
         output_layer = WordTaggingOutputLayer(labels, CrossEntropyLoss(None))
         return cls(embedding, representation, decoder, output_layer)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # CRF module has parameters and it's forward function is not called in
+        # model's forward function because of ONNX compatibility issue. This will
+        # not work with DDP, thus setting find_unused_parameters to False to work
+        # around, can be removed once DDP support params not used in model forward
+        # function
+        if isinstance(self.output_layer, CRFOutputLayer):
+            self.find_unused_parameters = False
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens = tensor_dict["tokens"]
