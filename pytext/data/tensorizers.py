@@ -339,7 +339,9 @@ class FloatListTensorizer(Tensorizer):
             stripped = re.sub(r" +\]", "]", stripped)
             res = json.loads(re.sub(r",? +", ",", stripped))
         except json.decoder.JSONDecodeError as e:
-            raise Exception("Unable to parse dense feature:" + str(row.column)) from e
+            raise Exception(
+                "Unable to parse dense feature:" + str(row[self.column])
+            ) from e
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
         if self.error_check:
