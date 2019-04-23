@@ -6,7 +6,7 @@ import sys
 import threading
 from typing import Dict, List, Optional, Type
 
-from .data_source import RootDataSource, SafeFileWrapper
+from .data_source import RootDataSource, SafeFileWrapper, generator_property
 
 
 class TSV:
@@ -99,3 +99,53 @@ class TSVDataSource(RootDataSource):
 
     def raw_eval_data_generator(self):
         return iter(self._eval_tsv)
+
+
+class MultilingualTSVDataSource(TSVDataSource):
+    class Config(TSVDataSource.Config):
+        data_source_languages: Dict[str, str] = {
+            "train": "en",
+            "eval": "en",
+            "test": "en",
+        }
+
+    def __init__(
+        self,
+        train_file=None,
+        test_file=None,
+        eval_file=None,
+        field_names=None,
+        delimiter=Config.delimiter,
+        data_source_languages=Config.data_source_languages,
+        **kwargs,
+    ):
+        super().__init__(
+            train_file, test_file, eval_file, field_names, delimiter, **kwargs
+        )
+        self.data_source_languages = data_source_languages
+
+    def _convert_raw_source(self, source, language):
+        for row in source:
+            example = self._read_example(row)
+            if example is None:
+                continue
+            example["language"] = language
+            yield example
+
+    @generator_property
+    def train(self):
+        return self._convert_raw_source(
+            self.raw_train_data_generator(), self.data_source_languages["train"]
+        )
+
+    @generator_property
+    def test(self):
+        return self._convert_raw_source(
+            self.raw_test_data_generator(), self.data_source_languages["test"]
+        )
+
+    @generator_property
+    def eval(self):
+        return self._convert_raw_source(
+            self.raw_eval_data_generator(), self.data_source_languages["eval"]
+        )

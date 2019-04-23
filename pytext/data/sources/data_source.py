@@ -168,6 +168,23 @@ class RootDataSource(DataSource):
         super().__init__(schema)
         self.column_mapping = dict(column_mapping)
 
+    def _read_example(self, row):
+        example = RawExample()
+        for column_name, value in row.items():
+            name = self.column_mapping.get(column_name, column_name)
+            if name not in self.schema:
+                continue
+            example[name] = self.load(value, self.schema[name])
+        if len(example) != len(self.schema):
+            # We might need to re-evaluate this for multi-task training
+            logging.warn(
+                "Skipping row missing values: row {} -> schema {}".format(
+                    list(example.keys()), list(self.schema.keys())
+                )
+            )
+            return None
+        return example
+
     def _convert_raw_source(self, source):
         """Convert a raw iterable source, ie. from
         `DataSource.raw_train_data_generator`, to an iterable that will yield
@@ -175,19 +192,8 @@ class RootDataSource(DataSource):
         converters for this DataSource.
         """
         for row in source:
-            example = RawExample()
-            for column_name, value in row.items():
-                name = self.column_mapping.get(column_name, column_name)
-                if name not in self.schema:
-                    continue
-                example[name] = self.load(value, self.schema[name])
-            if len(example) != len(self.schema):
-                # We might need to re-evaluate this for multi-task training
-                logging.warn(
-                    "Skipping row missing values: row {} -> schema {}".format(
-                        list(example.keys()), list(self.schema.keys())
-                    )
-                )
+            example = self._read_example(row)
+            if example is None:
                 continue
             yield example
 
