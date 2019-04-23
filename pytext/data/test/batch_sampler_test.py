@@ -3,11 +3,7 @@
 
 import unittest
 
-from pytext.data import (
-    EvalBatchSampler,
-    ProbabalisticBatchSampler,
-    RoundRobinBatchSampler,
-)
+from pytext.data import EvalBatchSampler, RandomizedBatchSampler, RoundRobinBatchSampler
 
 
 class BatchSamplerTest(unittest.TestCase):
@@ -36,22 +32,24 @@ class BatchSamplerTest(unittest.TestCase):
         self._check_iterator(eval_iterator, expected_items)
 
     def test_prob_batch_sampler(self):
-        prob_iterator = ProbabalisticBatchSampler(
-            iterator_probabilities={"A": 0, "B": 1}, epoch_size=-1
-        ).batchify(self.iter_dict)
-        expected_items = ["a", "b", "c"]
+        sampler = RandomizedBatchSampler(
+            unnormalized_iterator_probs={"A": 1, "B": 0}, epoch_size=8
+        )
+        prob_iterator = sampler.batchify(self.iter_dict)
+        expected_items = ["1", "2", "3", "4", "5", "1", "2", "3"]
+        self._check_iterator(prob_iterator, expected_items)
+        prob_iterator = sampler.batchify(self.iter_dict)
+        expected_items = ["4", "5", "1", "2", "3", "4", "5", "1"]
         self._check_iterator(prob_iterator, expected_items)
 
-        prob_iterator = ProbabalisticBatchSampler(
-            iterator_probabilities={"A": 1, "B": 0}, epoch_size=-1
-        ).batchify(self.iter_dict)
-        expected_items = ["1", "2", "3", "4", "5"]
+        sampler = RandomizedBatchSampler(
+            unnormalized_iterator_probs={"A": 0, "B": 1}, epoch_size=5
+        )
+        prob_iterator = sampler.batchify(self.iter_dict)
+        expected_items = ["a", "b", "c", "a", "b"]
         self._check_iterator(prob_iterator, expected_items)
-
-        prob_iterator = ProbabalisticBatchSampler(
-            iterator_probabilities={"A": 1, "B": 0}, epoch_size=10
-        ).batchify(self.iter_dict)
-        expected_items = ["1", "2", "3", "4", "5", "1", "2", "3", "4", "5"]
+        prob_iterator = sampler.batchify(self.iter_dict)
+        expected_items = ["c", "a", "b", "c", "a"]
         self._check_iterator(prob_iterator, expected_items)
 
     def _check_iterator(self, iterator, expected_items, fixed_order=True):

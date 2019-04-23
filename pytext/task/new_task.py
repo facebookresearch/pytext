@@ -66,7 +66,7 @@ class NewTaskTrainer(Trainer):
         return scheduler
 
 
-class NewTask(TaskBase):
+class _NewTask(TaskBase):
     """This task abstraction separates the concerns into three main components,
     `pytext.data.Data`, `pytext.models.new_model.NewModel` (names and paths
     will change as these become the primary abstractions), and `pytext.trainers.Trainer`
@@ -93,11 +93,8 @@ class NewTask(TaskBase):
     running `loss.backward()` and `optimizer.step()`, and managing the scheduler.
     """
 
-    __EXPANSIBLE__ = True
-
     class Config(ConfigBase):
         data: Data.Config = Data.Config()
-        model: Model.Config
         trainer: NewTaskTrainer.Config = NewTaskTrainer.Config()
 
     @classmethod
@@ -217,6 +214,13 @@ class NewTask(TaskBase):
         inputs = model.arrange_model_inputs(batch)
         trace = jit.trace(model, inputs)
         trace.save(export_path)
+
+
+class NewTask(_NewTask):
+    __EXPANSIBLE__ = True
+
+    class Config(_NewTask.Config):
+        model: Model.Config
 
 
 class NewDocumentClassification(NewTask):
