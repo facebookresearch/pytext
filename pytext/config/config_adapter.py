@@ -153,6 +153,26 @@ def v2_to_v3(json_config):
     return json_config
 
 
+@register_adapter(from_version=3)
+def v3_to_v4(json_config):
+    """Key for provding the path for contextual token embedding has changed from
+    `pretrained_model_embedding` to `contextual_token_embedding. This affects the
+    `features` section of the config.
+    """
+    [task] = json_config["task"].values()
+    old_key = "pretrained_model_embedding"
+    new_key = "contextual_token_embedding"
+    for section_str in ["features", "labels"]:
+        if section_str in task:
+            section = task[section_str]
+            if old_key in section:
+                section[new_key] = section[old_key]
+                section.pop(old_key)
+
+    json_config["version"] = 4
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
