@@ -1,0 +1,34 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "features": {
+            "pretrained_model_embedding": {
+              "model_paths": {
+                "en_XX": "/mnt/vol/pytext/nlu/tests/nets/dummy_elmo_net.predictor"
+              },
+              "embed_dim": 128
+            }
+          }
+        }
+      },
+      "version": 3
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask": {
+          "features": {
+            "contextual_token_embedding": {
+              "model_paths": {
+                "en_XX": "/mnt/vol/pytext/nlu/tests/nets/dummy_elmo_net.predictor"
+              },
+              "embed_dim": 128
+            }
+          }
+        }
+      },
+      "version": 4
+    }
+  }
+]
