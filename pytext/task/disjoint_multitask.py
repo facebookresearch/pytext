@@ -6,6 +6,8 @@ from typing import Dict, Optional
 
 from pytext.config import config_to_json
 from pytext.config.component import (
+    ComponentType,
+    create_component,
     create_data_handler,
     create_exporter,
     create_featurizer,
@@ -14,15 +16,18 @@ from pytext.config.component import (
     create_optimizer,
     create_trainer,
 )
-from pytext.data import DisjointMultitaskDataHandler
+from pytext.data import DisjointMultitaskData, DisjointMultitaskDataHandler
 from pytext.metric_reporters.disjoint_multitask_metric_reporter import (
     DisjointMultitaskMetricReporter,
 )
-from pytext.models.disjoint_multitask_model import DisjointMultitaskModel
+from pytext.models.disjoint_multitask_model import (
+    DisjointMultitaskModel,
+    NewDisjointMultitaskModel,
+)
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda
 
-from . import Task, TaskBase
+from . import NewTask, Task, TaskBase, _NewTask
 
 
 class DisjointMultitask(TaskBase):
@@ -146,3 +151,62 @@ class DisjointMultitask(TaskBase):
                 self.exporters[name].export_to_caffe2(
                     model, model_export_path, model_export_onnx_path
                 )
+
+
+class NewDisjointMultitask(_NewTask):
+    """
+    Multitask training based on underlying subtasks. To share parameters between modules
+    from different tasks, specify the same shared_module_key. Only the first instance of
+    each shared module should be configured in tasks list. Only the multitask trainer
+    (not the per-task trainers) is used.
+    """
+
+    class Config(_NewTask.Config):
+        tasks: Dict[str, NewTask.Config] = {}
+        task_weights: Dict[str, float] = {}
+        target_task_name: Optional[str] = None  # for selecting best epoch
+        data: DisjointMultitaskData.Config = DisjointMultitaskData.Config()
+        metric_reporter: DisjointMultitaskMetricReporter.Config = (
+            DisjointMultitaskMetricReporter.Config()
+        )
+
+    @classmethod
+    def from_config(cls, task_config, metadata=None, model_state=None):
+        datas = OrderedDict()
+        models = OrderedDict()
+        metric_reporters = OrderedDict()
+        for name, task in task_config.tasks.items():
+            tensorizers, data = NewTask._init_tensorizers(task)
+            datas[name] = data
+            models[name] = NewTask._init_model(task, tensorizers)
+            metric_reporters[name] = create_component(
+                ComponentType.METRIC_REPORTER,
+                task.metric_reporter,
+                tensorizers=tensorizers,
+            )
+
+        task_weights = {
+            task_name: task_config.task_weights.get(task_name, 1.0)
+            for task_name in task_config.tasks.keys()
+        }
+        data = DisjointMultitaskData(task_config.data, datas)
+        model = NewDisjointMultitaskModel(models, loss_weights=task_weights)
+        if model_state:
+            model.load_state_dict(model_state)
+        metric_reporter = DisjointMultitaskMetricReporter(
+            metric_reporters,
+            loss_weights=task_weights,
+            target_task_name=task_config.target_task_name,
+            use_subtask_select_metric=(
+                task_config.metric_reporter.use_subtask_select_metric
+            ),
+        )
+        trainer = create_trainer(task_config.trainer, model)
+
+        return cls(data, model, metric_reporter, trainer)
+
+    def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
+        pass
+
+    def torchscript_export(self, model, export_path):
+        pass

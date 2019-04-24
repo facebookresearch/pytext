@@ -47,6 +47,12 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         self.total_loss = 0
         self.num_batches = 0
 
+    def batch_context(self, batch):
+        context = {BatchContext.TASK_NAME: batch[BatchContext.TASK_NAME]}
+        for reporter in self.reporters.values():
+            context.update(reporter.batch_context(batch))
+        return context
+
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):

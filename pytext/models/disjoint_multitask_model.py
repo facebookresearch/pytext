@@ -45,7 +45,7 @@ class DisjointMultitaskModel(Model):
             logits, targets, context
         )
 
-    def get_pred(self, logits, targets, context, *args):
+    def get_pred(self, logits, targets=None, context=None, *args):
         return self.current_model.get_pred(logits, targets, context, *args)
 
     def forward(self, *inputs) -> List[torch.Tensor]:
@@ -54,3 +54,15 @@ class DisjointMultitaskModel(Model):
     def save_modules(self, base_path, suffix=""):
         for name, model in self.models.items():
             model.save_modules(base_path, f"-{name}{suffix}")
+
+
+class NewDisjointMultitaskModel(DisjointMultitaskModel):
+    def arrange_model_inputs(self, tensor_dict):
+        self.contextualize(tensor_dict)
+        return self.current_model.arrange_model_inputs(tensor_dict)
+
+    def arrange_targets(self, tensor_dict):
+        return self.current_model.arrange_targets(tensor_dict)
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        pass

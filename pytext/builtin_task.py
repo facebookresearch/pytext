@@ -7,7 +7,7 @@ import inspect
 import os
 
 from pytext.config.component import register_tasks
-from pytext.task.disjoint_multitask import DisjointMultitask
+from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultitask
 from pytext.task.new_task import NewTask
 from pytext.task.task import Task
 from pytext.task.tasks import (
@@ -67,5 +67,6 @@ def register_builtin_tasks():
             ContextualIntentSlotTask,
             SemanticParsingTask,
             DisjointMultitask,
+            NewDisjointMultitask,
         )
     )

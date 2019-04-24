@@ -12,6 +12,7 @@ from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.task import NewTask, Task, create_task, load, save
+from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.utils import set_random_seeds
 
 from .utils import cuda, precision, timing
@@ -193,9 +194,12 @@ def test_model_from_snapshot_path(
     else:
         test_out_path = train_config.task.metric_reporter.output_path
 
-    if isinstance(task, NewTask):
+    if isinstance(task, (NewTask, NewDisjointMultitask)):
         data_source = _get_data_source(
-            test_path, train_config.task.data.source, field_names, task
+            test_path,
+            getattr(train_config.task.data, "source", None),
+            field_names,
+            task,
         )
         test_results = task.test(data_source)
     else:
@@ -206,7 +210,11 @@ def test_model_from_snapshot_path(
 
 
 def _get_data_source(test_path, source_config, field_names, task):
-    if test_path and hasattr(source_config, "test_filename"):
+    if isinstance(task, NewDisjointMultitask):
+        # Cannot easily specify a single data source for multitask
+        assert not test_path
+        data_source = None
+    elif test_path and hasattr(source_config, "test_filename"):
         source_config.test_filename = test_path
         if field_names and hasattr(source_config, "field_names"):
             source_config.field_names = field_names
