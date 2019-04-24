@@ -11,27 +11,31 @@ def unflatten(fname, ignore_impossible):
         return
     with open(fname) as file:
         dump = json.load(file)
+
     for article in dump["data"]:
         for paragraph in article["paragraphs"]:
-            context = paragraph["context"]
+            doc = paragraph["context"]
             for question in paragraph["qas"]:
-                label = not question["is_impossible"]
-                if label or not ignore_impossible:
+                has_answer = not question["is_impossible"]
+                if has_answer or not ignore_impossible:
                     answers = (
-                        question["answers"] if label else question["plausible_answers"]
+                        question["answers"]
+                        if has_answer
+                        else question["plausible_answers"]
                     )
                     yield {
-                        "context": context,
+                        "doc": doc,
                         "question": question["question"],
                         "answers": [answer["text"] for answer in answers],
                         "answer_starts": [int(ans["answer_start"]) for ans in answers],
-                        "label": str(label),
+                        "has_answer": str(has_answer),
                     }
 
 
 class SquadDataSource(DataSource):
-    """Download data from https://rajpurkar.github.io/SQuAD-explorer/
-       Will return tuples of (context, question, answer, answer_start, label, weight)
+    """
+    Download data from https://rajpurkar.github.io/SQuAD-explorer/
+    Will return tuples of (doc, question, answer, answer_start, has_answer)
     """
 
     class Config(DataSource.Config):
@@ -57,12 +61,12 @@ class SquadDataSource(DataSource):
         ignore_impossible=Config.ignore_impossible,
     ):
         schema = {
-            "context": str,
+            "doc": str,
             "question": str,
             "answers": List[str],
             "answer_starts": List[int],
             "answer_ends": List[int],
-            "label": str,
+            "has_answer": str,
         }
         super().__init__(schema)
         self.train_filename = train_filename
