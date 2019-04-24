@@ -61,10 +61,9 @@ class PretrainedEmbedding(object):
         """
         Loading raw embeddings vectors from file in the format:
         num_words dim
-        [word_i] [v0, v1, v2, ...., v_dim]
-        [word_2] [v0, v1, v2, ...., v_dim]
+        word_i v0, v1, v2, ...., v_dim
+        word_2 v0, v1, v2, ...., v_dim
         ....
-
         Optionally appends _dialect to every token in the vocabulary
         (for XLU embeddings).
         """
@@ -75,32 +74,36 @@ class PretrainedEmbedding(object):
         ):
             """ Iterator to load numpy 1-d array from multi-row text file,
             where format is assumed to be:
-                [word_i] [v0, v1, v2, ...., v_dim]
-                [word_2] [v0, v1, v2, ...., v_dim]
+                word_i v0, v1, v2, ...., v_dim
+                word_2 v0, v1, v2, ...., v_dim
             The iterator will omit the first column (vocabulary) and via closure
             store values into the 'chunk_vocab' list.
             """
+            tokens = set()
             with open(raw_embeddings_path, "r", errors="backslashreplace") as txtfile:
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
-                    split_line = line.rstrip().split(delimiter)
-                    chunk_vocab.append(split_line[0])
-                    for item in split_line[1:]:
-                        yield dtype(item)
+                    split_line = line.rstrip("\r\n").split(delimiter)
+                    token = split_line[0]
+                    if lowercase_tokens:
+                        # lowercase here so that returned matrix doesn't contain
+                        # the same token twice (lower and upper cases).
+                        token = token.lower()
+                    if token not in tokens:
+                        chunk_vocab.append(token)
+                        for item in split_line[1:]:
+                            yield dtype(item)
 
         t = time.time()
         embed_array = np.fromiter(iter_parser(skip_header=1), dtype=np.float32)
         embed_matrix = embed_array.reshape((len(chunk_vocab), -1))
-
         print("Rows loaded: ", embed_matrix.shape[0], "; Time: ", time.time() - t, "s.")
 
         if not append:
             self.embed_vocab = []
             self.stoi = {}
 
-        if lowercase_tokens:
-            chunk_vocab = [word.lower() for word in chunk_vocab]
         if dialect is not None:
             chunk_vocab = [append_dialect(word, dialect) for word in chunk_vocab]
 
@@ -129,22 +132,22 @@ class PretrainedEmbedding(object):
 
     def initialize_embeddings_weights(
         self,
-        vocab_to_idx: Dict[str, int],
+        str_to_idx: Dict[str, int],
         unk: str,
         embed_dim: int,
         init_strategy: EmbedInitStrategy,
     ) -> torch.Tensor:
         """
-        Initialize embeddings weights of shape (len(vocab_to_idx), embed_dim) from the
+        Initialize embeddings weights of shape (len(str_to_idx), embed_dim) from the
         pretrained embeddings vectors. Words that are not in the pretrained
         embeddings list will be initialized according to `init_strategy`.
-        :param vocab_to_idx: a dict that maps words to indices that the model expects
+        :param str_to_idx: a dict that maps words to indices that the model expects
         :param unk: unknown token
         :param embed_dim: the embeddings dimension
         :param init_strategy: method of initializing new tokens
         :returns: a float tensor of dimension (vocab_size, embed_dim)
         """
-        pretrained_embeds_weight = torch.Tensor(len(vocab_to_idx), embed_dim)
+        pretrained_embeds_weight = torch.Tensor(len(str_to_idx), embed_dim)
 
         if init_strategy == EmbedInitStrategy.RANDOM:
             pretrained_embeds_weight.normal_(0, 1)
@@ -157,17 +160,16 @@ class PretrainedEmbedding(object):
 
         assert self.embedding_vectors is not None and self.embed_vocab is not None
         assert pretrained_embeds_weight.shape[-1] == self.embedding_vectors.shape[-1]
-        unk_idx = vocab_to_idx[unk]
+        unk_idx = str_to_idx[unk]
         oov_count = 0
-        for word, idx in vocab_to_idx.items():
+        for word, idx in str_to_idx.items():
             if word in self.stoi and idx != unk_idx:
                 pretrained_embeds_weight[idx] = self.embedding_vectors[self.stoi[word]]
             else:
                 oov_count += 1
         print(
-            "Out of pretrained embedding vocab counts: {}/{}".format(
-                oov_count, len(vocab_to_idx)
-            )
+            f"{oov_count}/{len(str_to_idx)} tokens were found out of "
+            f"pretrained embedding vocabulary"
         )
         return pretrained_embeds_weight
 
