@@ -165,7 +165,7 @@ def v3_to_v4(json_config):
     for section_str in ["features", "labels"]:
         if section_str in task:
             section = task[section_str]
-            if old_key in section:
+            if section and old_key in section:
                 section[new_key] = section[old_key]
                 section.pop(old_key)
 
