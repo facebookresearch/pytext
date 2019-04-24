@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import collections
 from typing import List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import WordFeatConfig
+from pytext.data.tensorizers import Tensorizer
+from pytext.data.utils import UNK
 from pytext.fields import FieldMeta
+from pytext.utils.embeddings import PretrainedEmbedding
 
 from .embedding_base import EmbeddingBase
 
@@ -35,7 +39,9 @@ class WordEmbedding(EmbeddingBase):
     Config = WordFeatConfig
 
     @classmethod
-    def from_config(cls, config: WordFeatConfig, metadata: FieldMeta):
+    def from_config(
+        cls, config: WordFeatConfig, metadata: FieldMeta, tensorizer: Tensorizer = None
+    ):
         """Factory method to construct an instance of WordEmbedding from
         the module's config object and the field's metadata object.
 
@@ -48,12 +54,43 @@ class WordEmbedding(EmbeddingBase):
             type: An instance of WordEmbedding.
 
         """
+        # Backward compatiblity until we do away with metadata
+        if metadata is not None:
+            num_embeddings = metadata.vocab_size
+            embeddings_weight = metadata.pretrained_embeds_weight
+            unk_token_idx = metadata.unk_token_idx
+        elif tensorizer is not None:
+            embeddings_weight = None
+            if config.pretrained_embeddings_path:
+                pretrained_embedding = PretrainedEmbedding(
+                    config.pretrained_embeddings_path,  # doesn't support fbpkg
+                    lowercase_tokens=tensorizer.tokenizer.lowercase,
+                )
+                if config.vocab_from_pretrained_embeddings:
+                    if not config.vocab_from_train_data:  # Reset token counter.
+                        tensorizer.vocab_builder._counter = collections.Counter()
+                    tensorizer.vocab_builder.add_all(pretrained_embedding.embed_vocab)
+                    tensorizer.vocab = tensorizer.vocab_builder.make_vocab()
+                embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
+                    tensorizer.vocab.idx,
+                    UNK,
+                    config.embed_dim,
+                    config.embedding_init_strategy,
+                )
+            num_embeddings = len(tensorizer.vocab)
+            unk_token_idx = tensorizer.vocab.idx[UNK]
+        else:  # This else condition should go away after metadata goes away.
+            raise ValueError(
+                "metadata and tensorizer objects both are None. "
+                "WordEmbedding cannot be initalized."
+            )
+
         return cls(
-            num_embeddings=metadata.vocab_size,
+            num_embeddings=num_embeddings,
             embedding_dim=config.embed_dim,
-            embeddings_weight=metadata.pretrained_embeds_weight,
+            embeddings_weight=embeddings_weight,
             init_range=config.embedding_init_range,
-            unk_token_idx=metadata.unk_token_idx,
+            unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
         )
 
