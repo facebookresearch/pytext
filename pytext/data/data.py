@@ -45,8 +45,8 @@ class Batcher(Component):
         self.test_batch_size = test_batch_size
         self._batch_sizes = {
             Stage.TRAIN: self.train_batch_size,
-            Stage.TEST: self.eval_batch_size,
-            Stage.EVAL: self.test_batch_size,
+            Stage.TEST: self.test_batch_size,
+            Stage.EVAL: self.eval_batch_size,
         }
 
     def batchify(
