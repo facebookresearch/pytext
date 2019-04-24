@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Union
+from typing import Dict, List, Union
 
+import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
-from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import (
     LabelTensorizer,
     NumericLabelTensorizer,
@@ -13,16 +13,23 @@ from pytext.data.tensorizers import (
     Tensorizer,
     TokenTensorizer,
 )
-from pytext.data.utils import UNK
+from pytext.data.utils import PAD, UNK
 from pytext.exporters.exporter import ModelExporter
+from pytext.loss import BinaryCrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import ClassificationOutputLayer, RegressionOutputLayer
+from pytext.models.output_layers.doc_classification_output_layer import (
+    BinaryClassificationOutputLayer,
+    MulticlassOutputLayer,
+)
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
+from pytext.utils.torch import Vocabulary, list_max
+from torch import jit
 
 
 class DocModel(Model):
@@ -90,6 +97,37 @@ class NewDocModel(DocModel):
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
+    def torchscriptify(self, tensorizers, traced_model):
+        output_layer = self.output_layer.torchscript_predictions()
+
+        input_vocab = tensorizers["tokens"].vocab
+
+        class Model(jit.ScriptModule):
+            def __init__(self):
+                super().__init__()
+                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.model = traced_model
+                self.output_layer = output_layer
+                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+
+            @jit.script_method
+            def forward(self, tokens: List[List[str]]):
+                word_ids = self.vocab.lookup_indices_2d(tokens)
+
+                seq_lens = jit.annotate(List[int], [])
+
+                for sentence in word_ids:
+                    seq_lens.append(len(sentence))
+                pad_to_length = list_max(seq_lens)
+                for sentence in word_ids:
+                    for _ in range(pad_to_length - len(sentence)):
+                        sentence.append(self.pad_idx)
+
+                logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
+                return self.output_layer(logits)
+
+        return Model()
+
     @classmethod
     def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         vocab = tensorizers["tokens"].vocab
@@ -114,9 +152,13 @@ class NewDocModel(DocModel):
             config, representation.representation_dim, len(labels)
         )
         # TODO change from_config function of ClassificationOutputLayer after migriting to new design
-        output_layer = ClassificationOutputLayer(
-            list(labels), create_loss(config.output_layer.loss)
+        loss = create_loss(config.output_layer.loss)
+        output_layer_cls = (
+            BinaryClassificationOutputLayer
+            if isinstance(loss, BinaryCrossEntropyLoss)
+            else MulticlassOutputLayer
         )
+        output_layer = output_layer_cls(list(labels), loss)
         return cls(embedding, representation, decoder, output_layer)
 
 

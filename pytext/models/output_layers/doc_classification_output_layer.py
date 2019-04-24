@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List, Union
+from typing import Dict, List, Union
 
 import torch
 import torch.nn.functional as F
@@ -16,6 +16,7 @@ from pytext.loss import (
     SoftHardBCELoss,
 )
 from pytext.utils.cuda import FloatTensor
+from torch import jit
 
 from .output_layer_base import OutputLayerBase
 from .utils import OutputLayerUtils
@@ -51,6 +52,12 @@ class ClassificationOutputLayer(OutputLayerBase):
         if label_weights is not None:
             label_weights = FloatTensor(label_weights)
         vocab = metadata.vocab.itos if metadata else labels
+        loss = create_loss(config.loss, weight=label_weights)
+        cls = (
+            BinaryClassificationOutputLayer
+            if isinstance(loss, BinaryCrossEntropyLoss)
+            else MulticlassOutputLayer
+        )
         return cls(vocab, create_loss(config.loss, weight=label_weights), config)
 
     def get_pred(self, logit, *args, **kwargs):
@@ -69,13 +76,44 @@ class ClassificationOutputLayer(OutputLayerBase):
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
 
         """
+        raise NotImplementedError
+
+
+class ClassificationScores(jit.ScriptModule):
+    def __init__(self, classes, score_function):
+        super().__init__()
+        self.classes = jit.Attribute(classes, List[str])
+        self.score_function = score_function
+
+    @jit.script_method
+    def forward(self, logits: torch.Tensor):
+        # In pure python, this code would be implemented as follows:
+        #   scores = self.score_function(logits)
+        #   return [
+        #     {class: score for class, score in zip(self.classes, example_scores}
+        #     for example_scores in scores.tolist()
+        #   ]
+        # Extra verbosity is due to jit.script.
+        scores = self.score_function(logits)
+        results = jit.annotate(List[Dict[str, float]], [])
+        for example_scores in scores.chunk(len(scores)):
+            example_scores = example_scores.squeeze(dim=0)
+            example_response = jit.annotate(Dict[str, float], {})
+            for i in range(len(self.classes)):
+                example_response[self.classes[i]] = example_scores[i].item()
+            results.append(example_response)
+        return results
+
+
+class BinaryClassificationOutputLayer(ClassificationOutputLayer):
+    def get_pred(self, logit, *args, **kwargs):
+        """See `OutputLayerBase.get_pred()`."""
         preds = torch.max(logit, 1)[1]
-        # Hacky way to check loss type
-        if isinstance(self.loss_fn, BinaryCrossEntropyLoss):
-            scores = F.logsigmoid(logit)
-        else:
-            scores = F.log_softmax(logit, 1)
+        scores = F.logsigmoid(logit)
         return preds, scores
+
+    def torchscript_predictions(self):
+        return ClassificationScores(self.target_names, F.logsigmoid)
 
     def export_to_caffe2(
         self,
@@ -85,15 +123,33 @@ class ClassificationOutputLayer(OutputLayerBase):
         model_out: torch.Tensor,
         output_name: str,
     ) -> List[core.BlobReference]:
-        """
-        Exports the doc classification layer to Caffe2.
-        See `OutputLayerBase.export_to_caffe2()` for details.
-        """
-        if isinstance(self.loss_fn, BinaryCrossEntropyLoss):
-            probability_out = predict_net.Sigmoid(output_name)
-        else:
-            probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
+        """See `OutputLayerBase.export_to_caffe2()`."""
+        probability_out = predict_net.Sigmoid(output_name)
+        return OutputLayerUtils.gen_additional_blobs(
+            predict_net, probability_out, model_out, output_name, self.target_names
+        )
 
+
+class MulticlassOutputLayer(ClassificationOutputLayer):
+    def get_pred(self, logit, *args, **kwargs):
+        """See `OutputLayerBase.get_pred()`."""
+        preds = torch.max(logit, 1)[1]
+        scores = F.log_softmax(logit, 1)
+        return preds, scores
+
+    def torchscript_predictions(self):
+        return ClassificationScores(self.target_names, F.log_softmax)
+
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+    ) -> List[core.BlobReference]:
+        """See `OutputLayerBase.export_to_caffe2()`."""
+        probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
         return OutputLayerUtils.gen_additional_blobs(
             predict_net, probability_out, model_out, output_name, self.target_names
         )

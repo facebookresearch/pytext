@@ -213,6 +213,9 @@ class _NewTask(TaskBase):
         batch = next(iter(self.data.batches(Stage.TEST)))
         inputs = model.arrange_model_inputs(batch)
         trace = jit.trace(model, inputs)
+        if hasattr(model, "torchscriptify"):
+            trace = model.torchscriptify(self.data.tensorizers, trace)
+        print(f"Saving torchscript model to: {export_path}")
         trace.save(export_path)
 
 
