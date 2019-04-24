@@ -117,6 +117,7 @@ class TokenTensorizer(Tensorizer):
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.vocab_builder = None
 
     def _lookup_tokens(self, text):
         tokenized = self.tokenizer.tokenize(text)[: self.max_seq_len]
@@ -134,9 +135,9 @@ class TokenTensorizer(Tensorizer):
     def _reverse_lookup(self, token_ids):
         return [self.vocab[id] for id in token_ids]
 
-    def initialize(self):
+    def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
-        builder = VocabBuilder()
+        self.vocab_builder = vocab_builder or VocabBuilder()
         try:
             while True:
                 if self.vocab:
@@ -145,10 +146,10 @@ class TokenTensorizer(Tensorizer):
                     row = yield
                     raw_text = row[self.text_column]
                     tokenized = self.tokenizer.tokenize(raw_text)
-                    builder.add_all([t.value for t in tokenized])
+                    self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
             if not self.vocab:
-                self.vocab = builder.make_vocab()
+                self.vocab = self.vocab_builder.make_vocab()
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
