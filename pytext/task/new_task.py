@@ -208,6 +208,7 @@ class _NewTask(TaskBase):
         precision.deactivate(model)
         # Trace needs eval mode, to disable dropout etc
         model.eval()
+        model.prepare_for_onnx_export_()
 
         batch = next(iter(self.data.batches(Stage.TEST)))
         inputs = model.arrange_model_inputs(batch)
