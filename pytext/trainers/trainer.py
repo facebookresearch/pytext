@@ -269,6 +269,7 @@ class Trainer(TrainerBase):
             with timing.time("train epoch"):
                 state.stage = Stage.TRAIN
                 state.model.train()
+                print(f"start training epoch {state.epoch}", flush=True)
                 self.run_epoch(state, training_data, metric_reporter)
 
             if not self.config.do_eval:
@@ -277,6 +278,7 @@ class Trainer(TrainerBase):
             with timing.time("eval epoch"):
                 state.stage = Stage.EVAL
                 model.eval(Stage.EVAL)
+                print(f"start evaluating epoch {state.epoch}", flush=True)
                 with torch.no_grad():
                     eval_metric = self.run_epoch(state, eval_data, metric_reporter)
 
@@ -337,7 +339,8 @@ class Trainer(TrainerBase):
                 and batch_id % self.config.num_samples_to_log_progress == 0
             ):
                 print(
-                    f"Evaluating batch {batch_id} for epoch {state.epoch}", flush=True
+                    f"Running batch {batch_id} for epoch {state.epoch} in {state.stage} stage",
+                    flush=True,
                 )
 
         metrics = None
