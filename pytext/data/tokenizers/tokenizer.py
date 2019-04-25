@@ -17,6 +17,7 @@ class Tokenizer(Component):
     """A simple regex-splitting tokenizer."""
 
     __COMPONENT_TYPE__ = ComponentType.TOKENIZER
+    __EXPANSIBLE__ = True
 
     class Config(Component.Config):
         #: A regular expression for the tokenizer to split on. Tokens are the segments
