@@ -141,7 +141,7 @@ class NewDocModel(DocModel):
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         labels = tensorizers["labels"].labels
-        embedding = cls.create_embedding(config, tensorizers)
+        embedding = cls.create_embedding(config.embedding, tensorizers)
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )

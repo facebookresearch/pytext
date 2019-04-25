@@ -49,12 +49,14 @@ def pad(nested_lists, pad_token, pad_shape=None):
     return result
 
 
-def pad_and_tensorize(batch, pad_token=0, dtype=torch.long):
+def pad_and_tensorize(batch, pad_token=0, pad_shape=None, dtype=torch.long):
     batch = list(batch)
     if not batch:
         return torch.Tensor()
 
-    return cuda.tensor(pad(batch, pad_token=pad_token), dtype=dtype)
+    return cuda.tensor(
+        pad(batch, pad_token=pad_token, pad_shape=pad_shape), dtype=dtype
+    )
 
 
 def align_target_label(

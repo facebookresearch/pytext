@@ -218,6 +218,9 @@ class CharacterTokenTensorizer(TokenTensorizer):
     of each token, 0 for pad token.
     """
 
+    # Don't need to create a vocab
+    initialize = Tensorizer.initialize
+
     def numberize(self, row):
         """Convert text to characters, pad batch."""
         tokens = self.tokenizer.tokenize(row[self.text_column])
