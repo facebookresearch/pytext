@@ -2,16 +2,15 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import collections
-from typing import List
+from typing import List, Optional
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import UNK
 from pytext.fields import FieldMeta
 from pytext.utils.embeddings import PretrainedEmbedding
+from torch import nn
 
 from .embedding_base import EmbeddingBase
 
@@ -97,11 +96,11 @@ class WordEmbedding(EmbeddingBase):
     def __init__(
         self,
         num_embeddings: int,
-        embedding_dim: int,
-        embeddings_weight: torch.Tensor,
-        init_range: List[int],
-        unk_token_idx: int,
-        mlp_layer_dims: List[int],
+        embedding_dim: int = 300,
+        embeddings_weight: Optional[torch.Tensor] = None,
+        init_range: Optional[List[int]] = None,
+        unk_token_idx: int = 0,
+        mlp_layer_dims: List[int] = (),
     ) -> None:
         output_embedding_dim = mlp_layer_dims[-1] if mlp_layer_dims else embedding_dim
         EmbeddingBase.__init__(self, embedding_dim=output_embedding_dim)
@@ -117,11 +116,12 @@ class WordEmbedding(EmbeddingBase):
         self.word_embedding.weight.data[unk_token_idx].fill_(0.0)
 
         # Create MLP layers
-        self.mlp_layers = nn.ModuleList([])
-        for next_dim in mlp_layer_dims or []:
-            assert next_dim > 0
-            self.mlp_layers.append(nn.Linear(embedding_dim, next_dim))
-            embedding_dim = next_dim
+        self.mlp = nn.Sequential(
+            *(
+                nn.Sequential(nn.Linear(m, n), nn.ReLU())
+                for m, n in zip([embedding_dim] + list(mlp_layer_dims), mlp_layer_dims)
+            )
+        )
 
     def __getattr__(self, name):
         if name == "weight":
@@ -129,13 +129,7 @@ class WordEmbedding(EmbeddingBase):
         return super().__getattr__(name)
 
     def forward(self, input):
-        embedding = self.word_embedding(input)
-
-        for mlp_layer in self.mlp_layers:
-            embedding = mlp_layer(embedding)
-            embedding = F.relu(embedding)
-
-        return embedding
+        return self.mlp(self.word_embedding(input))
 
     def freeze(self):
         for param in self.word_embedding.parameters():

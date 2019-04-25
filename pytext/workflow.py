@@ -128,9 +128,15 @@ def save_and_export(
     if hasattr(task, "data_handler"):
         meta = task.data_handler.metadata_to_save()
     save(config, task.model, meta)
-    task.export(
-        task.model, config.export_caffe2_path, metric_channels, config.export_onnx_path
-    )
+    if config.export_caffe2_path:
+        task.export(
+            task.model,
+            config.export_caffe2_path,
+            metric_channels,
+            config.export_onnx_path,
+        )
+    if config.export_torchscript_path:
+        task.torchscript_export(task.model, config.export_torchscript_path)
 
 
 def export_saved_model_to_caffe2(

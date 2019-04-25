@@ -87,9 +87,11 @@ class PyTextConfig(ConfigBase):
     # Where to save the trained pytorch model
     save_snapshot_path: str = "/tmp/model.pt"
     # Exported caffe model will be stored here
-    export_caffe2_path: str = "/tmp/model.caffe2.predictor"
+    export_caffe2_path: Optional[str] = "/tmp/model.caffe2.predictor"
     # Exported onnx model will be stored here
     export_onnx_path: str = "/tmp/model.onnx"
+    # Exported torchscript model will be stored here
+    export_torchscript_path: Optional[str] = None
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules
@@ -113,7 +115,7 @@ class TestConfig(ConfigBase):
     # Snapshot of a trained model to test
     load_snapshot_path: str
     # Test data path
-    test_path: str = "test.tsv"
+    test_path: Optional[str] = "test.tsv"
     #: Field names for the TSV. If this is not set, the first line of each file
     #: will be assumed to be a header containing the field names.
     field_names: Optional[List[str]] = None

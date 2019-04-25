@@ -40,7 +40,7 @@ class ModuleTest(unittest.TestCase):
         # word embedding
         for param in model.embedding[0].word_embedding.parameters():
             self.assertFalse(param.requires_grad)
-        for param in model.embedding[0].mlp_layers.parameters():
+        for param in model.embedding[0].mlp.parameters():
             self.assertTrue(param.requires_grad)
 
         # dict feat embedding
