@@ -155,3 +155,8 @@ class TensorizersTest(unittest.TestCase):
         tensors = (tensorizer.numberize(row) for row in rows)
         for tensor in tensors:
             self.assertEqual([0.1, 0.2], tensor)
+
+        # test that parsing 0. and 1. works
+        a_row = {"dense": "[0.  1.]"}
+        tensor = tensorizer.numberize(a_row)
+        self.assertEqual([0.0, 1.0], tensor)
