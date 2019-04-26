@@ -264,5 +264,6 @@ class Data(Component):
             )
             if self.sort_key
             else None,
+            stage=stage,
         )
         return pad_and_tensorize_batches(self.tensorizers, batches)
