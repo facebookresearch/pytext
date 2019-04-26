@@ -130,7 +130,7 @@ class NewDocModel(DocModel):
 
     @classmethod
     def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return create_module(config.embedding, None, tensorizers["tokens"])
+        return create_module(config, None, tensorizers["tokens"])
 
     @classmethod
     def create_decoder(cls, config: Config, representation_dim: int, num_labels: int):
