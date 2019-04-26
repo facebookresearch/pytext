@@ -4,8 +4,12 @@ from typing import Dict, List
 
 import numpy as np
 import torch
+from pytext.common.constants import DatasetFieldName
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
+from pytext.metric_reporters.channel import RealtimeConsoleChannel
+from pytext.metrics import RealtimeMetrics
+from pytext.utils.meters import TimeMeter
 
 
 class MetricReporter(Component):
@@ -36,7 +40,9 @@ class MetricReporter(Component):
 
     def __init__(self, channels) -> None:
         self._reset()
+        self._reset_realtime()
         self.channels = channels
+        self.realtime_channel = RealtimeConsoleChannel()
 
     def _reset(self):
         self.all_preds: List = []
@@ -46,6 +52,10 @@ class MetricReporter(Component):
         self.all_scores: List = []
         self.n_batches = 0
         self.batch_size: List = []
+
+    def _reset_realtime(self):
+        self.tps: TimeMeter = TimeMeter()  # token per seconds
+        self.ups: TimeMeter = TimeMeter()  # update per seconds
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
@@ -79,6 +89,10 @@ class MetricReporter(Component):
         # convert tensor to float
         self.all_loss.append(float(loss))
         self.batch_size.append(len(m_input[0]))
+
+        if DatasetFieldName.NUM_TOKENS in context:
+            self.tps.update(context[DatasetFieldName.NUM_TOKENS])
+        self.ups.update(1)
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -179,10 +193,19 @@ class MetricReporter(Component):
                         self.get_meta(),
                         model,
                     )
+            self.report_realtime_metric(stage, epoch)
 
         if reset:
             self._reset()
+            self._reset_realtime()
         return metrics
+
+    def report_realtime_metric(self, stage, epoch, num_samples=-1):
+        metrics = RealtimeMetrics(
+            num_samples=num_samples, tps=self.tps.avg, ups=self.ups.avg
+        )
+        if stage in self.realtime_channel.stages:
+            self.realtime_channel.report(stage, epoch, metrics)
 
     def get_model_select_metric(self, metrics):
         """

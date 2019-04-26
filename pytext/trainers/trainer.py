@@ -78,7 +78,7 @@ class Trainer(TrainerBase):
         #: Whether to do evaluation and model selection based on it.
         do_eval: bool = True
         #: Number of samples for logging training progress.
-        num_samples_to_log_progress = 1000
+        num_samples_to_log_progress: int = 500
         # config for optimizer, used in parameter update
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
@@ -357,6 +357,10 @@ class Trainer(TrainerBase):
                     f"Running batch {batch_id} for epoch {state.epoch} in {state.stage} stage",
                     flush=True,
                 )
+                if report_metric:
+                    metric_reporter.report_realtime_metric(
+                        state.stage, state.epoch, batch_id
+                    )
 
         metrics = None
         if report_metric:

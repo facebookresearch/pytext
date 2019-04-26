@@ -277,3 +277,32 @@ class TensorBoardChannel(Channel):
                 models, since its execution graph is defined by run).
         """
         self.summary_writer.add_graph(model, input_to_model, **kwargs)
+
+
+class RealtimeConsoleChannel(Channel):
+    """
+    Simple Channel that prints results to console.
+    """
+
+    def __init__(self, stages: Tuple[Stage, ...] = (Stage.TRAIN,)) -> None:
+        super().__init__(stages)
+
+    def report(
+        self,
+        stage,
+        epoch,
+        metrics,
+        model_select_metric=None,
+        loss=None,
+        preds=None,
+        targets=None,
+        scores=None,
+        context=None,
+        meta=None,
+        model=None,
+        *args,
+    ):
+        if hasattr(metrics, "print_metrics"):
+            metrics.print_metrics()
+        else:
+            print(metrics)

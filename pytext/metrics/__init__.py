@@ -426,6 +426,27 @@ class RegressionMetrics(NamedTuple):
         print(f"Mean squared error: {self.mse:.3f}")
 
 
+class RealtimeMetrics(NamedTuple):
+
+    num_samples: int
+    tps: float
+    ups: float
+
+    def print_metrics(self):
+        metrics = {}
+        for key, value in self._asdict().items():
+            if key in ("tps", "ups"):
+                value = round(value)
+                if not value:
+                    continue
+            elif key in ("num_samples",):
+                if value < 0:
+                    continue
+            metrics[key] = value
+
+        print(metrics)
+
+
 def safe_division(n: Union[int, float], d: int) -> float:
     return float(n) / d if d else 0.0
 

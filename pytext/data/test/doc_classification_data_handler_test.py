@@ -3,6 +3,7 @@
 
 import unittest
 
+from pytext.common.constants import DatasetFieldName
 from pytext.config.doc_classification import ModelInput, ModelInputConfig, TargetConfig
 from pytext.config.field_config import FeatureConfig
 from pytext.data import DocClassificationDataHandler, RawData
@@ -61,3 +62,4 @@ class DocClassificationDataHandlerTest(unittest.TestCase):
             data[0][ModelInput.WORD_FEAT][0], "16:24:datetime,39:57:datetime"
         )
         self.assertIsNotNone(data[0][ModelInput.DENSE_FEAT])
+        self.assertEqual(data[0][DatasetFieldName.NUM_TOKENS], 1)

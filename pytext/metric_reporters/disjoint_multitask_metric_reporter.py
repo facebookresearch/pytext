@@ -104,3 +104,6 @@ class DisjointMultitaskMetricReporter(MetricReporter):
             metric = -metrics[AVRG_LOSS]
 
         return metric
+
+    def report_realtime_metric(self, stage, epoch, num_samples=-1):
+        pass
