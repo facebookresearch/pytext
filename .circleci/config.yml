@@ -1,58 +1,57 @@
+_run:
+  install_pytorch: &install_pytorch
+    name: install_pytorch
+    command: sudo pip install --progress-bar off torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
+  install_onnx: &install_onnx
+    name: install_onnx
+    command: |
+      sudo pip uninstall -y onnx
+      git clone https://github.com/onnx/onnx.git
+      cd onnx
+      git submodule update --init --recursive
+      # HUGE HACK TO AVOID OOMING IN CIRCLECI
+      # the setup.py appears to ignore any setting of -j, so this is necessary
+      sed -i -e "s/self.jobs = multiprocessing.cpu_count()/self.jobs = 1/g" setup.py
+      sudo python setup.py install
+  coverage: &coverage
+    name: run tests and gather coverage
+    command: pytest pytext tests --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
+  setup: &setup
+    name: setup
+    command: source .circleci/setup_circleimg.sh
+
+_build_steps: &build_steps
+  - checkout
+  - run: *setup
+  - run: *install_pytorch
+  - run: *install_onnx
+  - run: *coverage
+  - store_test_results:
+      path: test-reports
+  - store_artifacts:
+      path: test-reports
+  - store_artifacts:
+      path: htmlcov
+      destination: coverage
+
+
 version: 2
 jobs:
   build_Py3.6:
     docker:
       - image: circleci/python:3.6
-    steps:
-      - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
-      - run:
-          name: install_pytorch
-          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp36-cp36m-linux_x86_64.whl
-      - run:
-          name: run tests and gather coverage
-          command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
-      - store_test_results:
-          path: test-reports
-      - store_artifacts:
-          path: test-reports
-      - store_artifacts:
-          path: htmlcov
-          destination: coverage
+    steps: *build_steps
   build_Py3.7:
     docker:
       - image: circleci/python:3.7
-    steps:
-      - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
-      - run:
-          name: install_pytorch
-          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp37-cp37m-linux_x86_64.whl
-      - run:
-          name: run tests and gather coverage
-          command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
-      - store_test_results:
-          path: test-reports
-      - store_artifacts:
-          path: test-reports
-      - store_artifacts:
-          path: htmlcov
-          destination: coverage
+    steps: *build_steps
   build_docs:
     docker:
       - image: circleci/python:3.7
     steps:
       - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
-      - run:
-          name: install_pytorch
-          command: sudo pip install --progress-bar off http://download.pytorch.org/whl/cpu/torch-1.0.0-cp37-cp37m-linux_x86_64.whl
+      - run: *setup
+      - run: *install_pytorch
       - run:
           name: install docs build deps
           command: sudo pip install -r pytext/docs/requirements.txt
