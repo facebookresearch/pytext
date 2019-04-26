@@ -173,7 +173,7 @@ class _NewTask(TaskBase):
 
         return self.trainer.train(
             self.data.batches(Stage.TRAIN, rank, world_size),
-            self.data.batches(Stage.EVAL, rank, world_size),
+            self.data.batches(Stage.EVAL),
             self.model,
             self.metric_reporter,
             config,
