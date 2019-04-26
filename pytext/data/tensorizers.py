@@ -232,6 +232,9 @@ class CharacterTokenTensorizer(TokenTensorizer):
         characters, lengths = zip(*batch)
         return (pad_and_tensorize(characters), pad_and_tensorize(lengths))
 
+    def sort_key(self, row):
+        return len(row[0])
+
 
 class LabelTensorizer(Tensorizer):
     """Numberize labels."""
