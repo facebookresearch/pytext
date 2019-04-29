@@ -113,6 +113,8 @@ class WordEmbedding(EmbeddingBase):
         self.word_embedding.weight.data[unk_token_idx].fill_(0.0)
 
         # Create MLP layers
+        if mlp_layer_dims is None:
+            mlp_layer_dims = []
         self.mlp = nn.Sequential(
             *(
                 nn.Sequential(nn.Linear(m, n), nn.ReLU())
