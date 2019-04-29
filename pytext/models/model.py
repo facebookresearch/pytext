@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -22,16 +22,22 @@ from .output_layers import OutputLayerBase
 from .representations.representation_base import RepresentationBase
 
 
+def _assert_tensorizer_type(t):
+    if t is not type(None) and not issubclass(t, Tensorizer.Config):
+        raise TypeError(
+            f"ModelInput configuration should only include tensorizers: {t}"
+        )
+
+
 class ModelInputMeta(ConfigBaseMeta):
     def __new__(metacls, typename, bases, namespace):
         annotations = namespace.get("__annotations__", {})
-        for type in annotations.values():
-            if _is_optional(type):
-                type = type.__args__[0]
-            if not issubclass(type, Tensorizer.Config):
-                raise TypeError(
-                    "ModelInput configuration should only include tensorizers"
-                )
+        for t in annotations.values():
+            if type(t) == type(Union):
+                for ut in t.__args__:
+                    _assert_tensorizer_type(ut)
+            else:
+                _assert_tensorizer_type(t)
         return super().__new__(metacls, typename, bases, namespace)
 
 
