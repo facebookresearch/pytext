@@ -16,7 +16,7 @@ def unflatten(fname, ignore_impossible):
         for paragraph in article["paragraphs"]:
             doc = paragraph["context"]
             for question in paragraph["qas"]:
-                has_answer = not question["is_impossible"]
+                has_answer = not question.get("is_impossible", False)
                 if has_answer or not ignore_impossible:
                     answers = (
                         question["answers"]
