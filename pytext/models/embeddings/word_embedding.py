@@ -39,7 +39,10 @@ class WordEmbedding(EmbeddingBase):
 
     @classmethod
     def from_config(
-        cls, config: WordFeatConfig, metadata: FieldMeta, tensorizer: Tensorizer = None
+        cls,
+        config: WordFeatConfig,
+        metadata: Optional[FieldMeta] = None,
+        tensorizer: Optional[Tensorizer] = None,
     ):
         """Factory method to construct an instance of WordEmbedding from
         the module's config object and the field's metadata object.
@@ -53,12 +56,7 @@ class WordEmbedding(EmbeddingBase):
             type: An instance of WordEmbedding.
 
         """
-        # Backward compatiblity until we do away with metadata
-        if metadata is not None:
-            num_embeddings = metadata.vocab_size
-            embeddings_weight = metadata.pretrained_embeds_weight
-            unk_token_idx = metadata.unk_token_idx
-        elif tensorizer is not None:
+        if tensorizer is not None:
             embeddings_weight = None
             if config.pretrained_embeddings_path:
                 pretrained_embedding = PretrainedEmbedding(
@@ -79,10 +77,9 @@ class WordEmbedding(EmbeddingBase):
             num_embeddings = len(tensorizer.vocab)
             unk_token_idx = tensorizer.vocab.idx[UNK]
         else:  # This else condition should go away after metadata goes away.
-            raise ValueError(
-                "metadata and tensorizer objects both are None. "
-                "WordEmbedding cannot be initalized."
-            )
+            num_embeddings = metadata.vocab_size
+            embeddings_weight = metadata.pretrained_embeds_weight
+            unk_token_idx = metadata.unk_token_idx
 
         return cls(
             num_embeddings=num_embeddings,

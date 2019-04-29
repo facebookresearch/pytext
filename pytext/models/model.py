@@ -91,7 +91,7 @@ class BaseModel(nn.Module, Component):
     def save_modules(self, base_path: str = "", suffix: str = ""):
         """Save each sub-module in separate files for reusing later."""
         for module in self.module_list:
-            if getattr(module.config, "save_path", None):
+            if module and getattr(module.config, "save_path", None):
                 path = module.config.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)

@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import CharFeatConfig
+from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 
 from .embedding_base import EmbeddingBase
@@ -42,7 +43,12 @@ class CharacterEmbedding(EmbeddingBase):
     Config = CharFeatConfig
 
     @classmethod
-    def from_config(cls, config: CharFeatConfig, metadata: FieldMeta):
+    def from_config(
+        cls,
+        config: CharFeatConfig,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
         """Factory method to construct an instance of CharacterEmbedding from
         the module's config object and the field's metadata object.
 
@@ -55,8 +61,9 @@ class CharacterEmbedding(EmbeddingBase):
             type: An instance of CharacterEmbedding.
 
         """
+        vocab_size = len(labels) if labels is not None else metadata.vocab_size
         return cls(
-            metadata.vocab_size,
+            vocab_size,
             config.embed_dim,
             config.cnn.kernel_num,
             config.cnn.kernel_sizes,

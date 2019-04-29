@@ -19,6 +19,8 @@ class EmbeddingBase(Module):
 
     """
 
+    __EXPANSIBLE__ = True
+
     def __init__(self, embedding_dim: int):
         super().__init__()
         # By default has 1 embedding which is itself, for EmbeddingList, this num
