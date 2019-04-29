@@ -61,12 +61,14 @@ class RNNGParser(BaseModel):
                 use_last_open_NT_feature (bool): whether to use the last open
                     non-terminal as a 1-hot feature when computing representation
                     for the action classifier
+                use_stack_attention (bool): whether to use attention in stack LSTM
             """
 
             use_buffer: bool = True
             use_stack: bool = True
             use_action: bool = True
             use_last_open_NT_feature: bool = False
+            use_stack_attention: bool = False
 
         class RNNGConstraints(ConfigBase):
             """Constraints when computing valid actions.
@@ -211,6 +213,7 @@ class RNNGParser(BaseModel):
         self.embedding.config = None
 
         self.p_compositional = p_compositional
+        self.ablation_use_stack_attention = ablation.use_stack_attention
         self.ablation_use_last_open_NT_feature = ablation.use_last_open_NT_feature
         self.ablation_use_buffer = ablation.use_buffer
         self.ablation_use_stack = ablation.use_stack
@@ -236,7 +239,12 @@ class RNNGParser(BaseModel):
         self.valid_SL_idxs = valid_SL_idxs
 
         num_actions = len(actions_vocab)
-        lstm_count = ablation.use_buffer + ablation.use_stack + ablation.use_action
+        lstm_count = (
+            ablation.use_buffer
+            + ablation.use_stack
+            + ablation.use_action
+            + ablation.use_stack_attention
+        )
         if lstm_count == 0:
             raise ValueError("Need at least one of the LSTMs to be true")
 
@@ -339,7 +347,7 @@ class RNNGParser(BaseModel):
                     plans.append((state.neg_prob, state, -1))
                     continue
 
-                #  translating Expression p_t = affine_transform({pbias, S,
+                #  Translating Expression p_t = affine_transform({pbias, S,
                 #  stack_summary, B, buffer_summary, A, action_summary});
                 stack = state.stack_stackrnn
                 stack_summary = stack.embedding()
@@ -350,7 +358,7 @@ class RNNGParser(BaseModel):
                     action_summary = self.dropout_layer(action_summary)
                     buffer_summary = self.dropout_layer(buffer_summary)
 
-                # feature for index of last open non-terminal
+                # Feature for index of last open non-terminal
                 last_open_NT_feature = torch.zeros(len(self.actions_vocab))
                 open_NT_exists = state.num_open_NT > 0
 
