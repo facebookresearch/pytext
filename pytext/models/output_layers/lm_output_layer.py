@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
 from pytext.config.component import create_loss
-from pytext.data.utils import PAD
+from pytext.data.utils import PAD, Vocabulary
+from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss, Loss
 
 from .output_layer_base import OutputLayerBase
@@ -28,9 +29,18 @@ class LMOutputLayer(OutputLayerBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config: Config, metadata=None, labels=None):
-        vocab = labels or metadata.vocab.itos
-        pad_token_idx = metadata.pad_token_idx if metadata else vocab.idx[PAD]
+    def from_config(
+        cls,
+        config: Config,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
+        if labels is not None:
+            vocab = list(labels)
+            pad_token_idx = labels.idx[PAD]
+        else:
+            vocab = metadata.vocab.itos
+            pad_token_idx = metadata.pad_token_idx
         return cls(
             vocab,
             create_loss(config.loss, ignore_index=pad_token_idx),
