@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import Optional
 
 import torch
 import torch.nn as nn
 import torch.onnx.operators
 from pytext.config.field_config import DictFeatConfig
 from pytext.config.module_config import PoolingType
+from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 
 from .embedding_base import EmbeddingBase
@@ -46,7 +48,12 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
     Config = DictFeatConfig
 
     @classmethod
-    def from_config(cls, config: DictFeatConfig, metadata: FieldMeta):
+    def from_config(
+        cls,
+        config: DictFeatConfig,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
         """Factory method to construct an instance of DictEmbedding from
         the module's config object and the field's metadata object.
 
@@ -59,7 +66,12 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             type: An instance of DictEmbedding.
 
         """
-        return cls(metadata.vocab_size, config.embed_dim, config.pooling)
+        vocab_size = len(labels) if labels is not None else metadata.vocab_size
+        return cls(
+            num_embeddings=vocab_size,
+            embed_dim=config.embed_dim,
+            pooling_type=config.pooling,
+        )
 
     def __init__(
         self,

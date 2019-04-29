@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 import torch.nn.functional as F
 from caffe2.python import core
 from pytext.config.component import create_loss
+from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import (
     AUCPRHingeLoss,
@@ -47,11 +48,16 @@ class ClassificationOutputLayer(OutputLayerBase):
         ] = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config: Config, metadata: FieldMeta = None, labels=None):
+    def from_config(
+        cls,
+        config: Config,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
         label_weights = getattr(metadata, "label_weights", None)
         if label_weights is not None:
             label_weights = FloatTensor(label_weights)
-        vocab = metadata.vocab.itos if metadata else labels
+        vocab = list(labels) if labels is not None else metadata.vocab.itos
         loss = create_loss(config.loss, weight=label_weights)
         cls = (
             BinaryClassificationOutputLayer

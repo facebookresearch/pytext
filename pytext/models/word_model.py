@@ -90,8 +90,7 @@ class NewWordTaggingModel(Model):
             in_dim=representation.representation_dim,
             out_dim=len(labels),
         )
-        # TODO after migration: create_module(config.output_layer, tensorizers=tensorizers)
-        output_layer = WordTaggingOutputLayer(labels, CrossEntropyLoss(None))
+        output_layer = create_module(config.output_layer, labels=labels)
         return cls(embedding, representation, decoder, output_layer)
 
     def __init__(self, *args, **kwargs):

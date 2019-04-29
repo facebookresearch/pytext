@@ -9,6 +9,7 @@ from caffe2.python import core
 from pytext.config.component import create_loss
 from pytext.config.serialize import MissingValueError
 from pytext.data.joint_data_handler import SEQ_LENS  # TODO move to constant
+from pytext.data.utils import PAD, Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss
 from pytext.models.crf import CRF
@@ -33,11 +34,19 @@ class WordTaggingOutputLayer(OutputLayerBase):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
 
     @classmethod
-    def from_config(cls, config: Config, metadata: FieldMeta):
-        return cls(
-            metadata.vocab.itos,
-            create_loss(config.loss, ignore_index=metadata.pad_token_idx),
-        )
+    def from_config(
+        cls,
+        config: Config,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
+        if labels is not None:
+            vocab = list(labels)
+            pad_token_idx = labels.idx[PAD]
+        else:
+            vocab = metadata.vocab.itos
+            pad_token_idx = metadata.pad_token_idx
+        return cls(vocab, create_loss(config.loss, ignore_index=pad_token_idx))
 
     def get_loss(
         self,
@@ -113,8 +122,19 @@ class CRFOutputLayer(OutputLayerBase):
     """
 
     @classmethod
-    def from_config(cls, config: OutputLayerBase.Config, metadata: FieldMeta):
-        return cls(metadata.vocab_size, metadata.vocab.itos)
+    def from_config(
+        cls,
+        config: OutputLayerBase.Config,
+        metadata: Optional[FieldMeta] = None,
+        labels: Optional[Vocabulary] = None,
+    ):
+        if labels is not None:
+            vocab = list(labels)
+            vocab_size = len(labels)
+        else:
+            vocab = metadata.vocab.itos
+            vocab_size = metadata.vocab_size
+        return cls(vocab_size, vocab)
 
     def __init__(self, num_tags, *args) -> None:
         super().__init__(*args)
