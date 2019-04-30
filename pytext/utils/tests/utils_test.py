@@ -11,6 +11,7 @@ from pytext.utils.data import (
     unkify,
 )
 from pytext.utils.distributed import get_shard_range
+from pytext.utils.meter import TimeMeter
 from pytext.utils.test import import_tests_module
 
 
@@ -105,3 +106,10 @@ class UtilTest(unittest.TestCase):
         for rank, expected_range in expected:
             shard_range = get_shard_range(dataset_size, rank, world_size)
             self.assertEqual(shard_range, expected_range)
+
+    def test_time_meter(self):
+        tps = TimeMeter()
+        for i in range(10):
+            tps.update(i)
+        self.assertEqual(tps.n, 45)
+        self.assertTrue(tps.avg > 1)
