@@ -3,7 +3,7 @@
 from typing import List
 
 import torch
-from pytext.models.doc_model import DocModel
+from pytext.models.doc_model import DocModel_Deprecated as DocModel
 
 from .ensemble import Ensemble
 

@@ -21,6 +21,14 @@ def register_adapter(from_version):
     return decorator
 
 
+def find_dicts_containing_key(json_config, key):
+    if key in json_config:
+        yield json_config
+    for _, v in json_config.items():
+        if isinstance(v, dict):
+            yield from find_dicts_containing_key(v, key)
+
+
 @register_adapter(from_version=0)
 def v0_to_v1(json_config):
     # migrate optimizer and random_seed params
@@ -170,6 +178,17 @@ def v3_to_v4(json_config):
                 section.pop(old_key)
 
     json_config["version"] = 4
+    return json_config
+
+
+@register_adapter(from_version=4)
+def doc_model_deprecated(json_config):
+    """
+    Rename DocModel to DocModel_Deprecated
+    """
+    for section in find_dicts_containing_key(json_config, "DocModel"):
+        section["DocModel_Deprecated"] = section.pop("DocModel")
+
     return json_config
 
 

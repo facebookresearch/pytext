@@ -32,7 +32,7 @@ from pytext.utils.torch import Vocabulary, list_max
 from torch import jit
 
 
-class DocModel(Model):
+class DocModel_Deprecated(Model):
     """
     An n-ary document classification model. It can be used for all text
     classification scenarios. It supports :class:`~PureDocAttention`,
@@ -41,6 +41,8 @@ class DocModel(Model):
     for projecting the document representation into label/target space.
 
     It can be instantiated just like any other :class:`~Model`.
+
+    DEPRECATED: Use NewDocModel instead
     """
 
     class Config(ConfigBase):
@@ -55,13 +57,13 @@ class DocModel(Model):
         )
 
 
-class NewDocModel(DocModel):
+class NewDocModel(DocModel_Deprecated):
     """DocModel that's compatible with the new Model abstraction, which is responsible
     for describing which inputs it expects and arranging its input tensors."""
 
     __EXPANSIBLE__ = True
 
-    class Config(DocModel.Config):
+    class Config(DocModel_Deprecated.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)

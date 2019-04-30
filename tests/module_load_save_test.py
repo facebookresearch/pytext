@@ -12,7 +12,7 @@ from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.doc_model import DocModel
+from pytext.models.doc_model import DocModel_Deprecated as DocModel
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 
 

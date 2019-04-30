@@ -130,9 +130,15 @@ def config_from_json(cls, json_obj, ignore_fields=()):
     parsed_dict = {}
     if not hasattr(cls, "_fields"):
         raise IncorrectTypeError(f"{cls} is not a valid config class")
-    unknown_fields = set(json_obj) - {f[0] for f in cls.__annotations__.items()}
+    cls_name = getattr(cls, "__name__", cls)
+    # Non-EXPANSIBLE classes can be found in configs
+    cls_name_wo_config = cls_name.split(".")[0]
+    unknown_fields = (
+        set(json_obj)
+        - {f[0] for f in cls.__annotations__.items()}
+        - {cls_name_wo_config}
+    )
     if unknown_fields:
-        cls_name = getattr(cls, "__name__", cls)
         cls_fields = {f[0] for f in cls.__annotations__.items()}
         raise ConfigParseError(
             f"Unknown fields for class {cls_name} with fields {cls_fields} \
@@ -158,7 +164,6 @@ def config_from_json(cls, json_obj, ignore_fields=()):
                 ) from e
         # validate value
         if value is None and not is_optional:
-            cls_name = getattr(cls, "__name__", cls)
             raise MissingValueError(
                 f"missing value for {field} in class {cls_name} with json {json_obj}"
             )

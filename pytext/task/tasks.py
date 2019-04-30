@@ -33,7 +33,7 @@ from pytext.metric_reporters import (
     SimpleWordTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
-from pytext.models.doc_model import DocModel
+from pytext.models.doc_model import DocModel_Deprecated as DocModel
 from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM
