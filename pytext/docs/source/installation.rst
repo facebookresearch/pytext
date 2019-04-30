@@ -36,7 +36,7 @@ Install `brew <https://brew.sh>`_, then run the command:
 
 .. code-block:: console
 
-  $ brew install cmake protobuf
+  $ brew install cmake protobuf libomp
 
 On Windows
 ^^^^^^^^^^^
@@ -69,6 +69,12 @@ Install From Source
   $ cd pytext
   $ source activation_venv
   (pytext_venv) $ pip install torch # go to https://pytorch.org for platform specific installs
+  (pytext_venv) $ pip uninstall -y onnx
+  (pytext_venv) $ git clone https://github.com/onnx/onnx.git
+  (pytext_venv) $ cd onnx
+  (pytext_venv) $ git submodule update --init --recursive
+  (pytext_venv) $ python setup.py install
+  (pytext_venv) $ cd ..
   (pytext_venv) $ ./install_deps
 
 Once that is installed, you can run the unit tests. We recommend using pytest as a runner.
