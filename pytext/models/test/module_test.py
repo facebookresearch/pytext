@@ -7,7 +7,7 @@ from pytext.config.component import create_model
 from pytext.config.field_config import DictFeatConfig, FeatureConfig, WordFeatConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
-from pytext.models.doc_model import DocModel
+from pytext.models.doc_model import DocModel_Deprecated as DocModel
 
 
 class VocabStub:
