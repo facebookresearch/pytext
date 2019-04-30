@@ -259,6 +259,7 @@ class ContextualIntentSlotTask(Task):
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
         )
+        exporter: Optional[DenseFeatureExporter.Config] = None
 
     @classmethod
     def example_config(cls):
