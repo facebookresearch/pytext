@@ -29,6 +29,7 @@ class DistributedDataParallelPythonBuckets(Module):
     the upstream documentation
     `here <https://pytorch.org/docs/stable/nn.html#distributeddataparallel>`_
     """
+
     def __init__(
         self,
         module,
