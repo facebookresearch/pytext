@@ -277,7 +277,7 @@ class Trainer(TrainerBase):
         while self.continue_training(state):
             state.epoch += 1
             state.epochs_since_last_improvement += 1
-            print(f"Worker {state.rank} starting epoch {state.epoch}", flush=True)
+            print(f"\nWorker {state.rank} starting epoch {state.epoch}", flush=True)
             lrs = learning_rates(state.optimizer)
             print(f"Learning rate(s): {', '.join(map(str, lrs))}")
 
@@ -287,15 +287,15 @@ class Trainer(TrainerBase):
                 print(f"start training epoch {state.epoch}", flush=True)
                 self.run_epoch(state, training_data, metric_reporter)
 
-            if not self.config.do_eval:
-                continue
-
             with timing.time("eval epoch"):
                 state.stage = Stage.EVAL
                 model.eval(Stage.EVAL)
                 print(f"start evaluating epoch {state.epoch}", flush=True)
                 with torch.no_grad():
                     eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+
+            if not self.config.do_eval:
+                continue
 
             # Step the learning rate scheduler(s)
             assert eval_metric is not None
