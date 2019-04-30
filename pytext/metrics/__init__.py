@@ -17,6 +17,7 @@ from typing import (
 
 import numpy as np
 from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
+from pytext.utils.cuda import DISTRIBUTED_WORLD_SIZE
 
 
 RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
@@ -424,6 +425,34 @@ class RegressionMetrics(NamedTuple):
         print(f"Num examples: {self.num_examples}")
         print(f"Pearson correlation: {self.pearson_correlation:.3f}")
         print(f"Mean squared error: {self.mse:.3f}")
+
+
+class RealtimeMetrics(NamedTuple):
+    """
+    Realtime Metrics for tracking training progress and performance.
+
+    Attributes:
+        samples (int): number of samples
+        tps (float): tokens per second
+        ups (float): updates per second
+    """
+
+    samples: int
+    tps: float
+    ups: float
+
+    def _format(self, key, value):
+        if key in ("tps", "ups"):
+            return round(value)
+        return value
+
+    def __str__(self):
+        metrics = {"#gpus": DISTRIBUTED_WORLD_SIZE}
+        for key, value in self._asdict().items():
+            if not value:
+                continue
+            metrics[key] = self._format(key, value)
+        return str(metrics)
 
 
 def safe_division(n: Union[int, float], d: int) -> float:

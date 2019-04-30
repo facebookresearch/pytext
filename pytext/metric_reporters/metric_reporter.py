@@ -4,8 +4,11 @@ from typing import Dict, List
 
 import numpy as np
 import torch
+from pytext.common.constants import DatasetFieldName
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
+from pytext.metrics import RealtimeMetrics
+from pytext.utils.meter import TimeMeter
 
 
 class MetricReporter(Component):
@@ -25,11 +28,16 @@ class MetricReporter(Component):
         channels (List[Channel]): A list of Channel that will receive metrics and
             the aggregated trainer output then format and report them in any customized
             way.
+
+    MetricReporter is tightly-coupled with metric aggregation and computation which
+    makes inheritance hard to reuse the parent functionalities and attributes. Next
+    step is to decouple the metric aggregation and computation vs metric reporting.
     """
 
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
     lower_is_better: bool = False
+    realtime_report_freq: int = 500
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
@@ -37,6 +45,7 @@ class MetricReporter(Component):
     def __init__(self, channels) -> None:
         self._reset()
         self.channels = channels
+        self._reset_realtime()
 
     def _reset(self):
         self.all_preds: List = []
@@ -46,6 +55,11 @@ class MetricReporter(Component):
         self.all_scores: List = []
         self.n_batches = 0
         self.batch_size: List = []
+
+    def _reset_realtime(self):
+        self.realtime_meters: Dict = {}
+        self.realtime_meters["tps"] = TimeMeter()  # tokens per second
+        self.realtime_meters["ups"] = TimeMeter()  # updates per second
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
@@ -79,6 +93,13 @@ class MetricReporter(Component):
         # convert tensor to float
         self.all_loss.append(float(loss))
         self.batch_size.append(len(m_input[0]))
+
+        # realtime stats
+        if DatasetFieldName.NUM_TOKENS in context:
+            self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
+            self.realtime_meters["ups"].update(1)
+        if n_batches % self.realtime_report_freq == 0:
+            self.report_realtime_metric()
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -179,10 +200,21 @@ class MetricReporter(Component):
                         self.get_meta(),
                         model,
                     )
+            self.report_realtime_metric()
 
         if reset:
             self._reset()
+            self._reset_realtime()
         return metrics
+
+    def report_realtime_metric(self):
+        tps = self.realtime_meters["tps"].avg
+        ups = self.realtime_meters["ups"].avg
+
+        if not tps or not ups:
+            return
+        metrics = RealtimeMetrics(samples=self.n_batches + 1, tps=tps, ups=ups)
+        print(metrics, flush=True)
 
     def get_model_select_metric(self, metrics):
         """
