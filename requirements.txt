@@ -1,6 +1,6 @@
 click
 future
-hypothesis<4.0
+hypothesis
 joblib
 numpy
 onnx
