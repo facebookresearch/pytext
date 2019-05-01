@@ -213,19 +213,32 @@ class ByteTensorizer(Tensorizer):
 
 class CharacterTokenTensorizer(TokenTensorizer):
     """Turn words into 2-dimensional tensors of ints based on their ascii values.
-    Words are padded to the maximum word length. Sequence lengths are the lengths
-    of each token, 0 for pad token.
+    Words are padded to the maximum word length (also capped at `max_char_length`).
+    Sequence lengths are the length of each token, 0 for pad token.
     """
+
+    class Config(TokenTensorizer.Config):
+        #: The max character length for a token.
+        max_char_length: int = 20
+
+    def __init__(self, max_char_length: int = Config.max_char_length, **kwargs):
+        self.max_char_length = max_char_length
+        super().__init__(**kwargs)
 
     # Don't need to create a vocab
     initialize = Tensorizer.initialize
 
     def numberize(self, row):
         """Convert text to characters, pad batch."""
-        tokens = self.tokenizer.tokenize(row[self.text_column])
-        lengths = [len(token.value) for token in tokens]
-        characters = [[ord(c) for c in token.value] for token in tokens]
+        tokens = self.tokenizer.tokenize(row[self.text_column])[: self.max_seq_len]
+        characters = [
+            self._numberize_token(token)[: self.max_char_length] for token in tokens
+        ]
+        lengths = [len(token_chars) for token_chars in characters]
         return characters, lengths
+
+    def _numberize_token(self, token):
+        return [ord(c) for c in token.value]
 
     def tensorize(self, batch):
         characters, lengths = zip(*batch)
