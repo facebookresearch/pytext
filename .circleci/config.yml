@@ -65,7 +65,7 @@ jobs:
       - image: circleci/python:3.6
     steps:
       - checkout
-      -run: *install_system_deps
+      - run: *install_system_deps
       - run:
           name: setup lint
           command: |
