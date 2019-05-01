@@ -1,10 +1,3 @@
-_run:
-  install_pytorch: &install_pytorch
-    name: install_pytorch
-    command: |
-      sudo pip uninstall -y torch
-      sudo pip install --progress-bar off torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
-
 version: 2
 jobs:
   build_Py3.6:
@@ -15,7 +8,6 @@ jobs:
       - run:
           name: setup
           command: source .circleci/setup_circleimg.sh
-      - run: *install_pytorch
       - run:
           name: run tests and gather coverage
           command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
@@ -34,7 +26,6 @@ jobs:
       - run:
           name: setup
           command: source .circleci/setup_circleimg.sh
-      - run: *install_pytorch
       - run:
           name: run tests and gather coverage
           command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
@@ -53,7 +44,6 @@ jobs:
       - run:
           name: setup
           command: source .circleci/setup_circleimg.sh
-      - run: *install_pytorch
       - run:
           name: install docs build deps
           command: sudo pip install -r pytext/docs/requirements.txt
