@@ -46,7 +46,7 @@ def create_module(
     name = type(module).__name__
     if getattr(module_config, "load_path", None):
         print(f"Loading state of module {name} from {module_config.load_path} ...")
-        module.load_state_dict(torch.load(module_config.load_path))
+        module.load_state_dict(torch.load(module_config.load_path, map_location="cpu"))
     if getattr(module_config, "freeze", False):
         print(f"Freezing the parameters of module {name} ...")
         module.freeze()

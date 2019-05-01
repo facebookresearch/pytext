@@ -278,6 +278,7 @@ class Trainer(TrainerBase):
             state.epoch += 1
             state.epochs_since_last_improvement += 1
             print(f"\nWorker {state.rank} starting epoch {state.epoch}", flush=True)
+            print(f"Num parameters: {sum(p.numel() for p in state.model.parameters())}")
             lrs = learning_rates(state.optimizer)
             print(f"Learning rate(s): {', '.join(map(str, lrs))}")
 

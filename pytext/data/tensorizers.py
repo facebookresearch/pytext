@@ -67,8 +67,9 @@ class Tensorizer(Component):
 
         See `WordTokenizer.initialize` for a more concrete example.
         """
-        while True:
-            yield
+        return
+        # we need yield here to make this function a generator
+        yield
 
 
 class TokenTensorizer(Tensorizer):
@@ -137,19 +138,17 @@ class TokenTensorizer(Tensorizer):
 
     def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
+        if self.vocab:
+            return
         self.vocab_builder = vocab_builder or VocabBuilder()
         try:
             while True:
-                if self.vocab:
-                    yield
-                else:
-                    row = yield
-                    raw_text = row[self.text_column]
-                    tokenized = self.tokenizer.tokenize(raw_text)
-                    self.vocab_builder.add_all([t.value for t in tokenized])
+                row = yield
+                raw_text = row[self.text_column]
+                tokenized = self.tokenizer.tokenize(raw_text)
+                self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
-            if not self.vocab:
-                self.vocab = self.vocab_builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
@@ -474,9 +473,15 @@ class RawJson(RawString):
 def initialize_tensorizers(tensorizers, data_source):
     """A utility function to stream a data source to the initialize functions
     of a dict of tensorizers."""
-    initializers = [tensorizer.initialize() for tensorizer in tensorizers.values()]
-    for init in initializers:
-        init.send(None)  # kick
-    for row in data_source:
-        for init in initializers:
-            init.send(row)
+    initializers = []
+    for init in [tensorizer.initialize() for tensorizer in tensorizers.values()]:
+        try:
+            init.send(None)  # kick
+            initializers.append(init)
+        except StopIteration:
+            pass
+
+    if initializers:
+        for row in data_source:
+            for init in initializers:
+                init.send(row)

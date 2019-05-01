@@ -32,23 +32,24 @@ class BatchSamplerTest(unittest.TestCase):
         self._check_iterator(eval_iterator, expected_items)
 
     def test_prob_batch_sampler(self):
-        sampler = RandomizedBatchSampler(
-            unnormalized_iterator_probs={"A": 1, "B": 0}, epoch_size=8
-        )
-        prob_iterator = sampler.batchify(self.iter_dict)
+        sampler = RandomizedBatchSampler(unnormalized_iterator_probs={"A": 1, "B": 0})
+
+        def truncate(items, length):
+            for _ in range(length):
+                yield next(items)
+
+        prob_iterator = truncate(iter(sampler.batchify(self.iter_dict)), 8)
         expected_items = ["1", "2", "3", "4", "5", "1", "2", "3"]
         self._check_iterator(prob_iterator, expected_items)
-        prob_iterator = sampler.batchify(self.iter_dict)
+        prob_iterator = truncate(iter(sampler.batchify(self.iter_dict)), 8)
         expected_items = ["4", "5", "1", "2", "3", "4", "5", "1"]
         self._check_iterator(prob_iterator, expected_items)
 
-        sampler = RandomizedBatchSampler(
-            unnormalized_iterator_probs={"A": 0, "B": 1}, epoch_size=5
-        )
-        prob_iterator = sampler.batchify(self.iter_dict)
+        sampler = RandomizedBatchSampler(unnormalized_iterator_probs={"A": 0, "B": 1})
+        prob_iterator = truncate(sampler.batchify(self.iter_dict), 5)
         expected_items = ["a", "b", "c", "a", "b"]
         self._check_iterator(prob_iterator, expected_items)
-        prob_iterator = sampler.batchify(self.iter_dict)
+        prob_iterator = truncate(sampler.batchify(self.iter_dict), 5)
         expected_items = ["c", "a", "b", "c", "a"]
         self._check_iterator(prob_iterator, expected_items)
 

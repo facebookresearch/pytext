@@ -6,7 +6,12 @@ import sys
 import threading
 from typing import Dict, List, Optional, Type
 
-from .data_source import RootDataSource, SafeFileWrapper, generator_property
+from .data_source import (
+    RootDataSource,
+    SafeFileWrapper,
+    ShardedDataSource,
+    generator_property,
+)
 
 
 class TSV:
@@ -51,7 +56,7 @@ class TSVDataSource(RootDataSource):
         delimiter: str = "\t"
 
     @classmethod
-    def from_config(cls, config: Config, schema: Dict[str, Type]):
+    def from_config(cls, config: Config, schema: Dict[str, Type], **kwargs):
         args = config._asdict()
         train_filename = args.pop("train_filename")
         test_filename = args.pop("test_filename")
@@ -71,7 +76,14 @@ class TSVDataSource(RootDataSource):
             if eval_filename
             else None
         )
-        return cls(train_file, test_file, eval_file, schema=schema, **args)
+        return cls(
+            train_file=train_file,
+            test_file=test_file,
+            eval_file=eval_file,
+            schema=schema,
+            **args,
+            **kwargs,
+        )
 
     def __init__(
         self,
@@ -83,7 +95,9 @@ class TSVDataSource(RootDataSource):
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self._init_tsv(field_names, delimiter, train_file, test_file, eval_file)
 
+    def _init_tsv(self, field_names, delimiter, train_file, test_file, eval_file):
         def make_tsv(file):
             return TSV(file, field_names=field_names, delimiter=delimiter)
 
@@ -149,3 +163,70 @@ class MultilingualTSVDataSource(TSVDataSource):
         return self._convert_raw_source(
             self.raw_eval_data_generator(), self.data_source_languages["eval"]
         )
+
+
+class BlockShardedTSV:
+    """Take a TSV file, split into N pieces (by byte location) and return
+    an iterator on one of the pieces.  The pieces are equal by byte size,
+    not by number of rows.  Thus, care needs to be taken when using this
+    for distributed training, otherwise number of batches for different
+    workers might be different.
+    """
+
+    def __init__(
+        self, file, field_names=None, delimiter="\t", block_id=0, num_blocks=1
+    ):
+        self.file = file
+        self.field_names = field_names
+        self.delimiter = delimiter
+        self.block_id = block_id
+        self.num_blocks = num_blocks
+
+    def __iter__(self):
+        # (self.begin, self.end) are the pointers to the begin and end
+        # of file segment
+        self.file.seek(0, 2)
+        end = self.file.tell()
+        self.begin = self.block_id * end / self.num_blocks
+        self.end = (self.block_id + 1) * end / self.num_blocks
+        self.file.seek(self.begin, 0)
+        # make sure we're at the beginning of a full row
+        if self.begin:
+            self.file.readline()
+        reader = csv.DictReader(
+            (line.replace("\0", "") for line in iter(self.file.readline, "")),
+            fieldnames=self.field_names,
+            delimiter=self.delimiter,
+            quoting=csv.QUOTE_NONE,
+        )
+        # iterate until we're at the end of segment
+        for line in reader:
+            if self.file.tell() > self.end:
+                break
+            yield line
+
+
+class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
+    def __init__(self, rank=0, world_size=1, **kwargs):
+        self.rank = rank
+        self.world_size = world_size
+        # calls init of TSVDataSource
+        super().__init__(**kwargs)
+        # weird python syntax to call init of ShardedDataSource
+        super(TSVDataSource, self).__init__(schema=self.schema)
+
+    def _init_tsv(self, field_names, delimiter, train_file, test_file, eval_file):
+        def make_tsv(file, rank=0, world_size=1):
+            return BlockShardedTSV(
+                file,
+                field_names=field_names,
+                delimiter=delimiter,
+                block_id=self.rank,
+                num_blocks=self.world_size,
+            )
+
+        self._train_tsv = (
+            make_tsv(train_file, self.rank, self.world_size) if train_file else []
+        )
+        self._test_tsv = make_tsv(test_file) if test_file else []
+        self._eval_tsv = make_tsv(eval_file) if eval_file else []

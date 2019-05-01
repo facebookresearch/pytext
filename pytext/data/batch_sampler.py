@@ -120,8 +120,8 @@ class RandomizedBatchSampler(BaseBatchSampler):
     """
     This sampler takes in a dictionary of iterators and returns batches according
     to the specified probabilities by `unnormalized_iterator_probs`. We cycle through
-    the iterators (restarting any that "run out") until `epoch_size` number of batches
-    have been generated.
+    the iterators (restarting any that "run out") indefinitely.  Set epoch_size in
+    Data.Config.
 
     Example:
 
@@ -135,24 +135,18 @@ class RandomizedBatchSampler(BaseBatchSampler):
         unnormalized_iterator_probs (Dict[str, float]): Iterator sampling probabilities.
             The keys should be the same as the keys of the underlying iterators, and the
             values will be normalized to sum to 1.
-        epoch_size (int): Number of batches in one epoch. This field must be specified.
     """
 
     __COMPONENT_TYPE__ = ComponentType.BATCH_SAMPLER
 
     class Config(Component.Config):
         unnormalized_iterator_probs: Dict[str, float]
-        epoch_size: int = 0
 
     @classmethod
     def from_config(cls, config: Config):
-        assert config.epoch_size > 0
-        return cls(config.unnormalized_iterator_probs, config.epoch_size)
+        return cls(config.unnormalized_iterator_probs)
 
-    def __init__(
-        self, unnormalized_iterator_probs: Dict[str, float], epoch_size: int
-    ) -> None:
-        self.epoch_size = epoch_size
+    def __init__(self, unnormalized_iterator_probs: Dict[str, float]) -> None:
         self.iterator_names = list(unnormalized_iterator_probs)
         self.iterator_probs = np.array(
             [float(unnormalized_iterator_probs[name]) for name in self.iterator_names]
@@ -171,7 +165,7 @@ class RandomizedBatchSampler(BaseBatchSampler):
             }
         num_batches = 0
 
-        while num_batches < self.epoch_size:
+        while True:
             # Select a candidate iterator using the uniform distribtion
             selected_key = np.random.choice(self.iterator_names, p=self.iterator_probs)
             try:
