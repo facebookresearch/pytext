@@ -1,52 +1,56 @@
+_run:
+  install_system_deps: &install_system_deps
+    name: install_system_deps
+    command: |
+      sudo apt-get update
+      sudo apt-get install -y cmake python-pip python-dev build-essential protobuf-compiler libprotoc-dev
+  install_test_deps: &install_test_deps
+    name: install_test_deps
+    command: |
+      sudo ./install_deps
+      sudo pip install --progress-bar off pytest pytest-cov
+
+
+_do_tests: &do_tests
+  - checkout
+  - run: *install_system_deps
+  - run: *install_test_deps
+  - run:
+      name: run tests and gather coverag
+      command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
+  - store_test_results:
+      path: test-reports
+  - store_artifacts:
+      path: test-reports
+  - store_artifacts:
+      path: htmlcov
+      destination: coverage
+
+
 version: 2
 jobs:
   build_Py3.6:
     docker:
       - image: circleci/python:3.6
-    steps:
-      - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
-      - run:
-          name: run tests and gather coverage
-          command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
-      - store_test_results:
-          path: test-reports
-      - store_artifacts:
-          path: test-reports
-      - store_artifacts:
-          path: htmlcov
-          destination: coverage
+    steps: *do_tests
+
   build_Py3.7:
     docker:
       - image: circleci/python:3.7
-    steps:
-      - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
-      - run:
-          name: run tests and gather coverage
-          command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
-      - store_test_results:
-          path: test-reports
-      - store_artifacts:
-          path: test-reports
-      - store_artifacts:
-          path: htmlcov
-          destination: coverage
+    steps: *do_tests
+
   build_docs:
     docker:
       - image: circleci/python:3.7
     steps:
       - checkout
-      - run:
-          name: setup
-          command: source .circleci/setup_circleimg.sh
+      - run: *install_system_deps
       - run:
           name: install docs build deps
-          command: sudo pip install -r pytext/docs/requirements.txt
+          command: |
+            sudo pip install --upgrade pip
+            sudo pip install -r docs_requirements.txt
+            sudo pip install -r pytext/docs/requirements.txt
       - run:
           name: build docs
           command: |
@@ -55,15 +59,16 @@ jobs:
       - store_artifacts:
           path: pytext/docs/build/html
           destination: docs
+
   python_lint:
     docker:
       - image: circleci/python:3.6
     steps:
       - checkout
+      - run: *install_system_deps
       - run:
-          name: setup
+          name: setup lint
           command: |
-              source .circleci/setup_circleimg.sh
               sudo pip install black isort
       - run:
           name: run black
