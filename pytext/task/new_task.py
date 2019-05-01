@@ -37,7 +37,7 @@ class NewTaskTrainer(Trainer):
         for batch_id, batch in enumerate(data):
             self.zero_grads(state)
             with timing.time("model.train_batch"):
-                loss, metric_data = model.train_batch(batch)
+                loss, metric_data = model.train_batch(model, batch)
             self.backprop(state, loss)
             if report_metric:
                 with timing.time("add metrics"):

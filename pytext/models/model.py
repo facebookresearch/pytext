@@ -151,13 +151,15 @@ class BaseModel(nn.Module, Component):
     # @classmethod
     # def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
     #     raise NotImplementedError
-
-    def train_batch(self, batch):
-        model_inputs = self.arrange_model_inputs(batch)
-        targets = self.arrange_targets(batch)
-        model_outputs = self(*model_inputs)
-        loss = self.get_loss(model_outputs, targets, None)
-        predictions, scores = self.get_pred(model_outputs)
+    @classmethod
+    def train_batch(cls, model, batch):
+        # this is a class method so that it works when model is a DistributedModel
+        # wrapper.  Otherwise the forward call here skips the DDP forward call.
+        model_inputs = model.arrange_model_inputs(batch)
+        targets = model.arrange_targets(batch)
+        model_outputs = model(*model_inputs)
+        loss = model.get_loss(model_outputs, targets, None)
+        predictions, scores = model.get_pred(model_outputs)
         metric_data = (predictions, targets, scores, loss, model_inputs)
         return loss, metric_data
 
