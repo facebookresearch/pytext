@@ -166,24 +166,24 @@ class PRF1Metrics(NamedTuple):
             support = label_metrics.true_positives + label_metrics.false_negatives
             res += (
                 f"\t{label:<40}"
-                f"\t{label_metrics.precision * 100:<10.2f}"
-                f"\t{label_metrics.recall * 100:<10.2f}"
-                f"\t{label_metrics.f1 * 100:<10.2f}"
+                f"\t{label_metrics.precision * 100:<10.3f}"
+                f"\t{label_metrics.recall * 100:<10.3f}"
+                f"\t{label_metrics.f1 * 100:<10.3f}"
                 f"\t{support:<10}\n"
             )
         support = self.micro_scores.true_positives + self.micro_scores.false_negatives
         res += (
             f"\n\t{'Overall micro scores':<40}"
-            f"\t{self.micro_scores.precision * 100:<10.2f}"
-            f"\t{self.micro_scores.recall * 100:<10.2f}"
-            f"\t{self.micro_scores.f1 * 100:<10.2f}"
+            f"\t{self.micro_scores.precision * 100:<10.3f}"
+            f"\t{self.micro_scores.recall * 100:<10.3f}"
+            f"\t{self.micro_scores.f1 * 100:<10.3f}"
             f"\t{support:<10}\n"
         )
         res += (
             f"\t{'Overall macro scores':<40}"
-            f"\t{self.macro_scores.precision * 100:<10.2f}"
-            f"\t{self.macro_scores.recall * 100:<10.2f}"
-            f"\t{self.macro_scores.f1 * 100:<10.2f}\n"
+            f"\t{self.macro_scores.precision * 100:<10.3f}"
+            f"\t{self.macro_scores.recall * 100:<10.3f}"
+            f"\t{self.macro_scores.f1 * 100:<10.3f}\n"
         )
         print(res)
 
@@ -217,8 +217,8 @@ class ClassificationMetrics(NamedTuple):
             soft_scores = [
                 {
                     "label": label,
-                    "avg_pr": f"{metrics.average_precision:.2f}",
-                    "roc_auc": f"{(metrics.roc_auc or 0.0):.2f}",
+                    "avg_pr": f"{metrics.average_precision:.3f}",
+                    "roc_auc": f"{(metrics.roc_auc or 0.0):.3f}",
                 }
                 for label, metrics in sorted(self.per_label_soft_scores.items())
             ]
@@ -241,7 +241,7 @@ class ClassificationMetrics(NamedTuple):
                         dict(
                             {"label": label},
                             **{
-                                str(p): f"{r:.2f}"
+                                str(p): f"{r:.3f}"
                                 for p, r in metrics.recall_at_precision.items()
                             },
                         )
@@ -255,7 +255,7 @@ class ClassificationMetrics(NamedTuple):
                 )
             )
         if self.mcc:
-            print(f"\nMatthews correlation coefficient: {self.mcc :.2f}")
+            print(f"\nMatthews correlation coefficient: {self.mcc :.3f}")
         if self.roc_auc:
             print(f"\nROC AUC: {self.roc_auc:.3f}")
 
