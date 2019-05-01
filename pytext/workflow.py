@@ -112,7 +112,9 @@ def prepare_task(
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task, _ = load(config.load_snapshot_path)
     else:
-        task = create_task(config.task, metadata=metadata)
+        task = create_task(
+            config.task, metadata=metadata, rank=rank, world_size=world_size
+        )
 
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)

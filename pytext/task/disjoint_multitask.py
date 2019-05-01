@@ -43,7 +43,9 @@ class DisjointMultitask(TaskBase):
         metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
 
     @classmethod
-    def from_config(cls, task_config, metadata=None, model_state=None):
+    def from_config(
+        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+    ):
         print("Task parameters:\n")
         pprint(config_to_json(type(task_config), task_config))
 
@@ -171,13 +173,15 @@ class NewDisjointMultitask(_NewTask):
         )
 
     @classmethod
-    def from_config(cls, task_config, metadata=None, model_state=None):
-        datas = OrderedDict()
+    def from_config(
+        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+    ):
+        data_dict = OrderedDict()
         models = OrderedDict()
         metric_reporters = OrderedDict()
         for name, task in task_config.tasks.items():
-            tensorizers, data = NewTask._init_tensorizers(task)
-            datas[name] = data
+            tensorizers, data = NewTask._init_tensorizers(task, rank, world_size)
+            data_dict[name] = data
             models[name] = NewTask._init_model(task, tensorizers)
             metric_reporters[name] = create_component(
                 ComponentType.METRIC_REPORTER,
@@ -189,7 +193,9 @@ class NewDisjointMultitask(_NewTask):
             task_name: task_config.task_weights.get(task_name, 1.0)
             for task_name in task_config.tasks.keys()
         }
-        data = DisjointMultitaskData(task_config.data, datas)
+        data = DisjointMultitaskData.from_config(
+            task_config.data, data_dict=data_dict, rank=rank, world_size=world_size
+        )
         model = NewDisjointMultitaskModel(models, loss_weights=task_weights)
         if model_state:
             model.load_state_dict(model_state)

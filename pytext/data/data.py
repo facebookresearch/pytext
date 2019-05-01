@@ -8,11 +8,15 @@ import random
 from typing import Dict, Iterable, Optional, Type
 
 from pytext.common.constants import Stage
-from pytext.config.component import Component, ComponentType, create_component
+from pytext.config.component import Component, ComponentType, Registry, create_component
 
 from .sources import DataSource, RawExample, TSVDataSource
-from .sources.data_source import GeneratorIterator
-from .tensorizers import Tensorizer
+from .sources.data_source import (
+    GeneratorIterator,
+    RowShardedDataSource,
+    ShardedDataSource,
+)
+from .tensorizers import Tensorizer, initialize_tensorizers
 
 
 class Batcher(Component):
@@ -121,13 +125,6 @@ class PoolingBatcher(Batcher):
                 yield zip_dicts(batch)
 
 
-def numberize_rows(tensorizers, rows):
-    for row in rows:
-        yield {
-            name: tensorizer.numberize(row) for name, tensorizer in tensorizers.items()
-        }
-
-
 def pad_and_tensorize_batches(tensorizers, batches):
     for batch in batches:
         yield {
@@ -156,18 +153,6 @@ def generator_iterator(fn):
         return GeneratorIterator(fn, *args, **kwargs)
 
     return wrapped
-
-
-def shard(rows, rank, num_workers):
-    """Only return every num_workers example for distributed training."""
-    queue = []
-    for row in rows:
-        queue.append(row)
-        # might discard remainder %num_workers rows because distributed
-        # training needs to be in sync
-        if len(queue) == num_workers:
-            yield queue[rank]
-            queue = []
 
 
 class Data(Component):
@@ -199,14 +184,47 @@ class Data(Component):
         #: How training examples are split into batches for the optimizer.
         batcher: Batcher.Config = PoolingBatcher.Config()
         sort_key: Optional[str] = None
+        #: define epoch to be a fixed number of batches.
+        #: If not set, use the entire dataset
+        epoch_size: Optional[int] = None
 
     @classmethod
     def from_config(
-        cls, config: Config, schema: Dict[str, Type], tensorizers: Dict[str, Tensorizer]
+        cls,
+        config: Config,
+        schema: Dict[str, Type],
+        tensorizers: Dict[str, Tensorizer],
+        rank=0,
+        world_size=1,
+        **kwargs,
     ):
-        data_source = create_component(ComponentType.DATA_SOURCE, config.source, schema)
+        data_source_cls = Registry.get(ComponentType.DATA_SOURCE, type(config.source))
+        if issubclass(data_source_cls, ShardedDataSource):
+            # data source is already sharded, we don't need to wrap RowShardedDataSource
+            data_source = create_component(
+                ComponentType.DATA_SOURCE,
+                config.source,
+                schema,
+                rank=rank,
+                world_size=world_size,
+            )
+        else:
+            unsharded_data_source = create_component(
+                ComponentType.DATA_SOURCE, config.source, schema
+            )
+            data_source = RowShardedDataSource(
+                data_source=unsharded_data_source, rank=rank, world_size=world_size
+            )
+
         batcher = create_component(ComponentType.BATCHER, config.batcher)
-        return cls(data_source, tensorizers, batcher=batcher, sort_key=config.sort_key)
+        return cls(
+            data_source,
+            tensorizers,
+            batcher=batcher,
+            sort_key=config.sort_key,
+            epoch_size=config.epoch_size,
+            **kwargs,
+        )
 
     def __init__(
         self,
@@ -214,6 +232,7 @@ class Data(Component):
         tensorizers: Dict[str, Tensorizer],
         batcher: Batcher = None,
         sort_key: Optional[str] = None,
+        epoch_size: Optional[int] = None,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
@@ -221,21 +240,44 @@ class Data(Component):
         self.tensorizers = tensorizers
         self.batcher = batcher or Batcher()
         self.sort_key = sort_key
-        self.__initialize_tensorizers()
+        self.epoch_size = epoch_size
+        self.batch = {Stage.TRAIN: None, Stage.EVAL: None, Stage.TEST: None}
+        initialize_tensorizers(self.tensorizers, self.data_source.train)
 
-    def __initialize_tensorizers(self):
-        """Initialize tensorizers using data from self.data_source.train."""
-        initializers = [
-            tensorizer.initialize() for tensorizer in self.tensorizers.values()
-        ]
-        for initializer in initializers:
-            initializer.send(None)  # kick
-        for row in self.data_source.train:
-            for initializer in initializers:
-                initializer.send(row)
+    def _get_batches(self, stage, data_source):
+        if not self.batch[stage]:
+            rows = {
+                Stage.TRAIN: data_source.train,
+                Stage.TEST: data_source.test,
+                Stage.EVAL: data_source.eval,
+            }[stage]
+
+            numberized_rows = self.numberize_rows(rows)
+            batches = self.batcher.batchify(
+                numberized_rows,
+                sort_key=(
+                    lambda row: self.tensorizers[self.sort_key].sort_key(
+                        row[self.sort_key]
+                    )
+                )
+                if self.sort_key
+                else None,
+            )
+            self.batch[stage] = iter(
+                pad_and_tensorize_batches(self.tensorizers, batches)
+            )
+
+        return self.batch[stage]
+
+    def numberize_rows(self, rows):
+        for row in rows:
+            yield {
+                name: tensorizer.numberize(row)
+                for name, tensorizer in self.tensorizers.items()
+            }
 
     @generator_iterator
-    def batches(self, stage: Stage, rank=0, world_size=1, data_source=None):
+    def batches(self, stage: Stage, data_source=None):
         """Create batches of tensors to pass to model train_batch.
         This function yields dictionaries that mirror the `tensorizers` dict passed to
         `__init__`, ie. the keys will be the same, and the tensors will be the shape
@@ -246,24 +288,14 @@ class Data(Component):
         this is to allow setting a different data_source for testing a model
         """
         data_source = data_source or self.data_source
-        rows = shard(
-            {
-                Stage.TRAIN: data_source.train,
-                Stage.TEST: data_source.test,
-                Stage.EVAL: data_source.eval,
-            }[stage],
-            rank,
-            world_size,
-        )
-
-        numberized_rows = numberize_rows(self.tensorizers, rows)
-        batches = self.batcher.batchify(
-            numberized_rows,
-            sort_key=(
-                lambda row: self.tensorizers[self.sort_key].sort_key(row[self.sort_key])
-            )
-            if self.sort_key
-            else None,
-            stage=stage,
-        )
-        return pad_and_tensorize_batches(self.tensorizers, batches)
+        self.num_batches = 0
+        while True:
+            for batch in self._get_batches(stage, data_source):
+                if stage == Stage.TRAIN and self.num_batches == self.epoch_size:
+                    self.num_batches = 0
+                    return
+                self.num_batches += 1
+                yield batch
+            self.batch[stage] = None
+            if stage != Stage.TRAIN or not self.epoch_size:
+                return

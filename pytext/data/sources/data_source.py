@@ -5,6 +5,7 @@ import logging
 from typing import Dict, List
 
 from pytext.config.component import Component, ComponentType
+from pytext.data.utils import shard
 from pytext.utils.data import Slot, parse_slot_string
 
 
@@ -139,6 +140,26 @@ class DataSource(Component):
     @generator_property
     def eval(self):
         raise NotImplementedError
+
+
+class ShardedDataSource(DataSource):
+    """Base class for sharded data sources."""
+
+
+class RowShardedDataSource(ShardedDataSource):
+    "Shards a given datasource by row."
+
+    def __init__(self, data_source: DataSource, rank=0, world_size=1):
+        super().__init__(data_source.schema)
+        self.data_source = data_source
+        self.rank = rank
+        self.world_size = world_size
+        self.eval = data_source.eval
+        self.test = data_source.test
+
+    @generator_property
+    def train(self):
+        return shard(iter(self.data_source.train), self.rank, self.world_size)
 
 
 class RootDataSource(DataSource):

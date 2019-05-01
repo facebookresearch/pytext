@@ -97,8 +97,15 @@ class _NewTask(TaskBase):
         trainer: NewTaskTrainer.Config = NewTaskTrainer.Config()
 
     @classmethod
-    def from_config(cls, config: Config, unused_metadata=None, model_state=None):
-        tensorizers, data = NewTask._init_tensorizers(config)
+    def from_config(
+        cls,
+        config: Config,
+        unused_metadata=None,
+        model_state=None,
+        rank=0,
+        world_size=1,
+    ):
+        tensorizers, data = NewTask._init_tensorizers(config, rank, world_size)
 
         # Initialized tensorizers can be used to create the model
         model = NewTask._init_model(config, tensorizers, model_state)
@@ -115,7 +122,7 @@ class _NewTask(TaskBase):
         return cls(data, model, metric_reporter, trainer)
 
     @classmethod
-    def _init_tensorizers(cls, config: Config):
+    def _init_tensorizers(cls, config: Config, rank, world_size):
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer_config)
             for name, tensorizer_config in config.model.inputs._asdict().items()
@@ -130,7 +137,12 @@ class _NewTask(TaskBase):
 
         # This initializes the tensorizers
         data = create_component(
-            ComponentType.DATA_HANDLER, config.data, schema, tensorizers
+            ComponentType.DATA_HANDLER,
+            config.data,
+            schema,
+            tensorizers,
+            rank=rank,
+            world_size=world_size,
         )
         return tensorizers, data
 
@@ -172,7 +184,7 @@ class _NewTask(TaskBase):
             distributed.dist_init(rank, world_size, dist_init_url)
 
         return self.trainer.train(
-            self.data.batches(Stage.TRAIN, rank, world_size),
+            self.data.batches(Stage.TRAIN),
             self.data.batches(Stage.EVAL),
             self.model,
             self.metric_reporter,

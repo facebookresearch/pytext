@@ -86,6 +86,18 @@ def align_target_label(
     return align_target
 
 
+def shard(rows, rank, num_workers):
+    """Only return every num_workers example for distributed training."""
+    queue = []
+    for row in rows:
+        queue.append(row)
+        # might discard remainder %num_workers rows because distributed
+        # training needs to be in sync
+        if len(queue) == num_workers:
+            yield queue[rank]
+            queue = []
+
+
 class SpecialToken(str):
     def __eq__(self, other):
         # We don't want to compare as equal to actual strings, but we want to behave

@@ -27,12 +27,19 @@ from pytext.trainers import Trainer
 from pytext.utils import cuda, distributed, precision
 
 
-def create_task(task_config, metadata=None, model_state=None):
+def create_task(task_config, metadata=None, model_state=None, rank=0, world_size=1):
     """
     Create a task by finding task class in registry and invoking the from_config
     function of the class, see :meth:`~Task.from_config` for more details
     """
-    return create_component(ComponentType.TASK, task_config, metadata, model_state)
+    return create_component(
+        ComponentType.TASK,
+        task_config,
+        metadata,
+        model_state,
+        rank=rank,
+        world_size=world_size,
+    )
 
 
 class TaskBase(Component):
@@ -52,7 +59,9 @@ class TaskBase(Component):
         exporter: Optional[ModelExporter.Config] = None
 
     @classmethod
-    def from_config(cls, task_config, metadata=None, model_state=None):
+    def from_config(
+        cls, task_config, metadata=None, model_state=None, rank=1, world_size=0
+    ):
         """
         Create the task from config, and optionally load metadata/model_state
         This function will create components including :class:`~DataHandler`,
