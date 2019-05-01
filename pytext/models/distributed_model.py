@@ -4,10 +4,8 @@
 import torch.nn as nn
 from pytext.common.constants import Stage
 
-from .distributed import DistributedDataParallelPythonBuckets
 
-
-class DistributedModel(DistributedDataParallelPythonBuckets):
+class DistributedModel(nn.parallel.DistributedDataParallel):
     """
     Wrapper model class to train models in distributed data parallel manner.
     The way to use this class to train your module in distributed manner is::
