@@ -48,7 +48,7 @@ jobs:
       - run:
           name: install docs build deps
           command: |
-            sudo pip install -upgrade pip
+            sudo pip install --upgrade pip
             sudo pip install -r docs_requirements.txt
             sudo pip install -r pytext/docs/requirements.txt
       - run:
