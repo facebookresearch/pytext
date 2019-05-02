@@ -3,6 +3,7 @@
 
 from typing import Any, Dict, List
 
+from pytext.common.constants import DatasetFieldName
 from pytext.config.doc_classification import (
     ExtraField,
     ModelInput,
@@ -91,7 +92,10 @@ class DocClassificationDataHandler(DataHandler):
         target_fields: Dict[str, Field] = create_label_fields(
             target_config, {DocLabelConfig._name: DocLabelField}
         )
-        extra_fields: Dict[str, Field] = {ExtraField.RAW_TEXT: RawField()}
+        extra_fields: Dict[str, Field] = {
+            ExtraField.RAW_TEXT: RawField(),
+            DatasetFieldName.NUM_TOKENS: RawField(postprocessing=sum),
+        }
         if target_config.target_prob:
             target_fields[Target.TARGET_PROB_FIELD] = RawField()
             target_fields[Target.TARGET_LOGITS_FIELD] = RawField()
@@ -126,9 +130,10 @@ class DocClassificationDataHandler(DataHandler):
                 raw_gazetteer_feats=row_data.get(RawData.DICT_FEAT, ""),
             )
         )
+        tokens = self._get_tokens(features)
         res = {
             # feature
-            ModelInput.WORD_FEAT: self._get_tokens(features),
+            ModelInput.WORD_FEAT: tokens,
             ModelInput.DICT_FEAT: (
                 features.gazetteer_feats,
                 features.gazetteer_feat_weights,
@@ -141,6 +146,7 @@ class DocClassificationDataHandler(DataHandler):
             DocLabelConfig._name: row_data.get(RawData.DOC_LABEL),
             # extra data
             ExtraField.RAW_TEXT: row_data.get(RawData.TEXT),
+            DatasetFieldName.NUM_TOKENS: len(tokens),
         }
         if Target.TARGET_PROB_FIELD in self.labels:
             self._add_target_prob_to_res(res, row_data)
