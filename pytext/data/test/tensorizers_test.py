@@ -81,10 +81,12 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual([(bytes, len(bytes)) for bytes in expected], tensors)
 
     def test_create_word_character_tensors(self):
-        tensorizer = CharacterTokenTensorizer(text_column="text")
-        # not initializing because initializing is a no-op for ByteTensorizer
+        tensorizer = CharacterTokenTensorizer(
+            text_column="text", max_seq_len=4, max_char_length=5
+        )
+        # not initializing because initializing is a no-op for this tensorizer
 
-        s1 = "I want some coffee"
+        s1 = "I want some coffee today"
         s2 = "Turn it up"
 
         def ords(word, pad_to):
@@ -93,18 +95,18 @@ class TensorizersTest(unittest.TestCase):
         batch = [{"text": s1}, {"text": s2}]
         # Note that the tokenizer lowercases here
         expected = [
-            [ords("i", 6), ords("want", 6), ords("some", 6), ords("coffee", 6)],
-            [ords("turn", 6), ords("it", 6), ords("up", 6), ords("", 6)],
+            [ords("i", 5), ords("want", 5), ords("some", 5), ords("coffe", 5)],
+            [ords("turn", 5), ords("it", 5), ords("up", 5), ords("", 5)],
         ]
 
-        expected_lens = [[1, 4, 4, 6], [4, 2, 2, 0]]
+        expected_lens = [[1, 4, 4, 5], [4, 2, 2, 0]]
 
         chars, seq_lens = tensorizer.tensorize(
             tensorizer.numberize(row) for row in batch
         )
         self.assertIsInstance(chars, torch.LongTensor)
         self.assertIsInstance(seq_lens, torch.LongTensor)
-        self.assertEqual((2, 4, 6), chars.size())
+        self.assertEqual((2, 4, 5), chars.size())
         self.assertEqual((2, 4), seq_lens.size())
         self.assertEqual(expected, chars.tolist())
         self.assertEqual(expected_lens, seq_lens.tolist())
