@@ -2,9 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import unittest
+from typing import List
 
 from pytext.data.sources.data_source import SafeFileWrapper
-from pytext.data.sources.tsv import TSVDataSource
+from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.utils.test import import_tests_module
 
 
@@ -87,3 +88,30 @@ class TSVDataSourceTest(unittest.TestCase):
             schema,
         )
         list(data_source.train)
+
+
+class SessionTSVDataSourceTest(unittest.TestCase):
+    def setUp(self):
+        self.data = SessionTSVDataSource(
+            SafeFileWrapper(tests_module.test_file("seq_tagging_example.tsv")),
+            field_names=["session_id", "intent", "goals", "label"],
+            schema={"intent": List[str], "goals": List[str], "label": List[str]},
+        )
+
+    def test_read_session_data(self):
+        self.assertEqual(3, len(list(self.data.train)))
+        # validate multiple iteration
+        self.assertEqual(3, len(list(self.data.train)))
+        it = iter(self.data.train)
+        example = next(it)
+        self.assertEqual(4, len(example))
+        self.assertEqual("id1", example["session_id"])
+        self.assertEqual(["int11", "int12"], example["intent"])
+        self.assertEqual(["g11", "g12"], example["goals"])
+        self.assertEqual(["0", "0"], example["label"])
+        example = next(it)
+        example = next(it)
+        self.assertEqual("id3", example["session_id"])
+        self.assertEqual(["int31", "int32", "int33"], example["intent"])
+        self.assertEqual(["g31", "g32", "g33"], example["goals"])
+        self.assertEqual(["0", "1", "1"], example["label"])
