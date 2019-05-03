@@ -217,14 +217,14 @@ def config_to_json(cls, config_obj):
 def _get_class_type(cls):
     """
     type(cls) has an inconsistent behavior between 3.6 and 3.7 because of
-    changes in the typing module. We therefore rely on __origin__, present only
-    in classes from typing to extract the origin of the class for comparison,
-    otherwise default to the type sent directly
+    changes in the typing module. We therefore rely on __extra (3.6) and
+    __origin__ (3.7), present only in classes from typing to extract the origin
+    of the class for comparison, otherwise default to the type sent directly
     :param cls: class to infer
     :return: class or in the case of classes from typing module, the real type
     (Union, List) of the created object
     """
-    return cls.__origin__ if hasattr(cls, "__origin__") else cls
+    return getattr(cls, "__extra__", getattr(cls, "__origin__", cls))
 
 
 def parse_config(config_json):
