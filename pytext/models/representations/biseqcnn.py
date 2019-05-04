@@ -21,7 +21,7 @@ class BSeqCNNRepresentation(RepresentationBase):
     """
 
     class Config(RepresentationBase.Config):
-        cnn = CNNParams()
+        cnn: CNNParams = CNNParams()
         fwd_bwd_context_len: int = 5
         surrounding_context_len: int = 2
 
