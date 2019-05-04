@@ -72,7 +72,7 @@ class FloatVectorConfig(ConfigBase):
 
 
 class FeatureConfig(ModuleConfig):  # type: ignore
-    word_feat: WordFeatConfig = WordFeatConfig()
+    word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     seq_word_feat: Optional[WordFeatConfig] = None
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None

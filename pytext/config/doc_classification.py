@@ -15,7 +15,7 @@ from .module_config import ModuleConfig
 
 
 class ModelInputConfig(ModuleConfig):
-    word_feat: WordFeatConfig = WordFeatConfig()
+    word_feat: Optional[WordFeatConfig] = WordFeatConfig()
     dict_feat: Optional[DictFeatConfig] = None
     char_feat: Optional[CharFeatConfig] = None
     contextual_token_embedding: Optional[ContextualTokenEmbeddingConfig] = None

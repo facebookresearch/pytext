@@ -36,6 +36,7 @@ class EmbeddingList(EmbeddingBase, ModuleList):
     def __init__(self, embeddings: Iterable[EmbeddingBase], concat: bool) -> None:
         EmbeddingBase.__init__(self, 0)
         embeddings = list(filter(None, embeddings))
+        assert len(embeddings) > 0, "All embedding sub-module cannot be None"
         self.num_emb_modules = sum(emb.num_emb_modules for emb in embeddings)
         embeddings_list, input_start_indices = [], []
         start = 0
