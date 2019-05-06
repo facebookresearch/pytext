@@ -153,13 +153,19 @@ class BaseModel(nn.Module, Component):
     #     raise NotImplementedError
     @classmethod
     def train_batch(cls, model, batch):
-        # this is a class method so that it works when model is a DistributedModel
-        # wrapper.  Otherwise the forward call here skips the DDP forward call.
+        # This is a class method so that it works when model is a DistributedModel
+        # wrapper. Otherwise the forward call here skips the DDP forward call.
+
+        # Forward pass through the network.
         model_inputs = model.arrange_model_inputs(batch)
         targets = model.arrange_targets(batch)
         model_outputs = model(*model_inputs)
+
+        # Compute loss and predictions.
         loss = model.get_loss(model_outputs, targets, None)
         predictions, scores = model.get_pred(model_outputs)
+
+        # Pack results and return them.
         metric_data = (predictions, targets, scores, loss, model_inputs)
         return loss, metric_data
 
