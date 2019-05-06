@@ -233,6 +233,15 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
         )
         self._test_tsv = make_tsv(test_file) if test_file else []
         self._eval_tsv = make_tsv(eval_file) if eval_file else []
+        self._train_unsharded = (
+            TSV(train_file, field_names=field_names, delimiter=delimiter)
+            if train_file
+            else []
+        )
+
+    @generator_property
+    def train_unsharded(self):
+        return iter(self._train_unsharded)
 
 
 class SessionTSVDataSource(TSVDataSource):
