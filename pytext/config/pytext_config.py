@@ -94,8 +94,10 @@ class PyTextConfig(ConfigBase):
     export_torchscript_path: Optional[str] = None
     # Base directory where modules are saved
     modules_save_dir: str = ""
-    # Whether to save intermediate checkpoints for modules
+    # Whether to save intermediate checkpoints for modules if they are best yet
     save_module_checkpoints: bool = False
+    # Whether to save ALL intermediate checkpoints for modules
+    save_all_checkpoints: bool = False
     # Whether to use TensorBoard
     use_tensorboard: bool = True
     #: Seed value to seed torch, python, and numpy random generators.

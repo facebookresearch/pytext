@@ -192,17 +192,16 @@ class Trainer(TrainerBase):
 
         return True
 
-    @timing.time("save checkpoint")
-    def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig):
+    def update_best_model(
+        self, state: TrainingState, train_config: PyTextConfig, eval_metric
+    ):
         # Only one worker should save checkpoints
         if state.rank != 0:
             return
 
+        state.epochs_since_last_improvement = 0
+        state.best_model_metric = eval_metric
         print(f"Found a better model!")
-        if train_config.save_module_checkpoints:
-            state.model.save_modules(
-                base_path=train_config.modules_save_dir, suffix=f"-ep{state.epoch}"
-            )
 
         model_state = state.model.state_dict()
         # save to cpu to avoid multiple model copies in gpu memory
@@ -210,6 +209,17 @@ class Trainer(TrainerBase):
             for key, parameter in model_state.items():
                 model_state[key] = parameter.cpu()
         state.best_model_state = model_state
+
+    @timing.time("save checkpoint")
+    def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig):
+        # Only one worker should save checkpoints
+        if state.rank != 0:
+            return
+
+        if train_config.save_module_checkpoints or train_config.save_all_checkpoints:
+            state.model.save_modules(
+                base_path=train_config.modules_save_dir, suffix=f"-ep{state.epoch}"
+            )
 
     def load_best_model(self, state: TrainingState):
         if cuda.CUDA_ENABLED:
@@ -290,9 +300,12 @@ class Trainer(TrainerBase):
             )
 
             # Did we train a better model?
-            if metric_reporter.compare_metric(eval_metric, state.best_model_metric):
-                state.epochs_since_last_improvement = 0
-                state.best_model_metric = eval_metric
+            better_model = metric_reporter.compare_metric(
+                eval_metric, state.best_model_metric
+            )
+            if better_model:
+                self.update_best_model(state, train_config, eval_metric)
+            if better_model or train_config.save_all_checkpoints:
                 self.save_checkpoint(state, train_config)
 
         # Only bother loading the best model for master worker
