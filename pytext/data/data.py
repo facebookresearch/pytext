@@ -246,7 +246,12 @@ class Data(Component):
         self.sort_key = sort_key
         self.epoch_size = epoch_size
         self.batch = {Stage.TRAIN: None, Stage.EVAL: None, Stage.TEST: None}
-        initialize_tensorizers(self.tensorizers, self.data_source.train)
+        full_train_data = (
+            data_source.train_unsharded
+            if isinstance(data_source, ShardedDataSource)
+            else data_source.train
+        )
+        initialize_tensorizers(self.tensorizers, full_train_data)
 
     def _get_batches(self, stage, data_source):
         if not self.batch[stage]:

@@ -161,6 +161,11 @@ class RowShardedDataSource(ShardedDataSource):
     def train(self):
         return shard(iter(self.data_source.train), self.rank, self.world_size)
 
+    @generator_property
+    def train_unsharded(self):
+        """Used to initialize tensorizer on the intire dataset."""
+        return iter(self.data_source.train)
+
 
 class RootDataSource(DataSource):
     """A data source which actually loads data from a location. This data source
