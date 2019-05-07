@@ -31,6 +31,13 @@ class TestIntentSlotMetricReporter(TestCase):
                 "[IN:CREATE_REMINDER Set a reminder to [SL:TODO pick up Sean ] "
                 "at [SL:DATE_TIME 3:15 pm today ]. ]",
             ),
+            (
+                "Set a reminder to pick up Sean at 3:15 pm today.",
+                "IN:CREATE_REMINDER",
+                "34:47:SL:DATE_TIME,18:30:SL:TODO",
+                "[IN:CREATE_REMINDER Set a reminder to [SL:TODO pick up Sean ] "
+                "at [SL:DATE_TIME 3:15 pm today ]. ]",
+            ),
             ('["Fine"]', "cu:other", "", r'[cu:other \["Fine"\] ]'),
         ]
         for (

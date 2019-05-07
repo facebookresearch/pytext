@@ -59,7 +59,7 @@ class IntentSlotChannel(FileChannel):
         annotation_str = OPEN + escape_brackets(intent_label) + " "
         slots = parse_slot_string(slots_label)
         cur_index = 0
-        for slot in slots:
+        for slot in sorted(slots, key=lambda slot: slot.start):
             annotation_str += escape_brackets(utterance[cur_index : slot.start])
             annotation_str += (
                 OPEN
