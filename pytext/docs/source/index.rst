@@ -78,14 +78,9 @@ If you want to use PyText as a library and build your own models, please check t
 
 .. toctree::
   :maxdepth: 2
-  :caption: Config Reference
+  :caption: References
 
   configs/pytext
-
-.. toctree::
-  :maxdepth: 3
-  :caption: Library Reference
-
   modules/pytext
 
 Indices and tables
