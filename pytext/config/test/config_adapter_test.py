@@ -7,14 +7,27 @@ import os
 import unittest
 
 from pytext.builtin_task import register_builtin_tasks
-from pytext.config import PyTextConfig, config_from_json
-from pytext.config.config_adapter import upgrade_one_version, upgrade_to_latest
+from pytext.config import LATEST_VERSION, PyTextConfig, config_from_json
+from pytext.config.config_adapter import (
+    ADAPTERS,
+    upgrade_one_version,
+    upgrade_to_latest,
+)
 
 
 register_builtin_tasks()
 
 
 class ConfigAdapterTest(unittest.TestCase):
+    def test_has_all_adapters(self):
+        self.assertEqual(
+            LATEST_VERSION,
+            max(ADAPTERS.keys()) + 1,
+            f"Missing adapter for LATEST_VERSION",
+        )
+        for i, v in enumerate(sorted(ADAPTERS.keys())):
+            self.assertEqual(i, v, f"Missing adapter for version {i}")
+
     def test_upgrade_one_version(self):
         for p in glob.iglob(
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
