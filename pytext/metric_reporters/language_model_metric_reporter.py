@@ -68,13 +68,18 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         self.aggregate_loss += loss.item() * num_words_in_batch
         self.total_num_tokens += num_words_in_batch
 
+        # realtime stats
+        total_tokens = float(targets[2].sum())
+        self.realtime_meters["tps"].update(total_tokens)
+
         if not n_batches % 1000:
-            total_tokens = float(targets[2].sum())
+            tps = self.realtime_meters["tps"].avg
             print(
                 f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
                 f"batch ppl: {math.exp(loss.item()):.2f}, "
                 f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
-                f"number of batches: {n_batches}",
+                f"number of batches: {n_batches}, "
+                f"accumulated tokens/s: {tps:.0f}",
                 flush=True,
             )
         self.time = now
