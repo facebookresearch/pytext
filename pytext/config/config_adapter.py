@@ -203,7 +203,7 @@ def upgrade_one_version(json_config):
 
 
 def upgrade_to_latest(json_config):
-    current_version = json_config.get("version", 0)
+    current_version = json_config.get("version") or 0
     if current_version > LATEST_VERSION:
         raise Exception(
             f"config version {json_config['version']} shouldn't exceed lastest \
