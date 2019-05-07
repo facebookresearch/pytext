@@ -17,6 +17,7 @@ from pytext.models.doc_model import (
     NewDocRegressionModel as DocRegressionModel,
 )
 from pytext.models.model import BaseModel as Model
+from pytext.models.pair_classification_model import PairwiseClassificationModel
 from pytext.trainers import Trainer, TrainingState
 from pytext.utils import cuda, distributed, precision, timing
 from torch import jit
@@ -245,6 +246,11 @@ class NewDocumentClassification(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
         )
+
+
+class PairwiseClassificationTask(NewDocumentClassification):
+    class Config(NewDocumentClassification.Config):
+        model: PairwiseClassificationModel.Config = PairwiseClassificationModel.Config()
 
 
 class NewDocumentRegression(NewTask):
