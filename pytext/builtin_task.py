@@ -9,7 +9,7 @@ import os
 from pytext.config.component import register_tasks
 from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultitask
 from pytext.task.new_task import NewTask, PairwiseClassificationTask
-from pytext.task.task import Task
+from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
     ContextualIntentSlotTask,
     DocClassificationTask,
@@ -46,7 +46,7 @@ def add_include(path):
         for m in inspect.getmembers(my_module, inspect.isclass):
             if m[1].__module__ != mod_path:
                 pass
-            elif Task in m[1].__bases__ or NewTask in m[1].__bases__:
+            elif Task_Deprecated in m[1].__bases__ or NewTask in m[1].__bases__:
                 eprint("... task:", m[1].__name__)
                 register_tasks(m[1])
             else:

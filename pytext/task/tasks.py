@@ -46,14 +46,14 @@ from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import NewWordTaggingModel, WordTaggingModel
-from pytext.task import Task
+from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
 from pytext.utils import distributed
 
 
-class QueryDocumentPairwiseRankingTask(Task):
-    class Config(Task.Config):
+class QueryDocumentPairwiseRankingTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         features: QueryDocumentPairwiseRanking.ModelInputConfig = (
             QueryDocumentPairwiseRanking.ModelInputConfig()
         )
@@ -71,8 +71,8 @@ class QueryDocumentPairwiseRankingTask(Task):
 
 
 # TODO better to have separate Task for different ensemble model
-class EnsembleTask(Task):
-    class Config(Task.Config):
+class EnsembleTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
         labels: List[TargetConfigBase]
@@ -107,8 +107,8 @@ class EnsembleTask(Task):
         )
 
 
-class DocClassificationTask(Task):
-    class Config(Task.Config):
+class DocClassificationTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         model: DocModel.Config = DocModel.Config()
         trainer: Trainer.Config = Trainer.Config()
         features: DocClassification.ModelInputConfig = (
@@ -134,8 +134,8 @@ class DocClassificationTask(Task):
             }
 
 
-class WordTaggingTask(Task):
-    class Config(Task.Config):
+class WordTaggingTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         model: WordTaggingModel.Config = WordTaggingModel.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: WordLabelConfig = WordLabelConfig()
@@ -174,8 +174,8 @@ class NewWordTaggingTask(NewTask):
         )
 
 
-class JointTextTask(Task):
-    class Config(Task.Config):
+class JointTextTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         labels: List[TargetConfigBase]
         model: JointModel.Config = JointModel.Config()
         trainer: Trainer.Config = Trainer.Config()
@@ -205,8 +205,8 @@ class JointTextTask(Task):
         return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
-class LMTask(Task):
-    class Config(Task.Config):
+class LMTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         data_handler: Union[
             LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
         ] = LanguageModelDataHandler.Config()
@@ -218,8 +218,8 @@ class LMTask(Task):
         )
 
 
-class PairClassificationTask(Task):
-    class Config(Task.Config):
+class PairClassificationTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         features: PairClassification.ModelInputConfig = (
             PairClassification.ModelInputConfig()
         )
@@ -234,8 +234,8 @@ class PairClassificationTask(Task):
         )
 
 
-class SeqNNTask(Task):
-    class Config(Task.Config):
+class SeqNNTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         model: SeqNNModel.Config = SeqNNModel.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: DocLabelConfig = DocLabelConfig()
@@ -245,8 +245,8 @@ class SeqNNTask(Task):
         )
 
 
-class ContextualIntentSlotTask(Task):
-    class Config(Task.Config):
+class ContextualIntentSlotTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         labels: ContextualIntentSlot.TargetConfig
         features: ContextualIntentSlot.ModelInputConfig = (
             ContextualIntentSlot.ModelInputConfig()
@@ -266,8 +266,8 @@ class ContextualIntentSlotTask(Task):
         return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
-class SemanticParsingTask(Task):
-    class Config(Task.Config):
+class SemanticParsingTask(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
         model: RNNGParser.Config = RNNGParser.Config()
         trainer: HogwildTrainer.Config = HogwildTrainer.Config()
         data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()

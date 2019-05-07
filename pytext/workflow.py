@@ -11,7 +11,7 @@ from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.metric_reporters.metric_reporter import MetricReporter
-from pytext.task import NewTask, Task, create_task, load, save
+from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.utils import set_random_seeds
 
@@ -98,7 +98,7 @@ def prepare_task(
     world_size: int = 1,
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
-) -> Task:
+) -> Task_Deprecated:
 
     if dist_init_url and world_size > 1:
         assert metadata is not None
@@ -123,7 +123,9 @@ def prepare_task(
 
 
 def save_and_export(
-    config: PyTextConfig, task: Task, metric_channels: Optional[List[Channel]] = None
+    config: PyTextConfig,
+    task: Task_Deprecated,
+    metric_channels: Optional[List[Channel]] = None,
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
     meta = None

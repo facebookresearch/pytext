@@ -27,7 +27,7 @@ from pytext.models.disjoint_multitask_model import (
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda
 
-from . import NewTask, Task, TaskBase, _NewTask
+from . import NewTask, Task_Deprecated, TaskBase, _NewTask
 
 
 class DisjointMultitask(TaskBase):
@@ -36,7 +36,7 @@ class DisjointMultitask(TaskBase):
     """
 
     class Config(TaskBase.Config):
-        tasks: Dict[str, Task.Config]
+        tasks: Dict[str, Task_Deprecated.Config]
         task_weights: Dict[str, float] = {}
         target_task_name: Optional[str] = None  # for selecting best epoch
         data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
