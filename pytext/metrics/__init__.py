@@ -16,8 +16,8 @@ from typing import (
 )
 
 import numpy as np
+from pytext.utils import cuda
 from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
-from pytext.utils.cuda import DISTRIBUTED_WORLD_SIZE
 
 
 RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
@@ -447,7 +447,7 @@ class RealtimeMetrics(NamedTuple):
         return value
 
     def __str__(self):
-        metrics = {"#gpus": DISTRIBUTED_WORLD_SIZE}
+        metrics = {"num_gpus": cuda.DISTRIBUTED_WORLD_SIZE}
         for key, value in self._asdict().items():
             if not value:
                 continue

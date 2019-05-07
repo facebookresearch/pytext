@@ -16,7 +16,7 @@ from .sources.data_source import (
     RowShardedDataSource,
     ShardedDataSource,
 )
-from .tensorizers import Tensorizer, initialize_tensorizers
+from .tensorizers import MetricTensorizer, Tensorizer, initialize_tensorizers
 
 
 class Batcher(Component):
@@ -127,10 +127,14 @@ class PoolingBatcher(Batcher):
 
 def pad_and_tensorize_batches(tensorizers, batches):
     for batch in batches:
-        yield {
-            name: tensorizer.tensorize(batch[name])
-            for name, tensorizer in tensorizers.items()
-        }
+        tensor_dict = {}
+        for name, tensorizer in tensorizers.items():
+            if isinstance(tensorizer, MetricTensorizer):
+                tensor_dict[name] = tensorizer.tensorize(batch)
+            else:
+                tensor_dict[name] = tensorizer.tensorize(batch[name])
+
+        yield tensor_dict
 
 
 def zip_dicts(dicts):

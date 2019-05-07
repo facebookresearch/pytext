@@ -96,7 +96,9 @@ class ClassificationMetricReporter(MetricReporter):
         )
 
     def batch_context(self, batch):
-        return {"utterance": batch[self.UTTERANCE_COLUMN]}
+        context = super().batch_context(batch)
+        context.update({"utterance": batch[self.UTTERANCE_COLUMN]})
+        return context
 
     def calculate_metric(self):
         return compute_classification_metrics(

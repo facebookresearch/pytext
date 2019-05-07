@@ -24,6 +24,3 @@ class RegressionMetricReporter(MetricReporter):
 
     def get_model_select_metric(self, metrics):
         return metrics.pearson_correlation
-
-    def batch_context(self, batch):
-        return {}

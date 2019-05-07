@@ -98,7 +98,7 @@ class MetricReporter(Component):
         if DatasetFieldName.NUM_TOKENS in context:
             self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
             self.realtime_meters["ups"].update(1)
-        if n_batches % self.realtime_report_freq == 0:
+        if n_batches and n_batches % self.realtime_report_freq == 0:
             self.report_realtime_metric()
 
     def aggregate_preds(self, new_batch):
@@ -140,7 +140,12 @@ class MetricReporter(Component):
         self.channels.append(channel)
 
     def batch_context(self, batch):
-        return {}
+        context = {}
+        if DatasetFieldName.NUM_TOKENS in batch:
+            context.update(
+                {DatasetFieldName.NUM_TOKENS: batch[DatasetFieldName.NUM_TOKENS]}
+            )
+        return context
 
     def calculate_loss(self):
         """

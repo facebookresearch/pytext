@@ -28,6 +28,7 @@ class NewTaskTrainer(Trainer):
     class Config(Trainer.Config):
         """Make mypy happy"""
 
+    @timing.report_snapshot
     def run_epoch(self, state: TrainingState, data, metric_reporter: MetricReporter):
         """Our run_epoch is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""

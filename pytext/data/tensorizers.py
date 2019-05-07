@@ -483,6 +483,43 @@ class RawJson(RawString):
         return json.loads(row[self.column])
 
 
+class MetricTensorizer(Tensorizer):
+    """A tensorizer which use other tensorizers' numerized data.
+       Used mostly for metric reporting."""
+
+    class Config(Tensorizer.Config):
+        names: List[str]
+        indexes: List[int]
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.names, config.indexes)
+
+    def __init__(self, names: List[str], indexes: List[int]):
+        super().__init__([])
+        self.names = names
+        self.indexes = indexes
+
+    def numberize(self, row):
+        # metric tensorizer will depends on other tensorizers' numeric result
+        return None
+
+    def tensorize(self, batch):
+        raise NotImplementedError
+
+
+class NtokensTensorizer(MetricTensorizer):
+    """A tensorizer which will reference another tensorizer's numerized data
+       to calculate the num tokens.
+       Used for calculating tokens per second."""
+
+    def tensorize(self, batch):
+        ntokens = 0
+        for name, index in zip(self.names, self.indexes):
+            ntokens += sum((sample[index] for sample in batch[name]))
+        return ntokens
+
+
 def initialize_tensorizers(tensorizers, data_source):
     """A utility function to stream a data source to the initialize functions
     of a dict of tensorizers."""
