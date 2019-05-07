@@ -23,7 +23,7 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
 ### PyText requires Python 3.6.1 or above.
 
-*To get started on a Cloud VM, check out [our guide](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#cloud-vm-setup)*.
+*To get started on a Cloud VM, check out [our guide](https://pytext.readthedocs.io/en/master/installation.html#cloud-vm-setup)*.
 
 We recommend using a virtualenv:
 
@@ -33,7 +33,7 @@ We recommend using a virtualenv:
   (pytext_venv) $ pip install pytext-nlp
 ```
 
-Detailed instructions and more installation options can be found in our [Documentation](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html). If you encounter issues with missing dependencies during installation, please refer to [OS Dependencies](https://pytext-pytext.readthedocs-hosted.com/en/latest/installation.html#os-dependencies).
+Detailed instructions and more installation options can be found in our [Documentation](https://pytext.readthedocs.io/en/master/installation.html). If you encounter issues with missing dependencies during installation, please refer to [OS Dependencies](https://pytext.readthedocs.io/en/master/installation.html#os-dependencies).
 
 # Train your first text classifier
 
@@ -57,7 +57,7 @@ You can use the exported caffe2 model to predict the class of raw utterances lik
   (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
 ```
 
-More examples and tutorials can be found in [Full Documentation](https://pytext-pytext.readthedocs-hosted.com).
+More examples and tutorials can be found in [Full Documentation](https://pytext.readthedocs.io/en/master/).
 
 # Join the community
 
