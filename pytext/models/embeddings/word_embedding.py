@@ -63,11 +63,21 @@ class WordEmbedding(EmbeddingBase):
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=tensorizer.tokenizer.lowercase,
                 )
+
                 if config.vocab_from_pretrained_embeddings:
+                    # pretrained embeddings will get a freq count of 1
+                    assert config.min_freq == 1, (
+                        "If `vocab_from_pretrained_embeddings` is set, the vocab's "
+                        "`min_freq` must be 1"
+                    )
                     if not config.vocab_from_train_data:  # Reset token counter.
                         tensorizer.vocab_builder._counter = collections.Counter()
-                    tensorizer.vocab_builder.add_all(pretrained_embedding.embed_vocab)
+                    pretrained_vocab = pretrained_embedding.embed_vocab
+                    if config.vocab_size:
+                        pretrained_vocab = pretrained_vocab[: config.vocab_size]
+                    tensorizer.vocab_builder.add_all(pretrained_vocab)
                     tensorizer.vocab = tensorizer.vocab_builder.make_vocab()
+
                 embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
                     tensorizer.vocab.idx,
                     UNK,

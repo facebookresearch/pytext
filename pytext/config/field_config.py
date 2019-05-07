@@ -29,6 +29,8 @@ class WordFeatConfig(ModuleConfig):
     export_input_names: List[str] = ["tokens_vals"]
     pretrained_embeddings_path: str = ""
     vocab_file: str = ""
+    #: If `pretrained_embeddings_path` and `vocab_from_pretrained_embeddings` are set,
+    #: only the first `vocab_size` tokens in the file will be added to the vocab.
     vocab_size: int = 0
     vocab_from_train_data: bool = True  # add tokens from train data to vocab
     vocab_from_all_data: bool = False  # add tokens from train, eval, test data to vocab
