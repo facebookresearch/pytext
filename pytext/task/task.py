@@ -24,7 +24,7 @@ from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss, SoftHardBCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda, distributed, precision
+from pytext.utils import cuda, precision
 
 
 def create_task(task_config, metadata=None, model_state=None, rank=0, world_size=1):
@@ -141,7 +141,7 @@ class TaskBase(Component):
         self.metric_reporter: MetricReporter = metric_reporter
         self.exporter = exporter
 
-    def train(self, train_config, rank=0, world_size=1, dist_init_url=""):
+    def train(self, train_config, rank=0, world_size=1):
         """
         Wrapper method to train the model using :class:`~Trainer` object.
 
@@ -151,14 +151,9 @@ class TaskBase(Component):
             world_size (int): for distributed training only, total gpu to use, default
                 is 1
         """
-        train_iter = self.data_handler.get_train_iter(rank, world_size)
-        eval_iter = self.data_handler.get_eval_iter()
-        if dist_init_url and world_size > 1:
-            distributed.dist_init(rank, world_size, dist_init_url)
-
         result = self.trainer.train(
-            train_iter,
-            eval_iter,
+            self.data_handler.get_train_iter(rank, world_size),
+            self.data_handler.get_eval_iter(),
             self.model,
             self.metric_reporter,
             train_config,

@@ -19,7 +19,7 @@ from pytext.models.doc_model import (
 from pytext.models.model import BaseModel as Model
 from pytext.models.pair_classification_model import PairwiseClassificationModel
 from pytext.trainers import Trainer, TrainingState
-from pytext.utils import cuda, distributed, precision, timing
+from pytext.utils import cuda, precision, timing
 from torch import jit
 
 from .task import TaskBase
@@ -177,14 +177,9 @@ class _NewTask(TaskBase):
         )
         self.trainer = trainer or NewTaskTrainer()
 
-    def train(
-        self, config: PyTextConfig, rank: int = 0, world_size: int = 1, dist_init_url=""
-    ):
+    def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
         # TODO: move dist_init back to prepare_task in pytext/workflow.py
         # when processing time between dist_init and first loss.backward() is short
-        if dist_init_url and world_size > 1:
-            distributed.dist_init(rank, world_size, dist_init_url)
-
         return self.trainer.train(
             self.data.batches(Stage.TRAIN),
             self.data.batches(Stage.EVAL),
