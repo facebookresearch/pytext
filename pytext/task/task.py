@@ -233,5 +233,5 @@ class TaskBase(Component):
         return results
 
 
-class Task(TaskBase):
+class Task_Deprecated(TaskBase):
     __EXPANSIBLE__ = True

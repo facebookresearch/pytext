@@ -3,14 +3,14 @@
 
 from .new_task import NewDocumentClassification, NewTask, _NewTask
 from .serialize import load, save
-from .task import Task, TaskBase, create_task
+from .task import Task_Deprecated, TaskBase, create_task
 
 
 __all__ = [
     "_NewTask",
     "NewTask",
     "NewDocumentClassification",
-    "Task",
+    "Task_Deprecated",
     "TaskBase",
     "save",
     "load",
