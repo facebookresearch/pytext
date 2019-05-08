@@ -287,12 +287,12 @@ class LabelTensorizer(Tensorizer):
                 labels = row[self.label_column]
                 builder.add_all(labels)
         except GeneratorExit:
-            self.labels = builder.make_vocab()
-            self.pad_idx = self.labels.idx[PAD] if self.pad_in_vocab else -1
+            self.vocab = builder.make_vocab()
+            self.pad_idx = self.vocab.idx[PAD] if self.pad_in_vocab else -1
 
     def numberize(self, row):
         """Numberize labels."""
-        return self.labels.lookup_all(row[self.label_column])
+        return self.vocab.lookup_all(row[self.label_column])
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch, self.pad_idx)

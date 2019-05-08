@@ -70,7 +70,7 @@ class DataTest(unittest.TestCase):
         Data(self.data_source, tensorizers)
         # Tensorizers should have been initialized
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
-        self.assertEqual(7, len(tensorizers["labels"].labels))
+        self.assertEqual(7, len(tensorizers["labels"].vocab))
 
     def test_data_iterate_multiple_times(self):
         data = Data(self.data_source, self.tensorizers)
@@ -101,11 +101,11 @@ class DataTest(unittest.TestCase):
             self.assertTrue(seq_lens[i] >= seq_lens[i + 1])
         # make sure labels are also in the same order of sorted tokens
         self.assertEqual(
-            self.tensorizers["labels"].labels[batch["labels"][1]],
+            self.tensorizers["labels"].vocab[batch["labels"][1]],
             "reminder/set_reminder",
         )
         self.assertEqual(
-            self.tensorizers["labels"].labels[batch["labels"][8]], "alarm/snooze_alarm"
+            self.tensorizers["labels"].vocab[batch["labels"][8]], "alarm/snooze_alarm"
         )
 
 
