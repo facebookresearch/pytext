@@ -53,12 +53,15 @@ class DisjointMultitaskData(Data):
         test_key: str = None,
         task_key: str = BatchContext.TASK_NAME,
     ) -> None:
+        # Currently the data object needs to specify `data_source` and `tensorizers`
+        # to be used at test time. Set these variables to the values of the `test_key`
+        # task.
         test_key = test_key or list(data_dict)[0]
-        # currently the way training is set up is that, the data object needs
-        # to specify a data_source which is used at test time. For multitask
-        # this is set to the data_source associated with the test_key
-        self.data_source = data_dict[test_key].data_source
-        super().__init__(self.data_source, {}, epoch_size=epoch_size)
+        data_source = data_dict[test_key].data_source
+        tensorizers = data_dict[test_key].tensorizers
+        # Don't pass tensorizers to __init__, or else initialization will happen again.
+        super().__init__(data_source, tensorizers={}, epoch_size=epoch_size)
+        self.tensorizers = tensorizers
         self.data_dict = data_dict
         self.samplers = samplers
         self.task_key = task_key
