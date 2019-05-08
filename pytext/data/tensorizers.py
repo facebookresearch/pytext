@@ -380,19 +380,16 @@ class FloatListTensorizer(Tensorizer):
         assert not self.error_check or self.dim is not None, "Error check requires dim"
 
     def numberize(self, row):
-        # strip spaces after [
-        strip_begin = re.sub(r"\[ +", "[", row[self.column])
-        # strip spaces before ]
-        strip_end = re.sub(r" +\]", "]", strip_begin)
-        # json cannot parse floats like 3.  replace by 3.0
-        point_fixed = re.sub(r"([0-9]+)[.]([^0-9]+)", "\\1.0\\2", strip_end)
-        json_input = re.sub(r",? +", ",", point_fixed)
+        str = row[self.column]
+        # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
+        str = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", str)
+        # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
+        str = re.sub(r"(?<=\d)\.(?![\d])", "", str)
         try:
-            res = json.loads(json_input)
+            res = json.loads(str)
         except json.decoder.JSONDecodeError as e:
             raise Exception(
-                f"Unable to parse dense feature:{row[self.column]},"
-                f" re output:{json_input}"
+                f"Unable to parse dense feature:{row[self.column]}," f" re output:{str}"
             ) from e
         if type(res) is not list:
             raise ValueError(f"{res} is not a valid float list")
