@@ -15,6 +15,7 @@ from pytext.config.serialize import _is_optional
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
+from pytext.utils.precision import maybe_float
 
 from .decoders import DecoderBase
 from .embeddings import EmbeddingBase, EmbeddingList
@@ -89,7 +90,7 @@ class BaseModel(nn.Module, Component):
         self.context = context
 
     def get_loss(self, logit, target, context):
-        return self.output_layer.get_loss(logit, target, context)
+        return maybe_float(self.output_layer.get_loss(logit, target, context))
 
     def get_pred(self, logit, target=None, context=None, *args):
         return self.output_layer.get_pred(logit, target, context)
