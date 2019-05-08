@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import time
-from typing import Any, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -78,7 +78,10 @@ class Trainer(TrainerBase):
         #: Whether to do evaluation and model selection based on it.
         do_eval: bool = True
         #: Number of samples for logging training progress.
-        num_samples_to_log_progress = 1000
+        num_samples_to_log_progress: int = 1000
+        #: Number of forward & backward per batch before update gradients, the
+        # actual_batch_size = batch_size x num_accumulated_batches
+        num_accumulated_batches: int = 1
         # config for optimizer, used in parameter update
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
@@ -140,6 +143,11 @@ class Trainer(TrainerBase):
 
         with timing.time("loss.backward"):
             precision.backward(state.optimizer, loss)
+
+    @timing.time("optimizer")
+    def optimizer_step(self, state):
+        if state.stage != Stage.TRAIN:
+            return
 
         state.scheduler.step_batch()
 
@@ -323,9 +331,65 @@ class Trainer(TrainerBase):
         # the NewTaskTrainer or should change with a better metric reporter design.
         report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
         model = state.model
+        samples = []
 
-        for batch_id, (inputs, targets, context) in enumerate(data):
-            self.zero_grads(state)
+        """
+        Sometimes, a batch of inputs is too large to fit into GPU, which has to
+        be split into several micro-batches. However, to improve efficiency,
+        it would be helpful to only apply params/gradients sync at original batch
+        boundaries instead of micro-batch boundaries.
+        num_accumulated_batches specified the number of accumulating gradients
+        locally before sync gradients, total training_batch_size =
+        train_batch_size x num_accumulated_batches and it will improve the system
+        performance by reduce the total network transfer bytes.
+        """
+        for sample in enumerate(data):
+            samples.append(sample)
+            if (
+                state.stage != Stage.TRAIN
+                or len(samples) == self.config.num_accumulated_batches
+            ):
+                self.run_step(samples, state, metric_reporter, report_metric)
+                samples = []
+        if samples:
+            self.run_step(samples, state, metric_reporter, report_metric)
+            samples = []
+
+        metrics = None
+        if report_metric:
+            with timing.time("report metrics"):
+                metrics = metric_reporter.report_metric(
+                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
+                )
+        else:
+            metric_reporter._reset()
+
+        return metrics
+
+    @timing.time("run_step")
+    def run_step(
+        self,
+        samples: List[Any],
+        state: TrainingState,
+        metric_reporter: MetricReporter,
+        report_metric: bool,
+    ):
+        sample_size = len(samples)
+        assert sample_size <= self.config.num_accumulated_batches
+
+        model = state.model
+        self.zero_grads(state)
+        for i, (batch_id, (inputs, targets, context)) in enumerate(samples):
+            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+                # Whenever *samples* contains more than one mini-batch, we
+                # want to accumulate gradients locally and only call
+                # all-reduce in the last backwards pass.
+                if i < sample_size - 1:
+                    # sync gradients in the last sample backward
+                    model.accumulate_gradients(True)
+                else:
+                    model.accumulate_gradients(False)
+
             # pass context to model to use in forward call if needed
             model.contextualize(context)
             with timing.time("model.forward"):
@@ -335,6 +399,10 @@ class Trainer(TrainerBase):
                 loss = model.get_loss(logits, targets, context)
                 if BatchContext.IGNORE_LOSS in context:
                     loss *= 0
+                elif sample_size > 1:
+                    # gradients averaged per each batch and accumulated across samples.
+                    # divide sample_size to let gradients averaged per example
+                    loss = loss / sample_size
 
             self.backprop(state, loss)
 
@@ -347,22 +415,10 @@ class Trainer(TrainerBase):
                         batch_id, preds, targets, scores, loss.item(), inputs, **context
                     )
 
-            if (
-                state.rank == 0
-                and batch_id % self.config.num_samples_to_log_progress == 0
-            ):
+            if batch_id % self.config.num_samples_to_log_progress == 0:
                 print(
                     f"Running batch {batch_id} for epoch {state.epoch} in {state.stage} stage",
                     flush=True,
                 )
-
-        metrics = None
-        if report_metric:
-            with timing.time("report metrics"):
-                metrics = metric_reporter.report_metric(
-                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
-                )
-        else:
-            metric_reporter._reset()
-
-        return metrics
+        # update gradients after len(samples) forward & backward
+        self.optimizer_step(state)

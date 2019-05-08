@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
@@ -29,34 +29,47 @@ class NewTaskTrainer(Trainer):
     class Config(Trainer.Config):
         """Make mypy happy"""
 
-    @timing.report_snapshot
-    def run_epoch(self, state: TrainingState, data, metric_reporter: MetricReporter):
-        """Our run_epoch is a bit different, because we're wrapping the model forward
+    @timing.time("run_step")
+    def run_step(
+        self,
+        samples: List[Any],
+        state: TrainingState,
+        metric_reporter: MetricReporter,
+        report_metric: bool,
+    ):
+        """Our run_step is a bit different, because we're wrapping the model forward
         call with model.train_batch, which arranges tensors and gets loss, etc."""
-        report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
-        model = state.model
+        sample_size = len(samples)
+        assert sample_size <= self.config.num_accumulated_batches
 
-        for batch_id, batch in enumerate(data):
-            self.zero_grads(state)
+        model = state.model
+        self.zero_grads(state)
+        for i, (batch_id, batch) in enumerate(samples):
+            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+                # Whenever *samples* contains more than one mini-batch, we
+                # want to accumulate gradients locally and only call
+                # all-reduce in the last backwards pass.
+                if i < sample_size - 1:
+                    # sync gradients in the last sample backward
+                    model.accumulate_gradients(True)
+                else:
+                    model.accumulate_gradients(False)
+
             with timing.time("model.train_batch"):
                 loss, metric_data = model.train_batch(model, batch)
+                if sample_size > 1:
+                    # gradients averaged per each batch and accumulated across samples.
+                    # divide sample_size to let gradients averaged per example
+                    loss = loss / sample_size
             self.backprop(state, loss)
+
             if report_metric:
                 with timing.time("add metrics"):
                     metric_reporter.add_batch_stats(
                         batch_id, *metric_data, **metric_reporter.batch_context(batch)
                     )
-
-        metrics = None
-        if report_metric:
-            with timing.time("report metrics"):
-                metrics = metric_reporter.report_metric(
-                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
-                )
-        else:
-            metric_reporter._reset()
-
-        return metrics
+        # update gradients after #len(samples) forward & backward
+        self.optimizer_step(state)
 
     def _prepare_scheduler(self, training_batches, scheduler=None):
         """Batch based schedulers require knowing the number of batches in
