@@ -174,13 +174,13 @@ class VocabBuilder:
         self.use_eos = False
         self.eos_index = 3
 
-    def add_all(self, nested_values) -> None:
+    def add_all(self, values) -> None:
         """Count a value or nested container of values in the vocabulary."""
-        for value in nested_values:
-            if should_iter(value):
+        if should_iter(values):
+            for value in values:
                 self.add_all(value)
-            else:
-                self.add(value)
+        else:
+            self.add(values)
 
     def add(self, value) -> None:
         """Count a single value in the vocabulary."""

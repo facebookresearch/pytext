@@ -2,14 +2,17 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import unittest
+from typing import List
 
+import numpy as np
 import torch
 from pytext.data.sources.data_source import SafeFileWrapper
-from pytext.data.sources.tsv import TSVDataSource
+from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.tensorizers import (
     ByteTensorizer,
     CharacterTokenTensorizer,
     FloatListTensorizer,
+    LabelListTensorizer,
     LabelTensorizer,
     TokenTensorizer,
     initialize_tensorizers,
@@ -18,6 +21,67 @@ from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()
+
+
+class ListTensorizersTest(unittest.TestCase):
+    def setUp(self):
+        self.data = SessionTSVDataSource(
+            SafeFileWrapper(tests_module.test_file("seq_tagging_example.tsv")),
+            field_names=["session_id", "intent", "goal", "label"],
+            schema={"intent": List[str], "goal": List[str], "label": List[str]},
+        )
+
+    def test_initialize_list_tensorizers(self):
+        tensorizers = {
+            "intent": LabelListTensorizer(
+                label_column="intent", pad_in_vocab=True, allow_unknown=True
+            ),
+            "goal": LabelListTensorizer(label_column="goal"),
+        }
+        initialize_tensorizers(tensorizers, self.data.train)
+        self.assertEqual(9, len(tensorizers["intent"].labels))
+        self.assertEqual(7, len(tensorizers["goal"].labels))
+
+    def test_create_label_list_tensors(self):
+        tensorizers = {
+            "intent": LabelListTensorizer(
+                label_column="intent", pad_in_vocab=True, allow_unknown=True
+            )
+        }
+        initialize_tensorizers(tensorizers, self.data.train)
+        tensors = [tensorizers["intent"].numberize(row) for row in self.data.train]
+        # test label idx
+        self.assertEqual([2, 3], tensors[0][0])
+        self.assertEqual([4, 5], tensors[1][0])
+        self.assertEqual([6, 7, 8], tensors[2][0])
+        # test seq lens
+        self.assertEqual(2, tensors[0][1])
+        self.assertEqual(2, tensors[1][1])
+        self.assertEqual(3, tensors[2][1])
+        self.assertEqual(3, len(tensors))
+        tensors, lens = tensorizers["intent"].tensorize(tensors)
+        np.testing.assert_array_almost_equal(
+            np.array([[2, 3, 1], [4, 5, 1], [6, 7, 8]]), tensors.detach().numpy()
+        )
+        np.testing.assert_array_almost_equal(np.array([2, 2, 3]), lens.detach().numpy())
+
+    def test_label_list_tensors_no_pad_in_vocab(self):
+        tensorizers = {
+            "intent": LabelListTensorizer(
+                label_column="intent", pad_in_vocab=False, allow_unknown=True
+            )
+        }
+        initialize_tensorizers(tensorizers, self.data.train)
+        self.assertEqual(8, len(tensorizers["intent"].labels))
+        tensors = []
+        for row in self.data.train:
+            row["intent"].append("unknown")
+            tensors.append(tensorizers["intent"].numberize(row))
+        tensors, lens = tensorizers["intent"].tensorize(tensors)
+        np.testing.assert_array_almost_equal(
+            np.array([[1, 2, 0, -1], [3, 4, 0, -1], [5, 6, 7, 0]]),
+            tensors.detach().numpy(),
+        )
 
 
 class TensorizersTest(unittest.TestCase):
