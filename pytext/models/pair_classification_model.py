@@ -141,8 +141,9 @@ class BasePairwiseClassificationModel(BaseModel):
             unsorted_representations.append(rep[unsorted_idx])
         return unsorted_representations
 
+    @classmethod
     def _represent_encode_relations(
-        self, representations: List[torch.Tensor]
+        cls, representations: List[torch.Tensor]
     ) -> torch.Tensor:
         for rep_l, rep_r in itertools.combinations(representations, 2):
             representations.append(torch.abs(rep_l - rep_r))
