@@ -39,8 +39,8 @@ class ListTensorizersTest(unittest.TestCase):
             "goal": LabelListTensorizer(label_column="goal"),
         }
         initialize_tensorizers(tensorizers, self.data.train)
-        self.assertEqual(9, len(tensorizers["intent"].labels))
-        self.assertEqual(7, len(tensorizers["goal"].labels))
+        self.assertEqual(9, len(tensorizers["intent"].vocab))
+        self.assertEqual(7, len(tensorizers["goal"].vocab))
 
     def test_create_label_list_tensors(self):
         tensorizers = {
@@ -72,7 +72,7 @@ class ListTensorizersTest(unittest.TestCase):
             )
         }
         initialize_tensorizers(tensorizers, self.data.train)
-        self.assertEqual(8, len(tensorizers["intent"].labels))
+        self.assertEqual(8, len(tensorizers["intent"].vocab))
         tensors = []
         for row in self.data.train:
             row["intent"].append("unknown")
@@ -102,7 +102,7 @@ class TensorizersTest(unittest.TestCase):
         }
         initialize_tensorizers(tensorizers, self.data.train)
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
-        self.assertEqual(7, len(tensorizers["labels"].labels))
+        self.assertEqual(7, len(tensorizers["labels"].vocab))
 
     def test_initialize_word_tensorizer(self):
         tensorizer = TokenTensorizer(text_column="text")
@@ -182,7 +182,8 @@ class TensorizersTest(unittest.TestCase):
         for row in self.data.train:
             init.send(row)
         init.close()
-        self.assertEqual(7, len(tensorizer.labels))
+        print(tensorizer.vocab._vocab)
+        self.assertEqual(7, len(tensorizer.vocab))
 
     def test_create_label_tensors(self):
         tensorizer = LabelTensorizer(label_column="label")
