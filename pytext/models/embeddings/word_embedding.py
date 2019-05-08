@@ -61,7 +61,7 @@ class WordEmbedding(EmbeddingBase):
             if config.pretrained_embeddings_path:
                 pretrained_embedding = PretrainedEmbedding(
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
-                    lowercase_tokens=tensorizer.tokenizer.lowercase,
+                    lowercase_tokens=config.lowercase_tokens,
                 )
 
                 if config.vocab_from_pretrained_embeddings:
