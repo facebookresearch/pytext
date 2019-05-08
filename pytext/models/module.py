@@ -39,10 +39,11 @@ def create_module(
     # SHARED_MODULE_REGISTRY.  The rest will reuse the saved module and thus
     # share parameters.
     shared_module_key = getattr(module_config, "shared_module_key", None)
-    module = SHARED_MODULE_REGISTRY.get(
-        (shared_module_key, type(module_config)),
-        create_fn(module_config, *args, **kwargs),
-    )
+    try:
+        module = SHARED_MODULE_REGISTRY[(shared_module_key, type(module_config))]
+    except KeyError:
+        module = create_fn(module_config, *args, **kwargs)
+
     name = type(module).__name__
     if getattr(module_config, "load_path", None):
         print(f"Loading state of module {name} from {module_config.load_path} ...")
