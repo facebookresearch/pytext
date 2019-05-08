@@ -24,10 +24,15 @@ def load_vocab(file_path):
 def reader(file_path, vocab):
     with open(file_path, "r") as reader:
         for line in reader:
+            split_line = line.split()
+            # ATIS every row starts/ends with BOS/EOS: remove them
+            # except for e.g. intents line, which have a single token
+            if len(split_line) > 1:
+                split_line = split_line[1:-1]
             yield " ".join(
                 vocab.get(s.strip(), UNK)
                 # ATIS every row starts/ends with BOS/EOS: remove them
-                for s in line.split()[1:-1]
+                for s in split_line
             )
 
 
