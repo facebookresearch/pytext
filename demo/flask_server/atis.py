@@ -63,15 +63,16 @@ def predict(text):
     predicted_labels = np.argmax(all_scores, axis=1)  # len(tokens)
 
     city_token_ranges = []
+    prev_label = ""
     for token_idx, label_idx in enumerate(predicted_labels):
         label = labels[label_idx]
         if "city_name" in label:
-            if "B-" in label:
-                city_token_ranges.append(token_ranges[token_idx])
-            elif "I-" in label:
+            if prev_label == label:
                 city_token_ranges[-1] = (
                     city_token_ranges[-1][0],
                     token_ranges[token_idx][1],
                 )
-
+            else:
+                city_token_ranges.append(token_ranges[token_idx])
+        prev_label = label
     return city_token_ranges
