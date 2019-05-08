@@ -66,7 +66,6 @@ def v0_to_v1(json_config):
         else:
             raise ValueError("Migration not supported for your optimizer")
         task["optimizer"] = op_config
-    json_config["version"] = 1
     return json_config
 
 
@@ -131,7 +130,6 @@ def v1_to_v2(json_config):
         del task["scheduler"]
     else:
         raise ValueError("Migration for your scheduler %s not supported." % op_type)
-    json_config["version"] = 2
     return json_config
 
 
@@ -157,7 +155,6 @@ def v2_to_v3(json_config):
             # remove from task config
             task.pop(section_str)
 
-    json_config["version"] = 3
     return json_config
 
 
@@ -177,7 +174,6 @@ def v3_to_v4(json_config):
                 section[new_key] = section[old_key]
                 section.pop(old_key)
 
-    json_config["version"] = 4
     return json_config
 
 
@@ -194,6 +190,7 @@ def doc_model_deprecated(json_config):
 
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
+    print(f"... upgrade config from version {current_version}")
     adapter = ADAPTERS.get(current_version)
     if not adapter:
         raise Exception(f"no adapter found for version {current_version}")
@@ -203,7 +200,7 @@ def upgrade_one_version(json_config):
 
 
 def upgrade_to_latest(json_config):
-    current_version = json_config.get("version") or 0
+    current_version = json_config.get("version", 0)
     if current_version > LATEST_VERSION:
         raise Exception(
             f"config version {json_config['version']} shouldn't exceed lastest \
