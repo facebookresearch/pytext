@@ -249,46 +249,75 @@ class CharacterTokenTensorizer(TokenTensorizer):
 
 
 class LabelTensorizer(Tensorizer):
-    """Numberize labels."""
+    """Numberize labels. Label can be used as either input or target """
 
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str = "label"
         #: Whether to allow for unknown labels at test/prediction time
         allow_unknown: bool = False
+        #: if vocab should have pad, usually false when label is used as target
+        pad_in_vocab: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.allow_unknown)
+        return cls(config.column, config.allow_unknown, config.pad_in_vocab)
 
     def __init__(
-        self, label_column: str = "label", allow_unknown: bool = Config.allow_unknown
+        self,
+        label_column: str = "label",
+        allow_unknown: bool = False,
+        pad_in_vocab: bool = False,
     ):
         super().__init__([(label_column, str)])
         self.label_column = label_column
         self.allow_unknown = allow_unknown
+        self.pad_in_vocab = pad_in_vocab
 
     def initialize(self):
         """
         Look through the dataset for all labels and create a vocab map for them.
         """
         builder = VocabBuilder()
-        builder.use_pad = False
+        builder.use_pad = self.pad_in_vocab
         builder.use_unk = self.allow_unknown
         try:
             while True:
                 row = yield
                 labels = row[self.label_column]
-                builder.add_all(labels.split(","))
+                builder.add_all(labels)
         except GeneratorExit:
             self.labels = builder.make_vocab()
+            self.pad_idx = self.labels.idx[PAD] if self.pad_in_vocab else -1
 
     def numberize(self, row):
         """Numberize labels."""
         return self.labels.lookup_all(row[self.label_column])
 
     def tensorize(self, batch):
-        return pad_and_tensorize(batch)
+        return pad_and_tensorize(batch, self.pad_idx)
+
+
+class LabelListTensorizer(LabelTensorizer):
+    """LabelListTensorizer takes a list of labels as input and generate a tuple
+    of tensors (label_idx, list_length).
+    """
+
+    def __init__(self, label_column: str = "label", *args, **kwargs):
+        super().__init__(label_column, *args, **kwargs)
+        self.column_schema = [(label_column, List[str])]
+
+    def numberize(self, row):
+        labels = super().numberize(row)
+        return labels, len(labels)
+
+    def tensorize(self, batch):
+        labels, labels_len = zip(*batch)
+        return super().tensorize(labels), pad_and_tensorize(labels_len)
+
+    def sort_key(self, row):
+        # use list length as sort key
+        return row[1]
 
 
 class NumericLabelTensorizer(Tensorizer):
