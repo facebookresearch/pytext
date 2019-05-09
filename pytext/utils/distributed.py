@@ -6,8 +6,18 @@ import torch.distributed as dist_c10d
 
 
 def dist_init(
-    distributed_rank: int, world_size: int, init_method: str, backend: str = "nccl"
+    distributed_rank: int,
+    world_size: int,
+    init_method: str,
+    device_id: int,
+    backend: str = "nccl",
 ):
+    """
+    1. After spawn process per GPU, we want all workers to call init_process_group
+    around the same time or times out.
+    2. After dist_init, we want all workers to start calling all_reduce/barrier
+    around the same time or NCCL timeouts.
+    """
     if init_method and world_size > 1 and torch.cuda.is_available():
         dist_c10d.init_process_group(
             backend=backend,
@@ -15,6 +25,11 @@ def dist_init(
             world_size=world_size,
             rank=distributed_rank,
         )
+        # calling all_reduce for synchronzing all workers
+        dist_tensor = torch.tensor(
+            [1], dtype=torch.float32, device="cuda:{}".format(device_id)
+        )
+        dist_c10d.all_reduce(dist_tensor)
 
         if distributed_rank != 0:
             suppress_output()

@@ -15,7 +15,7 @@ from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.utils import set_random_seeds
 
-from .utils import cuda, precision, timing
+from .utils import cuda, distributed, precision, timing
 
 
 def _set_cuda(
@@ -53,6 +53,18 @@ def _set_fp16(use_fp16: bool) -> None:
     # only support single GPU training at this moment.
     precision.set_fp16(fp16_enabled=use_fp16)
     print(f"# for debug of FP16: fp16_enabled={precision._FP16_ENABLED}")
+
+
+def _set_distributed(
+    rank: int,
+    world_size: int,
+    dist_init_url: str,
+    device_id: int,
+    metadata: CommonMetadata,
+) -> None:
+    if dist_init_url and world_size > 1:
+        assert metadata is not None
+        distributed.dist_init(rank, world_size, dist_init_url, device_id)
 
 
 def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
@@ -100,12 +112,11 @@ def prepare_task(
     metadata: CommonMetadata = None,
 ) -> Task_Deprecated:
 
-    if dist_init_url and world_size > 1:
-        assert metadata is not None
-
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     _set_fp16(config.use_fp16)
+    _set_distributed(rank, world_size, dist_init_url, device_id, metadata)
+
     if config.random_seed is not None:
         set_random_seeds(config.random_seed)
 
