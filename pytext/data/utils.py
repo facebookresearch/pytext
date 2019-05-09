@@ -4,7 +4,7 @@
 import collections
 import itertools
 import re
-from typing import List, NamedTuple, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from pytext.config.component import Component, ComponentType
@@ -57,33 +57,6 @@ def pad_and_tensorize(batch, pad_token=0, pad_shape=None, dtype=torch.long):
     return cuda.tensor(
         pad(batch, pad_token=pad_token, pad_shape=pad_shape), dtype=dtype
     )
-
-
-def align_target_label(
-    target: List[float], label_list: List[str], batch_label_list: List[List[str]]
-):
-    """
-    align the target in the order of label_list, batch_label_list stores the
-    original target order.
-    """
-    if sorted(label_list) != sorted(batch_label_list[0]):
-        raise Exception(
-            "label list %s is not matched with doc label %s",
-            (str(batch_label_list), str(label_list)),
-        )
-
-    def get_sort_idx(l):
-        return [i[0] for i in sorted(enumerate(l), key=lambda x: x[1])]
-
-    def reorder(l, o):
-        return [l[i] for i in o]
-
-    unsort_idx = get_sort_idx(get_sort_idx(label_list))
-    align_target = [
-        reorder(reorder(t, get_sort_idx(b)), unsort_idx)
-        for t, b in zip(target, batch_label_list)
-    ]
-    return align_target
 
 
 def shard(rows, rank, num_workers):
@@ -203,3 +176,31 @@ class VocabBuilder:
             vocab_list.insert(index, token)
 
         return Vocabulary(vocab_list, counts=self._counter)
+
+
+def align_target_label(
+    targets: List[List[float]],
+    labels: List[List[str]],
+    label_vocab: Dict[str, int],
+    to_tensor: bool = False,
+):
+    """
+    Given `targets` that are ordered according to `labels`, align the targets to match
+    the order of `label_vocab`.
+    """
+    label_vocab_tokens = sorted(label_vocab)
+    aligned_targets = []
+
+    for target, label in zip(targets, labels):
+        assert sorted(label) == label_vocab_tokens
+        assert len(target) == len(label)
+        aligned_target = [None] * len(target)
+        for t, l in zip(target, label):
+            aligned_target[label_vocab[l]] = t
+        assert all(t is not None for t in aligned_target)
+        aligned_targets.append(aligned_target)
+
+    if to_tensor:
+        aligned_targets = cuda.tensor(aligned_targets, dtype=torch.float)
+
+    return aligned_targets

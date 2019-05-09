@@ -9,13 +9,14 @@ from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     LabelTensorizer,
     NumericLabelTensorizer,
+    RawJson,
     RawString,
     Tensorizer,
     TokenTensorizer,
 )
-from pytext.data.utils import PAD, UNK
+from pytext.data.utils import PAD, UNK, align_target_label
 from pytext.exporters.exporter import ModelExporter
-from pytext.loss import BinaryCrossEntropyLoss
+from pytext.loss import BinaryCrossEntropyLoss, KLDivergenceCELoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
@@ -66,7 +67,7 @@ class NewDocModel(DocModel_Deprecated):
     class Config(DocModel_Deprecated.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-            labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
+            labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=False)
             # for metric reporter
             raw_text: RawString.Config = RawString.Config(column="text")
 
@@ -159,6 +160,35 @@ class NewDocModel(DocModel_Deprecated):
         )
         output_layer = output_layer_cls(list(labels), loss)
         return cls(embedding, representation, decoder, output_layer)
+
+
+class NewKDDocModel(NewDocModel):
+    class Config(NewDocModel.Config):
+        class ModelInput(NewDocModel.Config.ModelInput):
+            target_probs: RawJson.Config = RawJson.Config(column="target_probs")
+            target_logits: RawJson.Config = RawJson.Config(column="target_logits")
+            target_labels: RawJson.Config = RawJson.Config(column="target_labels")
+
+        inputs: ModelInput = ModelInput()
+        output_layer: ClassificationOutputLayer.Config = (
+            ClassificationOutputLayer.Config(loss=KLDivergenceCELoss.Config())
+        )
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        model = super().from_config(config, tensorizers)
+        model.label_vocab = tensorizers["labels"].vocab.idx
+        return model
+
+    def arrange_targets(self, tensor_dict):
+        batch_labels = tensor_dict["target_labels"]
+        target_probs = align_target_label(
+            tensor_dict["target_probs"], batch_labels, self.label_vocab, to_tensor=True
+        )
+        target_logits = align_target_label(
+            tensor_dict["target_logits"], batch_labels, self.label_vocab, to_tensor=True
+        )
+        return tensor_dict["labels"], target_probs, target_logits
 
 
 class NewDocRegressionModel(NewDocModel):
