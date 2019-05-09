@@ -137,7 +137,7 @@ class WordEmbedding(EmbeddingBase):
             return self.word_embedding.weight
         return super().__getattr__(name)
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         return self.mlp(self.word_embedding(input))
 
     def freeze(self):

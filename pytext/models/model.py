@@ -2,23 +2,46 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import os
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 from pytext.common.constants import Stage
-from pytext.config.component import Component, ComponentType
+from pytext.config.component import Component, ComponentType, create_loss
 from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
 from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
 from pytext.config.serialize import _is_optional
 from pytext.data import CommonMetadata
-from pytext.data.tensorizers import Tensorizer
+from pytext.data.tensorizers import (
+    CharacterTokenTensorizer,
+    DictTensorizer,
+    FloatListTensorizer,
+    LabelTensorizer,
+    RawString,
+    Tensorizer,
+    TokenTensorizer,
+)
+from pytext.data.utils import PAD, UNK
+from pytext.exporters.exporter import ModelExporter
+from pytext.loss import BinaryCrossEntropyLoss
 from pytext.models.module import create_module
+from pytext.models.output_layers.doc_classification_output_layer import (
+    BinaryClassificationOutputLayer,
+    MulticlassOutputLayer,
+)
 from pytext.utils.precision import maybe_float
+from pytext.utils.torch import Vocabulary, list_max
+from torch import jit
 
 from .decoders import DecoderBase
-from .embeddings import EmbeddingBase, EmbeddingList
+from .embeddings import (
+    CharacterEmbedding,
+    DictEmbedding,
+    EmbeddingBase,
+    EmbeddingList,
+    WordEmbedding,
+)
 from .output_layers import OutputLayerBase
 from .representations.representation_base import RepresentationBase
 
@@ -367,3 +390,221 @@ class Model(BaseModel):
         return self.decoder(
             *input_representation, *decoder_inputs
         )  # returned Tensor's dim = (batch_size, num_classes)
+
+
+class SimpleTokenModel(BaseModel):
+    """Base Model that supports upto three token level inputs, and one document
+    level (dense) feature. Token inputs are passed to their respective embeddings,
+    concatenated and fed into the representation layer. Output of the
+    representation layer is concatanated with doc features and fed into
+    the decoder."""
+
+    __EXPANSIBLE__ = True
+    INPUT_NAMES = ["tokens", "characters", "dicts"]
+
+    class Config(BaseModel.Config):
+        class ModelInput(BaseModel.Config.ModelInput):
+            # supports up to 3 token level inputs, e.g. TokenTensorizer,
+            # CharTokenTensorizer or DictTensorizer
+            tokens: Optional[TokenTensorizer.Config] = None
+            characters: Optional[CharacterTokenTensorizer.Config] = None
+            dicts: Optional[DictTensorizer.Config] = None
+
+            # supports document level dense features
+            dense: Optional[FloatListTensorizer.Config] = None
+            # labels
+            labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
+            # for metric reporter
+            raw_text: RawString.Config = RawString.Config(column="text")
+
+        inputs: ModelInput = ModelInput()
+        token_embedding: Optional[WordEmbedding.Config] = None
+        character_embedding: Optional[CharacterEmbedding.Config] = None
+        dict_embedding: Optional[DictEmbedding.Config] = None
+
+        representation: RepresentationBase.Config
+        decoder: DecoderBase.Config
+        output_layer: OutputLayerBase.Config
+
+    @classmethod
+    def from_config(
+        cls, config: Config, tensorizers: Dict[str, Tensorizer], metadata=None
+    ):
+        embedding_dim = 0
+
+        character_embedding = None
+        if config.character_embedding or "characters" in tensorizers:
+            emb_config = config.character_embedding or CharacterEmbedding.Config()
+            tsrz = tensorizers.get("characters", CharacterEmbedding.Config())
+            character_embedding = create_module(emb_config, tensorizer=tsrz)
+            embedding_dim += character_embedding.embedding_dim
+
+        dict_embedding = None
+        if config.dict_embedding or "dicts" in tensorizers:
+            emb_config = config.dict_embedding or DictEmbedding.Config()
+            tsrz = tensorizers.get("dicts", DictEmbedding.Config())
+            dict_embedding = create_module(emb_config, tensorizer=tsrz)
+            embedding_dim += dict_embedding.embedding_dim
+
+        # If nothing configured so far, assume default tokens
+        if config.token_embedding  or "tokens" in tensorizers or embedding_dim == 0:
+            emb_config = config.token_embedding or WordEmbedding.Config()
+            tsrz = tensorizers.get("tokens", WordEmbedding.Config())
+            token_embedding = create_module(emb_config, tensorizer=tsrz)
+            embedding_dim = token_embedding.embedding_dim
+
+        representation = create_module(config.representation, embed_dim=embedding_dim)
+        doc_feature_dim = tensorizers["dense"].out_dim if "dense" in tensorizers else 0
+
+        labels = tensorizers["labels"].vocab
+        decoder = create_module(
+            config.decoder,
+            in_dim=representation.representation_dim + doc_feature_dim,
+            out_dim=len(labels),
+        )
+
+        loss = create_loss(config.output_layer.loss)
+        output_layer_cls = (
+            BinaryClassificationOutputLayer
+            if isinstance(loss, BinaryCrossEntropyLoss)
+            else MulticlassOutputLayer
+        )
+        output_layer = output_layer_cls(list(labels), loss)
+        return cls(
+            token_embedding=token_embedding,
+            character_embedding=character_embedding,
+            dict_embedding=dict_embedding,
+            representation=representation,
+            decoder=decoder,
+            output_layer=output_layer,
+        )
+
+    def __init__(
+        self,
+        representation: RepresentationBase,
+        decoder: DecoderBase,
+        output_layer: OutputLayerBase,
+        token_embedding: WordEmbedding,
+        character_embedding: Optional[EmbeddingBase] = None,
+        dict_embedding: Optional[DictEmbedding] = None,
+    ) -> None:
+        super().__init__()
+        self.embedding = EmbeddingList(
+            [
+                emb
+                for emb in (token_embedding, character_embedding, dict_embedding)
+                if emb is not None
+            ],
+            concat=True,
+        )
+        self.representation = representation
+        self.decoder = decoder
+        self.output_layer = output_layer
+
+        # needed by save_modules
+        self.module_list = [
+            token_embedding,
+            character_embedding,
+            dict_embedding,
+            representation,
+            decoder,
+        ]
+
+    def arrange_model_inputs(self, tensor_dict):
+        res = tuple(
+            tensor_dict[name] for name in self.INPUT_NAMES if name in tensor_dict
+        )
+        if "dense" in tensor_dict:
+            res += (tensor_dict["dense"],)
+        return res
+
+    def arrange_targets(self, tensor_dict):
+        return tensor_dict["labels"]
+
+    def get_export_input_names(self, tensorizers):
+        return [
+            x
+            for name in self.INPUT_NAMES
+            for x in (name, name + "_lens")
+            if name in tensorizers
+        ]
+
+    def get_export_output_names(self, tensorizers):
+        return ["scores"]
+
+    def vocab_to_export(self, tensorizers):
+        return {
+            name: list(tensorizers[name].vocab)
+            for name in self.INPUT_NAMES
+            if name in tensorizers
+        }
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            config=ModelExporter.Config(),
+            input_names=self.get_export_input_names(tensorizers),
+            dummy_model_input=self.arrange_model_inputs(tensor_dict),
+            vocab_map=self.vocab_to_export(tensorizers),
+            output_names=self.get_export_output_names(tensorizers),
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
+
+    def torchscriptify(self, tensorizers, traced_model):
+        output_layer = self.output_layer.torchscript_predictions()
+
+        input_vocab = tensorizers["tokens"].vocab
+
+        class Model(jit.ScriptModule):
+            def __init__(self):
+                super().__init__()
+                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.model = traced_model
+                self.output_layer = output_layer
+                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+
+            @jit.script_method
+            def forward(self, tokens: List[List[str]]):
+                word_ids = self.vocab.lookup_indices_2d(tokens)
+
+                seq_lens = jit.annotate(List[int], [])
+
+                for sentence in word_ids:
+                    seq_lens.append(len(sentence))
+                pad_to_length = list_max(seq_lens)
+                for sentence in word_ids:
+                    for _ in range(pad_to_length - len(sentence)):
+                        sentence.append(self.pad_idx)
+
+                logits = self.model((torch.tensor(word_ids), torch.tensor(seq_lens)))
+                return self.output_layer(logits)
+
+        return Model()
+
+    def forward(
+        self,
+        tokens: Tuple[torch.Tensor, torch.Tensor],
+        characters: Optional[torch.Tensor] = None,
+        dicts: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None,
+        dense: Optional[torch.Tensor] = None,
+    ) -> List[torch.Tensor]:
+        word_tokens = None
+        seq_lens = None
+        if tokens is not None:
+            word_tokens = tokens[0]
+            seq_lens = tokens[1]
+        inputs = [
+            input_tensor
+            for input_tensor in (word_tokens, characters, *(dicts or ()))
+            if input_tensor is not None
+        ]
+        final_embedding = self.embedding(*inputs)
+        representation = self.representation(final_embedding, seq_lens)
+        # TODO: Unify all LSTM-style components to
+        # not return state by default, then remove this
+        if isinstance(representation, tuple):
+            representation = representation[0]
+
+        if dense:
+            representation = torch.cat((representation, dense), 1)
+
+        return self.decoder(representation)

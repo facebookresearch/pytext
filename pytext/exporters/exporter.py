@@ -175,7 +175,8 @@ class ModelExporter(Component):
         """
         c2_prepared = onnx.pytorch_to_caffe2(
             model,
-            self.dummy_model_input,
+            # self.dummy_model_input,
+            tuple(i for i in self.dummy_model_input if i is not None),
             self.input_names,
             self.output_names,
             export_path,

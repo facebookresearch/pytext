@@ -405,6 +405,10 @@ class FloatListTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.float)
 
 
+class DictTensorizer(Tensorizer):
+    """TODO"""
+
+
 NO_LABEL = SpecialToken("NO_LABEL")
 
 
