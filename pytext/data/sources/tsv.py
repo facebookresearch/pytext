@@ -184,6 +184,7 @@ class BlockShardedTSV:
         self.delimiter = delimiter
         self.block_id = block_id
         self.num_blocks = num_blocks
+        csv.field_size_limit(sys.maxsize)
 
     def __iter__(self):
         # (self.begin, self.end) are the pointers to the begin and end
