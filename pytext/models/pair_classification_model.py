@@ -3,7 +3,7 @@
 
 import itertools
 import os
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -16,7 +16,7 @@ from pytext.data.tensorizers import (
 )
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.embeddings import EmbeddingList, WordEmbedding
+from pytext.models.embeddings import EmbeddingBase, EmbeddingList, WordEmbedding
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import ClassificationOutputLayer, OutputLayerBase
@@ -71,101 +71,87 @@ class PairClassificationModel(Model):
                 torch.save(subrep.state_dict(), path)
 
 
-class BasePairwiseClassificationModel(BaseModel):
+class BasePairwiseModel(BaseModel):
+    """
+    A base classification model that scores a pair of texts.
+
+    Subclasses need to implement the from_config, forward and save_modules.
+    """
+
+    __EXPANSIBLE__ = True
+
+    class Config(BaseModel.Config):
+        decoder: MLPDecoder.Config = MLPDecoder.Config()
+        output_layer: ClassificationOutputLayer.Config = (
+            ClassificationOutputLayer.Config()
+        )
+        encode_relations: bool = True
+
     def __init__(
         self,
-        representations: nn.ModuleList,
         decoder: DecoderBase,
         output_layer: OutputLayerBase,
+        encode_relations: bool,
     ) -> None:
         super().__init__()
-        self.representations = representations
         self.decoder = decoder
         self.output_layer = output_layer
-
-    @staticmethod
-    def _representation_dim(representations, encode_relations):
-        num_reps = len(representations)
-        rep_dim = representations[0].representation_dim
-
-        representation_dim = num_reps * rep_dim
-        if encode_relations:
-            representation_dim += 2 * comb(num_reps, 2, exact=True) * rep_dim
-        return representation_dim
-
-    @staticmethod
-    def _represent_helper(
-        rep: RepresentationBase, embs: torch.Tensor, lens: torch.Tensor
-    ) -> torch.Tensor:
-        representation = rep(embs, lens)
-        if isinstance(representation, tuple):
-            return representation[0]
-        return representation
+        self.encode_relations = encode_relations
 
     @classmethod
-    def _represent(
-        cls,
-        embeddings: List[torch.Tensor],
-        lengths: List[torch.Tensor],
-        represention_modules: nn.ModuleList,
-    ) -> List[torch.Tensor]:
-        """
-        Apply the representations computations in `self.representations` to the
-        sentence representations in `embeddings`.
-        Internally, it sorts the sentences in `embeddings` by the number
-        of tokens for packing efficiency, where the number of tokens is in `lengths`,
-        and undoes the sort after applying the representations to preserve the
-        original ordering of sentences. Assumes that the leftmost sentences are
-        already sorted by number of tokens.
-        """
-        # The leftmost inputs already come sorted by length. The others need to
-        # be sorted as well, for packing. We do it manually.
-        sorted_inputs = [(embeddings[0], lengths[0])]
-        sorted_indices = [None]
-        for embs, lens in zip(embeddings[1:], lengths[1:]):
-            lens_sorted, sorted_idx = lens.sort(descending=True)
-            embs_sorted = embs[sorted_idx]
-            sorted_inputs.append((embs_sorted, lens_sorted))
-            sorted_indices.append(sorted_idx)
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        raise NotImplementedError
 
-        representations = [
-            cls._represent_helper(rep, embs, lens)
-            for rep, (embs, lens) in zip(represention_modules, sorted_inputs)
-        ]
-
-        # Put the inputs back in the original order, so they still match up to
-        # each other as well as the targets.
-        unsorted_representations = [representations[0]]
-        for sorted_idx, rep in zip(sorted_indices[1:], representations[1:]):
-            _, unsorted_idx = sorted_idx.sort()
-            unsorted_representations.append(rep[unsorted_idx])
-        return unsorted_representations
-
-    def _represent_encode_relations(
-        self, representations: List[torch.Tensor]
-    ) -> torch.Tensor:
-        for rep_l, rep_r in itertools.combinations(representations, 2):
-            representations.append(torch.abs(rep_l - rep_r))
-            representations.append(rep_l * rep_r)
-        return representations
+    def forward(
+        self, input1: Tuple[torch.Tensor, ...], input2: Tuple[torch.Tensor, ...]
+    ):
+        raise NotImplementedError
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
-        super().save_modules(base_path, suffix)
+        raise NotImplementedError
 
+    @classmethod
+    def _create_decoder(
+        cls,
+        config: Config,
+        representations: nn.ModuleList,
+        tensorizers: Dict[str, Tensorizer],
+    ):
+        labels = tensorizers["labels"].vocab
+        num_reps = len(representations)
+        rep_dim = representations[0].representation_dim
+        decoder_in_dim = num_reps * rep_dim
+        if config.encode_relations:
+            decoder_in_dim += 2 * comb(num_reps, 2, exact=True) * rep_dim
+
+        decoder = create_module(
+            config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
+        )
+        output_layer = create_module(config.output_layer, labels=labels)
+        return decoder, output_layer
+
+    @classmethod
+    def _encode_relations(cls, encodings: List[torch.Tensor]) -> List[torch.Tensor]:
+        for rep_l, rep_r in itertools.combinations(encodings, 2):
+            encodings.append(torch.abs(rep_l - rep_r))
+            encodings.append(rep_l * rep_r)
+        return encodings
+
+    def _save_modules(self, modules: nn.ModuleList, base_path: str, suffix: str):
+        super().save_modules(base_path, suffix)
         # Special case to also save the multi-representations separately, if needed.
-        for representation in self.representations:
-            if getattr(representation.config, "save_path", None):
-                path = representation.config.save_path + suffix
+        for module in modules:
+            if getattr(module.config, "save_path", None):
+                path = module.config.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(
-                    f"Saving state of module {type(representation).__name__} "
-                    f"to {path} ..."
+                    f"Saving state of module {type(module).__name__} " f"to {path} ..."
                 )
-                torch.save(representation.state_dict(), path)
+                torch.save(module.state_dict(), path)
 
 
-class PairwiseClassificationModel(BasePairwiseClassificationModel):
+class PairwiseModel(BasePairwiseModel):
     """
     A classification model that scores a pair of texts, for example, a model for
     natural language inference.
@@ -182,7 +168,10 @@ class PairwiseClassificationModel(BasePairwiseClassificationModel):
     It can be instantiated just like any other :class:`~Model`.
     """
 
-    class Config(BasePairwiseClassificationModel.Config):
+    EMBEDDINGS = ["embedding"]
+    INPUTS_PAIR = [["tokens1"], ["tokens2"]]
+
+    class Config(BasePairwiseModel.Config):
         """
         Attributes:
             encode_relations (bool): if `false`, return the concatenation of the two
@@ -193,7 +182,7 @@ class PairwiseClassificationModel(BasePairwiseClassificationModel):
               tied weights, for all the input subrepresentations. Default: `true`.
         """
 
-        class ModelInput(BasePairwiseClassificationModel.Config.ModelInput):
+        class ModelInput(BasePairwiseModel.Config.ModelInput):
             tokens1: TokenTensorizer.Config = TokenTensorizer.Config(column="text1")
             tokens2: TokenTensorizer.Config = TokenTensorizer.Config(column="text2")
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
@@ -208,12 +197,6 @@ class PairwiseClassificationModel(BasePairwiseClassificationModel):
             BiLSTMDocAttention.Config, DocNNRepresentation.Config
         ] = BiLSTMDocAttention.Config()
         shared_representations: bool = True
-        decoder: MLPDecoder.Config = MLPDecoder.Config()
-        # TODO: will need to support different output layer for contrastive loss
-        output_layer: ClassificationOutputLayer.Config = (
-            ClassificationOutputLayer.Config()
-        )
-        encode_relations: bool = True
 
     def __init__(
         self,
@@ -223,25 +206,39 @@ class PairwiseClassificationModel(BasePairwiseClassificationModel):
         output_layer: ClassificationOutputLayer,
         encode_relations: bool,
     ) -> None:
-        super().__init__(representations, decoder, output_layer)
+        super().__init__(decoder, output_layer, encode_relations)
         self.embeddings = embeddings
-        self.encode_relations = encode_relations
+        self.representations = representations
+
+    # from_config and helper function
+    @classmethod
+    def _create_embedding(cls, config, tensorizer) -> EmbeddingBase:
+        return create_module(config, None, tensorizer)
 
     @classmethod
-    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        labels = tensorizers["labels"].labels
+    def _create_embeddings(
+        cls, config: Config, tensorizers: Dict[str, Tensorizer]
+    ) -> nn.ModuleList:
+        embeddings = []
+        for inputs in cls.INPUTS_PAIR:
+            embedding_list = []
+            for emb, input in zip(cls.EMBEDDINGS, inputs):
+                if hasattr(config, emb) and input in tensorizers:
+                    embedding_list.append(
+                        cls._create_embedding(getattr(config, emb), tensorizers[input])
+                    )
 
-        # len(embeddings) == 2
-        embeddings = nn.ModuleList(
-            [
-                create_module(config.embedding, None, tensorizers[name])
-                for name in ["tokens1", "tokens2"]
-            ]
-        )
-        embedding_dim = embeddings[0].embedding_dim
+            if len(embedding_list) == 1:
+                embeddings.append(embedding_list[0])
+            else:
+                embeddings.append(EmbeddingList(embeddings=embedding_list, concat=True))
+        return nn.ModuleList(embeddings)
 
+    @classmethod
+    def _create_representations(cls, config: Config, embeddings: nn.ModuleList):
         if config.shared_representations:
             # create representation once and used for all embeddings
+            embedding_dim = embeddings[0].embedding_dim
             representations = nn.ModuleList(
                 itertools.repeat(
                     create_module(config.representation, embed_dim=embedding_dim),
@@ -257,33 +254,99 @@ class PairwiseClassificationModel(BasePairwiseClassificationModel):
                     for embedding in embeddings
                 ]
             )
+        return representations
 
-        decoder_in_dim = cls._representation_dim(
-            representations, config.encode_relations
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        embeddings = cls._create_embeddings(config, tensorizers)
+        representations = cls._create_representations(config, embeddings)
+        decoder, output_layer = cls._create_decoder(
+            config, representations, tensorizers
         )
-        decoder = create_module(
-            config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
-        )
-        output_layer = create_module(config.output_layer, labels=labels)
         return cls(
             embeddings, representations, decoder, output_layer, config.encode_relations
         )
 
     def arrange_model_inputs(self, tensor_dict):
-        tokens1, seq_length1 = tensor_dict["tokens1"]
-        tokens2, seq_length2 = tensor_dict["tokens2"]
-        return [tokens1, tokens2], [seq_length1, seq_length2]
+        return tensor_dict["tokens1"], tensor_dict["tokens2"]
 
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
-    def forward(
-        self, tokens: List[torch.Tensor], seq_lens: List[torch.Tensor]
+    # _encode and helper functions
+    @classmethod
+    def _represent_helper(
+        cls, rep: RepresentationBase, embs: torch.Tensor, lens: torch.Tensor
     ) -> torch.Tensor:
-        embeddings = [emb(token) for emb, token in zip(self.embeddings, tokens)]
-        representations = self._represent(embeddings, seq_lens, self.representations)
-        if self.encode_relations:
-            representations = self._represent_encode_relations(representations)
-        representation = torch.cat(representations, -1)
+        representation = rep(embs, lens)
+        if isinstance(representation, tuple):
+            return representation[0]
+        return representation
 
+    @classmethod
+    def _represent_sort(
+        cls,
+        embeddings: List[torch.Tensor],
+        lengths: List[torch.Tensor],
+        represention_modules: nn.ModuleList,
+    ) -> List[torch.Tensor]:
+        """
+        Apply the representations computations in `self.representations` to the
+        sentence representations in `embeddings`.
+        Internally, it sorts the sentences in `embeddings` by the number
+        of tokens for packing efficiency, where the number of tokens is in `lengths`,
+        and undoes the sort after applying the representations to preserve the
+        original ordering of sentences. Assumes that the leftmost sentences are
+        already sorted by number of tokens.
+        """
+        if isinstance(represention_modules[0], BiLSTMDocAttention):
+            # The leftmost inputs already come sorted by length. The others need to
+            # be sorted as well, for packing. We do it manually.
+            sorted_inputs = [(embeddings[0], lengths[0])]
+            sorted_indices = [None]
+            for embs, lens in zip(embeddings[1:], lengths[1:]):
+                lens_sorted, sorted_idx = lens.sort(descending=True)
+                embs_sorted = embs[sorted_idx]
+                sorted_inputs.append((embs_sorted, lens_sorted))
+                sorted_indices.append(sorted_idx)
+
+            representations = [
+                cls._represent_helper(rep, embs, lens)
+                for rep, (embs, lens) in zip(represention_modules, sorted_inputs)
+            ]
+
+            # Put the inputs back in the original order, so they still match up to
+            # each other as well as the targets.
+            unsorted_representations = [representations[0]]
+            for sorted_idx, rep in zip(sorted_indices[1:], representations[1:]):
+                _, unsorted_idx = sorted_idx.sort()
+                unsorted_representations.append(rep[unsorted_idx])
+            return unsorted_representations
+        else:
+            return [
+                cls._represent_helper(rep, embs, lens)
+                for rep, (embs, lens) in zip(
+                    represention_modules, zip(embeddings, lengths)
+                )
+            ]
+
+    def _represent(self, embeddings: List[torch.Tensor], seq_lens: List[torch.Tensor]):
+        representations = self._represent_sort(
+            embeddings, seq_lens, self.representations
+        )
+        if self.encode_relations:
+            representations = self._encode_relations(representations)
+        return torch.cat(representations, -1)
+
+    def forward(
+        self, input1: Tuple[torch.Tensor, ...], input2: Tuple[torch.Tensor, ...]
+    ) -> torch.Tensor:
+        token_tups, seq_lens = (input1[:-1], input2[:-1]), (input1[-1], input2[-1])
+        embeddings = [
+            emb(*token_tup) for emb, token_tup in zip(self.embeddings, token_tups)
+        ]
+        representation = self._represent(embeddings, seq_lens)
         return self.decoder(representation)
+
+    def save_modules(self, base_path: str = "", suffix: str = ""):
+        self._save_modules(self.representations, base_path, suffix)

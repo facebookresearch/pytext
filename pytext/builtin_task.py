@@ -8,7 +8,7 @@ import os
 
 from pytext.config.component import register_tasks
 from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultitask
-from pytext.task.new_task import NewTask, PairwiseClassificationTask
+from pytext.task.new_task import NewTask, PairwiseClassification
 from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
     ContextualIntentSlotTask,
@@ -68,6 +68,6 @@ def register_builtin_tasks():
             SemanticParsingTask,
             DisjointMultitask,
             NewDisjointMultitask,
-            PairwiseClassificationTask,
+            PairwiseClassification,
         )
     )
