@@ -31,9 +31,11 @@ class MLPDecoder(DecoderBase):
         Configuration class for `MLPDecoder`.
 
         Attributes:
-            hidden_dims (List[int]): Dimensions of the outputs of hidden layers..
+            dropout (float): Dropout before each linear layer.
+            hidden_dims (List[int]): Dimensions of the outputs of hidden layers.
         """
 
+        dropout: float = 0.0
         hidden_dims: List[int] = []
         out_dim: Optional[int] = None
 
@@ -42,6 +44,7 @@ class MLPDecoder(DecoderBase):
 
         layers = []
         for dim in config.hidden_dims or []:
+            layers.append(nn.Dropout(config.dropout))
             layers.append(nn.Linear(in_dim, dim))
             layers.append(nn.ReLU())
             in_dim = dim
