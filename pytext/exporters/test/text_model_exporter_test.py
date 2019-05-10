@@ -14,11 +14,11 @@ import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
 from pytext.builtin_task import (
-    ContextualIntentSlotTask,
-    DocClassificationTask,
-    JointTextTask,
-    SeqNNTask,
-    WordTaggingTask,
+    ContextualIntentSlotTask_Deprecated,
+    DocClassificationTask_Deprecated,
+    JointTextTask_Deprecated,
+    SeqNNTask_Deprecated,
+    WordTaggingTask_Deprecated,
 )
 from pytext.common.constants import DatasetFieldName
 from pytext.config import config_from_json
@@ -394,7 +394,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for config in DOC_CONFIGS:
-            config = self._get_config(DocClassificationTask.Config, config)
+            config = self._get_config(DocClassificationTask_Deprecated.Config, config)
             metadata = self._get_metadata(num_doc_classes, 0)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -454,7 +454,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for config in DOC_CONFIGS_WITH_EXPORT_LOGITS:
-            config = self._get_config(DocClassificationTask.Config, config)
+            config = self._get_config(DocClassificationTask_Deprecated.Config, config)
             metadata = self._get_metadata(num_doc_classes, 0)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -522,7 +522,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
     ):
         for WORD_CONFIG in WORD_CONFIGS:
-            config = self._get_config(WordTaggingTask.Config, WORD_CONFIG)
+            config = self._get_config(WordTaggingTask_Deprecated.Config, WORD_CONFIG)
             metadata = self._get_metadata(0, num_word_classes)
             py_model = create_model(config.model, config.features, metadata)
             exporter = create_exporter(
@@ -585,7 +585,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         num_predictions,
         test_num_chars,
     ):
-        config = self._get_config(JointTextTask.Config, JOINT_CONFIG)
+        config = self._get_config(JointTextTask_Deprecated.Config, JOINT_CONFIG)
         metadata = self._get_metadata(num_doc_classes, num_word_classes)
         py_model = create_model(config.model, config.features, metadata)
         exporter = create_exporter(
@@ -670,7 +670,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
         test_num_seq,
     ):
-        config = self._get_config(SeqNNTask.Config, SEQ_NN_CONFIG)
+        config = self._get_config(SeqNNTask_Deprecated.Config, SEQ_NN_CONFIG)
         metadata = self._get_seq_metadata(num_doc_classes, 0)
         py_model = create_model(config.model, config.features, metadata)
         exporter = create_exporter(
@@ -734,7 +734,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_seq,
     ):
         config = self._get_config(
-            ContextualIntentSlotTask.Config, CONTEXTUAL_INTENT_SLOT_CONFIG
+            ContextualIntentSlotTask_Deprecated.Config, CONTEXTUAL_INTENT_SLOT_CONFIG
         )
         metadata = self._get_metadata(num_doc_classes, num_word_classes)
         py_model = create_model(config.model, config.features, metadata)
