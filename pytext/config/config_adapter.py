@@ -188,9 +188,57 @@ def doc_model_deprecated(json_config):
     return json_config
 
 
+@register_adapter(from_version=5)
+def old_tasks_deprecated(json_config):
+    """
+    Rename tasks with data_handler config to _Deprecated
+    """
+
+    def rename(t):
+        for section in find_dicts_containing_key(json_config, t):
+            section[t + "_Deprecated"] = section.pop(t)
+
+    rename("BertClassificationTask")
+    rename("BertPairClassificationTask")
+    rename("BertPairwiseClassificationTask")
+    rename("COLMClassifyTask")
+    rename("ContextSCLSTMCompositionalTask")
+    rename("ContextSeq2SeqTask")
+    rename("ContextualIntentSlotTask")
+    rename("DocClassificationTask")
+    rename("ElmoDocClassificationTask")
+    rename("ElmoFineTunePairwiseClassificationTask")
+    rename("EnsembleTask")
+    rename("FederatedLearningTaskBase")
+    rename("FLDocClassificationTask")
+    rename("FLQueryDocumentPairwiseRankingTask")
+    rename("I18NDocClassificationTask")
+    rename("I18NJointTextTask")
+    rename("JointTextTask")
+    rename("KDDocClassificationTask")
+    rename("LMTask")
+    rename("NLGSeq2SeqTask")
+    rename("PairClassificationTask")
+    rename("PairwiseAttentionClassificationTask")
+    rename("QueryDocumentPairwiseRankingTask")
+    rename("SCLSTMCompositionalTask")
+    rename("SCLSTMTask")
+    rename("SemanticParsingCppTask")
+    rename("SemanticParsingTask")
+    rename("Seq2SeqTask")
+    rename("SeqNNTask")
+    rename("SGNNClassificationTask")
+    rename("ShallowClassificationTask")
+    rename("ShallowTaggingTask")
+    rename("SpanClassificationTask")
+    rename("TreeParserTask")
+    rename("WordTaggingTask")
+
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
-    print(f"... upgrade config from version {current_version}")
     adapter = ADAPTERS.get(current_version)
     if not adapter:
         raise Exception(f"no adapter found for version {current_version}")
@@ -200,7 +248,7 @@ def upgrade_one_version(json_config):
 
 
 def upgrade_to_latest(json_config):
-    current_version = json_config.get("version", 0)
+    current_version = json_config.get("version") or 0
     if current_version > LATEST_VERSION:
         raise Exception(
             f"config version {json_config['version']} shouldn't exceed lastest \

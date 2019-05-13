@@ -1,0 +1,185 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "DocClassificationTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "WordTaggingTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "WordTaggingTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "WordTaggingTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "WordTaggingTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "WordTaggingTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "WordTaggingTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+
+  {
+    "original": {
+      "task": {
+        "QueryDocumentPairwiseRankingTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "QueryDocumentPairwiseRankingTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "PairClassificationTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "PairClassificationTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "SeqNNTask": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 5
+    },
+    "adapted": {
+      "task": {
+        "SeqNNTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 6
+    }
+  }
+]

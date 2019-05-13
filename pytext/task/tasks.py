@@ -49,7 +49,7 @@ from pytext.task.new_task import NewTask
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
 
 
-class QueryDocumentPairwiseRankingTask(Task_Deprecated):
+class QueryDocumentPairwiseRankingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         features: QueryDocumentPairwiseRanking.ModelInputConfig = (
             QueryDocumentPairwiseRanking.ModelInputConfig()
@@ -68,7 +68,7 @@ class QueryDocumentPairwiseRankingTask(Task_Deprecated):
 
 
 # TODO better to have separate Task for different ensemble model
-class EnsembleTask(Task_Deprecated):
+class EnsembleTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
@@ -96,7 +96,7 @@ class EnsembleTask(Task_Deprecated):
         )
 
 
-class DocClassificationTask(Task_Deprecated):
+class DocClassificationTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: DocModel.Config = DocModel.Config()
         trainer: Trainer.Config = Trainer.Config()
@@ -123,7 +123,7 @@ class DocClassificationTask(Task_Deprecated):
             }
 
 
-class WordTaggingTask(Task_Deprecated):
+class WordTaggingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: WordTaggingModel.Config = WordTaggingModel.Config()
         trainer: Trainer.Config = Trainer.Config()
@@ -163,7 +163,7 @@ class NewWordTaggingTask(NewTask):
         )
 
 
-class JointTextTask(Task_Deprecated):
+class JointTextTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         labels: List[TargetConfigBase]
         model: JointModel.Config = JointModel.Config()
@@ -180,10 +180,10 @@ class JointTextTask(Task_Deprecated):
         doc_target_meta, word_target_meta = target_meta
 
         for intent, slot in zip(
-            DocClassificationTask.format_prediction(
+            DocClassificationTask_Deprecated.format_prediction(
                 doc_preds, doc_scores, context, doc_target_meta
             ),
-            WordTaggingTask.format_prediction(
+            WordTaggingTask_Deprecated.format_prediction(
                 word_preds, word_scores, context, word_target_meta
             ),
         ):
@@ -194,7 +194,7 @@ class JointTextTask(Task_Deprecated):
         return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
-class LMTask(Task_Deprecated):
+class LMTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         data_handler: Union[
             LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
@@ -207,7 +207,7 @@ class LMTask(Task_Deprecated):
         )
 
 
-class PairClassificationTask(Task_Deprecated):
+class PairClassificationTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         features: PairClassification.ModelInputConfig = (
             PairClassification.ModelInputConfig()
@@ -223,7 +223,7 @@ class PairClassificationTask(Task_Deprecated):
         )
 
 
-class SeqNNTask(Task_Deprecated):
+class SeqNNTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: SeqNNModel.Config = SeqNNModel.Config()
         trainer: Trainer.Config = Trainer.Config()
@@ -234,7 +234,7 @@ class SeqNNTask(Task_Deprecated):
         )
 
 
-class ContextualIntentSlotTask(Task_Deprecated):
+class ContextualIntentSlotTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         labels: ContextualIntentSlot.TargetConfig
         features: ContextualIntentSlot.ModelInputConfig = (
@@ -255,7 +255,7 @@ class ContextualIntentSlotTask(Task_Deprecated):
         return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
-class SemanticParsingTask(Task_Deprecated):
+class SemanticParsingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: RNNGParser.Config = RNNGParser.Config()
         trainer: HogwildTrainer.Config = HogwildTrainer.Config()

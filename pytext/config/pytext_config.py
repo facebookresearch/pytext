@@ -128,4 +128,4 @@ class TestConfig(ConfigBase):
     test_out_path: str = ""
 
 
-LATEST_VERSION = 5
+LATEST_VERSION = 6

@@ -11,15 +11,15 @@ from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultita
 from pytext.task.new_task import NewTask, PairwiseClassification
 from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
-    ContextualIntentSlotTask,
-    DocClassificationTask,
-    EnsembleTask,
-    JointTextTask,
-    LMTask,
-    PairClassification,
-    SemanticParsingTask,
-    SeqNNTask,
-    WordTaggingTask,
+    ContextualIntentSlotTask_Deprecated,
+    DocClassificationTask_Deprecated,
+    EnsembleTask_Deprecated,
+    JointTextTask_Deprecated,
+    LMTask_Deprecated,
+    PairClassificationTask_Deprecated,
+    SemanticParsingTask_Deprecated,
+    SeqNNTask_Deprecated,
+    WordTaggingTask_Deprecated,
 )
 from pytext.utils.documentation import eprint
 
@@ -57,17 +57,16 @@ def add_include(path):
 def register_builtin_tasks():
     register_tasks(
         (
-            DocClassificationTask,
-            WordTaggingTask,
-            JointTextTask,
-            LMTask,
-            EnsembleTask,
-            PairClassification,
-            SeqNNTask,
-            ContextualIntentSlotTask,
-            SemanticParsingTask,
+            ContextualIntentSlotTask_Deprecated,
             DisjointMultitask,
+            DocClassificationTask_Deprecated,
+            EnsembleTask_Deprecated,
+            JointTextTask_Deprecated,
+            LMTask_Deprecated,
             NewDisjointMultitask,
-            PairwiseClassification,
+            PairClassificationTask_Deprecated,
+            SemanticParsingTask_Deprecated,
+            SeqNNTask_Deprecated,
+            WordTaggingTask_Deprecated,
         )
     )
