@@ -234,7 +234,7 @@ class ClassificationMetrics(NamedTuple):
                     for metrics in self.per_label_soft_scores.values()
                 )
             )
-            print("\nPrecision at Recall")
+            print("\nRecall at Precision")
             print(
                 ascii_table(
                     (
@@ -249,7 +249,7 @@ class ClassificationMetrics(NamedTuple):
                     ),
                     dict(
                         {"label": "Label"},
-                        **{str(t): f"P@R {t}" for t in all_thresholds},
+                        **{str(t): f"R@P {t}" for t in all_thresholds},
                     ),
                     alignments={"label": "<"},
                 )
