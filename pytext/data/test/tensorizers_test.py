@@ -6,12 +6,13 @@ from typing import List
 
 import numpy as np
 import torch
-from pytext.data.sources.data_source import SafeFileWrapper
+from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.tensorizers import (
     ByteTensorizer,
     CharacterTokenTensorizer,
     FloatListTensorizer,
+    GazetteerTensorizer,
     LabelListTensorizer,
     LabelTensorizer,
     TokenTensorizer,
@@ -206,6 +207,57 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(1, tensor)
         with self.assertRaises(Exception):
             tensor = next(tensors)
+
+    def test_gazetteer_tensor_bad_json(self):
+        tensorizer = GazetteerTensorizer()
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_dict_features_bad_json.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text", "dict"],
+            schema={"text": str, "dict": str},
+        )
+
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        with self.assertRaises(Exception):
+            for row in data.train:
+                init.send(row)
+        init.close()
+
+    def test_gazetteer_tensor(self):
+        tensorizer = GazetteerTensorizer()
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_dict_features.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text", "dict"],
+            schema={"text": str, "dict": Gazetteer},
+        )
+
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        for row in data.train:
+            init.send(row)
+        init.close()
+        # UNK + PAD + 3 labels
+        self.assertEqual(5, len(tensorizer.vocab))
+
+        # only one row in test file:
+        # "Order coffee from Starbucks please"
+        for row in data.train:
+            idx, weights, lens = tensorizer.numberize(row)
+            self.assertEqual([1, 1, 2, 3, 1, 1, 4, 1, 1, 1], idx)
+            self.assertEqual(
+                [0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], weights
+            )
+            self.assertEqual([1, 2, 1, 1, 1], lens)
 
     def test_create_float_list_tensor(self):
         tensorizer = FloatListTensorizer(column="dense", dim=2, error_check=True)

@@ -1,0 +1,1 @@
+Order coffee from Starbucks please	[{"tokenIdx": 1, "features": {"drink/beverage": 0.8, "music/song": 0.2}},{"tokenIdx": 3, "features": {"store/coffee_shop": 1.0}}]
