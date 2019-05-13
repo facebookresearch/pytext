@@ -203,13 +203,15 @@ class Trainer(TrainerBase):
     def update_best_model(
         self, state: TrainingState, train_config: PyTextConfig, eval_metric
     ):
-        # Only one worker should save checkpoints
-        if state.rank != 0:
-            return
-
+        # This should be updated by all workers so they agree on when to stop training
+        # when `early_stop_after` is specified.
         state.epochs_since_last_improvement = 0
         state.best_model_metric = eval_metric
         print(f"Found a better model!")
+
+        # Only one worker should save checkpoints
+        if state.rank != 0:
+            return
 
         model_state = state.model.state_dict()
         # save to cpu to avoid multiple model copies in gpu memory
