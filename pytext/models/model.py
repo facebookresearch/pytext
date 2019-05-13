@@ -90,7 +90,7 @@ class BaseModel(nn.Module, Component):
         self.context = context
 
     def get_loss(self, logit, target, context):
-        return maybe_float(self.output_layer.get_loss(logit, target, context))
+        return self.output_layer.get_loss(logit, target, context)
 
     def get_pred(self, logit, target=None, context=None, *args):
         return self.output_layer.get_pred(logit, target, context)
@@ -163,7 +163,7 @@ class BaseModel(nn.Module, Component):
         model_outputs = model(*model_inputs)
 
         # Compute loss and predictions.
-        loss = model.get_loss(model_outputs, targets, None)
+        loss = maybe_float(model.get_loss(model_outputs, targets, None))
         predictions, scores = model.get_pred(model_outputs)
 
         # Pack results and return them.

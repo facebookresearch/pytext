@@ -87,8 +87,8 @@ class Trainer(TrainerBase):
         scheduler: Optional[Scheduler.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
-        self.optimizer: torch.optim.Optimizer = create_optimizer(
-            config.optimizer, model
+        self.optimizer: torch.optim.Optimizer = precision.wrap_optimizer(
+            create_optimizer(config.optimizer, model)
         )
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, self.optimizer)
@@ -126,8 +126,6 @@ class Trainer(TrainerBase):
                 broadcast_buffers=False,
                 find_unused_parameters=state.model.find_unused_parameters,
             )
-
-        state.optimizer = precision.wrap_optimizer(state.optimizer)
         state.start_time = time.time()
 
     @timing.time("zero gradients")
@@ -153,7 +151,7 @@ class Trainer(TrainerBase):
 
         if self.config.max_clip_norm is not None:
             grad_norm = precision.clip_grad_norm(
-                state.model, self.optimizer, self.config.max_clip_norm
+                state.model, state.optimizer, self.config.max_clip_norm
             )
         else:
             grad_norm = None
@@ -396,7 +394,7 @@ class Trainer(TrainerBase):
                 logits = model(*inputs)
 
             with timing.time("compute loss"):
-                loss = model.get_loss(logits, targets, context)
+                loss = precision.maybe_float(model.get_loss(logits, targets, context))
                 if BatchContext.IGNORE_LOSS in context:
                     loss *= 0
                 elif sample_size > 1:
