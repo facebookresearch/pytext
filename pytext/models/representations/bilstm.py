@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
+import torch.onnx
 from pytext.config import ConfigBase
 from pytext.utils import cuda
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
@@ -115,14 +116,29 @@ class BiLSTM(RepresentationBase):
             )
             states = (state, state)
 
-        rnn_input = pack_padded_sequence(embedded_tokens, seq_lengths, batch_first=True)
-        rep, new_state = self.lstm(rnn_input, states)
-        rep, _ = pad_packed_sequence(
-            rep,
-            padding_value=self.padding_value,
-            batch_first=True,
-            total_length=embedded_tokens.size(1),
-        )  # Make sure the output from LSTM is padded to input's sequence length.
+        if torch.onnx.is_in_onnx_export():
+            lstm_in = [embedded_tokens, states[0], states[1]] + [
+                param.detach() for param in self.lstm._flat_weights
+            ]
+            rep, new_state_0, new_state_1 = torch.ops._caffe2.InferenceLSTM(
+                lstm_in,
+                self.lstm.num_layers,
+                self.lstm.bias,
+                True,
+                self.lstm.bidirectional,
+            )
+            new_state = (new_state_0, new_state_1)
+        else:
+            rnn_input = pack_padded_sequence(
+                embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
+            )
+            rep, new_state = self.lstm(rnn_input, states)
+            rep, _ = pad_packed_sequence(
+                rep,
+                padding_value=self.padding_value,
+                batch_first=True,
+                total_length=embedded_tokens.size(1),
+            )  # Make sure the output from LSTM is padded to input's sequence length.
 
         # convert states back to (bsz x num_layers*num_directions x nhid) to be
         # used in data parallel model
