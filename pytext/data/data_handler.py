@@ -185,6 +185,7 @@ class DataHandler(Component):
         train_batch_size: int = 128
         eval_batch_size: int = 128
         test_batch_size: int = 128
+        column_mapping: Dict[str, str] = {}
 
     __COMPONENT_TYPE__ = ComponentType.DATA_HANDLER
 
@@ -206,6 +207,7 @@ class DataHandler(Component):
         test_batch_size: int = 128,
         max_seq_len: int = -1,
         pass_index: bool = True,
+        column_mapping: Dict[str, str] = None,
         **kwargs,
     ) -> None:
         self.raw_columns: List[str] = raw_columns or []
@@ -231,6 +233,7 @@ class DataHandler(Component):
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.test_batch_size = test_batch_size
+        self.column_mapping = column_mapping
 
     def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
