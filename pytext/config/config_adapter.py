@@ -25,7 +25,7 @@ def find_dicts_containing_key(json_config, key):
     if key in json_config:
         yield json_config
     for _, v in json_config.items():
-        if isinstance(v, dict):
+        if hasattr(v, "__contains__") and hasattr(v, "items"):
             yield from find_dicts_containing_key(v, key)
 
 
