@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple, Type
 
 import torch
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils.data import Slot
 
@@ -482,6 +483,114 @@ class WordLabelTensorizer(Tensorizer):
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch, dtype=torch.long)
+
+
+class GazetteerTensorizer(Tensorizer):
+    """
+    Create 3 tensors for dict features.
+
+    - idx: index of feature in token order.
+    - weights: weight of feature in token order.
+    - lens: number of features per token.
+
+    For each input token, there will be the same number of `idx` and `weights` entries.
+    (equal to the max number of features any token has in this row). The values
+    in `lens` will tell how many of these features are actually used per token.
+
+    Input format for the dict column is json and should be a list of dictionaries
+    containing the "features" and their weight for each relevant "tokenIdx". Example:
+    ::
+
+        text: "Order coffee from Starbucks please"
+        dict: [
+            {"tokenIdx": 1, "features": {"drink/beverage": 0.8, "music/song": 0.2}},
+            {"tokenIdx": 3, "features": {"store/coffee_shop": 1.0}}
+        ]
+
+    if we assume this vocab
+    ::
+
+        vocab = {
+            UNK: 0, PAD: 1,
+            "drink/beverage": 2, "music/song": 3, "store/coffee_shop": 4
+        }
+
+    this example will result in those tensors:
+    ::
+
+        idx =     [1,   1,   2,   3,   1,   1,   4,   1,   1,   1]
+        weights = [0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+        lens =    [1,        2,        1,        1,        1]
+
+    """
+
+    class Config(Tensorizer.Config):
+        text_column: str = "text"
+        dict_column: str = "dict"
+        #: tokenizer to split text and create dict tensors of the same size.
+        tokenizer: Tokenizer.Config = Tokenizer.Config()
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column)
+
+    def __init__(
+        self,
+        text_column: str = Config.text_column,
+        dict_column: str = Config.dict_column,
+        tokenizer: Tokenizer = None,
+    ):
+        super().__init__([(text_column, str), (dict_column, Gazetteer)])
+        self.text_column = text_column
+        self.dict_column = dict_column
+        self.tokenizer = tokenizer or Tokenizer()
+
+    def initialize(self):
+        """
+        Look through the dataset for all dict features to create vocab.
+        """
+        builder = VocabBuilder()
+        try:
+            while True:
+                row = yield
+                for token_dict in row[self.dict_column]:
+                    builder.add_all(token_dict["features"])
+        except GeneratorExit:
+            self.vocab = builder.make_vocab()
+
+    def numberize(self, row):
+        """
+        Numberize dict features. Fill in for tokens with no features with
+        PAD and weight 0.0. All tokens need to have at least one entry.
+        Tokens with more than one feature will have multiple idx and weight
+        added in sequence.
+        """
+
+        num_tokens = len(self.tokenizer.tokenize(row[self.text_column]))
+        num_labels = max(len(t["features"]) for t in row[self.dict_column])
+        res_idx = [self.vocab.idx[PAD]] * (num_labels * num_tokens)
+        res_weights = [0.0] * (num_labels * num_tokens)
+        res_lens = [1] * num_tokens
+        for dict_feature in row[self.dict_column]:
+            idx = dict_feature["tokenIdx"]
+            feats = dict_feature["features"]
+            pos = idx * num_labels
+            res_lens[idx] = len(feats)
+            # write values at the correct pos
+            for label, weight in feats.items():
+                res_idx[pos] = self.vocab.lookup_all(label)
+                res_weights[pos] = weight
+                pos += 1
+
+        return res_idx, res_weights, res_lens
+
+    def tensorize(self, batch):
+        dict_feat_ids, weights, seq_lens = zip(*batch)
+        return (
+            pad_and_tensorize(dict_feat_ids, self.vocab.idx[PAD]),
+            pad_and_tensorize(weights, self.vocab.idx[PAD]),
+            pad_and_tensorize(seq_lens),
+        )
 
 
 class RawString(Tensorizer):

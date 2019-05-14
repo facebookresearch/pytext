@@ -74,12 +74,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         )
 
     def __init__(
-        self,
-        num_embeddings: int,
-        embed_dim: int,
-        pooling_type: PoolingType,
-        *args,
-        **kwargs
+        self, num_embeddings: int, embed_dim: int, pooling_type: PoolingType
     ) -> None:
         EmbeddingBase.__init__(self, embed_dim)
         nn.Embedding.__init__(self, num_embeddings, embed_dim)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import json
 import logging
 from typing import Dict, List
 
@@ -290,3 +291,11 @@ def load_text(s):
 @RootDataSource.register_type(List[Slot])
 def load_slots(s):
     return parse_slot_string(s)
+
+
+Gazetteer = List[Dict[str, Dict[str, float]]]
+
+
+@RootDataSource.register_type(Gazetteer)
+def load_json(s):
+    return json.loads(s)
