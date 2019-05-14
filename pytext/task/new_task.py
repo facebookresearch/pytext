@@ -44,6 +44,7 @@ class NewTaskTrainer(Trainer):
 
         model = state.model
         self.zero_grads(state)
+        metrics_inputs = []
         for i, (batch_id, batch) in enumerate(samples):
             if cuda.DISTRIBUTED_WORLD_SIZE > 1:
                 # Whenever *samples* contains more than one mini-batch, we
@@ -64,12 +65,23 @@ class NewTaskTrainer(Trainer):
             self.backprop(state, loss)
 
             if report_metric:
-                with timing.time("add metrics"):
+                # don't add metrics yet, in case there is oveflow
+                metrics_inputs.append((batch_id, metric_data, batch))
+
+        # update gradients after #len(samples) forward & backward
+        self.optimizer_step(state)
+
+        # add metrics if batch is not skipped due to overflow
+        with timing.time("add metrics"):
+            if state.stage != Stage.TRAIN or not getattr(
+                state.optimizer, "overflow", False
+            ):
+                for metrics_input in metrics_inputs:
+                    batch_id, metric_data, batch = metrics_input
                     metric_reporter.add_batch_stats(
                         batch_id, *metric_data, **metric_reporter.batch_context(batch)
                     )
-        # update gradients after #len(samples) forward & backward
-        self.optimizer_step(state)
+            metrics_inputs = []
 
     def _prepare_scheduler(self, training_batches, scheduler=None):
         """Batch based schedulers require knowing the number of batches in

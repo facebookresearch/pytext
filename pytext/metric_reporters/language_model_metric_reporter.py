@@ -120,7 +120,7 @@ class MaskedLMWithClassificationMetricReporter(MaskedLMMetricReporter):
             )
 
     def calculate_loss(self) -> float:
-        return self.aggregate_loss / float(self.n_batches)
+        return self.aggregate_lm_loss / float(self.total_num_tokens)
 
     def _reset(self):
         super()._reset()
