@@ -11,7 +11,15 @@ from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils.data import Slot
 
-from .utils import BOS, EOS, PAD, SpecialToken, VocabBuilder, pad_and_tensorize
+from .utils import (
+    BOS,
+    EOS,
+    PAD,
+    SpecialToken,
+    VocabBuilder,
+    Vocabulary,
+    pad_and_tensorize,
+)
 
 
 class Tensorizer(Component):
@@ -264,37 +272,48 @@ class LabelTensorizer(Tensorizer):
         allow_unknown: bool = False
         #: if vocab should have pad, usually false when label is used as target
         pad_in_vocab: bool = False
+        #: Optionally hard-code labels so initialization is not necessary
+        labels: List[str] = []
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.allow_unknown, config.pad_in_vocab)
+        return cls(
+            config.column, config.allow_unknown, config.pad_in_vocab, config.labels
+        )
 
     def __init__(
         self,
         label_column: str = "label",
         allow_unknown: bool = False,
         pad_in_vocab: bool = False,
+        labels: List[str] = Config.labels,
     ):
         super().__init__([(label_column, str)])
         self.label_column = label_column
         self.allow_unknown = allow_unknown
         self.pad_in_vocab = pad_in_vocab
+        self.labels_list = labels
+        self.pad_idx = -1
 
     def initialize(self):
         """
         Look through the dataset for all labels and create a vocab map for them.
         """
-        builder = VocabBuilder()
-        builder.use_pad = self.pad_in_vocab
-        builder.use_unk = self.allow_unknown
-        try:
-            while True:
-                row = yield
-                labels = row[self.label_column]
-                builder.add_all(labels)
-        except GeneratorExit:
-            self.vocab = builder.make_vocab()
-            self.pad_idx = self.vocab.idx[PAD] if self.pad_in_vocab else -1
+        if self.labels_list:
+            self.vocab = Vocabulary(self.labels_list)
+            return
+        else:
+            builder = VocabBuilder()
+            builder.use_pad = self.pad_in_vocab
+            builder.use_unk = self.allow_unknown
+            try:
+                while True:
+                    row = yield
+                    labels = row[self.label_column]
+                    builder.add_all(labels.split(","))
+            except GeneratorExit:
+                self.vocab = builder.make_vocab()
+                self.pad_idx = self.vocab.idx[PAD] if self.pad_in_vocab else -1
 
     def numberize(self, row):
         """Numberize labels."""

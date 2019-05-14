@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
-import time
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
@@ -62,8 +61,6 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
-        now = time.time()
-
         num_words_in_batch = targets[1].sum().item()
         self.aggregate_loss += loss.item() * num_words_in_batch
         self.total_num_tokens += num_words_in_batch
@@ -75,14 +72,13 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         if not n_batches % 1000:
             tps = self.realtime_meters["tps"].avg
             print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
+                f"Tokens/s: {tps:.0f}, "
                 f"batch ppl: {math.exp(loss.item()):.2f}, "
                 f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
                 f"number of batches: {n_batches}, "
                 f"accumulated tokens/s: {tps:.0f}",
                 flush=True,
             )
-        self.time = now
 
     def calculate_loss(self) -> float:
         return self.aggregate_loss / float(self.total_num_tokens)
@@ -91,4 +87,45 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         super()._reset()
         self.aggregate_loss = 0.0
         self.total_num_tokens = 0
-        self.time = time.time()
+
+
+class MaskedLMWithClassificationMetricReporter(MaskedLMMetricReporter):
+    def add_batch_stats(
+        self, n_batches, preds, targets, scores, loss, m_input, **context
+    ):
+        loss, lm_loss, nsp_loss = loss
+        num_words_in_batch = targets[1].sum().item()
+        self.aggregate_loss += loss.item()
+        self.aggregate_lm_loss += lm_loss.item() * num_words_in_batch
+        self.total_num_tokens += num_words_in_batch
+        self.aggregate_nsp_loss += nsp_loss.item()
+        self.n_batches = n_batches + 1
+
+        # realtime stats
+        total_tokens = float(targets[2].sum())
+        self.realtime_meters["tps"].update(total_tokens)
+
+        if not n_batches % 1000:
+            tps = self.realtime_meters["tps"].avg
+            print(
+                f"Tokens/s: {tps:.0f}, "
+                f"BATCH ppl: {math.exp(lm_loss.item()):.2f}, "
+                f"nsp_loss: {nsp_loss.item():.4f}, "
+                f"lm_loss: {lm_loss.item():.4f}, "
+                f"EPOCH ppl: {math.exp(self.aggregate_lm_loss / float(self.total_num_tokens)):.2f}, "
+                f"nsp_loss: {self.aggregate_nsp_loss / float(self.n_batches):.4f}, "
+                f"lm_loss: {self.aggregate_lm_loss / float(self.total_num_tokens):.4f}, "
+                f"number of batches: {n_batches}, ",
+                flush=True,
+            )
+
+    def calculate_loss(self) -> float:
+        return self.aggregate_loss / float(self.n_batches)
+
+    def _reset(self):
+        super()._reset()
+        self.n_batches = 1
+        self.aggregate_loss = 0.0
+        self.aggregate_lm_loss = 0.0
+        self.aggregate_nsp_loss = 0.0
+        self.total_num_tokens = 0
