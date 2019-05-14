@@ -47,6 +47,18 @@ class LabelSmoothedCrossEntropyLossTest(hu.HypothesisTestCase):
             error = np.linalg.norm(diff)
             self.assertAlmostEqual(error, 0.0, places=4)
 
+            loss_log_config = LabelSmoothedCrossEntropyLoss.Config()
+            loss_log_config.from_logits = False
+            loss_log_fn = LabelSmoothedCrossEntropyLoss(
+                config=loss_log_config, ignore_index=-100, weight=weight
+            )
+            label_smoothed_log_loss = loss_log_fn(
+                torch.nn.functional.log_softmax(logits, dim=-1), targets, reduce=reduce
+            )
+            log_diff = np.array(manual_loss) - np.array(label_smoothed_log_loss)
+            error = np.linalg.norm(log_diff)
+            self.assertAlmostEqual(error, 0.0, places=4)
+
     def _compute_negative_cross_entropy_loss(
         self, logits, targets, weight=None, reduce=True, ignore_index=-100
     ):
