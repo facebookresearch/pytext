@@ -87,15 +87,13 @@ class Trainer(TrainerBase):
         scheduler: Optional[Scheduler.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
-        self.optimizer: torch.optim.Optimizer = precision.wrap_optimizer(
-            create_optimizer(config.optimizer, model)
-        )
+        optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
         self.scheduler: torch.optim.lr_scheduler = (
-            create_scheduler(config.scheduler, self.optimizer)
+            create_scheduler(config.scheduler, optimizer)
             if config.scheduler
             else Scheduler()
         )
-
+        self.optimizer = precision.wrap_optimizer(optimizer)
         self.config = config
 
     @classmethod
