@@ -163,18 +163,21 @@ class TensorizersTest(unittest.TestCase):
             [ords("i", 5), ords("want", 5), ords("some", 5), ords("coffe", 5)],
             [ords("turn", 5), ords("it", 5), ords("up", 5), ords("", 5)],
         ]
+        expected_token_lens = [4, 3]
+        expected_char_lens = [[1, 4, 4, 5], [4, 2, 2, 0]]
 
-        expected_lens = [[1, 4, 4, 5], [4, 2, 2, 0]]
-
-        chars, seq_lens = tensorizer.tensorize(
+        chars, token_lens, char_lens = tensorizer.tensorize(
             tensorizer.numberize(row) for row in batch
         )
         self.assertIsInstance(chars, torch.LongTensor)
-        self.assertIsInstance(seq_lens, torch.LongTensor)
+        self.assertIsInstance(token_lens, torch.LongTensor)
+        self.assertIsInstance(char_lens, torch.LongTensor)
         self.assertEqual((2, 4, 5), chars.size())
-        self.assertEqual((2, 4), seq_lens.size())
+        self.assertEqual((2,), token_lens.size())
+        self.assertEqual((2, 4), char_lens.size())
         self.assertEqual(expected, chars.tolist())
-        self.assertEqual(expected_lens, seq_lens.tolist())
+        self.assertEqual(expected_token_lens, token_lens.tolist())
+        self.assertEqual(expected_char_lens, char_lens.tolist())
 
     def test_initialize_label_tensorizer(self):
         tensorizer = LabelTensorizer(label_column="label")

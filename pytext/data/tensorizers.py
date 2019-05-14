@@ -235,15 +235,20 @@ class CharacterTokenTensorizer(TokenTensorizer):
         characters = [
             self._numberize_token(token)[: self.max_char_length] for token in tokens
         ]
-        lengths = [len(token_chars) for token_chars in characters]
-        return characters, lengths
+        token_lengths = len(tokens)
+        char_lengths = [len(token_chars) for token_chars in characters]
+        return characters, token_lengths, char_lengths
 
     def _numberize_token(self, token):
         return [ord(c) for c in token.value]
 
     def tensorize(self, batch):
-        characters, lengths = zip(*batch)
-        return (pad_and_tensorize(characters), pad_and_tensorize(lengths))
+        characters, token_lengths, char_lengths = zip(*batch)
+        return (
+            pad_and_tensorize(characters),
+            pad_and_tensorize(token_lengths),
+            pad_and_tensorize(char_lengths),
+        )
 
     def sort_key(self, row):
         return len(row[0])
