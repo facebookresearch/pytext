@@ -49,9 +49,12 @@ class LMClassificationOutputLayer(LMOutputLayer):
         context: Dict[str, Any],
         reduce=True,
     ) -> torch.Tensor:
-        lm_loss = super().get_loss(logit[0], target, context, reduce)
+        lm_logit, classification_logit = logit
+        lm_target = target[:-1]
+        classification_target = target[-1]
+        lm_loss = super().get_loss(lm_logit, lm_target, context, reduce)
         classification_loss = self.classification_output.get_loss(
-            logit[1], target[-1], context, reduce
+            classification_logit, classification_target, context, reduce
         )
         return lm_loss + classification_loss, lm_loss, classification_loss
 

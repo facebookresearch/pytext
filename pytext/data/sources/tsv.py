@@ -198,7 +198,10 @@ class BlockShardedTSV:
         if self.begin:
             self.file.readline()
         reader = csv.DictReader(
-            (line.replace("\0", "") for line in iter(self.file.readline, "")),
+            (
+                "," if line.isspace() else line.replace("\0", "")
+                for line in iter(self.file.readline, "")
+            ),
             fieldnames=self.field_names,
             delimiter=self.delimiter,
             quoting=csv.QUOTE_NONE,
