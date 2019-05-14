@@ -10,7 +10,7 @@ from .metric_reporter import MetricReporter
 
 class PairwiseRankingMetricReporter(MetricReporter):
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
+    def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
         # TODO: add file channel
         return cls([ConsoleChannel()])
 

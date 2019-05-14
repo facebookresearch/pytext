@@ -128,6 +128,9 @@ class TokenTensorizer(Tensorizer):
             tokenized = [Token(bos, -1, -1)] + tokenized
         if self.add_eos_token:
             tokenized.append(Token(EOS, -1, -1))
+        if not tokenized:
+            tokenized = [Token(PAD, -1, -1)]
+
         tokenized_texts, start_idx, end_idx = zip(
             *((t.value, t.start, t.end) for t in tokenized)
         )
