@@ -2,6 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import csv
 import json
+import sys
+import traceback
 from typing import Tuple
 
 from pytext.common.constants import Stage
@@ -276,4 +278,11 @@ class TensorBoardChannel(Channel):
             input_to_model (Any): the input to the model (required for PyTorch
                 models, since its execution graph is defined by run).
         """
-        self.summary_writer.add_graph(model, input_to_model, **kwargs)
+        try:
+            self.summary_writer.add_graph(model, input_to_model, **kwargs)
+        except Exception:
+            print(
+                "WARNING: Unable to export neural network graph to TensorBoard.",
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
