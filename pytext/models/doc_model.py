@@ -9,6 +9,7 @@ from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     LabelTensorizer,
     NumericLabelTensorizer,
+    RawJson,
     RawString,
     Tensorizer,
     TokenTensorizer,
@@ -66,7 +67,7 @@ class NewDocModel(DocModel_Deprecated):
     class Config(DocModel_Deprecated.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-            labels: LabelTensorizer.Config = LabelTensorizer.Config(allow_unknown=True)
+            labels: LabelTensorizer.Config = LabelTensorizer.Config()
             # for metric reporter
             raw_text: RawString.Config = RawString.Config(column="text")
 

@@ -11,7 +11,15 @@ from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils.data import Slot
 
-from .utils import BOS, EOS, PAD, SpecialToken, VocabBuilder, pad_and_tensorize
+from .utils import (
+    BOS,
+    EOS,
+    PAD,
+    SpecialToken,
+    VocabBuilder,
+    align_target_label,
+    pad_and_tensorize,
+)
 
 
 class Tensorizer(Component):
@@ -260,6 +268,8 @@ class CharacterTokenTensorizer(TokenTensorizer):
 class LabelTensorizer(Tensorizer):
     """Numberize labels. Label can be used as either input or target """
 
+    __EXPANSIBLE__ = True
+
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str = "label"
@@ -327,6 +337,69 @@ class LabelListTensorizer(LabelTensorizer):
     def sort_key(self, row):
         # use list length as sort key
         return row[1]
+
+
+class SoftLabelTensorizer(LabelTensorizer):
+    """
+    Handles numberizing labels for knowledge distillation. This still requires the same
+    label column as `LabelTensorizer` for the "true" label, but also processes soft
+    "probabilistic" labels generated from a teacher model, via three new columns.
+    """
+
+    class Config(LabelTensorizer.Config):
+        probs_column: str = "target_probs"
+        logits_column: str = "target_logits"
+        labels_column: str = "target_labels"
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            config.column,
+            config.allow_unknown,
+            config.pad_in_vocab,
+            config.probs_column,
+            config.logits_column,
+            config.labels_column,
+        )
+
+    def __init__(
+        self,
+        label_column: str = "label",
+        allow_unknown: bool = False,
+        pad_in_vocab: bool = False,
+        probs_column: str = "target_probs",
+        logits_column: str = "target_logits",
+        labels_column: str = "target_labels",
+    ):
+        column_schema = [
+            (label_column, str),
+            (probs_column, List[float]),
+            (logits_column, List[float]),
+            (labels_column, List[str]),
+        ]
+        Tensorizer.__init__(self, column_schema)
+        self.label_column = label_column
+        self.allow_unknown = allow_unknown
+        self.pad_in_vocab = pad_in_vocab
+        self.probs_column = probs_column
+        self.logits_column = logits_column
+        self.labels_column = labels_column
+
+    def numberize(self, row):
+        """Numberize hard and soft labels"""
+        label = self.vocab.lookup_all(row[self.label_column])
+        row_labels = row[self.labels_column]
+        probs = align_target_label(row[self.probs_column], row_labels, self.vocab.idx)
+        logits = align_target_label(row[self.logits_column], row_labels, self.vocab.idx)
+        return label, probs, logits
+
+    def tensorize(self, batch):
+        label, probs, logits = zip(*batch)
+        return (
+            pad_and_tensorize(label, self.pad_idx),
+            pad_and_tensorize(probs, dtype=torch.float),
+            pad_and_tensorize(logits, dtype=torch.float),
+        )
 
 
 class NumericLabelTensorizer(Tensorizer):

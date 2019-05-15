@@ -31,7 +31,7 @@ from pytext.utils import cuda, distributed, embeddings as embeddings_utils
 from pytext.utils.data import parse_json_array
 from torchtext import data as textdata
 
-from .utils import align_target_label
+from .utils import align_target_labels
 
 
 class CommonMetadata:
@@ -779,9 +779,9 @@ class DataHandler(Component):
         for name in self.labels:
             target = getattr(batch, name)
             if name in [Target.TARGET_PROB_FIELD, Target.TARGET_LOGITS_FIELD]:
-                label_list = self.metadata.target.vocab.itos
+                label_vocab = self.metadata.target.vocab.stoi
                 batch_label_list = getattr(batch, Target.TARGET_LABEL_FIELD)
-                target = align_target_label(target, label_list, batch_label_list)
+                target = align_target_labels(target, batch_label_list, label_vocab)
             targets.append(target)
         if len(targets) == 1:
             return targets[0]

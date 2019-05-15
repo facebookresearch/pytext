@@ -84,7 +84,7 @@ class PretrainedEmbedding(object):
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
-                    split_line = line.rstrip("\r\n").split(delimiter)
+                    split_line = line.rstrip("\r\n ").split(delimiter)
                     token = split_line[0]
                     if lowercase_tokens:
                         # lowercase here so that returned matrix doesn't contain

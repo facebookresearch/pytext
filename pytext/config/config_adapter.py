@@ -233,7 +233,34 @@ def old_tasks_deprecated(json_config):
     rename("SpanClassificationTask")
     rename("TreeParserTask")
     rename("WordTaggingTask")
+    return json_config
 
+
+@register_adapter(from_version=6)
+def v6_to_v7(json_config):
+    """
+    Make `LabelTensorizer` expansible. If the `labels` field was `{}`, convert it to the
+    original default `{LabelTensorizer: {}}`.
+    """
+    [task] = json_config["task"].values()
+    model = task.get("model")
+    if not model:
+        return json_config
+
+    model_vals = list(model.values())
+    if len(model_vals) != 1:
+        # either empty, or old data design
+        return json_config
+
+    inputs = model_vals[0].get("inputs")
+    if not inputs:
+        return json_config
+
+    labels = inputs.get("labels")
+    if labels is None or labels:
+        return json_config
+
+    inputs["labels"] = {"LabelTensorizer": {}}
     return json_config
 
 
