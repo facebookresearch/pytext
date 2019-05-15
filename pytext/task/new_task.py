@@ -10,6 +10,7 @@ from pytext.data.data import Data
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     MetricReporter,
+    PairwiseRankingMetricReporter,
     RegressionMetricReporter,
 )
 from pytext.models.doc_model import (
@@ -18,6 +19,9 @@ from pytext.models.doc_model import (
 )
 from pytext.models.model import BaseModel as Model
 from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
+from pytext.models.query_document_pairwise_ranking_model import (
+    NewQueryDocumentPairwiseRankingModel,
+)
 from pytext.trainers import Trainer, TrainingState
 from pytext.utils import cuda, precision, timing
 from torch import jit
@@ -269,4 +273,14 @@ class PairwiseClassification(NewTask):
         model: BasePairwiseModel.Config = PairwiseModel.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
+        )
+
+
+class QueryDocumentPairwiseRanking(NewTask):
+    class Config(NewTask.Config):
+        model: NewQueryDocumentPairwiseRankingModel.Config = (
+            NewQueryDocumentPairwiseRankingModel.Config()
+        )
+        metric_reporter: PairwiseRankingMetricReporter.Config = (
+            PairwiseRankingMetricReporter.Config()
         )
