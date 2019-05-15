@@ -37,6 +37,21 @@ class CrossEntropyLoss(Loss):
         )
 
 
+class NLLLoss(Loss):
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
+
+    def __call__(self, log_probs, targets, reduce=True):
+        return F.nll_loss(
+            log_probs,
+            targets,
+            ignore_index=self.ignore_index,
+            reduction="elementwise_mean" if reduce else "none",
+            weight=self.weight,
+        )
+
+
 class BinaryCrossEntropyLoss(Loss):
     class Config(ConfigBase):
         reweight_negative: bool = True
@@ -407,6 +422,7 @@ class MSELoss(Loss):
 class LabelSmoothedCrossEntropyLoss(Loss):
     class Config(ConfigBase):
         beta: float = 0.1
+        from_logits: bool = True
 
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         # weight values other than 1.0 gives inconsistent behavior
@@ -417,6 +433,7 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         self.ignore_index = ignore_index
         self.weight = weight
         self.beta = config.beta
+        self.from_logits = config.from_logits
 
     def __call__(self, logits, targets, reduce=True):
         """
@@ -425,7 +442,7 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         https://arxiv.org/pdf/1701.06548.pdf
         """
 
-        log_probs = F.log_softmax(logits, dim=1)
+        log_probs = F.log_softmax(logits, dim=1) if self.from_logits else logits
         cross_entropy_loss = F.nll_loss(
             log_probs,
             targets,
