@@ -6,6 +6,7 @@ import re
 from typing import List, Optional, Tuple, Type
 
 import torch
+from pytext.common import Padding
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
@@ -307,7 +308,11 @@ class LabelTensorizer(Tensorizer):
                 builder.add_all(labels)
         except GeneratorExit:
             self.vocab = builder.make_vocab()
-            self.pad_idx = self.vocab.idx[PAD] if self.pad_in_vocab else -1
+            self.pad_idx = (
+                self.vocab.idx[PAD]
+                if self.pad_in_vocab
+                else Padding.DEFAULT_LABEL_PAD_IDX
+            )
 
     def numberize(self, row):
         """Numberize labels."""

@@ -10,7 +10,7 @@ from .metric_reporter import MetricReporter
 from .pairwise_ranking_metric_reporter import PairwiseRankingMetricReporter
 from .regression_metric_reporter import RegressionMetricReporter
 from .word_tagging_metric_reporter import (
-    SimpleWordTaggingMetricReporter,
+    SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
 
@@ -25,5 +25,5 @@ __all__ = [
     "WordTaggingMetricReporter",
     "CompositionalMetricReporter",
     "PairwiseRankingMetricReporter",
-    "SimpleWordTaggingMetricReporter",
+    "SequenceTaggingMetricReporter",
 ]

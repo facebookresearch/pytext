@@ -60,6 +60,7 @@ class DFColumn:
 class Padding:
     WORD_LABEL_PAD = "PAD_LABEL"
     WORD_LABEL_PAD_IDX = 0
+    DEFAULT_LABEL_PAD_IDX = -1
 
 
 class VocabMeta:

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 from caffe2.python import core
+from pytext.common import Padding
 from pytext.config.component import create_loss
 from pytext.config.serialize import MissingValueError
 from pytext.data.joint_data_handler import SEQ_LENS  # TODO move to constant
@@ -38,11 +39,11 @@ class WordTaggingOutputLayer(OutputLayerBase):
         cls,
         config: Config,
         metadata: Optional[FieldMeta] = None,
-        labels: Optional[Vocabulary] = None,
+        label_vocab: Optional[Vocabulary] = None,
     ):
-        if labels is not None:
-            vocab = list(labels)
-            pad_token_idx = labels.idx[PAD]
+        if label_vocab is not None:
+            vocab = list(label_vocab)
+            pad_token_idx = label_vocab.idx.get(PAD, Padding.DEFAULT_LABEL_PAD_IDX)
         else:
             vocab = metadata.vocab.itos
             pad_token_idx = metadata.pad_token_idx
