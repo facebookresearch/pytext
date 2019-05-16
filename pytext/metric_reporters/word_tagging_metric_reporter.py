@@ -85,26 +85,33 @@ class WordTaggingMetricReporter(MetricReporter):
         return metrics.micro_scores.f1
 
 
-class SimpleWordTaggingMetricReporter(MetricReporter):
-    def __init__(self, label_names, channels):
+class SequenceTaggingMetricReporter(MetricReporter):
+    def __init__(self, label_names, pad_idx, channels):
         super().__init__(channels)
         self.label_names = label_names
+        self.pad_idx = pad_idx
 
     @classmethod
-    def from_config(cls, config, tensorizers):
+    def from_config(cls, config, tensorizer):
         print(
-            "WARNING - SimpleWordTaggingMetricReporter ignoring output_path:",
+            "WARNING - SequenceTaggingMetricReporter ignoring output_path:",
             config.output_path,
         )
-        return SimpleWordTaggingMetricReporter(
-            channels=[ConsoleChannel()], label_names=tensorizers["labels"].vocab
+        return SequenceTaggingMetricReporter(
+            channels=[ConsoleChannel()],
+            label_names=list(tensorizer.vocab),
+            pad_idx=tensorizer.pad_idx,
         )
 
     def calculate_metric(self):
         return compute_classification_metrics(
             list(
                 itertools.chain.from_iterable(
-                    (LabelPrediction(s, p, e) for s, p, e in zip(scores, pred, expect))
+                    (
+                        LabelPrediction(s, p, e)
+                        for s, p, e in zip(scores, pred, expect)
+                        if e != self.pad_idx
+                    )
                     for scores, pred, expect in zip(
                         self.all_scores, self.all_preds, self.all_targets
                     )
