@@ -51,8 +51,8 @@ def GetTensor(tensor):
 
 
 def tensor(data, dtype):
-    return torch.tensor(
-        data,
-        dtype=dtype,
-        device="cuda:{}".format(torch.cuda.current_device()) if CUDA_ENABLED else "cpu",
-    )
+    return torch.tensor(data, dtype=dtype, device=device())
+
+
+def device():
+    return "cuda:{}".format(torch.cuda.current_device()) if CUDA_ENABLED else "cpu"

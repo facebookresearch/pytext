@@ -8,6 +8,7 @@ import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import data as data_utils, precision
+from pytext.utils.label import get_label_weights
 from torchtext import data as textdata
 from torchtext.vocab import Vocab
 
@@ -149,22 +150,9 @@ class DocLabelField(Field):
     # TODO: Create LabelFieldMeta class
     def get_meta(self):
         meta = super().get_meta()
-        # Now that the vocabulary has been built, prune the label_weights to
-        # remove the labels that do not exist in the dataset
-        pruned_label_weights = {
-            meta.vocab.stoi[k]: v
-            for (k, v) in self.label_weights.items()
-            if k in meta.vocab.stoi
-        }
-        if len(pruned_label_weights) == 0:
-            return meta
-
-        # All unspecified classes will get a weight of 1
-        meta.label_weights = torch.ones(meta.vocab_size)
-        for k, v in pruned_label_weights.items():
-            meta.label_weights[k] = v
-        # Create the weight tensor on the right device
-        meta.label_weights = meta.label_weights.numpy()
+        weights_tensor = get_label_weights(meta.vocab.stoi, self.label_weights)
+        if weights_tensor is not None:
+            meta.label_weights = weights_tensor.numpy()
         return meta
 
 

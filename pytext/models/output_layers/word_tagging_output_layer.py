@@ -14,6 +14,7 @@ from pytext.data.utils import PAD, Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss
 from pytext.models.crf import CRF
+from pytext.utils.label import get_label_weights
 
 from .output_layer_base import OutputLayerBase
 from .utils import OutputLayerUtils
@@ -33,6 +34,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
 
     class Config(OutputLayerBase.Config):
         loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
+        label_weights: Dict[str, float] = {}
 
     @classmethod
     def from_config(
@@ -43,11 +45,21 @@ class WordTaggingOutputLayer(OutputLayerBase):
     ):
         if label_vocab is not None:
             vocab = list(label_vocab)
+            vocab_dict = label_vocab.idx
             pad_token_idx = label_vocab.idx.get(PAD, Padding.DEFAULT_LABEL_PAD_IDX)
         else:
             vocab = metadata.vocab.itos
             pad_token_idx = metadata.pad_token_idx
-        return cls(vocab, create_loss(config.loss, ignore_index=pad_token_idx))
+            vocab_dict = metadata.vocab.stoi
+        label_weights = (
+            get_label_weights(vocab_dict, config.label_weights)
+            if config.label_weights
+            else None
+        )
+        return cls(
+            vocab,
+            create_loss(config.loss, weight=label_weights, ignore_index=pad_token_idx),
+        )
 
     def get_loss(
         self,
