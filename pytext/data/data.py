@@ -5,7 +5,7 @@ import functools
 import itertools
 import math
 import random
-from typing import Dict, Iterable, Optional, Type
+from typing import Any, Dict, Iterable, MutableMapping, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, Registry, create_component
@@ -191,6 +191,8 @@ class Data(Component):
         #: define epoch to be a fixed number of batches.
         #: If not set, use the entire dataset
         epoch_size: Optional[int] = None
+        #: cache numberized result in memory, turn off when CPU memory bound.
+        in_memory: Optional[bool] = True
 
     @classmethod
     def from_config(
@@ -227,6 +229,7 @@ class Data(Component):
             batcher=batcher,
             sort_key=config.sort_key,
             epoch_size=config.epoch_size,
+            in_memory=config.in_memory,
             **kwargs,
         )
 
@@ -237,6 +240,7 @@ class Data(Component):
         batcher: Batcher = None,
         sort_key: Optional[str] = None,
         epoch_size: Optional[int] = None,
+        in_memory: Optional[bool] = False,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
@@ -245,7 +249,9 @@ class Data(Component):
         self.batcher = batcher or Batcher()
         self.sort_key = sort_key
         self.epoch_size = epoch_size
+        self.in_memory = in_memory
         self.batch = {Stage.TRAIN: None, Stage.EVAL: None, Stage.TEST: None}
+        self.numberized_cache: MutableMapping[str, Any] = {}
         full_train_data = (
             data_source.train_unsharded
             if isinstance(data_source, ShardedDataSource)
@@ -261,7 +267,16 @@ class Data(Component):
                 Stage.EVAL: data_source.eval,
             }[stage]
 
-            numberized_rows = self.numberize_rows(rows)
+            if self.in_memory:
+                numberized_rows = self.numberized_cache.get(stage, None)
+                if not numberized_rows:
+                    numberized_rows = list(self.numberize_rows(rows))
+                    self.numberized_cache[stage] = numberized_rows
+                else:
+                    print(f"Get numberized rows from cache in stage: {stage}")
+            else:
+                numberized_rows = self.numberize_rows(rows)
+
             batches = self.batcher.batchify(
                 numberized_rows,
                 sort_key=(
