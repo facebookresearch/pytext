@@ -119,12 +119,21 @@ class TSVDataSource(RootDataSource):
 
 
 class MultilingualTSVDataSource(TSVDataSource):
+    """
+    Data Source for multi-lingual data. The input data can have multiple
+    text fields and each field can either have the same language or different
+    languages. The `data_source_languages` dict contains the language information
+    for each text field and this should match the number of language identifiers
+    specified in `language_columns`.
+    """
+
     class Config(TSVDataSource.Config):
-        data_source_languages: Dict[str, str] = {
-            "train": "en",
-            "eval": "en",
-            "test": "en",
+        data_source_languages: Dict[str, List[str]] = {
+            "train": ["en"],
+            "eval": ["en"],
+            "test": ["en"],
         }
+        language_columns: List[str] = ["language"]
 
     def __init__(
         self,
@@ -134,19 +143,25 @@ class MultilingualTSVDataSource(TSVDataSource):
         field_names=None,
         delimiter=Config.delimiter,
         data_source_languages=Config.data_source_languages,
+        language_columns=Config.language_columns,
         **kwargs,
     ):
         super().__init__(
             train_file, test_file, eval_file, field_names, delimiter, **kwargs
         )
         self.data_source_languages = data_source_languages
+        self.language_columns = language_columns
+        assert len(data_source_languages["train"]) == len(
+            self.language_columns
+        ), "Number of languages and language columns should be the same."
 
-    def _convert_raw_source(self, source, language):
+    def _convert_raw_source(self, source, languages):
         for row in source:
             example = self._read_example(row)
             if example is None:
                 continue
-            example["language"] = language
+            for col, lang in zip(self.language_columns, languages):
+                example[col] = lang
             yield example
 
     @generator_property
