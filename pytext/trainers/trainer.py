@@ -273,7 +273,6 @@ class Trainer(TrainerBase):
             model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
         )
         self.set_up_training(state, training_data)
-
         while self.continue_training(state):
             state.epoch += 1
             state.epochs_since_last_improvement += 1
@@ -288,15 +287,15 @@ class Trainer(TrainerBase):
                 print(f"start training epoch {state.epoch}", flush=True)
                 self.run_epoch(state, training_data, metric_reporter)
 
+            if not self.config.do_eval:
+                continue
+
             with timing.time("eval epoch"):
                 state.stage = Stage.EVAL
                 model.eval(Stage.EVAL)
                 print(f"start evaluating epoch {state.epoch}", flush=True)
                 with torch.no_grad():
                     eval_metric = self.run_epoch(state, eval_data, metric_reporter)
-
-            if not self.config.do_eval:
-                continue
 
             # Step the learning rate scheduler(s)
             assert eval_metric is not None
@@ -314,6 +313,15 @@ class Trainer(TrainerBase):
             if better_model or train_config.save_all_checkpoints:
                 self.save_checkpoint(state, train_config)
 
+        if self.optimizer.finalize():
+            state.stage = Stage.EVAL
+            model.eval(Stage.EVAL)
+            print(f"start evaluating finalized state", flush=True)
+            with torch.no_grad():
+                eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+            if metric_reporter.compare_metric(eval_metric, state.best_model_metric):
+                state.best_model_metric = eval_metric
+                self.save_checkpoint(state, train_config)
         # Only bother loading the best model for master worker
         if rank == 0 and state.best_model_state is not None:
             self.load_best_model(state)
