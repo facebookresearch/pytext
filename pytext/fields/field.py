@@ -152,7 +152,7 @@ class DocLabelField(Field):
         meta = super().get_meta()
         weights_tensor = get_label_weights(meta.vocab.stoi, self.label_weights)
         if weights_tensor is not None:
-            meta.label_weights = weights_tensor.numpy()
+            meta.label_weights = weights_tensor.cpu().numpy()
         return meta
 
 
