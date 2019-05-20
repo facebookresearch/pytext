@@ -1,0 +1,32 @@
+[
+  {
+    "original": {
+      "task": {
+        "LMTask_Deprecated": {
+          "data_handler": {
+            "LanguageModelDataHandler": {
+              "train_path": "tests/data/train_data_tiny.tsv",
+              "eval_path": "tests/data/test_data_tiny.tsv",
+              "test_path": "tests/data/test_data_tiny.tsv"
+            }
+          }
+        }
+      },
+      "version": 7
+    },
+    "adapted": {
+      "task": {
+        "LMTask_Deprecated": {
+          "data_handler": {
+            "LanguageModelDataHandler": {
+              "train_path": "tests/data/train_data_tiny.tsv",
+              "eval_path": "tests/data/test_data_tiny.tsv",
+              "test_path": "tests/data/test_data_tiny.tsv"
+            }
+          }
+        }
+      },
+      "version": 8
+    }
+  }
+]
