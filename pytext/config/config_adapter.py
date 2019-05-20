@@ -177,13 +177,17 @@ def v3_to_v4(json_config):
     return json_config
 
 
+def deprecate(json_config, t):
+    for section in find_dicts_containing_key(json_config, t):
+        section[t + "_Deprecated"] = section.pop(t)
+
+
 @register_adapter(from_version=4)
 def doc_model_deprecated(json_config):
     """
     Rename DocModel to DocModel_Deprecated
     """
-    for section in find_dicts_containing_key(json_config, "DocModel"):
-        section["DocModel_Deprecated"] = section.pop("DocModel")
+    deprecate(json_config, "DocModel")
 
     return json_config
 
@@ -193,46 +197,42 @@ def old_tasks_deprecated(json_config):
     """
     Rename tasks with data_handler config to _Deprecated
     """
+    deprecate(json_config, "BertClassificationTask")
+    deprecate(json_config, "BertPairClassificationTask")
+    deprecate(json_config, "BertPairwiseClassificationTask")
+    deprecate(json_config, "COLMClassifyTask")
+    deprecate(json_config, "ContextSCLSTMCompositionalTask")
+    deprecate(json_config, "ContextSeq2SeqTask")
+    deprecate(json_config, "ContextualIntentSlotTask")
+    deprecate(json_config, "DocClassificationTask")
+    deprecate(json_config, "ElmoDocClassificationTask")
+    deprecate(json_config, "ElmoFineTunePairwiseClassificationTask")
+    deprecate(json_config, "EnsembleTask")
+    deprecate(json_config, "FederatedLearningTaskBase")
+    deprecate(json_config, "FLDocClassificationTask")
+    deprecate(json_config, "FLQueryDocumentPairwiseRankingTask")
+    deprecate(json_config, "I18NDocClassificationTask")
+    deprecate(json_config, "I18NJointTextTask")
+    deprecate(json_config, "JointTextTask")
+    deprecate(json_config, "KDDocClassificationTask")
+    deprecate(json_config, "LMTask")
+    deprecate(json_config, "NLGSeq2SeqTask")
+    deprecate(json_config, "PairClassificationTask")
+    deprecate(json_config, "PairwiseAttentionClassificationTask")
+    deprecate(json_config, "QueryDocumentPairwiseRankingTask")
+    deprecate(json_config, "SCLSTMCompositionalTask")
+    deprecate(json_config, "SCLSTMTask")
+    deprecate(json_config, "SemanticParsingCppTask")
+    deprecate(json_config, "SemanticParsingTask")
+    deprecate(json_config, "Seq2SeqTask")
+    deprecate(json_config, "SeqNNTask")
+    deprecate(json_config, "SGNNClassificationTask")
+    deprecate(json_config, "ShallowClassificationTask")
+    deprecate(json_config, "ShallowTaggingTask")
+    deprecate(json_config, "SpanClassificationTask")
+    deprecate(json_config, "TreeParserTask")
+    deprecate(json_config, "WordTaggingTask")
 
-    def rename(t):
-        for section in find_dicts_containing_key(json_config, t):
-            section[t + "_Deprecated"] = section.pop(t)
-
-    rename("BertClassificationTask")
-    rename("BertPairClassificationTask")
-    rename("BertPairwiseClassificationTask")
-    rename("COLMClassifyTask")
-    rename("ContextSCLSTMCompositionalTask")
-    rename("ContextSeq2SeqTask")
-    rename("ContextualIntentSlotTask")
-    rename("DocClassificationTask")
-    rename("ElmoDocClassificationTask")
-    rename("ElmoFineTunePairwiseClassificationTask")
-    rename("EnsembleTask")
-    rename("FederatedLearningTaskBase")
-    rename("FLDocClassificationTask")
-    rename("FLQueryDocumentPairwiseRankingTask")
-    rename("I18NDocClassificationTask")
-    rename("I18NJointTextTask")
-    rename("JointTextTask")
-    rename("KDDocClassificationTask")
-    rename("LMTask")
-    rename("NLGSeq2SeqTask")
-    rename("PairClassificationTask")
-    rename("PairwiseAttentionClassificationTask")
-    rename("QueryDocumentPairwiseRankingTask")
-    rename("SCLSTMCompositionalTask")
-    rename("SCLSTMTask")
-    rename("SemanticParsingCppTask")
-    rename("SemanticParsingTask")
-    rename("Seq2SeqTask")
-    rename("SeqNNTask")
-    rename("SGNNClassificationTask")
-    rename("ShallowClassificationTask")
-    rename("ShallowTaggingTask")
-    rename("SpanClassificationTask")
-    rename("TreeParserTask")
-    rename("WordTaggingTask")
     return json_config
 
 
@@ -261,6 +261,16 @@ def v6_to_v7(json_config):
         return json_config
 
     inputs["labels"] = {"LabelTensorizer": {}}
+    return json_config
+
+
+@register_adapter(from_version=7)
+def lm_model_deprecated(json_config):
+    """
+    Rename LM model to _Deprecated (LMTask is already deprecated in v5)
+    """
+    deprecate(json_config, "LMLSTM")
+
     return json_config
 
 

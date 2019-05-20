@@ -1,0 +1,26 @@
+{
+  "version": 8,
+  "task": {
+    "LMTask": {
+      "data": {
+        "source": {
+          "TSVDataSource": {
+            "field_names": ["text"],
+            "train_filename": "pytext/tests/data/alarm_lm_tiny.tsv",
+            "test_filename": "pytext/tests/data/alarm_lm_tiny.tsv",
+            "eval_filename": "pytext/tests/data/alarm_lm_tiny.tsv"
+          }
+        }
+      },
+      "model": {
+        "tied_weights": true,
+        "stateful": true,
+        "decoder": {
+          "hidden_dims": [
+            10
+          ]
+        }
+      }
+    }
+  }
+}

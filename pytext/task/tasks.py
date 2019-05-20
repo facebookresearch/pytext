@@ -35,7 +35,7 @@ from pytext.metric_reporters import (
 from pytext.models.doc_model import DocModel_Deprecated as DocModel
 from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
 from pytext.models.joint_model import JointModel
-from pytext.models.language_models.lmlstm import LMLSTM
+from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.pair_classification_model import PairClassificationModel
 from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocumentPairwiseRankingModel,
@@ -199,9 +199,17 @@ class LMTask_Deprecated(Task_Deprecated):
         data_handler: Union[
             LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
         ] = LanguageModelDataHandler.Config()
-        model: LMLSTM.Config = LMLSTM.Config()
+        model: LMLSTM_Deprecated.Config = LMLSTM_Deprecated.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: Optional[WordLabelConfig] = None
+        metric_reporter: LanguageModelMetricReporter.Config = (
+            LanguageModelMetricReporter.Config()
+        )
+
+
+class LMTask(NewTask):
+    class Config(NewTask.Config):
+        model: LMLSTM.Config = LMLSTM.Config()
         metric_reporter: LanguageModelMetricReporter.Config = (
             LanguageModelMetricReporter.Config()
         )
