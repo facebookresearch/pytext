@@ -386,7 +386,7 @@ def export(context, model, output_path, output_onnx_path):
 @click.option("--quantize", help="whether to quantize the model")
 @click.pass_context
 def torchscript_export(context, model, output_path, quantize=False):
-    """Convert a pytext model snapshot to a caffe2 model."""
+    """Convert a pytext model snapshot to a torchscript model."""
     config = context.obj.load_config()
     model = model or config.save_snapshot_path
     output_path = output_path or f"{config.save_snapshot_path}.torchscript"
