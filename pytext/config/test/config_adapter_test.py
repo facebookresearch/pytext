@@ -7,12 +7,8 @@ import os
 import unittest
 
 from pytext.builtin_task import register_builtin_tasks
-from pytext.config import LATEST_VERSION, PyTextConfig, config_from_json
-from pytext.config.config_adapter import (
-    ADAPTERS,
-    upgrade_one_version,
-    upgrade_to_latest,
-)
+from pytext.config import LATEST_VERSION, pytext_config_from_json
+from pytext.config.config_adapter import ADAPTERS, upgrade_one_version
 
 
 register_builtin_tasks()
@@ -49,5 +45,5 @@ class ConfigAdapterTest(unittest.TestCase):
             with open(p) as f:
                 test_data = json.load(f)
                 for test_case in test_data:
-                    json_config = upgrade_to_latest(test_case["original"])
-                    config_from_json(PyTextConfig, json_config)
+                    # make sure the config can be instantiated, don't need return value
+                    pytext_config_from_json(test_case["original"])
