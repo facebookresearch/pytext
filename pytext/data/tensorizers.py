@@ -165,14 +165,16 @@ class TokenTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
-        tokens, _, _ = self._lookup_tokens(row[self.text_column])
-        return tokens, len(tokens)
+        tokens, start_idx, end_idx = self._lookup_tokens(row[self.text_column])
+        token_ranges = list(zip(start_idx, end_idx))
+        return tokens, len(tokens), token_ranges
 
     def tensorize(self, batch):
-        tokens, seq_lens = zip(*batch)
+        tokens, seq_lens, token_ranges = zip(*batch)
         return (
             pad_and_tensorize(tokens, self.vocab.idx[PAD]),
             pad_and_tensorize(seq_lens),
+            pad_and_tensorize(token_ranges),
         )
 
     def sort_key(self, row):

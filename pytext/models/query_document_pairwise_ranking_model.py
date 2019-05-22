@@ -184,9 +184,9 @@ class NewQueryDocumentPairwiseRankingModel(PairwiseModel):
 
     def arrange_model_inputs(self, tensor_dict):
         return (
-            tensor_dict["pos_response"],
-            tensor_dict["neg_response"],
-            tensor_dict["query"],
+            tensor_dict["pos_response"][:2],
+            tensor_dict["neg_response"][:2],
+            tensor_dict["query"][:2],
         )
 
     def arrange_targets(self, tensor_dict):
