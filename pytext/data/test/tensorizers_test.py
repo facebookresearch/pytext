@@ -124,11 +124,11 @@ class TensorizersTest(unittest.TestCase):
 
         rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
         tensors = (tensorizer.numberize(row) for row in rows)
-        tokens, seq_len = next(tensors)
+        tokens, seq_len, _ = next(tensors)
         self.assertEqual([24, 0, 0, 0], tokens)
         self.assertEqual(4, seq_len)
 
-        tokens, seq_len = next(tensors)
+        tokens, seq_len, _ = next(tensors)
         self.assertEqual([13, 47, 9], tokens)
         self.assertEqual(3, seq_len)
 

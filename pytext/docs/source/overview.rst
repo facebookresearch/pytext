@@ -149,7 +149,7 @@ Code Example
           return cls(embedding, representation, decoder, output_layer)
 
       def arrange_model_inputs(self, tensor_dict):
-          tokens, seq_lens = tensor_dict["tokens"]
+          tokens, seq_lens, _ = tensor_dict["tokens"]
           return (tokens, seq_lens)
 
       def arrange_targets(self, tensor_dict):
@@ -165,4 +165,3 @@ Code Example
           representation = self.representation(final_embedding)
 
           return self.decoder(representation)
-

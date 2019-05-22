@@ -43,7 +43,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
         self.assertEqual(set(self.tensorizers), set(batch))
-        tokens, seq_lens = batch["tokens"]
+        tokens, seq_lens, _ = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
         self.assertEqual((10,), batch["labels"].size())
         self.assertEqual({"tokens", "labels"}, set(batch))
@@ -56,7 +56,7 @@ class DataTest(unittest.TestCase):
         self.assertEqual(1, len(batches))
         batch = next(iter(batches))
         self.assertEqual({"tokens"}, set(batch))
-        tokens, seq_lens = batch["tokens"]
+        tokens, seq_lens, _ = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
         self.assertEqual(10, len(tokens))
 
@@ -95,7 +95,7 @@ class DataTest(unittest.TestCase):
         )
         batches = list(data.batches(Stage.TRAIN))
         batch = next(iter(batches))
-        _, seq_lens = batch["tokens"]
+        _, seq_lens, _ = batch["tokens"]
         seq_lens = seq_lens.tolist()
         for i in range(len(seq_lens) - 1):
             self.assertTrue(seq_lens[i] >= seq_lens[i + 1])

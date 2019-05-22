@@ -268,7 +268,7 @@ class PairwiseModel(BasePairwiseModel):
         )
 
     def arrange_model_inputs(self, tensor_dict):
-        return tensor_dict["tokens1"], tensor_dict["tokens2"]
+        return tensor_dict["tokens1"][:2], tensor_dict["tokens2"][:2]
 
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]

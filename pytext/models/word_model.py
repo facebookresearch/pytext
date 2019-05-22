@@ -104,7 +104,7 @@ class NewWordTaggingModel(Model):
             self.find_unused_parameters = False
 
     def arrange_model_inputs(self, tensor_dict):
-        tokens, seq_lens = tensor_dict["tokens"]
+        tokens, seq_lens, _ = tensor_dict["tokens"]
         return (tokens, seq_lens)
 
     def arrange_targets(self, tensor_dict):
