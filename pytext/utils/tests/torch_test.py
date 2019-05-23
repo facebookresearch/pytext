@@ -4,7 +4,8 @@
 import io
 import unittest
 
-from pytext.utils.torch import BPE, Vocabulary, utf8_chars
+import torch
+from pytext.utils.torch import BPE, Vocabulary, make_byte_inputs, utf8_chars
 from torch import jit
 
 
@@ -98,3 +99,37 @@ class BPETest(unittest.TestCase):
             ["hello_EOW", "world_EOW", "th", "is_EOW", "is_EOW", "bpe_EOW", "今_EOW"],
             tokenized,
         )
+
+    def test_make_bytes_input(self):
+        s1 = "I want some coffee today"
+        s2 = "Turn it up"
+        max_char_length = 5
+
+        batch = [s1.split(), s2.split()]
+        bytes, seq_lens = make_byte_inputs(batch, max_char_length)
+
+        def to_bytes(word, pad_to):
+            return list(word.encode()) + [0] * (pad_to - len(word))
+
+        expected_bytes = [
+            [
+                to_bytes("I", 5),
+                to_bytes("want", 5),
+                to_bytes("some", 5),
+                to_bytes("coffe", 5),
+                to_bytes("today", 5),
+            ],
+            [
+                to_bytes("Turn", 5),
+                to_bytes("it", 5),
+                to_bytes("up", 5),
+                to_bytes("", 5),
+                to_bytes("", 5),
+            ],
+        ]
+        expected_seq_lens = [5, 3]
+
+        self.assertIsInstance(bytes, torch.LongTensor)
+        self.assertIsInstance(seq_lens, torch.LongTensor)
+        self.assertEqual(bytes.tolist(), expected_bytes)
+        self.assertEqual(seq_lens.tolist(), expected_seq_lens)

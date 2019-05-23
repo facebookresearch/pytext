@@ -2,12 +2,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import io
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
-from torch import Tensor, jit
+import torch
 
 
-@jit.script
+@torch.jit.script
 def list_max(l: List[int]):
     max_value = l[0]  # fine to throw if empty
     for i in range(len(l) - 1):  # don't forget the +1
@@ -15,7 +15,7 @@ def list_max(l: List[int]):
     return max_value
 
 
-@jit.script
+@torch.jit.script
 def list_membership(item: int, list: List[int]):
     item_present = False
     for i in list:
@@ -24,7 +24,7 @@ def list_membership(item: int, list: List[int]):
     return item_present
 
 
-class Vocabulary(jit.ScriptModule):
+class Vocabulary(torch.jit.ScriptModule):
     def __init__(
         self,
         vocab_list,
@@ -34,34 +34,34 @@ class Vocabulary(jit.ScriptModule):
         eos_idx: int = -1,
     ):
         super().__init__()
-        self.vocab = jit.Attribute(vocab_list, List[str])
-        self.unk_idx = jit.Attribute(unk_idx, int)
-        self.pad_idx = jit.Attribute(pad_idx, int)
-        self.eos_idx = jit.Attribute(eos_idx, int)
-        self.bos_idx = jit.Attribute(bos_idx, int)
-        self.idx = jit.Attribute(
+        self.vocab = torch.jit.Attribute(vocab_list, List[str])
+        self.unk_idx = torch.jit.Attribute(unk_idx, int)
+        self.pad_idx = torch.jit.Attribute(pad_idx, int)
+        self.eos_idx = torch.jit.Attribute(eos_idx, int)
+        self.bos_idx = torch.jit.Attribute(bos_idx, int)
+        self.idx = torch.jit.Attribute(
             {word: i for i, word in enumerate(vocab_list)}, Dict[str, int]
         )
 
-    @jit.script_method
+    @torch.jit.script_method
     def lookup_indices_1d(self, values: List[str]) -> List[int]:
-        result = jit.annotate(List[int], [])
+        result = torch.jit.annotate(List[int], [])
         for value in values:
             result.append(self.idx.get(value, self.unk_idx))
         return result
 
-    @jit.script_method
+    @torch.jit.script_method
     def lookup_indices_2d(self, values: List[List[str]]) -> List[List[int]]:
-        result = jit.annotate(List[List[int]], [])
+        result = torch.jit.annotate(List[List[int]], [])
         for value in values:
             result.append(self.lookup_indices_1d(value))
         return result
 
-    @jit.script_method
+    @torch.jit.script_method
     def lookup_words_1d(
-        self, values: Tensor, filter_token_list: List[int] = ()
+        self, values: torch.Tensor, filter_token_list: List[int] = ()
     ) -> List[str]:
-        result = jit.annotate(List[str], [])
+        result = torch.jit.annotate(List[str], [])
         for idx in range(values.size(0)):
             value = int(values[idx])
             if not list_membership(value, filter_token_list):
@@ -72,7 +72,7 @@ class Vocabulary(jit.ScriptModule):
         return result
 
 
-@jit.script
+@torch.jit.script
 def utf8_chars(s: str) -> List[str]:
     """An implementation of UTF8 character iteration in TorchScript.
     There are no bitwise operations in torchscript, so we compare directly to
@@ -89,7 +89,7 @@ def utf8_chars(s: str) -> List[str]:
     representation, then append that many bytes as a character and move past
     them to the next start byte.
     """
-    chars = jit.annotate(List[str], [])
+    chars = torch.jit.annotate(List[str], [])
     i = 0
     while i < len(s):
         byte = ord(s[i])
@@ -116,7 +116,7 @@ def utf8_chars(s: str) -> List[str]:
     return chars
 
 
-class BPE(jit.ScriptModule):
+class BPE(torch.jit.ScriptModule):
     """Byte-pair encoding implementation in TorchScript.
 
     vocab_file should be a file-like object separated by newlines, where each line
@@ -163,8 +163,8 @@ class BPE(jit.ScriptModule):
         eow should be a string which corresponds to the EOW used in the vocab
         dictionary."""
         super().__init__()
-        self.vocab = jit.Attribute(vocab, Dict[str, int])
-        self.eow = jit.Attribute(eow, str)
+        self.vocab = torch.jit.Attribute(vocab, Dict[str, int])
+        self.eow = torch.jit.Attribute(eow, str)
 
     @classmethod
     def from_vocab_file(cls, vocab_file: io.IOBase) -> "BPE":
@@ -187,7 +187,7 @@ class BPE(jit.ScriptModule):
         # and score them according to reverse of their index in the file.
         return {word: num_words - i for i, word in enumerate(words)}
 
-    @jit.script_method
+    @torch.jit.script_method
     def bpe_token(self, token: str) -> List[str]:
         # If full token is in vocab, we're done.
         full_token = token + self.eow
@@ -268,9 +268,9 @@ class BPE(jit.ScriptModule):
 
         return parts
 
-    @jit.script_method
+    @torch.jit.script_method
     def tokenize(self, tokens: List[str]) -> List[str]:
-        bpe_tokens = jit.annotate(List[str], [])
+        bpe_tokens = torch.jit.annotate(List[str], [])
 
         for token in tokens:
             # extend not implemented
@@ -278,3 +278,47 @@ class BPE(jit.ScriptModule):
                 bpe_tokens.append(part)
 
         return bpe_tokens
+
+
+@torch.jit.script
+def make_sequence_lengths(batch: List[List[str]]) -> List[int]:
+    seq_lens = torch.jit.annotate(List[int], [])
+    for sentence in batch:
+        seq_lens.append(len(sentence))
+    return seq_lens
+
+
+@torch.jit.script
+def pad_2d(
+    batch: List[List[int]], seq_lens: List[int], pad_idx: int
+) -> List[List[int]]:
+    pad_to_length = list_max(seq_lens)
+    for sentence in batch:
+        for _ in range(pad_to_length - len(sentence)):
+            sentence.append(pad_idx)
+    return batch
+
+
+@torch.jit.script
+def make_byte_inputs(
+    batch: List[List[str]], max_byte_len: int, offset_for_non_padding: int = 0
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    seq_lens = make_sequence_lengths(batch)
+    max_num_tokens = list_max(seq_lens)
+    bytes = torch.zeros(len(batch), max_num_tokens, max_byte_len, dtype=torch.long)
+
+    for batch_index in range(len(batch)):
+        sentence = batch[batch_index]
+        for token_index in range(len(sentence)):
+            token = sentence[token_index]
+            for byte_index in range(min(len(token), max_byte_len)):
+                s = token[byte_index]
+                # use empty string as eos because torchscript not support chr()
+                if s == "":
+                    v = 256
+                else:
+                    v = ord(s)
+                # add offset_for_non_padding to conform to Fairseq pre-training
+                bytes[batch_index][token_index][byte_index] = v + offset_for_non_padding
+
+    return bytes, torch.tensor(seq_lens)

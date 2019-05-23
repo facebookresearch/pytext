@@ -287,6 +287,35 @@ def lm_model_deprecated(json_config):
     Rename LM model to _Deprecated (LMTask is already deprecated in v5)
     """
     deprecate(json_config, "LMLSTM")
+    return json_config
+
+
+@register_adapter(from_version=8)
+def v8_to_v9(json_config):
+    """
+    Rename "CharacterTokenTensorizer" -> "ByteTokenTensorizer" and update sub-fields.
+    In "BiTransformer" model, rename input "characters" -> "bytes".
+    """
+    [task] = json_config["task"].values()
+    model = task.get("model")
+    if not model:
+        return json_config
+
+    def update_char_tokenizer_config(char_config, need_offset=False):
+        if "max_char_length" in char_config:
+            char_config["max_byte_len"] = char_config.pop("max_char_length")
+        char_config["offset_for_non_padding"] = int(need_offset)
+        return char_config
+
+    if len(model) == 1 and "BiTransformer" in model:
+        model_val = list(model.values())[0]
+        if "inputs" not in model_val:
+            model_val["inputs"] = {}
+        inputs = model_val["inputs"]
+        char_config = inputs.pop("characters", {})
+        char_config = update_char_tokenizer_config(char_config, need_offset=True)
+        model_val["inputs"]["bytes"] = char_config
+        return json_config
 
     return json_config
 
