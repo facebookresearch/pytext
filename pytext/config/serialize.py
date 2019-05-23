@@ -48,19 +48,30 @@ def _extend_tuple_type(cls, value):
 
 
 def _union_from_json(subclasses, json_obj):
-    if type(json_obj) is not dict:
+    if not _is_dict(json_obj):
         raise IncorrectTypeError(
             f"incorrect Union value {json_obj} for union {subclasses}"
         )
-    type_name = list(json_obj)[0]
-    for subclass in subclasses:
-        if type(None) != subclass and (
-            type_name.lower() == _canonical_typename(subclass).lower()
-        ):
-            return _value_from_json(subclass, json_obj[type_name])
-    raise UnionTypeError(
-        f"no suitable type found for {type_name} in union {subclasses}"
-    )
+    subclasses_dict = {
+        _canonical_typename(subclass).lower(): subclass
+        for subclass in subclasses
+        if type(None) != subclass
+    }
+    type_name = list(json_obj)[0].lower()
+    if len(json_obj) == 1 and type_name in subclasses_dict:
+        json_obj = next(iter(json_obj.values()))
+    else:
+        type_name = next(iter(subclasses_dict))
+        print(
+            f"can not find class type in json, trying with first class "
+            + f"{type_name} in the union"
+        )
+    try:
+        return _value_from_json(subclasses_dict[type_name], json_obj)
+    except Exception as e:
+        raise UnionTypeError(
+            f"failed to parse union {subclasses} from json payload {json_obj}"
+        ) from e
 
 
 def _is_optional(cls):
@@ -107,7 +118,7 @@ def _value_from_json(cls, value):
 
 
 def _try_component_config_from_json(cls, value):
-    if type(value) is dict and len(value) == 1:
+    if _is_dict(value) and len(value) == 1:
         options = Registry.subconfigs(cls)
         type_name = list(value)[0]
         for option in options:
@@ -225,6 +236,12 @@ def _get_class_type(cls):
     (Union, List) of the created object
     """
     return getattr(cls, "__extra__", getattr(cls, "__origin__", cls))
+
+
+def _is_dict(obj):
+    """support all dict-like types
+    """
+    return hasattr(obj, "__contains__") and hasattr(obj, "items")
 
 
 def parse_config(config_json):

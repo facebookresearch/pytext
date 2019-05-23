@@ -37,6 +37,24 @@ class Model3(ConfigBase):
     foobar: float
 
 
+class ExpansibleModel(Component):
+    __COMPONENT_TYPE__ = ComponentType.MODEL
+    __EXPANSIBLE__ = True
+
+    class Config(ConfigBase):
+        foobar: float
+
+
+class AExpansibleModel(ExpansibleModel):
+    class Config(ExpansibleModel.Config):
+        foo: int
+
+
+class BExpansibleModel(ExpansibleModel):
+    class Config(ExpansibleModel.Config):
+        bar: str
+
+
 class Task1(ConfigBase):
     model: Union[Model1, Model2]
 
@@ -45,8 +63,12 @@ class Task2(ConfigBase):
     model: Model1
 
 
+class Task3(ConfigBase):
+    model: ExpansibleModel.Config
+
+
 class PyTextConfig(ConfigBase):
-    task: Union[Task1, Task2]
+    task: Union[Task1, Task2, Task3]
     output: str
 
 
@@ -124,6 +146,49 @@ class PytextConfigTest(unittest.TestCase):
         self.assertTrue(isinstance(config.task, Task1))
         self.assertTrue(isinstance(config.task.model, Model2))
         self.assertEqual(config.task.model.bar, "test")
+
+    def test_default_union(self):
+        config_json = json.loads(
+            """
+            {
+                "task": {
+                    "model": {
+                        "Model2": {
+                            "bar": "test"
+                        }
+                    }
+
+                },
+                "output": "foo/bar.pt"
+            }
+        """
+        )
+        config = config_from_json(PyTextConfig, config_json)
+        self.assertTrue(isinstance(config.task, Task1))
+        self.assertTrue(isinstance(config.task.model, Model2))
+        self.assertEqual(config.task.model.bar, "test")
+
+    def test_default_value_expansible_config(self):
+        config_json = json.loads(
+            """
+            {
+                "task": {
+                    "Task3": {
+                        "model": {
+                            "foobar": 1.0
+                        }
+                    }
+                },
+                "output": "foo/bar.pt"
+            }
+        """
+        )
+        config = config_from_json(PyTextConfig, config_json)
+        self.assertTrue(isinstance(config.task, Task3))
+        self.assertTrue(isinstance(config.task.model, ExpansibleModel.Config))
+        self.assertFalse(isinstance(config.task.model, AExpansibleModel.Config))
+        self.assertFalse(isinstance(config.task.model, BExpansibleModel.Config))
+        self.assertEqual(config.task.model.foobar, 1.0)
 
     def test_component(self):
         config_json = json.loads(
