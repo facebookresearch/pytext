@@ -239,28 +239,45 @@ def old_tasks_deprecated(json_config):
 @register_adapter(from_version=6)
 def v6_to_v7(json_config):
     """
-    Make `LabelTensorizer` expansible. If the `labels` field was `{}`, convert it to the
-    original default `{LabelTensorizer: {}}`.
+    Make `LabelTensorizer` expansible. If the `labels` field should be an instance of
+    `LabelTensorizer`, convert it to`{LabelTensorizer: labels}`.
     """
-    [task] = json_config["task"].values()
+    [(task_name, task)] = json_config["task"].items()
+    if task_name in (
+        "BertPairRegressionTask",
+        "NewDocumentRegression",
+        "NewWordTaggingTask",
+    ):
+        # Task has a label tensorizer different from LabelTensorizer.
+        return json_config
+
     model = task.get("model")
     if not model:
         return json_config
 
-    model_vals = list(model.values())
-    if len(model_vals) != 1:
-        # either empty, or old data design
-        return json_config
-
-    inputs = model_vals[0].get("inputs")
+    model_name = None
+    if "inputs" in model:
+        inputs = model["inputs"]
+    elif len(model) == 1:
+        [(model_name, model_val)] = model.items()
+        inputs = model_val.get("inputs")
+    else:
+        inputs = None
     if not inputs:
+        return json_config
+    if model_name in (
+        "NewBertRegressionModel",
+        "DocRegressionModel",
+        "NewWordTaggingModel",
+    ):
+        # Model has a label tensorizer different from LabelTensorizer.
         return json_config
 
     labels = inputs.get("labels")
-    if labels is None or labels:
+    if labels is None:
         return json_config
 
-    inputs["labels"] = {"LabelTensorizer": {}}
+    inputs["labels"] = {"LabelTensorizer": labels}
     return json_config
 
 
