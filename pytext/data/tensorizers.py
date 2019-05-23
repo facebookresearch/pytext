@@ -97,6 +97,9 @@ class TokenTensorizer(Tensorizer):
         add_eos_token: bool = False
         use_eos_token_for_bos: bool = False
         max_seq_len: Optional[int] = None
+        #: If False, will not create token vocab during initialization. The vocab will
+        #: need to be set during model initialization (e.g. see WordEmbedding)
+        build_vocab: bool = True
 
     @classmethod
     def from_config(cls, config: Config):
@@ -108,6 +111,7 @@ class TokenTensorizer(Tensorizer):
             add_eos_token=config.add_eos_token,
             use_eos_token_for_bos=config.use_eos_token_for_bos,
             max_seq_len=config.max_seq_len,
+            build_vocab=config.build_vocab,
         )
 
     def __init__(
@@ -118,6 +122,7 @@ class TokenTensorizer(Tensorizer):
         add_eos_token=Config.add_eos_token,
         use_eos_token_for_bos=Config.use_eos_token_for_bos,
         max_seq_len=Config.max_seq_len,
+        build_vocab=True,
         vocab=None,
     ):
         super().__init__([(text_column, str)])
@@ -128,6 +133,7 @@ class TokenTensorizer(Tensorizer):
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.build_vocab = build_vocab
         self.vocab_builder = None
 
     def _lookup_tokens(self, text):
@@ -151,9 +157,9 @@ class TokenTensorizer(Tensorizer):
 
     def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
-        if self.vocab:
-            return
         self.vocab_builder = vocab_builder or VocabBuilder()
+        if self.vocab or not self.build_vocab:
+            return
         try:
             while True:
                 row = yield
@@ -280,41 +286,52 @@ class LabelTensorizer(Tensorizer):
         allow_unknown: bool = False
         #: if vocab should have pad, usually false when label is used as target
         pad_in_vocab: bool = False
+        #: The label values, if known. Will skip initialization step if provided.
+        label_vocab: Optional[List[str]] = None
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.allow_unknown, config.pad_in_vocab)
+        return cls(
+            config.column, config.allow_unknown, config.pad_in_vocab, config.label_vocab
+        )
 
     def __init__(
         self,
         label_column: str = "label",
         allow_unknown: bool = False,
         pad_in_vocab: bool = False,
+        label_vocab: Optional[List[str]] = None,
     ):
         super().__init__([(label_column, str)])
         self.label_column = label_column
-        self.allow_unknown = allow_unknown
         self.pad_in_vocab = pad_in_vocab
+        self.vocab_builder = VocabBuilder()
+        self.vocab_builder.use_pad = pad_in_vocab
+        self.vocab_builder.use_unk = allow_unknown
+        self.vocab = None
+        self.pad_idx = -1
+        if label_vocab:
+            self.vocab_builder.add_all(label_vocab)
+            self.vocab, self.pad_idx = self._create_vocab()
 
     def initialize(self):
         """
         Look through the dataset for all labels and create a vocab map for them.
         """
-        builder = VocabBuilder()
-        builder.use_pad = self.pad_in_vocab
-        builder.use_unk = self.allow_unknown
+        if self.vocab:
+            return
         try:
             while True:
                 row = yield
                 labels = row[self.label_column]
-                builder.add_all(labels)
+                self.vocab_builder.add_all(labels)
         except GeneratorExit:
-            self.vocab = builder.make_vocab()
-            self.pad_idx = (
-                self.vocab.idx[PAD]
-                if self.pad_in_vocab
-                else Padding.DEFAULT_LABEL_PAD_IDX
-            )
+            self.vocab, self.pad_idx = self._create_vocab()
+
+    def _create_vocab(self):
+        vocab = self.vocab_builder.make_vocab()
+        pad_idx = vocab.idx[PAD] if self.pad_in_vocab else Padding.DEFAULT_LABEL_PAD_IDX
+        return vocab, pad_idx
 
     def numberize(self, row):
         """Numberize labels."""
@@ -364,6 +381,7 @@ class SoftLabelTensorizer(LabelTensorizer):
             config.column,
             config.allow_unknown,
             config.pad_in_vocab,
+            config.label_vocab,
             config.probs_column,
             config.logits_column,
             config.labels_column,
@@ -374,10 +392,12 @@ class SoftLabelTensorizer(LabelTensorizer):
         label_column: str = "label",
         allow_unknown: bool = False,
         pad_in_vocab: bool = False,
+        label_vocab: Optional[List[str]] = None,
         probs_column: str = "target_probs",
         logits_column: str = "target_logits",
         labels_column: str = "target_labels",
     ):
+        super().__init__(label_column, allow_unknown, pad_in_vocab, label_vocab)
         column_schema = [
             (label_column, str),
             (probs_column, List[float]),
@@ -385,9 +405,6 @@ class SoftLabelTensorizer(LabelTensorizer):
             (labels_column, List[str]),
         ]
         Tensorizer.__init__(self, column_schema)
-        self.label_column = label_column
-        self.allow_unknown = allow_unknown
-        self.pad_in_vocab = pad_in_vocab
         self.probs_column = probs_column
         self.logits_column = logits_column
         self.labels_column = labels_column
