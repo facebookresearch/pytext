@@ -68,7 +68,10 @@ def set_fp16(fp16_enabled: bool):
         if not cuda.CUDA_ENABLED:
             raise RuntimeError("Cuda is not available, should not running fp16...")
 
-        _FP16_ENABLED = fp16_enabled
+        _FP16_ENABLED = False
+        print(
+            "# WARNING: temporarily turn off FP16 training, working on to support new Nvidia Apex api."
+        )
 
 
 def activate(model):
