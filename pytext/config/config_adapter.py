@@ -29,6 +29,11 @@ def find_dicts_containing_key(json_config, key):
             yield from find_dicts_containing_key(v, key)
 
 
+def rename(json_config, old_name, new_name):
+    for section in find_dicts_containing_key(json_config, old_name):
+        section[new_name] = section.pop(old_name)
+
+
 @register_adapter(from_version=0)
 def v0_to_v1(json_config):
     # migrate optimizer and random_seed params
@@ -287,7 +292,37 @@ def lm_model_deprecated(json_config):
     Rename LM model to _Deprecated (LMTask is already deprecated in v5)
     """
     deprecate(json_config, "LMLSTM")
+    return json_config
 
+
+@register_adapter(from_version=8)
+def new_tasks_rename(json_config):
+    """
+    Rename tasks with new API consistently
+    """
+    # Deprecated
+    rename(
+        json_config,
+        "QueryDocumentPairwiseRankingModel",
+        "QueryDocumentPairwiseRankingModel_Deprecated",
+    )
+    rename(json_config, "WordTaggingModel", "WordTaggingModel_Deprecated")
+    # New
+    rename(json_config, "NewDocModel", "DocModel")
+    rename(json_config, "NewDocRegressionModel", "DocRegressionModel")
+    rename(json_config, "NewDocumentClassification", "DocumentClassificationTask")
+    rename(json_config, "NewDocumentRegression", "DocumentRegressionTask")
+    rename(
+        json_config,
+        "NewQueryDocumentPairwiseRankingModel",
+        "QueryDocPairwiseRankingModel",
+    )
+    rename(json_config, "NewWordTaggingModel", "WordTaggingModel")
+    rename(json_config, "NewWordTaggingTask", "WordTaggingTask")
+    rename(json_config, "PairwiseClassification", "PairwiseClassificationTask")
+    rename(
+        json_config, "QueryDocumentPairwiseRanking", "QueryDocumentPairwiseRankingTask"
+    )
     return json_config
 
 

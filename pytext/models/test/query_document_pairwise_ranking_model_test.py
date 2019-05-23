@@ -10,7 +10,7 @@ from pytext.data.featurizer import SimpleFeaturizer
 from pytext.models.decoders.mlp_decoder_query_response import MLPDecoderQueryResponse
 from pytext.models.output_layers import PairwiseRankingOutputLayer
 from pytext.models.query_document_pairwise_ranking_model import (
-    QueryDocumentPairwiseRankingModel,
+    QueryDocumentPairwiseRankingModel_Deprecated,
 )
 from pytext.models.representations.query_document_pairwise_ranking_rep import (
     QueryDocumentPairwiseRankingRep,
@@ -55,7 +55,7 @@ class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
     def create_model(self, shared_rep):
         # shared_rep: do query and response share representation layer?
         metadata = self.data_handler.metadata
-        model_config = QueryDocumentPairwiseRankingModel.Config()
+        model_config = QueryDocumentPairwiseRankingModel_Deprecated.Config()
 
         model_config.representation = QueryDocumentPairwiseRankingRep.Config()
         model_config.representation.shared_representations = shared_rep
@@ -69,7 +69,7 @@ class QueryDocumentPairwiseRankingModelTest(unittest.TestCase):
         feat_config.pos_response.embed_dim = 64
         feat_config.neg_response = WordFeatConfig()
         feat_config.query = WordFeatConfig()
-        return QueryDocumentPairwiseRankingModel.from_config(
+        return QueryDocumentPairwiseRankingModel_Deprecated.from_config(
             model_config, feat_config, metadata
         )
 

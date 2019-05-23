@@ -3,7 +3,7 @@
 from typing import List
 
 import torch
-from pytext.models.doc_model import DocModel_Deprecated as DocModel
+from pytext.models.doc_model import DocModel_Deprecated
 
 from .ensemble import Ensemble
 
@@ -19,12 +19,12 @@ class BaggingDocEnsemble(Ensemble):
         `BaggingDocEnsemble`.
 
         Attributes:
-            models (List[DocModel.Config]): List of document classification model
+            models (List[DocModel_Deprecated.Config]): List of document classification model
                 configurations.
 
         """
 
-        models: List[DocModel.Config]
+        models: List[DocModel_Deprecated.Config]
 
     def forward(self, *args, **kwargs) -> torch.Tensor:
         """Call `forward()` method of each document classification sub-model by

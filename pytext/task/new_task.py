@@ -7,21 +7,8 @@ from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
-from pytext.metric_reporters import (
-    ClassificationMetricReporter,
-    MetricReporter,
-    PairwiseRankingMetricReporter,
-    RegressionMetricReporter,
-)
-from pytext.models.doc_model import (
-    NewDocModel as DocModel,
-    NewDocRegressionModel as DocRegressionModel,
-)
-from pytext.models.model import BaseModel as Model
-from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
-from pytext.models.query_document_pairwise_ranking_model import (
-    NewQueryDocumentPairwiseRankingModel,
-)
+from pytext.metric_reporters import MetricReporter
+from pytext.models.model import BaseModel
 from pytext.trainers import Trainer, TrainingState
 from pytext.utils import cuda, precision, timing
 from torch import jit
@@ -132,26 +119,19 @@ class _NewTask(TaskBase):
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
-        metric_reporter = cls.create_metric_reporter(config, tensorizers)
-        trainer = create_trainer(config.trainer, model)
-        return cls(data, model, metric_reporter, trainer)
-
-    @classmethod
-    def create_metric_reporter(cls, config, tensorizers):
-        return create_component(
+        metric_reporter = create_component(
             ComponentType.METRIC_REPORTER,
             config.metric_reporter,
             tensorizers=tensorizers,
         )
+        trainer = create_trainer(config.trainer, model)
+        return cls(data, model, metric_reporter, trainer)
 
     @classmethod
     def _init_tensorizers(cls, config: Config, rank, world_size):
-        model_inputs_dict = config.model.inputs
-        if not isinstance(model_inputs_dict, dict):
-            model_inputs_dict = config.model.inputs._asdict()
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer_config)
-            for name, tensorizer_config in model_inputs_dict.items()
+            for name, tensorizer_config in config.model.inputs._asdict().items()
             if tensorizer_config
         }
         schema: Dict[str, Type] = {}
@@ -189,13 +169,16 @@ class _NewTask(TaskBase):
     def __init__(
         self,
         data: Data,
-        model: Model,
+        model: BaseModel,
         metric_reporter: Optional[MetricReporter] = None,
         trainer: Optional[NewTaskTrainer] = None,
     ):
         self.data = data
         self.model = model
-        self.metric_reporter = metric_reporter
+        # Attempt to build a default metric reporter
+        self.metric_reporter = metric_reporter or self.create_metric_reporter(
+            self.Config.metric_reporter, model
+        )
         self.trainer = trainer or NewTaskTrainer()
 
     def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
@@ -253,38 +236,4 @@ class NewTask(_NewTask):
     __EXPANSIBLE__ = True
 
     class Config(_NewTask.Config):
-        model: Model.Config
-
-
-class NewDocumentClassification(NewTask):
-    class Config(NewTask.Config):
-        model: Model.Config = DocModel.Config()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
-
-
-class NewDocumentRegression(NewTask):
-    class Config(NewTask.Config):
-        model: Model.Config = DocRegressionModel.Config()
-        metric_reporter: RegressionMetricReporter.Config = (
-            RegressionMetricReporter.Config()
-        )
-
-
-class PairwiseClassification(NewTask):
-    class Config(NewTask.Config):
-        model: BasePairwiseModel.Config = PairwiseModel.Config()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
-
-
-class QueryDocumentPairwiseRanking(NewTask):
-    class Config(NewTask.Config):
-        model: NewQueryDocumentPairwiseRankingModel.Config = (
-            NewQueryDocumentPairwiseRankingModel.Config()
-        )
-        metric_reporter: PairwiseRankingMetricReporter.Config = (
-            PairwiseRankingMetricReporter.Config()
-        )
+        model: BaseModel.Config

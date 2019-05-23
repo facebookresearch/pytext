@@ -12,7 +12,7 @@ from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.doc_model import DocModel_Deprecated as DocModel
+from pytext.models.doc_model import DocModel_Deprecated
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 
 
@@ -48,7 +48,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
         metadata.target = label_meta
 
         saved_model = create_model(
-            DocModel.Config(
+            DocModel_Deprecated.Config(
                 representation=BiLSTMDocAttention.Config(
                     save_path=self.representation_path
                 ),
@@ -60,7 +60,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
         saved_model.save_modules()
 
         loaded_model = create_model(
-            DocModel.Config(
+            DocModel_Deprecated.Config(
                 representation=BiLSTMDocAttention.Config(
                     load_path=self.representation_path
                 ),
@@ -71,7 +71,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
         )
 
         random_model = create_model(
-            DocModel.Config(
+            DocModel_Deprecated.Config(
                 representation=BiLSTMDocAttention.Config(), decoder=MLPDecoder.Config()
             ),
             FeatureConfig(),
