@@ -273,12 +273,16 @@ class Trainer(TrainerBase):
             model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
         )
         self.set_up_training(state, training_data)
+        trainable_params = sum(
+            p.numel() for p in state.model.parameters() if p.requires_grad
+        )
+        print(f"Num trainable parameters: {trainable_params}")
+
         while self.continue_training(state):
             state.epoch += 1
             state.epochs_since_last_improvement += 1
-            print(f"\nWorker {state.rank} starting epoch {state.epoch}", flush=True)
-            print(f"Num parameters: {sum(p.numel() for p in state.model.parameters())}")
             lrs = learning_rates(state.optimizer)
+            print(f"\nWorker {state.rank} starting epoch {state.epoch}", flush=True)
             print(f"Learning rate(s): {', '.join(map(str, lrs))}")
 
             with timing.time("train epoch"):
