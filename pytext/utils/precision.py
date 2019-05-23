@@ -10,6 +10,12 @@ from . import cuda
 _APEX_DISABLED = False
 try:
     from apex import amp, fp16_utils
+
+    class FP16_Optimizer(fp16_utils.FP16_Optimizer):
+        def finalize(self) -> bool:
+            return self.optimizer.finalize()
+
+
 except ImportError:
     print("Install apex from https://github.com/NVIDIA/apex/.", file=stderr)
     _APEX_DISABLED = True
@@ -47,9 +53,12 @@ For Apex.amp, it handle the Mixed precision training in the folloing ways
 3. [Loss scaling]: _amp_handle handle loss scaling and unscaling
 
 Using amp require adding three lines of code.
-1. _amp_handle = amp.init(enabled=fp16_enabled)
-2. optimizer = _amp_handle.wrap_optimizer(optimizer)
-3. with optimizer.scale_loss(loss) as scaled_loss: scaled_loss.backward()
+1. Allow Amp to perform casts as required by the opt_level
+model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+...
+2. loss.backward() becomes:
+with amp.scale_loss(loss, optimizer) as scaled_loss:
+    scaled_loss.backward()
 """
 
 
@@ -68,10 +77,7 @@ def set_fp16(fp16_enabled: bool):
         if not cuda.CUDA_ENABLED:
             raise RuntimeError("Cuda is not available, should not running fp16...")
 
-        _FP16_ENABLED = False
-        print(
-            "# WARNING: temporarily turn off FP16 training, working on to support new Nvidia Apex api."
-        )
+        _FP16_ENABLED = fp16_enabled
 
 
 def activate(model):
@@ -85,28 +91,16 @@ def activate(model):
 
         if _USE_FP16_OPTIMIZER:
             model.half()
-        else:
-            _amp_handle = amp.init(enabled=_FP16_ENABLED)
 
 
-def wrap_optimizer(optimizer):
+def initialize(model, optimizer):
     if _FP16_ENABLED:
         if _USE_FP16_OPTIMIZER:
-            return fp16_utils.FP16_Optimizer(optimizer, dynamic_loss_scale=True)
+            return model, FP16_Optimizer(optimizer, dynamic_loss_scale=True)
         else:
-            return _amp_handle.wrap_optimizer(optimizer)
+            return amp.initialize(model, optimizer, opt_level="O1")
     else:
-        return optimizer
-
-
-def unwrap_optimizer(wrapped_optimizer):
-    if _FP16_ENABLED:
-        if _USE_FP16_OPTIMIZER:
-            return wrapped_optimizer.optimizer
-        else:
-            return wrapped_optimizer._optimizer
-    else:
-        return wrapped_optimizer
+        return model, optimizer
 
 
 def backward(optimizer, loss):
@@ -119,7 +113,7 @@ def backward(optimizer, loss):
             # 1. Use automatic loss scaling to best use fp16 range
             # 2. Clear handle's cache of casted parameters
             if loss > 0:
-                with optimizer.scale_loss(loss) as scaled_loss:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
             else:
                 loss.backward()
@@ -148,7 +142,7 @@ def deactivate(model):
             _USE_FP16_OPTIMIZER = False
         else:
             # restoring uncasted versions of functions
-            _amp_handle._deactivate()
+            amp._amp_state.handle._deactivate()
         _FP16_ENABLED = False
 
 
