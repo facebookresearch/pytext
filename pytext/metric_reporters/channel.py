@@ -221,8 +221,13 @@ class TensorBoardChannel(Channel):
                 self.add_scalars(prefix, metrics, epoch)
 
         if stage == Stage.TRAIN:
-            for key, val in model.state_dict().items():
-                self.summary_writer.add_histogram(key, val, epoch)
+            for key, val in model.named_parameters():
+                if val is not None:
+                    self.summary_writer.add_histogram(key, val, epoch)
+                    if val.grad is not None:
+                        self.summary_writer.add_histogram(
+                            key + "_gradients", val.grad, epoch
+                        )
 
     def add_texts(self, tag, metrics):
         """
