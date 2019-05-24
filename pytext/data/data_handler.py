@@ -254,8 +254,8 @@ class DataHandler(Component):
                 for i, line in enumerate(f):
                     if vocab_size > 0 and len(vocab) == vocab_size:
                         print(
-                            f"Read {i+1} items from {vocab_file}"
-                            f"to load vocab of size {vocab_size}."
+                            f"Read {i+1} items from {vocab_file} "
+                            f"to load vocab of size {vocab_size}. "
                             f"Skipping rest of the file"
                         )
                         break
@@ -545,6 +545,7 @@ class DataHandler(Component):
         if hasattr(feat, "vocab_file") and feat.vocab_file:
             print(f"Adding tokens from {feat.vocab_file} to vocab.")
             lowercase_tokens = feat.lower if hasattr(feat, "lower") else False
+            assert feat.min_freq == 1
             vocab_set = self.load_vocab(
                 feat.vocab_file, feat.vocab_size, lowercase_tokens
             )
