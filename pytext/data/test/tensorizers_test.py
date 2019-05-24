@@ -15,6 +15,7 @@ from pytext.data.tensorizers import (
     GazetteerTensorizer,
     LabelListTensorizer,
     LabelTensorizer,
+    SeqTokenTensorizer,
     TokenTensorizer,
     initialize_tensorizers,
 )
@@ -261,6 +262,75 @@ class TensorizersTest(unittest.TestCase):
                 [0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], weights
             )
             self.assertEqual([1, 2, 1, 1, 1], lens)
+
+    def test_seq_tensor(self):
+        tensorizer = SeqTokenTensorizer()
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_seq_features.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text_seq"],
+            schema={"text_seq": List[str]},
+        )
+
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        for row in data.train:
+            init.send(row)
+        init.close()
+        # UNK + PAD + 6 tokens
+        self.assertEqual(8, len(tensorizer.vocab))
+
+        # only one row in test file:
+        # ["where do you wanna meet?", "MPK"]
+        for row in data.train:
+            idx, lens = tensorizer.numberize(row)
+            self.assertEqual(2, lens)
+            self.assertEqual([[2, 3, 4, 5, 6], [7, 1, 1, 1, 1]], idx)
+
+    def test_seq_tensor_with_bos_eos_eol_bol(self):
+        tensorizer = SeqTokenTensorizer(
+            add_bos_token=True,
+            add_eos_token=True,
+            add_bol_token=True,
+            add_eol_token=True,
+        )
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_seq_features.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text_seq"],
+            schema={"text_seq": List[str]},
+        )
+
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        for row in data.train:
+            init.send(row)
+        init.close()
+        # UNK + PAD + BOS + EOS + BOL + EOL + 6 tokens
+        self.assertEqual(12, len(tensorizer.vocab))
+
+        # only one row in test file:
+        # ["where do you wanna meet?", "MPK"]
+        for row in data.train:
+            idx, lens = tensorizer.numberize(row)
+            self.assertEqual(4, lens)
+            self.assertEqual(
+                [
+                    [2, 4, 3, 1, 1, 1, 1],
+                    [2, 6, 7, 8, 9, 10, 3],
+                    [2, 11, 3, 1, 1, 1, 1],
+                    [2, 5, 3, 1, 1, 1, 1],
+                ],
+                idx,
+            )
 
     def test_create_float_list_tensor(self):
         tensorizer = FloatListTensorizer(column="dense", dim=2, error_check=True)

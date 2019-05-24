@@ -84,6 +84,8 @@ UNK = SpecialToken("__UNKNOWN__")
 PAD = SpecialToken("__PAD__")
 BOS = SpecialToken("__BEGIN_OF_SENTENCE__")
 EOS = SpecialToken("__END_OF_SENTENCE__")
+BOL = SpecialToken("__BEGIN_OF_LIST__")
+EOL = SpecialToken("__END_OF_LIST__")
 MASK = SpecialToken("__MASK__")
 
 
@@ -146,6 +148,10 @@ class VocabBuilder:
         self.bos_index = 2
         self.use_eos = False
         self.eos_index = 3
+        self.use_bol = False
+        self.bol_index = 4
+        self.use_eol = False
+        self.eol_index = 5
 
     def add_all(self, values) -> None:
         """Count a value or nested container of values in the vocabulary."""
@@ -172,6 +178,10 @@ class VocabBuilder:
             tokens_to_insert.append((self.bos_index, BOS))
         if self.use_eos:
             tokens_to_insert.append((self.eos_index, EOS))
+        if self.use_bol:
+            tokens_to_insert.append((self.bol_index, BOL))
+        if self.use_eol:
+            tokens_to_insert.append((self.eol_index, EOL))
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
 

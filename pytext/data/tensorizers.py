@@ -13,7 +13,9 @@ from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils.data import Slot
 
 from .utils import (
+    BOL,
     BOS,
+    EOL,
     EOS,
     PAD,
     SpecialToken,
@@ -136,8 +138,8 @@ class TokenTensorizer(Tensorizer):
         self.build_vocab = build_vocab
         self.vocab_builder = None
 
-    def _lookup_tokens(self, text):
-        tokenized = self.tokenizer.tokenize(text)[: self.max_seq_len]
+    def _lookup_tokens(self, text=None, pre_tokenized=None):
+        tokenized = pre_tokenized or self.tokenizer.tokenize(text)[: self.max_seq_len]
         if self.add_bos_token:
             bos = EOS if self.use_eos_token_for_bos else BOS
             tokenized = [Token(bos, -1, -1)] + tokenized
@@ -160,6 +162,9 @@ class TokenTensorizer(Tensorizer):
         self.vocab_builder = vocab_builder or VocabBuilder()
         if self.vocab or not self.build_vocab:
             return
+        self.vocab_builder.use_bos = self.add_bos_token
+        self.vocab_builder.use_eos = self.add_eos_token
+
         try:
             while True:
                 row = yield
@@ -696,6 +701,160 @@ class GazetteerTensorizer(Tensorizer):
             pad_and_tensorize(weights, self.vocab.idx[PAD]),
             pad_and_tensorize(seq_lens),
         )
+
+
+class SeqTokenTensorizer(Tensorizer):
+    """
+    Tensorize a sequence of sentences. The input is a list of strings,
+    like this one:
+    ::
+
+        ["where do you wanna meet?", "MPK"]
+
+    if we assume this vocab
+    ::
+
+        vocab  {
+          UNK: 0, PAD: 1,
+          'where': 2, 'do': 3, 'you': 4, 'wanna': 5, 'meet?': 6, 'mpk': 7
+        }
+
+    this example will result in those tensors:
+    ::
+
+        idx = [[2, 3, 4, 5, 6], [7, 1, 1, 1, 1]]
+        seq_len = [2]
+
+    If you're using BOS, EOS, BOL and EOL, the vocab will look like this
+    ::
+
+        vocab  {
+          UNK: 0, PAD: 1,  BOS: 2, EOS: 3, BOL: 4, EOL: 5
+          'where': 6, 'do': 7, 'you': 8, 'wanna': 9, 'meet?': 10, 'mpk': 11
+        }
+
+    this example will result in those tensors:
+    ::
+
+        idx = [
+            [2,  4, 3, 1, 1,  1, 1],
+            [2,  6, 7, 8, 9, 10, 3],
+            [2, 11, 3, 1, 1,  1, 1],
+            [2,  5, 3, 1, 1,  1, 1]
+        ]
+        seq_len = [4]
+
+    """
+
+    class Config(Tensorizer.Config):
+        column: str = "text_seq"
+        max_seq_len: Optional[int] = None
+        #: sentence markers
+        add_bos_token: bool = False
+        add_eos_token: bool = False
+        use_eos_token_for_bos: bool = False
+        #: list markers
+        add_bol_token: bool = False
+        add_eol_token: bool = False
+        use_eol_token_for_bol: bool = False
+        #: The tokenizer to use to split input text into tokens.
+        tokenizer: Tokenizer.Config = Tokenizer.Config()
+
+    @classmethod
+    def from_config(cls, config: Config):
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        return cls(
+            column=config.column,
+            tokenizer=tokenizer,
+            add_bos_token=config.add_bos_token,
+            add_eos_token=config.add_eos_token,
+            use_eos_token_for_bos=config.use_eos_token_for_bos,
+            add_bol_token=config.add_bol_token,
+            add_eol_token=config.add_eol_token,
+            use_eol_token_for_bol=config.use_eol_token_for_bol,
+            max_seq_len=config.max_seq_len,
+        )
+
+    def __init__(
+        self,
+        column: str = Config.column,
+        tokenizer=None,
+        add_bos_token: bool = Config.add_bos_token,
+        add_eos_token: bool = Config.add_eos_token,
+        use_eos_token_for_bos: bool = Config.use_eos_token_for_bos,
+        add_bol_token: bool = Config.add_bol_token,
+        add_eol_token: bool = Config.add_eol_token,
+        use_eol_token_for_bol: bool = Config.use_eol_token_for_bol,
+        max_seq_len=Config.max_seq_len,
+        vocab=None,
+    ):
+        super().__init__([(column, List[str])])
+        self.column = column
+        self.tokenizer = tokenizer or Tokenizer()
+        self.vocab = vocab
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
+        self.add_bol_token = add_bol_token
+        self.add_eol_token = add_eol_token
+        self.use_eol_token_for_bol = use_eol_token_for_bol
+        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+
+    def initialize(self, vocab_builder=None):
+        """Build vocabulary based on training corpus."""
+        if self.vocab:
+            return
+        vocab_builder = vocab_builder or VocabBuilder()
+        vocab_builder.use_bos = self.add_bos_token
+        vocab_builder.use_eos = self.add_eos_token
+        vocab_builder.use_bol = self.add_bol_token
+        vocab_builder.use_eol = self.add_eol_token
+
+        try:
+            while True:
+                row = yield
+                for raw_text in row[self.column]:
+                    tokenized = self.tokenizer.tokenize(raw_text)
+                    vocab_builder.add_all([t.value for t in tokenized])
+        except GeneratorExit:
+            self.vocab = vocab_builder.make_vocab()
+
+    _lookup_tokens = TokenTensorizer._lookup_tokens
+
+    def numberize(self, row):
+        """Tokenize, look up in vocabulary."""
+        seq = []
+
+        if self.add_bol_token:
+            bol = EOL if self.use_eol_token_for_bol else BOL
+            tokens, _, _ = self._lookup_tokens(pre_tokenized=[Token(bol, -1, -1)])
+            seq.append(tokens)
+
+        for raw_text in row[self.column]:
+            tokens, _, _ = self._lookup_tokens(raw_text)
+            seq.append(tokens)
+
+        if self.add_eol_token:
+            tokens, _, _ = self._lookup_tokens(pre_tokenized=[Token(EOL, -1, -1)])
+            seq.append(tokens)
+
+        max_len = max(len(sentence) for sentence in seq)
+        for sentence in seq:
+            pad_len = max_len - len(sentence)
+            if pad_len:
+                sentence += [self.vocab.idx[PAD]] * pad_len
+        return seq, len(seq)
+
+    def tensorize(self, batch):
+        tokens, seq_lens = zip(*batch)
+        return (
+            pad_and_tensorize(tokens, self.vocab.idx[PAD]),
+            pad_and_tensorize(seq_lens),
+        )
+
+    def sort_key(self, row):
+        # use seq_len as sort key
+        return row[1]
 
 
 class MetricTensorizer(Tensorizer):
