@@ -34,6 +34,73 @@ def rename(json_config, old_name, new_name):
         section[new_name] = section.pop(old_name)
 
 
+def is_type_specifier(json_dict):
+    """If a config object is a class, it might have a level which is a type specifier,
+    with one key corresponding to the name of whichever type it is. These types should
+    not be explicitly named in the path."""
+    # heuristic: one key, starting with uppercase character
+    if len(json_dict) != 1:
+        return False
+    key = next(iter(json_dict))
+    return key[0] == key[0].upper()
+
+
+def rename_parameter(config, old_path, new_path):
+    """A powerful tool for writing config adapters, this allows you to specify
+    a JSON-style path for an old and new config parameter. For instance
+
+    rename_parameter(config, "task.data.epoch_size", "task.trainer.batches_per_epoch")
+
+    will look through the config for task.data.epoch_size, including moving through
+    explicitly specified types. If it's specified, it will delete the value and
+    set it in task.trainer.num_batches_per_epoch instead, creating trainer as an empty
+    dictionary if necessary."""
+
+    old_path = old_path.split(".")
+    new_path = new_path.split(".")
+
+    NOT_THERE = object()
+
+    def find_path(config, path):
+        # Recursively find path elements, skipping into type specifiers.
+        # Return the value and its container so the value can be deleted.
+        value = config
+        container = None
+        for segment in path:
+            while is_type_specifier(value):
+                container, value = value, next(iter(value.values()))
+            if segment not in value:
+                return NOT_THERE
+            container, value = value, value[segment]
+        return container, value
+
+    def create_path(config, path):
+        # Recursively find path elements, skipping into type specifiers.
+        # If any container isn't there, create a new empty object for it.
+        # This will only be created if the
+        value = config
+        for segment in path:
+            while is_type_specifier(value):
+                value = next(iter(value.values()))
+            if segment not in value:
+                value[segment] = {}
+            value = value[segment]
+        while is_type_specifier(value):
+            value = next(iter(value.values()))
+        return value
+
+    found = find_path(config, old_path)
+    if found is not NOT_THERE:
+        container, old_value = found
+        # Delete old value
+        container.pop(old_path[-1])
+        # Update new value
+        new_container = create_path(config, new_path[:-1])
+        new_container[new_path[-1]] = old_value
+
+    return config
+
+
 @register_adapter(from_version=0)
 def v0_to_v1(json_config):
     # migrate optimizer and random_seed params
@@ -189,9 +256,7 @@ def deprecate(json_config, t):
 
 @register_adapter(from_version=4)
 def doc_model_deprecated(json_config):
-    """
-    Rename DocModel to DocModel_Deprecated
-    """
+    """Rename DocModel to DocModel_Deprecated."""
     deprecate(json_config, "DocModel")
 
     return json_config
@@ -324,6 +389,13 @@ def new_tasks_rename(json_config):
         json_config, "QueryDocumentPairwiseRanking", "QueryDocumentPairwiseRankingTask"
     )
     return json_config
+
+
+@register_adapter(from_version=9)
+def move_epoch_size(json_config):
+    return rename_parameter(
+        json_config, "task.data.epoch_size", "task.trainer.num_batches_per_epoch"
+    )
 
 
 def upgrade_one_version(json_config):
