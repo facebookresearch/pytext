@@ -53,9 +53,11 @@ class HogwildTrainer(Trainer):
             return super().run_epoch(state, data_iter, metric_reporter)
 
     def set_up_training(self, state: TrainingState, training_data):
-        super().set_up_training(state, training_data)
+        training_data = super().set_up_training(state, training_data)
 
         # Share memory of tensors for concurrent updates from multiple processes.
         if self.num_workers > 1:
             for param in state.model.parameters():
                 param.share_memory_()
+
+        return training_data

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import itertools
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -25,6 +26,14 @@ from pytext.utils import cuda, precision, timing
 
 class TrainerBase(Component):
     __COMPONENT_TYPE__ = ComponentType.TRAINER
+
+
+def cycle(iterator: Iterable[Any]) -> Iterable[Any]:
+    """Like itertools.cycle, but will call iter on the original iterable instead.
+    This limits it to not be able to run on say raw generators, but also doesn't
+    store a copy of the iterable in memory for repetition."""
+    while True:
+        yield from iterator
 
 
 class TrainingState:
@@ -80,9 +89,15 @@ class Trainer(TrainerBase):
         #: Number of samples for logging training progress.
         num_samples_to_log_progress: int = 1000
         #: Number of forward & backward per batch before update gradients, the
-        # actual_batch_size = batch_size x num_accumulated_batches
+        #: actual_batch_size = batch_size x num_accumulated_batches
         num_accumulated_batches: int = 1
-        # config for optimizer, used in parameter update
+        #: Define epoch as a fixed number of batches. Subsequent epochs will continue
+        #: to iterate through the data, cycling through it when they reach the end.
+        #: If not set, use exactly one pass through the dataset as one epoch.
+        #: This configuration only affects the train epochs, test and eval
+        #: will always test their entire datasets.
+        num_batches_per_epoch: Optional[int] = None
+        #: config for optimizer, used in parameter update
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
 
@@ -125,6 +140,12 @@ class Trainer(TrainerBase):
                 find_unused_parameters=state.model.find_unused_parameters,
             )
         state.start_time = time.time()
+
+        if self.config.num_batches_per_epoch:
+            # Set the training_data iterator to cycle, so it will never run out,
+            # but rather after reaching the end will loop back to the beginning.
+            training_data = cycle(training_data)
+        return training_data
 
     @timing.time("zero gradients")
     def zero_grads(self, state):
@@ -272,7 +293,7 @@ class Trainer(TrainerBase):
         state = TrainingState(
             model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
         )
-        self.set_up_training(state, training_data)
+        training_data = self.set_up_training(state, training_data)
         trainable_params = sum(
             p.numel() for p in state.model.parameters() if p.requires_grad
         )
@@ -289,7 +310,17 @@ class Trainer(TrainerBase):
                 state.stage = Stage.TRAIN
                 state.model.train()
                 print(f"start training epoch {state.epoch}", flush=True)
-                self.run_epoch(state, training_data, metric_reporter)
+                epoch_data = training_data
+                if self.config.num_batches_per_epoch:
+                    # We want to limit the number of batches in the epoch;
+                    # equivalent to epoch_data[:num_batches_per_epoch] for iterators.
+                    # In this case we set the training data iterator to cycle earlier
+                    # in the training process, so when it reaches the end it will
+                    # loop back to the beginning.
+                    epoch_data = itertools.islice(
+                        epoch_data, self.config.num_batches_per_epoch
+                    )
+                self.run_epoch(state, epoch_data, metric_reporter)
 
             if not self.config.do_eval:
                 continue
