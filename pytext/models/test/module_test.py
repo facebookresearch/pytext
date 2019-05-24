@@ -7,7 +7,7 @@ from pytext.config.component import create_model
 from pytext.config.field_config import DictFeatConfig, FeatureConfig, WordFeatConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
-from pytext.models.doc_model import DocModel_Deprecated as DocModel
+from pytext.models.doc_model import DocModel_Deprecated
 
 
 class VocabStub:
@@ -30,7 +30,7 @@ def mock_metadata():
 class ModuleTest(unittest.TestCase):
     def test_freeze_word_embedding(self):
         model = create_model(
-            DocModel.Config(),
+            DocModel_Deprecated.Config(),
             FeatureConfig(
                 word_feat=WordFeatConfig(freeze=True, mlp_layer_dims=[4]),
                 dict_feat=DictFeatConfig(),
@@ -49,7 +49,9 @@ class ModuleTest(unittest.TestCase):
 
     def test_freeze_all_embedding(self):
         model = create_model(
-            DocModel.Config(), FeatureConfig(freeze=True), metadata=mock_metadata()
+            DocModel_Deprecated.Config(),
+            FeatureConfig(freeze=True),
+            metadata=mock_metadata(),
         )
         for param in model.embedding.parameters():
             self.assertFalse(param.requires_grad)

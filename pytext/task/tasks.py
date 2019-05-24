@@ -29,21 +29,28 @@ from pytext.metric_reporters import (
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
     PairwiseRankingMetricReporter,
+    RegressionMetricReporter,
     SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
-from pytext.models.doc_model import DocModel_Deprecated as DocModel
+from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
-from pytext.models.pair_classification_model import PairClassificationModel
+from pytext.models.model import BaseModel
+from pytext.models.pair_classification_model import (
+    BasePairwiseModel,
+    PairClassificationModel,
+    PairwiseModel,
+)
 from pytext.models.query_document_pairwise_ranking_model import (
-    QueryDocumentPairwiseRankingModel,
+    QueryDocPairwiseRankingModel,
+    QueryDocumentPairwiseRankingModel_Deprecated,
 )
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel
-from pytext.models.word_model import NewWordTaggingModel, WordTaggingModel
+from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
@@ -54,14 +61,24 @@ class QueryDocumentPairwiseRankingTask_Deprecated(Task_Deprecated):
         features: QueryDocumentPairwiseRanking.ModelInputConfig = (
             QueryDocumentPairwiseRanking.ModelInputConfig()
         )
-        model: QueryDocumentPairwiseRankingModel.Config = (
-            QueryDocumentPairwiseRankingModel.Config()
+        model: QueryDocumentPairwiseRankingModel_Deprecated.Config = (
+            QueryDocumentPairwiseRankingModel_Deprecated.Config()
         )
         data_handler: QueryDocumentPairwiseRankingDataHandler.Config = (
             QueryDocumentPairwiseRankingDataHandler.Config()
         )
         trainer: Trainer.Config = Trainer.Config()
         labels: Optional[DocLabelConfig] = None
+        metric_reporter: PairwiseRankingMetricReporter.Config = (
+            PairwiseRankingMetricReporter.Config()
+        )
+
+
+class QueryDocumentPairwiseRankingTask(NewTask):
+    class Config(NewTask.Config):
+        model: QueryDocPairwiseRankingModel.Config = (
+            QueryDocPairwiseRankingModel.Config()
+        )
         metric_reporter: PairwiseRankingMetricReporter.Config = (
             PairwiseRankingMetricReporter.Config()
         )
@@ -92,13 +109,13 @@ class EnsembleTask_Deprecated(Task_Deprecated):
     def example_config(cls):
         return cls.Config(
             labels=[DocLabelConfig(), WordLabelConfig()],
-            model=BaggingDocEnsemble.Config(models=[DocModel.Config()]),
+            model=BaggingDocEnsemble.Config(models=[DocModel_Deprecated.Config()]),
         )
 
 
 class DocClassificationTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
-        model: DocModel.Config = DocModel.Config()
+        model: DocModel_Deprecated.Config = DocModel_Deprecated.Config()
         trainer: Trainer.Config = Trainer.Config()
         features: DocClassification.ModelInputConfig = (
             DocClassification.ModelInputConfig()
@@ -123,9 +140,25 @@ class DocClassificationTask_Deprecated(Task_Deprecated):
             }
 
 
+class DocumentClassificationTask(NewTask):
+    class Config(NewTask.Config):
+        model: BaseModel.Config = DocModel.Config()
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config()
+        )
+
+
+class DocumentRegressionTask(NewTask):
+    class Config(NewTask.Config):
+        model: DocRegressionModel.Config = DocRegressionModel.Config()
+        metric_reporter: RegressionMetricReporter.Config = (
+            RegressionMetricReporter.Config()
+        )
+
+
 class WordTaggingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
-        model: WordTaggingModel.Config = WordTaggingModel.Config()
+        model: WordTaggingModel_Deprecated.Config = WordTaggingModel_Deprecated.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: WordLabelConfig = WordLabelConfig()
         data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
@@ -151,14 +184,14 @@ class WordTaggingTask_Deprecated(Task_Deprecated):
             ]
 
 
-class NewWordTaggingTask(NewTask):
+class WordTaggingTask(NewTask):
     class Config(NewTask.Config):
-        model: NewWordTaggingModel.Config = NewWordTaggingModel.Config()
-        metric_reporter: SequenceTaggingMetricReporter.Config = SequenceTaggingMetricReporter.Config()
+        model: WordTaggingModel.Config = WordTaggingModel.Config()
+        metric_reporter: WordTaggingMetricReporter.Config = WordTaggingMetricReporter.Config()
 
     @classmethod
     def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return SequenceTaggingMetricReporter.from_config_and_label_names(
+        return WordTaggingMetricReporter.from_config_and_label_names(
             config.metric_reporter, list(tensorizers["labels"].vocab)
         )
 
@@ -226,6 +259,14 @@ class PairClassificationTask_Deprecated(Task_Deprecated):
         )
         trainer: Trainer.Config = Trainer.Config()
         labels: PairClassification.TargetConfig = PairClassification.TargetConfig()
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config()
+        )
+
+
+class PairwiseClassificationTask(NewTask):
+    class Config(NewTask.Config):
+        model: BasePairwiseModel.Config = PairwiseModel.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
         )

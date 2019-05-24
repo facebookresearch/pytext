@@ -8,22 +8,24 @@ import os
 
 from pytext.config.component import register_tasks
 from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultitask
-from pytext.task.new_task import (
-    NewTask,
-    PairwiseClassification,
-    QueryDocumentPairwiseRanking,
-)
+from pytext.task.new_task import NewTask
 from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
     ContextualIntentSlotTask_Deprecated,
     DocClassificationTask_Deprecated,
+    DocumentClassificationTask,
+    DocumentRegressionTask,
     EnsembleTask_Deprecated,
     JointTextTask_Deprecated,
     LMTask,
     LMTask_Deprecated,
     PairClassificationTask_Deprecated,
+    PairwiseClassificationTask,
+    QueryDocumentPairwiseRankingTask,
+    QueryDocumentPairwiseRankingTask_Deprecated,
     SemanticParsingTask_Deprecated,
     SeqNNTask_Deprecated,
+    WordTaggingTask,
     WordTaggingTask_Deprecated,
 )
 from pytext.utils.documentation import eprint
@@ -65,16 +67,20 @@ def register_builtin_tasks():
             ContextualIntentSlotTask_Deprecated,
             DisjointMultitask,
             DocClassificationTask_Deprecated,
+            DocumentClassificationTask,
+            DocumentRegressionTask,
             EnsembleTask_Deprecated,
             JointTextTask_Deprecated,
             LMTask,
             LMTask_Deprecated,
             NewDisjointMultitask,
             PairClassificationTask_Deprecated,
+            PairwiseClassificationTask,
+            QueryDocumentPairwiseRankingTask,
+            QueryDocumentPairwiseRankingTask_Deprecated,
             SemanticParsingTask_Deprecated,
             SeqNNTask_Deprecated,
+            WordTaggingTask,
             WordTaggingTask_Deprecated,
-            PairwiseClassification,
-            QueryDocumentPairwiseRanking,
         )
     )

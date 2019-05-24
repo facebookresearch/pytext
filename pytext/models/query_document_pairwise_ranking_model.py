@@ -21,7 +21,7 @@ from pytext.models.representations.query_document_pairwise_ranking_rep import (
 )
 
 
-class QueryDocumentPairwiseRankingModel(Model):
+class QueryDocumentPairwiseRankingModel_Deprecated(Model):
     """Pairwise ranking model
     This model takes in a query, and two responses (pos_response and neg_response)
     It passes representations of the query and the two responses to a decoder
@@ -119,7 +119,7 @@ class QueryDocumentPairwiseRankingModel(Model):
                 torch.save(subrep.state_dict(), path)
 
 
-class NewQueryDocumentPairwiseRankingModel(PairwiseModel):
+class QueryDocPairwiseRankingModel(PairwiseModel):
     """Pairwise ranking model
     This model takes in a query, and two responses (pos_response and neg_response)
     It passes representations of the query and the two responses to a decoder

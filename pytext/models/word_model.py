@@ -16,7 +16,7 @@ from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
 from pytext.models.representations.pass_through import PassThroughRepresentation
 
 
-class WordTaggingModel(Model):
+class WordTaggingModel_Deprecated(Model):
     """
     Word tagging model. It can be used for any task that requires predicting the
     tag for a word/token. For example, the following tasks can be modeled as word
@@ -50,7 +50,7 @@ class WordTaggingModel(Model):
             self.find_unused_parameters = False
 
 
-class NewWordTaggingModel(Model):
+class WordTaggingModel(Model):
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()

@@ -1,6 +1,7 @@
 {
+  "version": 7,
   "task": {
-    "NewDocumentClassification": {
+    "WordTaggingTask": {
       "data": {
         "source": {
           "TSVDataSource": {
@@ -10,15 +11,7 @@
             "eval_filename": "pytext/tests/data/test_data_tiny.tsv"
           }
         }
-      },
-      "model": {
-        "NewDocModel": {
-          "representation": {
-            "DocNNRepresentation": {}
-          }
-        }
       }
     }
-  },
-  "export_torchscript_path": "/tmp/new_docnn.pt1"
+  }
 }

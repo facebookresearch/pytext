@@ -43,7 +43,7 @@ class DocModel_Deprecated(Model):
 
     It can be instantiated just like any other :class:`~Model`.
 
-    DEPRECATED: Use NewDocModel instead
+    DEPRECATED: Use DocModel instead
     """
 
     class Config(ConfigBase):
@@ -58,13 +58,13 @@ class DocModel_Deprecated(Model):
         )
 
 
-class NewDocModel(DocModel_Deprecated):
+class DocModel(Model):
     """DocModel that's compatible with the new Model abstraction, which is responsible
     for describing which inputs it expects and arranging its input tensors."""
 
     __EXPANSIBLE__ = True
 
-    class Config(DocModel_Deprecated.Config):
+    class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
@@ -73,6 +73,15 @@ class NewDocModel(DocModel_Deprecated):
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
+        representation: Union[
+            PureDocAttention.Config,
+            BiLSTMDocAttention.Config,
+            DocNNRepresentation.Config,
+        ] = BiLSTMDocAttention.Config()
+        decoder: MLPDecoder.Config = MLPDecoder.Config()
+        output_layer: ClassificationOutputLayer.Config = (
+            ClassificationOutputLayer.Config()
+        )
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]
@@ -162,14 +171,14 @@ class NewDocModel(DocModel_Deprecated):
         return cls(embedding, representation, decoder, output_layer)
 
 
-class NewDocRegressionModel(NewDocModel):
+class DocRegressionModel(DocModel):
     """
     Model that's compatible with the new Model abstraction, and is configured for
     regression tasks (specifically for labels, predictions, and loss).
     """
 
-    class Config(NewDocModel.Config):
-        class RegressionModelInput(Model.Config.ModelInput):
+    class Config(DocModel.Config):
+        class RegressionModelInput(DocModel.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
 
