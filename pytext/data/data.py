@@ -250,7 +250,6 @@ class Data(Component):
         self.sort_key = sort_key
         self.epoch_size = epoch_size
         self.in_memory = in_memory
-        self.batch = {Stage.TRAIN: None, Stage.EVAL: None, Stage.TEST: None}
         self.numberized_cache: MutableMapping[str, Any] = {}
         full_train_data = (
             data_source.train_unsharded
@@ -260,38 +259,30 @@ class Data(Component):
         initialize_tensorizers(self.tensorizers, full_train_data)
 
     def _get_batches(self, stage, data_source):
-        if not self.batch[stage]:
-            rows = {
-                Stage.TRAIN: data_source.train,
-                Stage.TEST: data_source.test,
-                Stage.EVAL: data_source.eval,
-            }[stage]
+        rows = {
+            Stage.TRAIN: data_source.train,
+            Stage.TEST: data_source.test,
+            Stage.EVAL: data_source.eval,
+        }[stage]
 
-            if self.in_memory:
-                numberized_rows = self.numberized_cache.get(stage, None)
-                if not numberized_rows:
-                    numberized_rows = list(self.numberize_rows(rows))
-                    self.numberized_cache[stage] = numberized_rows
-                else:
-                    print(f"Get numberized rows from cache in stage: {stage}")
+        if self.in_memory:
+            numberized_rows = self.numberized_cache.get(stage, None)
+            if numberized_rows is None:
+                numberized_rows = list(self.numberize_rows(rows))
+                self.numberized_cache[stage] = numberized_rows
             else:
-                numberized_rows = self.numberize_rows(rows)
-
-            batches = self.batcher.batchify(
-                numberized_rows,
-                sort_key=(
-                    lambda row: self.tensorizers[self.sort_key].sort_key(
-                        row[self.sort_key]
-                    )
-                )
-                if self.sort_key
-                else None,
+                print(f"Get numberized rows from cache in stage: {stage}")
+        else:
+            numberized_rows = self.numberize_rows(rows)
+        batches = self.batcher.batchify(
+            numberized_rows,
+            sort_key=(
+                lambda row: self.tensorizers[self.sort_key].sort_key(row[self.sort_key])
             )
-            self.batch[stage] = iter(
-                pad_and_tensorize_batches(self.tensorizers, batches)
-            )
-
-        return self.batch[stage]
+            if self.sort_key
+            else None,
+        )
+        return pad_and_tensorize_batches(self.tensorizers, batches)
 
     def numberize_rows(self, rows):
         for row in rows:
@@ -309,17 +300,16 @@ class Data(Component):
 
         `stage` is used to determine which data source is used to create batches.
         if data_source is provided, it is used instead of the configured data_sorce
-        this is to allow setting a different data_source for testing a model
+        this is to allow setting a different data_source for testing a model.
+
+        If epoch_size is set, training data will continue iterating over the data
+        source until epoch_size batches have been emitted.
         """
         data_source = data_source or self.data_source
-        self.num_batches = 0
         while True:
-            for batch in self._get_batches(stage, data_source):
-                if stage == Stage.TRAIN and self.num_batches == self.epoch_size:
-                    self.num_batches = 0
+            for i, batch in enumerate(self._get_batches(stage, data_source)):
+                if stage == Stage.TRAIN and i == self.epoch_size:
                     return
-                self.num_batches += 1
                 yield batch
-            self.batch[stage] = None
             if stage != Stage.TRAIN or not self.epoch_size:
                 return
