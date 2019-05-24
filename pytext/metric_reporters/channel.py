@@ -222,7 +222,9 @@ class TensorBoardChannel(Channel):
 
         if stage == Stage.TRAIN:
             for key, val in model.state_dict().items():
-                self.summary_writer.add_histogram(key, val, epoch)
+                if val is not None:
+                    self.summary_writer.add_histogram(key, val, epoch)
+                    self.summary_writer.add_histogram(key, val.grad(), epoch)
 
     def add_texts(self, tag, metrics):
         """
