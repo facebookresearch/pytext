@@ -138,7 +138,9 @@ class _NewTask(TaskBase):
         for tensorizer in tensorizers.values():
             for name, type in tensorizer.column_schema:
                 if name in schema and type != schema[name]:
-                    raise TypeError(f"Expected two different types for column {name}")
+                    raise TypeError(
+                        f"Unexpected different types for column {name}: {type} != {schema[name]}"
+                    )
                 schema[name] = type
 
         # This initializes the tensorizers

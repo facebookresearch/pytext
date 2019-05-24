@@ -65,7 +65,7 @@ class ConfigBase(metaclass=ConfigBaseMeta):
 
     def __str__(self):
         lines = [self.__class__.__name__ + ":"]
-        for key, val in vars(self).items():
+        for key, val in sorted(self._asdict().items()):
             lines += f"{key}: {val}".split("\n")
         return "\n    ".join(lines)
 

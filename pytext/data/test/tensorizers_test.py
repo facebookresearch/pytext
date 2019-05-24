@@ -221,7 +221,7 @@ class TensorizersTest(unittest.TestCase):
             test_file=None,
             eval_file=None,
             field_names=["text", "dict"],
-            schema={"text": str, "dict": str},
+            schema={"text": str, "dict": Gazetteer},
         )
 
         init = tensorizer.initialize()
