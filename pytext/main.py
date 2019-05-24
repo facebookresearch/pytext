@@ -234,6 +234,17 @@ def gen_default_config(context, task_name, options):
     print(json.dumps(cfg, sort_keys=True, indent=2))
 
 
+@main.command(help="Update a config JSON file to lastest version.")
+@click.pass_context
+def update_config(context):
+    """
+        Load a config file, update to latest version and prints the result.
+    """
+    config = context.obj.load_config()
+    config_json = config_to_json(PyTextConfig, config)
+    print(json.dumps(config_json, sort_keys=True, indent=2))
+
+
 @main.command()
 @click.option(
     "--model-snapshot",
