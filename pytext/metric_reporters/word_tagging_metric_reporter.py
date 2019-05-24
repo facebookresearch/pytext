@@ -121,7 +121,7 @@ class SequenceTaggingMetricReporter(MetricReporter):
             self.calculate_loss(),
         )
 
-    def batch_context(self, batch):
+    def batch_context(self, raw_batch, batch):
         return {}
 
     @staticmethod

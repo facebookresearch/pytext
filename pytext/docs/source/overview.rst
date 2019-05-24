@@ -115,8 +115,6 @@ Code Example
           class ModelInput(Model.Config.ModelInput):
               tokens: TokenTensorizer.Config = TokenTensorizer.Config()
               labels: WordLabelTensorizer.Config = WordLabelTensorizer.Config()
-              # for metric reporter
-              raw_text: RawString.Config = RawString.Config(column="text")
 
           inputs: ModelInput = ModelInput()
           embedding: WordEmbedding.Config = WordEmbedding.Config()

@@ -698,53 +698,6 @@ class GazetteerTensorizer(Tensorizer):
         )
 
 
-class RawString(Tensorizer):
-    """A pass-through tensorizer to include raw fields from datasource in the batch.
-       Used mostly for metric reporting."""
-
-    class Config(Tensorizer.Config):
-        #: The name of the pass-through column to parse from the data source.
-        column: str
-
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(config.column)
-
-    def __init__(self, column: str):
-        super().__init__([(column, str)])
-        self.column = column
-
-    def numberize(self, row):
-        return row[self.column]
-
-
-class JoinStringTensorizer(Tensorizer):
-    """A pass-through tensorizer to include raw fields from datasource in the batch.
-       Used mostly for metric reporting."""
-
-    class Config(Tensorizer.Config):
-        #: The name of the pass-through column to parse from the data source.
-        columns: List[str]
-        delimiter: str = " | "
-
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(config.columns, config.delimiter)
-
-    def __init__(self, columns: List[str], delimiter: str):
-        super().__init__([(column, str) for column in columns])
-        self.columns = columns
-        self.delimiter = delimiter
-
-    def numberize(self, row):
-        return self.delimiter.join([row[column] for column in self.columns])
-
-
-class RawJson(RawString):
-    def numberize(self, row):
-        return json.loads(row[self.column])
-
-
 class MetricTensorizer(Tensorizer):
     """A tensorizer which use other tensorizers' numerized data.
        Used mostly for metric reporting."""

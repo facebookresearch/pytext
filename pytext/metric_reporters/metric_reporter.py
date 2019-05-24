@@ -139,7 +139,7 @@ class MetricReporter(Component):
     def add_channel(self, channel):
         self.channels.append(channel)
 
-    def batch_context(self, batch):
+    def batch_context(self, raw_batch, batch):
         context = {}
         if DatasetFieldName.NUM_TOKENS in batch:
             context.update(

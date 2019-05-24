@@ -8,12 +8,7 @@ from typing import Dict, List, Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
-from pytext.data.tensorizers import (
-    JoinStringTensorizer,
-    LabelTensorizer,
-    Tensorizer,
-    TokenTensorizer,
-)
+from pytext.data.tensorizers import LabelTensorizer, Tensorizer, TokenTensorizer
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingBase, EmbeddingList, WordEmbedding
@@ -186,10 +181,6 @@ class PairwiseModel(BasePairwiseModel):
             tokens1: TokenTensorizer.Config = TokenTensorizer.Config(column="text1")
             tokens2: TokenTensorizer.Config = TokenTensorizer.Config(column="text2")
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
-            # for metric reporter
-            raw_text: JoinStringTensorizer.Config = JoinStringTensorizer.Config(
-                columns=["text1", "text2"]
-            )
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()

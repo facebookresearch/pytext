@@ -5,6 +5,7 @@ import unittest
 
 from pytext.common.constants import Stage
 from pytext.data import Batcher, Data, PoolingBatcher
+from pytext.data.data import RowData
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, TokenTensorizer
@@ -34,16 +35,18 @@ class DataTest(unittest.TestCase):
         batches = list(data.batches(Stage.TRAIN))
         # We should have made at least one non-empty batch
         self.assertTrue(batches)
-        batch = next(iter(batches))
+        raw_batch, batch = next(iter(batches))
         self.assertTrue(batch)
 
     def test_create_batches(self):
         data = Data(self.data_source, self.tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
-        batch = next(iter(batches))
+        raw_batch, batch = next(iter(batches))
         self.assertEqual(set(self.tensorizers), set(batch))
         tokens, seq_lens, _ = batch["tokens"]
+        self.assertEqual(10, len(raw_batch))
+        self.assertEqual({"text", "label"}, set(raw_batch[0]))
         self.assertEqual((10,), seq_lens.size())
         self.assertEqual((10,), batch["labels"].size())
         self.assertEqual({"tokens", "labels"}, set(batch))
@@ -54,7 +57,7 @@ class DataTest(unittest.TestCase):
         data = Data(self.data_source, tensorizers, Batcher(train_batch_size=16))
         batches = list(data.batches(Stage.TRAIN))
         self.assertEqual(1, len(batches))
-        batch = next(iter(batches))
+        raw_batch, batch = next(iter(batches))
         self.assertEqual({"tokens"}, set(batch))
         tokens, seq_lens, _ = batch["tokens"]
         self.assertEqual((10,), seq_lens.size())
@@ -80,8 +83,8 @@ class DataTest(unittest.TestCase):
         # We should have made at least one non-empty batch
         self.assertTrue(data1)
         self.assertTrue(data2)
-        batch1, _ = data1[0]
-        batch2, _ = data2[0]
+        _, (batch1, _) = data1[0]
+        _, (batch2, _) = data2[0]
         # pytorch tensors don't have equals comparisons, so comparing the tensor
         # dicts is non-trivial, but they should also be equal
         self.assertEqual(batch1, batch2)
@@ -94,7 +97,7 @@ class DataTest(unittest.TestCase):
             sort_key="tokens",
         )
         batches = list(data.batches(Stage.TRAIN))
-        batch = next(iter(batches))
+        raw_batch, batch = next(iter(batches))
         _, seq_lens, _ = batch["tokens"]
         seq_lens = seq_lens.tolist()
         for i in range(len(seq_lens) - 1):
@@ -111,25 +114,34 @@ class DataTest(unittest.TestCase):
 
 class BatcherTest(unittest.TestCase):
     def test_batcher(self):
-        data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
+        data = [
+            RowData({"text": "something"}, {"a": i, "b": 10 + i, "c": 20 + i})
+            for i in range(10)
+        ]
         batcher = Batcher(train_batch_size=3)
         batches = list(batcher.batchify(data))
         self.assertEqual(len(batches), 4)
-        self.assertEqual(batches[1]["a"], [3, 4, 5])
-        self.assertEqual(batches[3]["b"], [19])
+        self.assertEqual(len(batches[0].raw_data), 3)
+        self.assertEqual("something", batches[1].raw_data[0]["text"])
+        self.assertEqual(batches[1].numberized["a"], [3, 4, 5])
+        self.assertEqual(batches[3].numberized["b"], [19])
 
     def test_pooling_batcher(self):
-        data = [{"a": i, "b": 10 + i, "c": 20 + i} for i in range(10)]
+        data = [
+            RowData({"text": "something"}, {"a": i, "b": 10 + i, "c": 20 + i})
+            for i in range(10)
+        ]
         batcher = PoolingBatcher(train_batch_size=3, pool_num_batches=2)
-        batches = list(batcher.batchify(data, sort_key=lambda x: x["a"]))
+        batches = list(batcher.batchify(data, sort_key=lambda x: x.numberized["a"]))
 
         self.assertEqual(len(batches), 4)
-        a_vals = {a for batch in batches for a in batch["a"]}
+        a_vals = {a for raw_batch, batch in batches for a in batch["a"]}
         self.assertSetEqual(a_vals, set(range(10)))
-        for batch in batches[:2]:
+        for raw_batch, batch in batches[:2]:
+            self.assertEqual([{"text": "something"}] * len(raw_batch), list(raw_batch))
             self.assertGreater(batch["a"][0], batch["a"][-1])
             for a in batch["a"]:
                 self.assertLess(a, 6)
-        for batch in batches[2:]:
+        for _, batch in batches[2:]:
             for a in batch["a"]:
                 self.assertGreaterEqual(a, 6)

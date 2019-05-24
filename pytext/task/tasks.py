@@ -268,7 +268,7 @@ class PairwiseClassificationTask(NewTask):
     class Config(NewTask.Config):
         model: BasePairwiseModel.Config = PairwiseModel.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
+            ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
         )
 
 
