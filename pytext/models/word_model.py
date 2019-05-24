@@ -3,9 +3,8 @@
 
 from typing import Union
 
-from pytext.data.tensorizers import RawString, TokenTensorizer, WordLabelTensorizer
+from pytext.data.tensorizers import TokenTensorizer, WordLabelTensorizer
 from pytext.data.utils import UNK
-from pytext.loss import CrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
@@ -55,8 +54,6 @@ class WordTaggingModel(Model):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             labels: WordLabelTensorizer.Config = WordLabelTensorizer.Config()
-            # for metric reporter
-            raw_text: RawString.Config = RawString.Config(column="text")
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()

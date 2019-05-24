@@ -5,7 +5,7 @@ import functools
 import itertools
 import math
 import random
-from typing import Any, Dict, Iterable, MutableMapping, Optional, Type
+from typing import Any, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType, Registry, create_component
@@ -17,6 +17,16 @@ from .sources.data_source import (
     ShardedDataSource,
 )
 from .tensorizers import MetricTensorizer, Tensorizer, initialize_tensorizers
+
+
+class RowData(NamedTuple):
+    raw_data: RawExample
+    numberized: RawExample
+
+
+class BatchData(NamedTuple):
+    raw_data: List[RawExample]
+    numberized: Dict[str, List[Any]]
 
 
 class Batcher(Component):
@@ -60,7 +70,8 @@ class Batcher(Component):
         The last batch will be of length len(iterable) % batch_size."""
         batch_size = self._batch_sizes[stage]
         for batch in self._group_iter(iterable, batch_size, sort_key):
-            yield zip_dicts(batch)
+            raw_batch, numberized_batch = zip(*batch)
+            yield BatchData(raw_batch, zip_dicts(numberized_batch))
 
     def _group_iter(self, iterable: Iterable[RawExample], group_size, sort_key=None):
         iterators = [iter(iterable)] * group_size
@@ -122,19 +133,20 @@ class PoolingBatcher(Batcher):
                 random.shuffle(pool)
             for batch_index in batch_indices:
                 batch = pool[batch_size * batch_index : batch_size * (batch_index + 1)]
-                yield zip_dicts(batch)
+                raw_batch, numberized_batch = zip(*batch)
+                yield BatchData(raw_batch, zip_dicts(numberized_batch))
 
 
 def pad_and_tensorize_batches(tensorizers, batches):
-    for batch in batches:
+    for raw_batch, numberized_batch in batches:
         tensor_dict = {}
         for name, tensorizer in tensorizers.items():
             if isinstance(tensorizer, MetricTensorizer):
-                tensor_dict[name] = tensorizer.tensorize(batch)
+                tensor_dict[name] = tensorizer.tensorize(numberized_batch)
             else:
-                tensor_dict[name] = tensorizer.tensorize(batch[name])
+                tensor_dict[name] = tensorizer.tensorize(numberized_batch[name])
 
-        yield tensor_dict
+        yield raw_batch, tensor_dict
 
 
 def zip_dicts(dicts):
@@ -254,10 +266,11 @@ class Data(Component):
 
     def numberize_rows(self, rows):
         for row in rows:
-            yield {
+            numberized = {
                 name: tensorizer.numberize(row)
                 for name, tensorizer in self.tensorizers.items()
             }
+            yield RowData(row, numberized)
 
     @generator_iterator
     def batches(self, stage: Stage, data_source=None):
@@ -277,6 +290,8 @@ class Data(Component):
             Stage.EVAL: data_source.eval,
         }[stage]
 
+        # rows and numberized_rows are generators which can iterate over large
+        # datasets; be careful not to do any operations which will expend them.
         if self.in_memory:
             numberized_rows = self.numberized_cache.get(stage, None)
             if numberized_rows is None:
@@ -286,13 +301,12 @@ class Data(Component):
                 print(f"Get numberized rows from cache in stage: {stage}")
         else:
             numberized_rows = self.numberize_rows(rows)
+        sort_key = self.sort_key
+
+        def key(row):
+            return self.tensorizers[sort_key].sort_key(row.numberized[sort_key])
 
         batches = self.batcher.batchify(
-            numberized_rows,
-            sort_key=(
-                lambda row: self.tensorizers[self.sort_key].sort_key(row[self.sort_key])
-            )
-            if self.sort_key
-            else None,
+            numberized_rows, sort_key=(key if sort_key else None)
         )
         return pad_and_tensorize_batches(self.tensorizers, batches)

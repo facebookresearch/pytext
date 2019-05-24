@@ -42,13 +42,15 @@ class ComparableClassificationMetric(Enum):
 
 
 class ClassificationMetricReporter(MetricReporter):
-    UTTERANCE_COLUMN = "raw_text"
-
     class Config(MetricReporter.Config):
         model_select_metric: ComparableClassificationMetric = (
             ComparableClassificationMetric.ACCURACY
         )
         target_label: Optional[str] = None
+        #: These column names correspond to raw input data columns. Text in these
+        #: columns (usually just 1 column) will be concatenated and output in
+        #: the IntentModelChannel as an evaluation tsv.
+        text_column_names: List[str] = ["text"]
 
     def __init__(
         self,
@@ -58,11 +60,13 @@ class ClassificationMetricReporter(MetricReporter):
             ComparableClassificationMetric.ACCURACY
         ),
         target_label: Optional[str] = None,
+        text_column_names: List[str] = Config.text_column_names,
     ) -> None:
         super().__init__(channels)
         self.label_names = label_names
         self.model_select_metric = model_select_metric
         self.target_label = target_label
+        self.text_column_names = text_column_names
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
@@ -93,11 +97,15 @@ class ClassificationMetricReporter(MetricReporter):
             [ConsoleChannel(), IntentModelChannel((Stage.TEST,), config.output_path)],
             config.model_select_metric,
             config.target_label,
+            config.text_column_names,
         )
 
-    def batch_context(self, batch):
-        context = super().batch_context(batch)
-        context.update({"utterance": batch[self.UTTERANCE_COLUMN]})
+    def batch_context(self, raw_batch, batch):
+        context = super().batch_context(raw_batch, batch)
+        context["utterance"] = [
+            " | ".join(row[column_name] for column_name in self.text_column_names)
+            for row in raw_batch
+        ]
         return context
 
     def calculate_metric(self):

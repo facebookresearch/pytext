@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
-from pytext.data.tensorizers import RawString, Tensorizer, TokenTensorizer
+from pytext.data.tensorizers import Tensorizer, TokenTensorizer
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingBase
@@ -163,8 +163,6 @@ class LMLSTM(BaseModel):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config(
                 add_bos_token=True, add_eos_token=True
             )
-            # for metric reporter
-            raw_text: RawString.Config = RawString.Config(column="text")
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()

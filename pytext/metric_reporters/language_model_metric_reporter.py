@@ -25,7 +25,7 @@ class LanguageModelChannel(FileChannel):
 
 class LanguageModelMetricReporter(MetricReporter):
     UTTERANCE_COLUMN = "utterance"
-    RAW_TEXT_COLUMN = "raw_text"
+    RAW_TEXT_COLUMN = "text"
     lower_is_better = True
 
     @classmethod
@@ -55,12 +55,14 @@ class LanguageModelMetricReporter(MetricReporter):
     def get_model_select_metric(self, metrics) -> float:
         return metrics.perplexity_per_word
 
-    def batch_context(self, batch):
-        context = super().batch_context(batch)
-        if self.RAW_TEXT_COLUMN in batch:
+    def batch_context(self, raw_batch, batch):
+        context = super().batch_context(raw_batch, batch)
+        if any(self.RAW_TEXT_COLUMN in row for row in raw_batch):
             context.update(
                 {
-                    self.UTTERANCE_COLUMN: batch[self.RAW_TEXT_COLUMN],
+                    self.UTTERANCE_COLUMN: [
+                        row.get(self.RAW_TEXT_COLUMN) for row in raw_batch
+                    ],
                     DatasetFieldName.TARGET_SEQ_LENS: batch["tokens"][1],
                 }
             )

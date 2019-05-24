@@ -35,7 +35,7 @@ class NewTaskTrainer(Trainer):
 
         model = state.model
         self.zero_grads(state)
-        for i, (batch_id, batch) in enumerate(samples):
+        for i, (batch_id, (raw_batch, batch)) in enumerate(samples):
             if cuda.DISTRIBUTED_WORLD_SIZE > 1:
                 # Whenever *samples* contains more than one mini-batch, we
                 # want to accumulate gradients locally and only call
@@ -57,7 +57,9 @@ class NewTaskTrainer(Trainer):
             if report_metric:
                 with timing.time("add metrics"):
                     metric_reporter.add_batch_stats(
-                        batch_id, *metric_data, **metric_reporter.batch_context(batch)
+                        batch_id,
+                        *metric_data,
+                        **metric_reporter.batch_context(raw_batch, batch),
                     )
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
@@ -209,7 +211,7 @@ class _NewTask(TaskBase):
         model = model.cpu()
         precision.deactivate(model)
 
-        batch = next(iter(self.data.batches(Stage.TRAIN)))
+        unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
         print(f"Saving caffe2 model to: {export_path}")
         return model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
@@ -225,7 +227,7 @@ class _NewTask(TaskBase):
         model.eval()
         model.prepare_for_onnx_export_()
 
-        batch = next(iter(self.data.batches(Stage.TEST)))
+        unused_raw_batch, batch = next(iter(self.data.batches(Stage.TEST)))
         inputs = model.arrange_model_inputs(batch)
         trace = jit.trace(model, inputs)
         if hasattr(model, "torchscriptify"):

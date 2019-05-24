@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from pytext.common.constants import BatchContext, Stage
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data import BaseBatchSampler, Data, EvalBatchSampler, generator_iterator
+from pytext.data.data import BatchData
 
 
 class DisjointMultitaskData(Data):
@@ -71,6 +72,6 @@ class DisjointMultitaskData(Data):
         }
         sampled_batches = self.samplers[stage].batchify(all_batches)
 
-        for name, batch in sampled_batches:
+        for name, (raw_batch, batch) in sampled_batches:
             batch[self.task_key] = name
-            yield batch
+            yield BatchData(raw_batch, batch)
