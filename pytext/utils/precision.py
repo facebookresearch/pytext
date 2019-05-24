@@ -64,7 +64,6 @@ with amp.scale_loss(loss, optimizer) as scaled_loss:
 
 _FP16_ENABLED = False
 _USE_FP16_OPTIMIZER = False
-_amp_handle = None
 
 
 def set_fp16(fp16_enabled: bool):
@@ -80,27 +79,21 @@ def set_fp16(fp16_enabled: bool):
         _FP16_ENABLED = fp16_enabled
 
 
-def activate(model):
-    # Warning: this function should be called before train.
-
-    global _amp_handle
+def initialize(model, optimizer):
+    # Warning: this function should be called before training.
     global _USE_FP16_OPTIMIZER
 
     if _FP16_ENABLED:
         _USE_FP16_OPTIMIZER = model.SUPPORT_FP16_OPTIMIZER
 
         if _USE_FP16_OPTIMIZER:
-            model.half()
-
-
-def initialize(model, optimizer):
-    if _FP16_ENABLED:
-        if _USE_FP16_OPTIMIZER:
-            return model, FP16_Optimizer(optimizer, dynamic_loss_scale=True)
+            model.half().cuda()
+            return FP16_Optimizer(optimizer, dynamic_loss_scale=True)
         else:
-            return amp.initialize(model, optimizer, opt_level="O1")
+            _, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+            return optimizer
     else:
-        return model, optimizer
+        return optimizer
 
 
 def backward(optimizer, loss):

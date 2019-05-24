@@ -106,8 +106,6 @@ class DisjointMultitask(TaskBase):
         )
         if model_state:
             model.load_state_dict(model_state)
-        if cuda.CUDA_ENABLED:
-            model = model.cuda()
 
         return cls(
             target_task_name=task_config.target_task_name,

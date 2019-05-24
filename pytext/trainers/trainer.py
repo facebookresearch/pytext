@@ -93,7 +93,7 @@ class Trainer(TrainerBase):
             if config.scheduler
             else Scheduler()
         )
-        model, self.optimizer = precision.initialize(model, optimizer)
+        self.optimizer = precision.initialize(model, optimizer)
         self.config = config
 
     @classmethod

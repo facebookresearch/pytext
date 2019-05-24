@@ -180,10 +180,6 @@ class _NewTask(TaskBase):
         if model_state:
             model.load_state_dict(model_state)
 
-        precision.activate(model)
-        if cuda.CUDA_ENABLED:
-            model = model.cuda()
-
         return model
 
     def __init__(
