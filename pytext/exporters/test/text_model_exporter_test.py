@@ -974,7 +974,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         )
         dict_lengths = torch.from_numpy(
             np.random.randint(
-                1, num_dict_feats + 1, size=(num_words * batch_size)
+                1, num_dict_feats + 1, size=(batch_size, num_words)
             ).astype(np.int64)
         )
         chars = torch.from_numpy(

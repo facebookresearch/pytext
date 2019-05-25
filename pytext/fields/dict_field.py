@@ -15,7 +15,7 @@ class DictFeatureField(VocabUsingField):
     dummy_model_input = (
         torch.tensor([[1], [1]], dtype=torch.long, device="cpu"),
         torch.tensor([[1.5], [2.5]], dtype=torch.float, device="cpu"),
-        torch.tensor([1, 1], dtype=torch.long, device="cpu"),
+        torch.tensor([[1], [1]], dtype=torch.long, device="cpu"),
     )
 
     def __init__(
@@ -67,12 +67,12 @@ class DictFeatureField(VocabUsingField):
             lengths.append(ls)
 
         lengths_flattened = [l for l_list in lengths for l in l_list]
-        ex_lengths = [len(l_list) for l_list in lengths]
-        max_ex_len = self.pad_length(max(ex_lengths))
+        seq_lens = [len(l_list) for l_list in lengths]
+        max_ex_len = self.pad_length(max(seq_lens))
         max_feat_len = max(lengths_flattened)
         all_lengths, all_feats, all_weights = [], [], []
-        for i, ex_len in enumerate(ex_lengths):
-            ex_feats, ex_weights = [], []
+        for i, seq_len in enumerate(seq_lens):
+            ex_feats, ex_weights, ex_lengths = [], [], []
             feats_lengths, feats_vals, feats_weights = lengths[i], feats[i], weights[i]
             max_feat_len_example = max(feats_lengths)
             r_offset = 0
@@ -89,14 +89,15 @@ class DictFeatureField(VocabUsingField):
                 )
                 ex_weights.extend([0.0] * (max_feat_len - max_feat_len_example))
                 r_offset += max_feat_len_example
-            all_lengths.extend(feats_lengths)
+            ex_lengths.extend(feats_lengths)
             # Pad examples
-            ex_padding = (max_ex_len - ex_len) * max_feat_len
+            ex_padding = (max_ex_len - seq_len) * max_feat_len
             ex_feats.extend([self.pad_token] * ex_padding)
             ex_weights.extend([0.0] * ex_padding)
-            all_lengths.extend([1] * (max_ex_len - ex_len))
+            ex_lengths.extend([1] * (max_ex_len - seq_len))
             all_feats.append(ex_feats)
             all_weights.append(ex_weights)
+            all_lengths.append(ex_lengths)
         return all_feats, all_weights, all_lengths
 
     def numericalize(self, arr, device=None):

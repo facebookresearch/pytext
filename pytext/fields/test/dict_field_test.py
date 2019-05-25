@@ -45,7 +45,7 @@ PADDED_DICT_FEATS = [
 ]
 
 PADDED_DICT_WEIGHTS = [[0.0, 0.0, 0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 1.0, 0.0, 0.0, 0.0]]
-PADDED_LENGTHS = [1, 1, 2, 1, 1, 1]
+PADDED_LENGTHS = [[1, 1, 2], [1, 1, 1]]
 NUMERICAL_FEATS = np.array([[1, 1, 1, 1, 3, 2], [1, 1, 4, 1, 1, 1]])
 
 
