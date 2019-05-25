@@ -89,10 +89,13 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
 
         Args:
             feats (torch.Tensor): Batch of sentences with dictionary feature ids.
+                shape: [bsz, seq_len * max_feat_per_token]
             weights (torch.Tensor): Batch of sentences with dictionary feature
-            weights for the dictionary features.
+                weights for the dictionary features.
+                shape: [bsz, seq_len * max_feat_per_token]
             lengths (torch.Tensor): Batch of sentences with the number of
-            dictionary features per token.
+                dictionary features per token.
+                shape: [bsz, seq_len]
 
         Returns:
             torch.Tensor: Embedded batch of sentences. Dimension:
@@ -101,8 +104,6 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
 
         """
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
-        new_len_shape = torch.cat((batch_size.view(1), torch.LongTensor([-1])))
-        lengths = torch.onnx.operators.reshape_from_tensor_shape(lengths, new_len_shape)
         max_toks = torch.onnx.operators.shape_as_tensor(lengths)[1]
         dict_emb = super().forward(feats)
 

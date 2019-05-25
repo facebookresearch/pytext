@@ -204,7 +204,7 @@ class RNNGParserTest(unittest.TestCase):
         dict_feat = (
             torch.tensor([[1, 1, 1, 1, 1, 1, 3, 1]]),
             torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]]),
-            torch.tensor([1, 1, 2, 1]),
+            torch.tensor([[1, 1, 2, 1]]),
         )
 
         actions, scores = self.parser(
