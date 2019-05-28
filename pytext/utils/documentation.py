@@ -130,12 +130,12 @@ def pretty_print_config_class(obj):
             print(f"    {k} = null")
 
 
-def get_subclasses(klass, stop_klass=Component):
+def get_subclasses(klass, stop_classes=(Module, Component)):
     ret = set()
 
     def add_subclasses(k):
-        for b in getattr(k, "__bases__"):
-            if b != stop_klass:
+        for b in k.__bases__:
+            if b not in stop_classes:
                 ret.add(b)
                 add_subclasses(b)
 
@@ -160,7 +160,7 @@ def find_config_class(class_name):
             for name, obj in getmembers(mod, isclass):
                 if name == class_name and any(
                     base.__module__.startswith("pytext.")
-                    for base in get_subclasses(obj, object)
+                    for base in get_subclasses(obj, (object,))
                 ):
                     if not module_part or obj.__module__ == module_part:
                         ret.add(obj)
