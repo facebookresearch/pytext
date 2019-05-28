@@ -4,7 +4,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_trainer
 
-from .trainer import Trainer, TrainerBase
+from .trainer import TaskTrainer, Trainer, TrainerBase
 
 
 class EnsembleTrainer_Deprecated(TrainerBase):
@@ -56,3 +56,8 @@ class EnsembleTrainer_Deprecated(TrainerBase):
             self.train_single_model(train_iter, eval_iter, m, *args, **kwargs)
         model.merge_sub_models()
         return model, None
+
+
+class EnsembleTrainer(EnsembleTrainer_Deprecated):
+    class Config(ConfigBase):
+        real_trainer: TaskTrainer.Config = TaskTrainer.Config()

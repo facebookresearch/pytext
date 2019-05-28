@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from copy import deepcopy
-from typing import Any, List
+from typing import Any, Dict, List
 
 import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.config.component import create_model
 from pytext.config.field_config import FeatureConfig
+from pytext.data.tensorizers import Tensorizer
 from pytext.models.model import Model
 
 
-class Ensemble(Model):
+class Ensemble_Deprecated(Model):
     """Base class for ensemble models.
 
     Args:
@@ -71,3 +72,40 @@ class Ensemble(Model):
         """
         for model in self.models:
             model.save_modules(base_path, suffix)
+
+
+class Ensemble(Ensemble_Deprecated):
+    class Config(Ensemble_Deprecated.Config):
+        @property
+        def inputs(self):
+            return self.models[0].inputs
+
+    @classmethod
+    def from_config(
+        cls, config: Config, tensorizers: Dict[str, Tensorizer], *args, **kwargs
+    ):
+        """Factory method to construct an instance of Ensemble or one its derived
+        classes from the module's config object and tensorizers
+        It creates sub-models in the ensemble using the sub-model's configuration.
+
+        Args:
+            config (Config): Configuration object specifying all the
+                parameters of Ensemble.
+            tensorizers (Dict[str, Tensorizer]): Tensorizer specifying all the
+                parameters of the input features to the model.
+
+        Returns:
+            type: An instance of Ensemble.
+
+        """
+        sub_models = [
+            create_model(sub_model_config, tensorizers, *args, **kwargs)
+            for sub_model_config in config.models
+        ]
+        return cls(config, sub_models, *args, **kwargs)
+
+    def arrange_model_inputs(self, tensor_dict):
+        return self.models[0].arrange_model_inputs(tensor_dict)
+
+    def arrange_targets(self, tensor_dict):
+        return self.models[0].arrange_targets(tensor_dict)
