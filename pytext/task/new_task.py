@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Optional, Type
+from typing import Dict, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
@@ -9,68 +9,11 @@ from pytext.config.component import ComponentType, create_component, create_trai
 from pytext.data.data import Data
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
-from pytext.trainers import Trainer, TrainingState
-from pytext.utils import cuda, precision, timing
+from pytext.trainers import TaskTrainer
+from pytext.utils import cuda, precision
 from torch import jit
 
 from .task import TaskBase
-
-
-class NewTaskTrainer(Trainer):
-    class Config(Trainer.Config):
-        """Make mypy happy"""
-
-    @timing.time("run_step")
-    def run_step(
-        self,
-        samples: List[Any],
-        state: TrainingState,
-        metric_reporter: MetricReporter,
-        report_metric: bool,
-    ):
-        """Our run_step is a bit different, because we're wrapping the model forward
-        call with model.train_batch, which arranges tensors and gets loss, etc."""
-        sample_size = len(samples)
-        assert sample_size <= self.config.num_accumulated_batches
-
-        model = state.model
-        self.zero_grads(state)
-        for i, (batch_id, (raw_batch, batch)) in enumerate(samples):
-            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-                # Whenever *samples* contains more than one mini-batch, we
-                # want to accumulate gradients locally and only call
-                # all-reduce in the last backwards pass.
-                if i < sample_size - 1:
-                    # sync gradients in the last sample backward
-                    model.accumulate_gradients(True)
-                else:
-                    model.accumulate_gradients(False)
-
-            with timing.time("model.train_batch"):
-                loss, metric_data = model.train_batch(model, batch)
-                if sample_size > 1:
-                    # gradients averaged per each batch and accumulated across samples.
-                    # divide sample_size to let gradients averaged per example
-                    loss = loss / sample_size
-            self.backprop(state, loss)
-
-            if report_metric:
-                with timing.time("add metrics"):
-                    metric_reporter.add_batch_stats(
-                        batch_id,
-                        *metric_data,
-                        **metric_reporter.batch_context(raw_batch, batch),
-                    )
-        # update gradients after #len(samples) forward & backward
-        self.optimizer_step(state)
-
-    def _prepare_scheduler(self, training_batches, scheduler=None):
-        """Batch based schedulers require knowing the number of batches in
-        the data. We're not supporting that yet with the Data api, need to figure out
-        how to expose this info or restructure batch-based schedulers to not need it."""
-        if scheduler.batch_based_schedulers:
-            raise Exception("New tasks don't yet support batch-based scheduling")
-        return scheduler
 
 
 class _NewTask(TaskBase):
@@ -102,7 +45,7 @@ class _NewTask(TaskBase):
 
     class Config(ConfigBase):
         data: Data.Config = Data.Config()
-        trainer: NewTaskTrainer.Config = NewTaskTrainer.Config()
+        trainer: TaskTrainer.Config = TaskTrainer.Config()
 
     @classmethod
     def from_config(
@@ -175,7 +118,7 @@ class _NewTask(TaskBase):
         data: Data,
         model: BaseModel,
         metric_reporter: Optional[MetricReporter] = None,
-        trainer: Optional[NewTaskTrainer] = None,
+        trainer: Optional[TaskTrainer] = None,
     ):
         self.data = data
         self.model = model
@@ -183,7 +126,7 @@ class _NewTask(TaskBase):
         self.metric_reporter = metric_reporter or self.create_metric_reporter(
             self.Config.metric_reporter, model
         )
-        self.trainer = trainer or NewTaskTrainer()
+        self.trainer = trainer or TaskTrainer()
 
     def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
         # TODO: move dist_init back to prepare_task in pytext/workflow.py
