@@ -1,0 +1,40 @@
+{
+  "version":7,
+  "task": {
+    "SeqNNTask": {
+      "data": {
+        "source": {
+          "TSVDataSource": {
+            "field_names": ["label", "text_seq"],
+            "train_filename": "pytext/tests/data/msg_topic_train.tsv",
+            "test_filename": "pytext/tests/data/msg_topic_train.tsv",
+            "eval_filename": "pytext/tests/data/msg_topic_train.tsv"
+          }
+        }
+      },
+      "model": {
+        "representation": {
+          "doc_representation": {
+            "dropout": 0.5
+          },
+          "seq_representation": {
+            "BiLSTMDocAttention": {
+              "dropout": 0.5
+            }
+          }
+        },
+        "output_layer": {
+          "loss": {
+            "BinaryCrossEntropyLoss": {}
+          }
+        },
+        "decoder": {
+          "hidden_dims": [
+            100
+          ]
+        }
+      }
+    }
+  },
+  "use_cuda_if_available": false
+}
