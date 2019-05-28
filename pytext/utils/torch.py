@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import io
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from torch import Tensor, jit
 
@@ -59,8 +59,16 @@ class Vocabulary(jit.ScriptModule):
 
     @jit.script_method
     def lookup_words_1d(
-        self, values: Tensor, filter_token_list: List[int] = ()
+        self,
+        values: Tensor,
+        filter_token_list: List[int] = (),
+        possible_unk_token: Optional[str] = None,
     ) -> List[str]:
+        """If possible_unk_token is not None, then all UNK id's will be replaced
+        by possible_unk_token instead of the default UNK string which is <UNK>.
+        This is a simple way to resolve UNK's when there's a correspondence
+        between source and target translations.
+        """
         result = jit.annotate(List[str], [])
         for idx in range(values.size(0)):
             value = int(values[idx])
@@ -68,7 +76,10 @@ class Vocabulary(jit.ScriptModule):
                 if value < len(self.vocab):
                     result.append(self.vocab[int(value)])
                 else:
-                    result.append(self.vocab[self.unk_idx])
+                    if possible_unk_token is not None:
+                        result.append(possible_unk_token)
+                    else:
+                        result.append(self.vocab[self.unk_idx])
         return result
 
 
