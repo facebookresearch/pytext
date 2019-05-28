@@ -52,7 +52,7 @@ from pytext.models.query_document_pairwise_ranking_model import (
 )
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
-from pytext.models.seq_models.seqnn import SeqNNModel
+from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
@@ -282,12 +282,20 @@ class PairwiseClassificationTask(NewTask):
 
 class SeqNNTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
-        model: SeqNNModel.Config = SeqNNModel.Config()
+        model: SeqNNModel_Deprecated.Config = SeqNNModel_Deprecated.Config()
         trainer: Trainer.Config = Trainer.Config()
         labels: DocLabelConfig = DocLabelConfig()
         data_handler: SeqModelDataHandler.Config = SeqModelDataHandler.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
+        )
+
+
+class SeqNNTask(NewTask):
+    class Config(NewTask.Config):
+        model: SeqNNModel.Config = SeqNNModel.Config()
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config(text_column_names=["text_seq"])
         )
 
 

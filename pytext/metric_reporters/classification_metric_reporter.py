@@ -103,7 +103,7 @@ class ClassificationMetricReporter(MetricReporter):
     def batch_context(self, raw_batch, batch):
         context = super().batch_context(raw_batch, batch)
         context["utterance"] = [
-            " | ".join(row[column_name] for column_name in self.text_column_names)
+            " | ".join(str(row[column_name]) for column_name in self.text_column_names)
             for row in raw_batch
         ]
         return context
