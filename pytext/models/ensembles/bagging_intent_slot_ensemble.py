@@ -10,12 +10,12 @@ from pytext.models.output_layers import CRFOutputLayer
 from .ensemble import Ensemble
 
 
-class BaggingIntentSlotEnsemble(Ensemble):
+class BaggingIntentSlotEnsemble_Deprecated(Ensemble):
     """Ensemble class that uses bagging for ensembling intent-slot models.
 
     Args:
         config (Config): Configuration object specifying all the
-            parameters of BaggingIntentSlotEnsemble.
+            parameters of BaggingIntentSlotEnsemble_Deprecated.
         models (List[Model]): List of intent-slot model objects.
 
     Attributes:
@@ -26,9 +26,9 @@ class BaggingIntentSlotEnsemble(Ensemble):
     """
 
     class Config(Ensemble.Config):
-        """Configuration class for `BaggingIntentSlotEnsemble`. These attributes
-        are used by `Ensemble.from_config()` to construct instance of
-        `BaggingIntentSlotEnsemble`.
+        """Configuration class for `BaggingIntentSlotEnsemble_Deprecated`.
+        These attributes are used by `Ensemble.from_config()` to construct
+        instance of `BaggingIntentSlotEnsemble_Deprecated`.
 
         Attributes:
             models (List[JointModel.Config]): List of intent-slot model configurations.

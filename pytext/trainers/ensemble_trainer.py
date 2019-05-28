@@ -7,7 +7,7 @@ from pytext.config.component import create_trainer
 from .trainer import Trainer, TrainerBase
 
 
-class EnsembleTrainer(TrainerBase):
+class EnsembleTrainer_Deprecated(TrainerBase):
     """Trainer for ensemble models
 
     Attributes:

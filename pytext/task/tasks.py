@@ -34,7 +34,10 @@ from pytext.metric_reporters import (
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
-from pytext.models.ensembles import BaggingDocEnsemble, BaggingIntentSlotEnsemble
+from pytext.models.ensembles import (
+    BaggingDocEnsemble_Deprecated,
+    BaggingIntentSlotEnsemble_Deprecated,
+)
 from pytext.models.joint_model import JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.model import BaseModel
@@ -53,7 +56,7 @@ from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
-from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
+from pytext.trainers import EnsembleTrainer_Deprecated, HogwildTrainer, Trainer
 
 
 class QueryDocumentPairwiseRankingTask_Deprecated(Task_Deprecated):
@@ -87,8 +90,11 @@ class QueryDocumentPairwiseRankingTask(NewTask):
 # TODO better to have separate Task for different ensemble model
 class EnsembleTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
-        model: Union[BaggingDocEnsemble.Config, BaggingIntentSlotEnsemble.Config]
-        trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
+        model: Union[
+            BaggingDocEnsemble_Deprecated.Config,
+            BaggingIntentSlotEnsemble_Deprecated.Config,
+        ]
+        trainer: EnsembleTrainer_Deprecated.Config = EnsembleTrainer_Deprecated.Config()
         labels: List[TargetConfigBase]
         metric_reporter: Union[
             ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
@@ -109,7 +115,9 @@ class EnsembleTask_Deprecated(Task_Deprecated):
     def example_config(cls):
         return cls.Config(
             labels=[DocLabelConfig(), WordLabelConfig()],
-            model=BaggingDocEnsemble.Config(models=[DocModel_Deprecated.Config()]),
+            model=BaggingDocEnsemble_Deprecated.Config(
+                models=[DocModel_Deprecated.Config()]
+            ),
         )
 
 

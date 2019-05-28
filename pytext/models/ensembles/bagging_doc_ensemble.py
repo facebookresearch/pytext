@@ -8,15 +8,15 @@ from pytext.models.doc_model import DocModel_Deprecated
 from .ensemble import Ensemble
 
 
-class BaggingDocEnsemble(Ensemble):
+class BaggingDocEnsemble_Deprecated(Ensemble):
     """Ensemble class that uses bagging for ensembling document classification
     models.
     """
 
     class Config(Ensemble.Config):
-        """Configuration class for `BaggingDocEnsemble`. These attributes are
-        used by `Ensemble.from_config()` to construct instance of
-        `BaggingDocEnsemble`.
+        """Configuration class for `BaggingDocEnsemble_Deprecated`.
+        These attributes are used by `Ensemble.from_config()` to construct
+        instance of `BaggingDocEnsemble_Deprecated`.
 
         Attributes:
             models (List[DocModel_Deprecated.Config]): List of document classification model

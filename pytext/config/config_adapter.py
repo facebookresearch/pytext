@@ -398,6 +398,18 @@ def move_epoch_size(json_config):
     )
 
 
+@register_adapter(from_version=10)
+def ensemble_task_deprecated(json_config):
+    """
+    Rename tasks with new API consistently
+    """
+    # Deprecated
+    deprecate(json_config, "BaggingDocEnsemble")
+    deprecate(json_config, "BaggingIntentSlotEnsemble")
+    deprecate(json_config, "EnsembleTrainer")
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
