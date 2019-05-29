@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from .ensemble_trainer import EnsembleTrainer_Deprecated
+from .ensemble_trainer import EnsembleTrainer, EnsembleTrainer_Deprecated
 from .hogwild_trainer import HogwildTrainer
 from .trainer import TaskTrainer, Trainer, TrainingState
 
@@ -8,6 +8,7 @@ from .trainer import TaskTrainer, Trainer, TrainingState
 __all__ = [
     "Trainer",
     "TrainingState",
+    "EnsembleTrainer",
     "EnsembleTrainer_Deprecated",
     "HogwildTrainer",
     "TaskTrainer",

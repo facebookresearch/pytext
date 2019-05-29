@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, List, Optional, Union
 
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config import (
     contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
@@ -30,11 +30,11 @@ from pytext.metric_reporters import (
     LanguageModelMetricReporter,
     PairwiseRankingMetricReporter,
     RegressionMetricReporter,
-    SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import (
+    BaggingDocEnsemble,
     BaggingDocEnsemble_Deprecated,
     BaggingIntentSlotEnsemble_Deprecated,
 )
@@ -56,7 +56,12 @@ from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
-from pytext.trainers import EnsembleTrainer_Deprecated, HogwildTrainer, Trainer
+from pytext.trainers import (
+    EnsembleTrainer,
+    EnsembleTrainer_Deprecated,
+    HogwildTrainer,
+    Trainer,
+)
 
 
 class QueryDocumentPairwiseRankingTask_Deprecated(Task_Deprecated):
@@ -119,6 +124,29 @@ class EnsembleTask_Deprecated(Task_Deprecated):
                 models=[DocModel_Deprecated.Config()]
             ),
         )
+
+
+class EnsembleTask(NewTask):
+    # TODO: support BaggingIntentSlotEnsemble
+    class Config(NewTask.Config):
+        model: BaggingDocEnsemble.Config
+        trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config()
+        )
+
+    def train_single_model(self, train_config, model_id, rank=0, world_size=1):
+        return self.trainer.train_single_model(
+            self.data.batches(Stage.TRAIN),
+            self.data.batches(Stage.EVAL),
+            self.model.models[model_id],
+            self.metric_reporter,
+            train_config,
+        )
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(model=BaggingDocEnsemble.Config(models=[DocModel.Config()]))
 
 
 class DocClassificationTask_Deprecated(Task_Deprecated):
