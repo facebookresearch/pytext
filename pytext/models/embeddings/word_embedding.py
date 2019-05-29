@@ -43,6 +43,7 @@ class WordEmbedding(EmbeddingBase):
         config: WordFeatConfig,
         metadata: Optional[FieldMeta] = None,
         tensorizer: Optional[Tensorizer] = None,
+        init_from_saved_state: Optional[bool] = False,
     ):
         """Factory method to construct an instance of WordEmbedding from
         the module's config object and the field's metadata object.
@@ -58,7 +59,7 @@ class WordEmbedding(EmbeddingBase):
         """
         if tensorizer is not None:
             embeddings_weight = None
-            if config.pretrained_embeddings_path:
+            if config.pretrained_embeddings_path and not init_from_saved_state:
                 pretrained_embedding = PretrainedEmbedding(
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=config.lowercase_tokens,

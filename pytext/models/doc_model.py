@@ -138,7 +138,11 @@ class DocModel(Model):
 
     @classmethod
     def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return create_module(config, tensorizer=tensorizers["tokens"])
+        return create_module(
+            config,
+            tensorizer=tensorizers["tokens"],
+            init_from_saved_state=config.init_from_saved_state,
+        )
 
     @classmethod
     def create_decoder(cls, config: Config, representation_dim: int, num_labels: int):

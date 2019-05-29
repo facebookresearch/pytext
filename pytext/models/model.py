@@ -261,6 +261,10 @@ class Model(BaseModel):
         representation = None
         decoder = None
         output_layer = None
+        # This config flag tells the model whether its parameters are being
+        # loaded from saved state, hence it can skip certain initialization
+        # steps such as loading pre-trained embeddings from file
+        init_from_saved_state = False
 
     def __init__(
         self,

@@ -101,6 +101,7 @@ class _NewTask(TaskBase):
 
     @classmethod
     def _init_model(cls, config: Config, tensorizers, model_state=None):
+        config.model.init_from_saved_state = model_state is not None
         model = create_component(
             ComponentType.MODEL, config.model, tensorizers=tensorizers
         )
