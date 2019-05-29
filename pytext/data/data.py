@@ -4,7 +4,10 @@
 import functools
 import itertools
 import math
+import multiprocessing
+import queue
 import random
+from ctypes import c_bool
 from typing import Any, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type
 
 from pytext.common.constants import Stage
@@ -17,6 +20,12 @@ from .sources.data_source import (
     ShardedDataSource,
 )
 from .tensorizers import MetricTensorizer, Tensorizer, initialize_tensorizers
+
+
+# Number of batches to prefetch when loading batch data asynchronously
+PREFETCH_QUEUE_SIZE: int = 10
+# Number of seconds between waking to check if the prefetch generator exited
+PREFETCH_QUEUE_WAKE_PERIOD: int = 1
 
 
 class RowData(NamedTuple):
@@ -135,6 +144,54 @@ class PoolingBatcher(Batcher):
                 batch = pool[batch_size * batch_index : batch_size * (batch_index + 1)]
                 raw_batch, numberized_batch = zip(*batch)
                 yield BatchData(raw_batch, zip_dicts(numberized_batch))
+
+
+def prefetch(iterable, queue_size: int = PREFETCH_QUEUE_SIZE):
+    """A prefetch mechanism for iterables which executes the iterator asynchronously
+    in a separate process and waits on them. This can apply generally to any iterable.
+
+    Args:
+        iterable: Any iterable. The output of this function will have the same
+                  iteration contract as iter(iterable).
+        queue_size: The maximum number of values of the iterable to prefetch. This
+                    allows a computation buffer while simultaneously ensuring we won't
+                    completely expend the underlying iterable and load it all.
+    Yields:
+        The same values in the same order as the underlying generator.
+    """
+    cache = multiprocessing.Queue(maxsize=queue_size)
+    iterator_empty = multiprocessing.Value(c_bool, False)
+
+    def prefetch_thread(iterable, queue, iterator_empty):
+        iterator = iter(iterable)
+        while True:
+            try:
+                value = next(iterator)
+            except StopIteration:
+                iterator_empty.value = True
+                return
+            cache.put(value)
+
+    process = multiprocessing.Process(
+        target=prefetch_thread, args=(iterable, cache, iterator_empty)
+    )
+    process.start()
+
+    try:
+        while not iterator_empty.value:
+            # don't wait forever, if we're pulling from queue faster than the worker
+            # thread can generate data, it won't set iterator_empty in time before we
+            # start waiting on get, and we'll wait forever.
+            try:
+                yield cache.get(timeout=PREFETCH_QUEUE_WAKE_PERIOD)
+            except queue.Empty:
+                pass
+    except BaseException:  # If anything bad happened, clean up the child process
+        if process.is_alive():
+            process.terminate()
+        raise
+    else:
+        process.join()
 
 
 def pad_and_tensorize_batches(tensorizers, batches):
@@ -256,7 +313,7 @@ class Data(Component):
         self.batcher = batcher or Batcher()
         self.sort_key = sort_key
         self.in_memory = in_memory
-        self.numberized_cache: MutableMapping[str, Any] = {}
+        self._numberized_cache: MutableMapping[str, Any] = {}
         full_train_data = (
             data_source.train_unsharded
             if isinstance(data_source, ShardedDataSource)
@@ -264,13 +321,26 @@ class Data(Component):
         )
         initialize_tensorizers(self.tensorizers, full_train_data)
 
-    def numberize_rows(self, rows):
+    def _numberize_rows_no_cache(self, rows):
+        """Numberize rows using tensorizers. Treat as a generator unless there's
+        a good reason to believe the total dataset size is small. This will create
+        objects for each input row in the dataset as it's iterated."""
         for row in rows:
             numberized = {
                 name: tensorizer.numberize(row)
                 for name, tensorizer in self.tensorizers.items()
             }
             yield RowData(row, numberized)
+
+    def numberize_rows(self, rows, stage=None):
+        """Get numberized rows, possibly from cache."""
+        if self.in_memory:
+            if stage not in self._numberized_cache:
+                self._numberized_cache[stage] = list(
+                    self._numberize_rows_no_cache(rows)
+                )
+            return self._numberized_cache[stage]
+        return self._numberize_rows_no_cache(rows)
 
     @generator_iterator
     def batches(self, stage: Stage, data_source=None):
@@ -292,15 +362,7 @@ class Data(Component):
 
         # rows and numberized_rows are generators which can iterate over large
         # datasets; be careful not to do any operations which will expend them.
-        if self.in_memory:
-            numberized_rows = self.numberized_cache.get(stage, None)
-            if numberized_rows is None:
-                numberized_rows = list(self.numberize_rows(rows))
-                self.numberized_cache[stage] = numberized_rows
-            else:
-                print(f"Get numberized rows from cache in stage: {stage}")
-        else:
-            numberized_rows = self.numberize_rows(rows)
+        numberized_rows = self.numberize_rows(rows, stage)
         sort_key = self.sort_key
 
         def key(row):
@@ -309,4 +371,5 @@ class Data(Component):
         batches = self.batcher.batchify(
             numberized_rows, sort_key=(key if sort_key else None)
         )
+        batches = prefetch(batches)
         return pad_and_tensorize_batches(self.tensorizers, batches)
