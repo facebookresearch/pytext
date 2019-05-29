@@ -1,0 +1,10 @@
+alarm/modify_alarm	16:24:datetime,39:57:datetime	change my alarm tomorrow to wake me up 30 minutes earlier	0.2	0.5
+alarm/set_alarm		Turn on all my alarms	0.2	0.5
+alarm/set_alarm	12:27:datetime	sound alarm every 8 minutes	0.2	0.5
+alarm/set_alarm	7:17:datetime	repeat yesterdays alarm	0.2	0.5
+alarm/snooze_alarm		continue my alarm	0.2	0.5
+alarm/time_left_on_alarm		Do I have anymore time on the alarm	0.2	0.5
+reminder/set_reminder	10:22:datetime,28:56:reminder/todo	remind me Monday night that get doe with work 12 Tuesday	0.2	0.5
+reminder/show_reminders	8:15:datetime,18:27:reminder/noun	display Tuesday's reminders	0.2	0.5
+weather/find	12:19:weather/noun,20:28:datetime	what is the weather tomorrow	0.2	0.5
+weather/find	13:17:weather/attribute	When will it snow	0.2	0.5

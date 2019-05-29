@@ -41,12 +41,12 @@ class WordTaggingOutputLayer(OutputLayerBase):
         cls,
         config: Config,
         metadata: Optional[FieldMeta] = None,
-        label_vocab: Optional[Vocabulary] = None,
+        labels: Optional[Vocabulary] = None,
     ):
-        if label_vocab is not None:
-            vocab = list(label_vocab)
-            vocab_dict = label_vocab.idx
-            pad_token_idx = label_vocab.idx.get(PAD, Padding.DEFAULT_LABEL_PAD_IDX)
+        if labels is not None:
+            vocab = list(labels)
+            vocab_dict = labels.idx
+            pad_token_idx = labels.idx.get(PAD, Padding.DEFAULT_LABEL_PAD_IDX)
         else:
             vocab = metadata.vocab.itos
             pad_token_idx = metadata.pad_token_idx
@@ -239,6 +239,15 @@ def _rearrange_output(logit, pred):
     Rearrange the word logits so that the decoded word has the highest valued
     logits.
     """
+
+    """Context: without this line, the logit gets modified in place by this function
+    (which appears to be unintentional), causing errors during backpropagation.
+
+    In the old trainer, this didn't matter, since get_preds (and therefore this
+    function) runs after backprop, but in the new trainer, get_preds is run
+    before backprop because it is bundled with get_loss in train_batch."""
+    logit = logit.detach().clone()
+
     for batch_idx, v_path in enumerate(pred):
         for w_idx, word in enumerate(v_path):
             w_logits = logit[batch_idx][w_idx]

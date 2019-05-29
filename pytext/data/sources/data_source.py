@@ -301,3 +301,8 @@ Gazetteer = List[Dict[str, Dict[str, float]]]
 @RootDataSource.register_type(List[str])
 def load_json(s):
     return json.loads(s)
+
+
+@RootDataSource.register_type(float)
+def load_float(f):
+    return float(f)

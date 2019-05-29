@@ -159,12 +159,13 @@ class BaseModel(nn.Module, Component):
 
         # Forward pass through the network.
         model_inputs = model.arrange_model_inputs(batch)
+        model_context = model.arrange_model_context(batch)
         targets = model.arrange_targets(batch)
         model_outputs = model(*model_inputs)
 
         # Compute loss and predictions.
-        loss = maybe_float(model.get_loss(model_outputs, targets, None))
-        predictions, scores = model.get_pred(model_outputs)
+        loss = maybe_float(model.get_loss(model_outputs, targets, model_context))
+        predictions, scores = model.get_pred(model_outputs, context=model_context)
 
         # Pack results and return them.
         metric_data = (predictions, targets, scores, loss, model_inputs)
@@ -177,6 +178,10 @@ class BaseModel(nn.Module, Component):
     def arrange_targets(self, tensor_dict):
         # should raise NotImplementedError after migration is done
         pass
+
+    def arrange_model_context(self, tensor_dict):
+        # should raise NotImplementedError after migration is done
+        return None
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass

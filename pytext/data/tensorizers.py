@@ -10,6 +10,7 @@ from pytext.common import Padding
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
+from pytext.utils import cuda
 from pytext.utils.data import Slot
 
 from .utils import (
@@ -516,10 +517,10 @@ class FloatListTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.float)
 
 
-NO_LABEL = SpecialToken("NO_LABEL")
+NO_LABEL = SpecialToken("NoLabel")
 
 
-class WordLabelTensorizer(Tensorizer):
+class SlotLabelTensorizer(Tensorizer):
     """Numberize word/slot labels."""
 
     class Config(Tensorizer.Config):
@@ -560,6 +561,7 @@ class WordLabelTensorizer(Tensorizer):
         """Look through the dataset for all labels and create a vocab map for them."""
         builder = VocabBuilder()
         builder.add(NO_LABEL)
+        builder.use_pad = False
         builder.use_unk = self.allow_unknown
         try:
             while True:
@@ -589,6 +591,7 @@ class WordLabelTensorizer(Tensorizer):
             else:
                 current_token += 1
                 labels.append(slot.label if end > slot.start else NO_LABEL)
+        labels += [NO_LABEL] * (len(tokens) - current_token)
         return self.vocab.lookup_all(labels)
 
     def tensorize(self, batch):
@@ -892,6 +895,28 @@ class NtokensTensorizer(MetricTensorizer):
         for name, index in zip(self.names, self.indexes):
             ntokens += sum((sample[index] for sample in batch[name]))
         return ntokens
+
+
+class FloatTensorizer(Tensorizer):
+    """A tensorizer for reading in scalars from the data."""
+
+    class Config(Tensorizer.Config):
+        #: The name of the column to parse from the data source.
+        column: str
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column)
+
+    def __init__(self, column: str):
+        super().__init__([(column, float)])
+        self.column = column
+
+    def numberize(self, row):
+        return row[self.column]
+
+    def tensorize(self, batch):
+        return cuda.tensor(batch, torch.float)
 
 
 def initialize_tensorizers(tensorizers, data_source):
