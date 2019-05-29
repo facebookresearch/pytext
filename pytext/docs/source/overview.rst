@@ -114,7 +114,7 @@ Code Example
       class Config(Model.Config):
           class ModelInput(Model.Config.ModelInput):
               tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-              labels: WordLabelTensorizer.Config = WordLabelTensorizer.Config()
+              labels: SlotLabelTensorizer.Config = SlotLabelTensorizer.Config()
 
           inputs: ModelInput = ModelInput()
           embedding: WordEmbedding.Config = WordEmbedding.Config()

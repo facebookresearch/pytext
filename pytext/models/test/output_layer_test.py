@@ -15,7 +15,7 @@ class OutputLayerTest(unittest.TestCase):
         tensorizer.pad_idx = 0
         layer = WordTaggingOutputLayer.from_config(
             config=WordTaggingOutputLayer.Config(label_weights={"foo": 2.2}),
-            label_vocab=tensorizer.vocab,
+            labels=tensorizer.vocab,
         )
         np.testing.assert_array_almost_equal(
             np.array([2.2, 1]), layer.loss_fn.weight.detach().numpy()

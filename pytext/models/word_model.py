@@ -3,7 +3,7 @@
 
 from typing import Union
 
-from pytext.data.tensorizers import TokenTensorizer, WordLabelTensorizer
+from pytext.data.tensorizers import SlotLabelTensorizer, TokenTensorizer
 from pytext.data.utils import UNK
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
@@ -53,7 +53,7 @@ class WordTaggingModel(Model):
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-            labels: WordLabelTensorizer.Config = WordLabelTensorizer.Config()
+            labels: SlotLabelTensorizer.Config = SlotLabelTensorizer.Config()
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()

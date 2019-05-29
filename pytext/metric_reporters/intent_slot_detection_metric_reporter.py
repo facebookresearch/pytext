@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data import CommonMetadata
@@ -101,14 +101,33 @@ class IntentSlotMetricReporter(MetricReporter):
         self.use_bio_labels = use_bio_labels
 
     @classmethod
-    def from_config(cls, config, meta: CommonMetadata):
-        doc_label_meta, word_label_meta = meta.target
-        return cls(
-            doc_label_meta.vocab.itos,
-            word_label_meta.vocab.itos,
-            word_label_meta.use_bio_labels,
-            [ConsoleChannel(), IntentSlotChannel((Stage.TEST,), config.output_path)],
-        )
+    def from_config(
+        cls,
+        config,
+        meta: Optional[CommonMetadata] = None,
+        tensorizers: Optional[Dict] = None,
+    ):
+        if meta:
+            doc_label_meta, word_label_meta = meta.target
+            return cls(
+                doc_label_meta.vocab.itos,
+                word_label_meta.vocab.itos,
+                word_label_meta.use_bio_labels,
+                [
+                    ConsoleChannel(),
+                    IntentSlotChannel((Stage.TEST,), config.output_path),
+                ],
+            )
+        else:
+            return cls(
+                tensorizers["doc_labels"].vocab,
+                tensorizers["word_labels"].vocab,
+                False,
+                [
+                    ConsoleChannel(),
+                    IntentSlotChannel((Stage.TEST,), config.output_path),
+                ],
+            )
 
     def _reset(self):
         self.all_doc_preds: List = []
@@ -179,6 +198,17 @@ class IntentSlotMetricReporter(MetricReporter):
             ],
             frame_accuracy=True,
         )
+
+    def batch_context(self, raw_batch, batch):
+        return {
+            DatasetFieldName.UTTERANCE_FIELD: [row["text"] for row in raw_batch],
+            DatasetFieldName.SEQ_LENS: batch["tokens"][1],
+            DatasetFieldName.TOKEN_RANGE: batch["tokens"][2],
+            DatasetFieldName.RAW_WORD_LABEL: [
+                ",".join([str(x) for x in row["slots"]]) for row in raw_batch
+            ],
+            BatchContext.INDEX: [x for x in range(len(raw_batch))],
+        }
 
     def get_model_select_metric(self, metrics):
         return metrics.frame_accuracy

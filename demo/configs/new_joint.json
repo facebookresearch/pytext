@@ -1,0 +1,36 @@
+{
+  "task": {
+    "IntentSlotTask": {
+      "data": {
+        "source": {
+          "TSVDataSource": {
+            "field_names": ["label", "slots", "text", "doc_weight", "word_weight"],
+            "train_filename": "pytext/tests/data/train_data_tiny_weights.tsv",
+            "test_filename": "pytext/tests/data/test_data_tiny_weights.tsv",
+            "eval_filename": "pytext/tests/data/test_data_tiny_weights.tsv"
+          }
+        },
+        "sort_key": "tokens"
+      },
+      "labels": [
+        {
+          "DocLabelConfig": {
+            "export_output_names": [
+              "doc_scores"
+            ],
+            "label_weights": {},
+            "target_prob": false
+          }
+        },
+        {
+          "WordLabelConfig": {
+            "use_bio_labels": true,
+            "export_output_names": [
+              "bio_word_scores"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

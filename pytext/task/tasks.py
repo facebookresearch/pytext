@@ -38,7 +38,7 @@ from pytext.models.ensembles import (
     BaggingDocEnsemble_Deprecated,
     BaggingIntentSlotEnsemble_Deprecated,
 )
-from pytext.models.joint_model import JointModel
+from pytext.models.joint_model import IntentSlotModel, JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.model import BaseModel
 from pytext.models.pair_classification_model import (
@@ -233,6 +233,27 @@ class JointTextTask_Deprecated(Task_Deprecated):
     @classmethod
     def example_config(cls):
         return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
+
+
+class IntentSlotTask(NewTask):
+    class Config(NewTask.Config):
+        labels: List[TargetConfigBase]
+        model: IntentSlotModel.Config = IntentSlotModel.Config()
+        metric_reporter: IntentSlotMetricReporter.Config = (
+            IntentSlotMetricReporter.Config()
+        )
+
+    @classmethod
+    def example_config(cls):
+        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
+
+    @classmethod
+    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        return IntentSlotMetricReporter.from_config(
+            config.metric_reporter,
+            doc_labels=tensorizers["doc_labels"].vocab,
+            word_labels=tensorizers["word_labels"].vocab,
+        )
 
 
 class LMTask_Deprecated(Task_Deprecated):

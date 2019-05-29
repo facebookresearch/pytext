@@ -199,6 +199,9 @@ def merge_token_labels_by_label(token_ranges, labels):
 
 
 def merge_token_labels_to_slot(token_ranges, labels, use_bio_label=True):
+    # ensures that all labels, some of which may be SpecialToken tyeps,
+    # are normalized to string for the metric reporter
+    labels = [str(x) for x in labels]
     summary_list = (
         merge_token_labels_by_bio(token_ranges, labels)
         if use_bio_label
