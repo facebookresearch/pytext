@@ -92,10 +92,11 @@ MASK = SpecialToken("__MASK__")
 class Vocabulary:
     """A mapping from indices to vocab elements."""
 
-    def __init__(self, vocab_list, counts=None, replacements=None):
+    def __init__(self, vocab_list, counts=None, replacements=None, pad_token=PAD):
         self._vocab = vocab_list
         self.counts = counts
         self.idx = {word: i for i, word in enumerate(vocab_list)}
+        self.pad_token = pad_token
         if replacements:
             self.replace_tokens(replacements)
 
@@ -128,6 +129,9 @@ class Vocabulary:
         else:
             return [lookup_value(value) for value in nested_values]
 
+    def get_pad_index(self):
+        return self.idx[self.pad_token]
+
     def __getitem__(self, item):
         return self._vocab[item]
 
@@ -144,6 +148,9 @@ class VocabBuilder:
         self.unk_index = 0
         self.use_pad = True
         self.pad_index = 1
+        # Some tokenization libraries use special pad tokens, expose this so it
+        # can be configured
+        self.pad_token = PAD
         self.use_bos = False
         self.bos_index = 2
         self.use_eos = False
@@ -173,7 +180,7 @@ class VocabBuilder:
         if self.use_unk:
             tokens_to_insert.append((self.unk_index, UNK))
         if self.use_pad:
-            tokens_to_insert.append((self.pad_index, PAD))
+            tokens_to_insert.append((self.pad_index, self.pad_token))
         if self.use_bos:
             tokens_to_insert.append((self.bos_index, BOS))
         if self.use_eos:
@@ -185,7 +192,7 @@ class VocabBuilder:
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
 
-        return Vocabulary(vocab_list, counts=self._counter)
+        return Vocabulary(vocab_list, counts=self._counter, pad_token=self.pad_token)
 
 
 def align_target_labels(
