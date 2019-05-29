@@ -238,6 +238,78 @@ class ByteTensorizer(Tensorizer):
         return row[1]
 
 
+class ByteTokenTensorizer(Tensorizer):
+    """Turn words into 2-dimensional tensors of int8 bytes. Words are padded to
+    `max_byte_len`. Also computes sequence lengths (1-D tensor) and token lengths
+    (2-D tensor). 0 is the pad byte.
+    """
+
+    NUM_BYTES = 256
+
+    class Config(Tensorizer.Config):
+        #: The name of the text column to parse from the data source.
+        column: str = "text"
+        #: The tokenizer to use to split input text into tokens.
+        tokenizer: Tokenizer.Config = Tokenizer.Config()
+        #: The max token length for input text.
+        max_seq_len: Optional[int] = None
+        #: The max byte length for a token.
+        max_byte_len: int = 15
+        #: Offset to add to all non-padding bytes
+        offset_for_non_padding: int = 0
+
+    @classmethod
+    def from_config(cls, config: Config):
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        return cls(
+            text_column=config.column,
+            tokenizer=tokenizer,
+            max_seq_len=config.max_seq_len,
+            max_byte_len=config.max_byte_len,
+            offset_for_non_padding=config.offset_for_non_padding,
+        )
+
+    def __init__(
+        self,
+        text_column,
+        tokenizer=None,
+        max_seq_len=Config.max_seq_len,
+        max_byte_len=Config.max_byte_len,
+        offset_for_non_padding=Config.offset_for_non_padding,
+    ):
+        super().__init__([(text_column, str)])
+        self.text_column = text_column
+        self.tokenizer = tokenizer or Tokenizer()
+        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_byte_len = max_byte_len
+        self.offset_for_non_padding = offset_for_non_padding
+
+    def numberize(self, row):
+        """Convert text to bytes, pad batch."""
+        tokens = self.tokenizer.tokenize(row[self.text_column])[: self.max_seq_len]
+        if not tokens:
+            tokens = [Token(PAD, -1, -1)]
+        bytes = [self._numberize_token(token)[: self.max_byte_len] for token in tokens]
+        token_lengths = len(tokens)
+        byte_lengths = [len(token_bytes) for token_bytes in bytes]
+        return bytes, token_lengths, byte_lengths
+
+    def _numberize_token(self, token):
+        return [c + self.offset_for_non_padding for c in token.value.encode()]
+
+    def tensorize(self, batch):
+        bytes, token_lengths, byte_lengths = zip(*batch)
+        pad_shape = (len(batch), max(len(l) for l in byte_lengths), self.max_byte_len)
+        return (
+            pad_and_tensorize(bytes, pad_shape=pad_shape),
+            pad_and_tensorize(token_lengths),
+            pad_and_tensorize(byte_lengths),
+        )
+
+    def sort_key(self, row):
+        return len(row[0])
+
+
 class CharacterTokenTensorizer(TokenTensorizer):
     """Turn words into 2-dimensional tensors of ints based on their ascii values.
     Words are padded to the maximum word length (also capped at `max_char_length`).
