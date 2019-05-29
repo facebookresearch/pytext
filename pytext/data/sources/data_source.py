@@ -65,10 +65,15 @@ class SafeFileWrapper:
     """
 
     def __init__(self, *args, **kwargs):
-        self._file = open(*args, **kwargs)
+        try:
+            self._file = open(*args, **kwargs)
+        except BaseException:  # We want to catch any exception here, we're reraising
+            self._file = None
+            raise
 
     def __del__(self):
-        self._file.close()
+        if self._file is not None:
+            self._file.close()
 
     def __iter__(self):
         """Some file utilities check hasattr(o, "__iter__") explicitly."""
