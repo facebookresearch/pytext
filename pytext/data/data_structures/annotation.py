@@ -355,10 +355,10 @@ class Token(Node):
     def __init__(self, label, index):
         super().__init__(label)
         self.index = index
-        self.children = None
+        self.children = []
 
     def validate_node(self):
-        if self.children is not None:
+        if len(self.children) != 0:
             raise TypeError(
                 "A token node is terminal and should not \
                     have children: "
