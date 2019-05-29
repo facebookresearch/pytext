@@ -410,6 +410,28 @@ def ensemble_task_deprecated(json_config):
     return json_config
 
 
+@register_adapter(from_version=11)
+def rename_bitransformer_inputs(json_config):
+    """
+    In "BiTransformer" model, rename input "characters" -> "bytes" and update subfields.
+    """
+    [task] = json_config["task"].values()
+    model = task.get("model")
+
+    if model and len(model) == 1 and "BiTransformer" in model:
+        model_val = list(model.values())[0]
+        if "inputs" not in model_val:
+            model_val["inputs"] = {}
+        inputs = model_val["inputs"]
+        char_config = inputs.pop("characters", {})
+        if "max_char_length" in char_config:
+            char_config["max_byte_len"] = char_config.pop("max_char_length")
+        char_config["offset_for_non_padding"] = 1
+        model_val["inputs"]["bytes"] = char_config
+
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)

@@ -10,7 +10,7 @@ from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.tensorizers import (
     ByteTensorizer,
-    CharacterTokenTensorizer,
+    ByteTokenTensorizer,
     FloatListTensorizer,
     GazetteerTensorizer,
     LabelListTensorizer,
@@ -125,13 +125,15 @@ class TensorizersTest(unittest.TestCase):
 
         rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
         tensors = (tensorizer.numberize(row) for row in rows)
-        tokens, seq_len, _ = next(tensors)
+        tokens, seq_len, token_ranges = next(tensors)
         self.assertEqual([24, 0, 0, 0], tokens)
         self.assertEqual(4, seq_len)
+        self.assertEqual([(0, 1), (2, 6), (7, 11), (12, 18)], token_ranges)
 
-        tokens, seq_len, _ = next(tensors)
+        tokens, seq_len, token_ranges = next(tensors)
         self.assertEqual([13, 47, 9], tokens)
         self.assertEqual(3, seq_len)
+        self.assertEqual([(0, 4), (5, 7), (8, 10)], token_ranges)
 
     def test_create_byte_tensors(self):
         tensorizer = ByteTensorizer(text_column="text", lower=False)
@@ -146,9 +148,9 @@ class TensorizersTest(unittest.TestCase):
         tensors = [tensorizer.numberize(row) for row in rows]
         self.assertEqual([(bytes, len(bytes)) for bytes in expected], tensors)
 
-    def test_create_word_character_tensors(self):
-        tensorizer = CharacterTokenTensorizer(
-            text_column="text", max_seq_len=4, max_char_length=5
+    def test_create_byte_token_tensors(self):
+        tensorizer = ByteTokenTensorizer(
+            text_column="text", max_seq_len=4, max_byte_len=5
         )
         # not initializing because initializing is a no-op for this tensorizer
 
@@ -156,7 +158,7 @@ class TensorizersTest(unittest.TestCase):
         s2 = "Turn it up"
 
         def ords(word, pad_to):
-            return [ord(c) for c in word] + [0] * (pad_to - len(word))
+            return list(word.encode()) + [0] * (pad_to - len(word))
 
         batch = [{"text": s1}, {"text": s2}]
         # Note that the tokenizer lowercases here
@@ -165,20 +167,20 @@ class TensorizersTest(unittest.TestCase):
             [ords("turn", 5), ords("it", 5), ords("up", 5), ords("", 5)],
         ]
         expected_token_lens = [4, 3]
-        expected_char_lens = [[1, 4, 4, 5], [4, 2, 2, 0]]
+        expected_byte_lens = [[1, 4, 4, 5], [4, 2, 2, 0]]
 
-        chars, token_lens, char_lens = tensorizer.tensorize(
-            tensorizer.numberize(row) for row in batch
+        bytes, token_lens, byte_lens = tensorizer.tensorize(
+            [tensorizer.numberize(row) for row in batch]
         )
-        self.assertIsInstance(chars, torch.LongTensor)
+        self.assertIsInstance(bytes, torch.LongTensor)
         self.assertIsInstance(token_lens, torch.LongTensor)
-        self.assertIsInstance(char_lens, torch.LongTensor)
-        self.assertEqual((2, 4, 5), chars.size())
+        self.assertIsInstance(byte_lens, torch.LongTensor)
+        self.assertEqual((2, 4, 5), bytes.size())
         self.assertEqual((2,), token_lens.size())
-        self.assertEqual((2, 4), char_lens.size())
-        self.assertEqual(expected, chars.tolist())
+        self.assertEqual((2, 4), byte_lens.size())
+        self.assertEqual(expected, bytes.tolist())
         self.assertEqual(expected_token_lens, token_lens.tolist())
-        self.assertEqual(expected_char_lens, char_lens.tolist())
+        self.assertEqual(expected_byte_lens, byte_lens.tolist())
 
     def test_initialize_label_tensorizer(self):
         tensorizer = LabelTensorizer(label_column="label")
