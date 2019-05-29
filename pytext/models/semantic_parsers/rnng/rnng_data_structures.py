@@ -5,6 +5,7 @@ from typing import Any, List, Sized, Tuple
 
 import torch as torch
 import torch.nn as nn
+import torch.nn.functional as F
 from pytext.utils.cuda import FloatTensor, xaviervar
 
 
@@ -29,20 +30,27 @@ class StackLSTM(Sized):
     The Stack LSTM from Dyer et al: https://arxiv.org/abs/1505.08075
     """
 
-    def __init__(self, lstm: nn.LSTM):
+    def __init__(self, lstm: nn.LSTM, use_attention=False):
         """
         Shapes:
             initial_state: (lstm_layers, 1, lstm_hidden_dim) each
         """
         self.lstm = lstm
+        self.use_attention = use_attention
+
         initial_state = (
             FloatTensor(lstm.num_layers, 1, lstm.hidden_size).fill_(0),
             FloatTensor(lstm.num_layers, 1, lstm.hidden_size).fill_(0),
         )
+
         # Stack of (state, (embedding, element))
         self.stack = [
             (initial_state, (self._lstm_output(initial_state), Element("Root")))
         ]
+
+        if self.use_attention:
+            self.linear = nn.Linear(lstm.hidden_size, lstm.hidden_size, bias=False)
+            self.out_linear = nn.Linear(lstm.hidden_size, 1, bias=False)
 
     def _lstm_output(self, state: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         """
@@ -73,12 +81,29 @@ class StackLSTM(Sized):
     def embedding(self) -> torch.Tensor:
         """
         Shapes:
-            return value: (1, lstm_hidden_dim)
+            return value: (1, lstm_hidden_dim) if no attention
+            return value: (1, lstm_hidden_dim * 2) if attention
         """
         assert len(self.stack) > 0, "stack size must be greater than 0"
 
         top_state = self.stack[-1][0]
-        return self._lstm_output(top_state)
+        top_output = self._lstm_output(top_state)
+
+        if self.use_attention:
+            all_states_outputs = [self._lstm_output(state) for state in self.stack]
+            all_states_outputs = torch.cat(all_states_outputs).squeeze(1)
+
+            pre_softmax = self.out_linear(F.relu(self.linear(all_states_outputs)))
+
+            # Compute attention.
+            attn_weights = F.softmax(pre_softmax, dim=0).unsqueeze(0).squeeze(2)
+            weighted_embedding = torch.mm(attn_weights, all_states_outputs)
+
+            return torch.cat([weighted_embedding, top_output]).view(
+                1, 2 * self.lstm.hidden_size
+            )
+        else:
+            return top_output
 
     def element_from_top(self, index: int) -> Element:
         return self.stack[-(index + 1)][1][1]
@@ -177,7 +202,9 @@ class ParserState:
             return
 
         self.buffer_stackrnn = StackLSTM(parser.buff_rnn)
-        self.stack_stackrnn = StackLSTM(parser.stack_rnn)
+        self.stack_stackrnn = StackLSTM(
+            parser.stack_rnn, parser.ablation_use_stack_attention
+        )
         self.action_stackrnn = StackLSTM(parser.action_rnn)
 
         self.predicted_actions_idx = []
