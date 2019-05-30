@@ -7,7 +7,6 @@ from .batch_sampler import (
     RandomizedBatchSampler,
     RoundRobinBatchSampler,
 )
-from .bptt_lm_data_handler import BPTTLanguageModelDataHandler
 from .compositional_data_handler import CompositionalDataHandler
 from .contextual_intent_slot_data_handler import ContextualIntentSlotModelDataHandler
 from .data import Batcher, Data, PoolingBatcher, generator_iterator
@@ -28,7 +27,6 @@ __all__ = [
     "Batcher",
     "BaseBatchSampler",
     "BatchIterator",
-    "BPTTLanguageModelDataHandler",
     "CommonMetadata",
     "CompositionalDataHandler",
     "ContextualIntentSlotModelDataHandler",

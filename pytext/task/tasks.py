@@ -10,8 +10,8 @@ from pytext.config import (
     query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
 )
 from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
+from pytext.config.pytext_config import PlaceHolder
 from pytext.data import (
-    BPTTLanguageModelDataHandler,
     CompositionalDataHandler,
     ContextualIntentSlotModelDataHandler,
     DocClassificationDataHandler,
@@ -286,8 +286,10 @@ class IntentSlotTask(NewTask):
 
 class LMTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
+        # Have PlaceHolder to keep it as Union so we don't have to write config adapter
+        # for it, this class should be removed soon
         data_handler: Union[
-            LanguageModelDataHandler.Config, BPTTLanguageModelDataHandler.Config
+            LanguageModelDataHandler.Config, PlaceHolder
         ] = LanguageModelDataHandler.Config()
         model: LMLSTM_Deprecated.Config = LMLSTM_Deprecated.Config()
         trainer: Trainer.Config = Trainer.Config()
