@@ -261,6 +261,17 @@ class Model(BaseModel):
         representation = None
         decoder = None
         output_layer = None
+        # This config flag tells the model whether its parameters are being
+        # loaded from saved state, hence it can skip certain initialization
+        # steps such as loading pre-trained embeddings from file.
+        #
+        # TODO (geoffreygoh): Using config for such a purpose is really a hack,
+        # and the alternative is either to pickle model objects directly so we
+        # can skip initialization, or to pass this flag as an additional param
+        # to create_model (which will involve changing from_config method of
+        # every model in the repository). Clean this up once the above pickling
+        # solution is fully explored.
+        init_from_saved_state = False
 
     def __init__(
         self,
