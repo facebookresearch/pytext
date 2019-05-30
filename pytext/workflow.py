@@ -158,7 +158,7 @@ def export_saved_model_to_caffe2(
     saved_model_path: str, export_caffe2_path: str, output_onnx_path: str = None
 ) -> None:
     task, train_config = load(saved_model_path)
-    if task.exporter is None:
+    if hasattr(task, "exporter") and task.exporter is None:
         TaskType = type(train_config.task)
         ExporterConfigType = get_type_hints(TaskType)["exporter"].__args__[0]
         task.exporter = create_exporter(
