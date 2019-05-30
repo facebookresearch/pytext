@@ -57,27 +57,7 @@ class UtilTest(unittest.TestCase):
         )
 
     def test_unkify(self):
-        map_token_unkified = {
-            "": "<unk>",
-            "Text": "<unk>-INITC",
-            "TExt": "<unk>-CAPS",
-            "!Text": "<unk>-CAPS",
-            "text": "<unk>-LC",
-            "text0": "<unk>-LC-NUM",
-            "text-0": "<unk>-LC-NUM-DASH",
-            "texts": "<unk>-LC-s",
-            "texted": "<unk>-LC-ed",
-            "texting": "<unk>-LC-ing",
-            "textion": "<unk>-LC-ion",
-            "texter": "<unk>-LC-er",
-            "texest": "<unk>-LC-est",
-            "textly": "<unk>-LC-ly",
-            "textity": "<unk>-LC-ity",
-            "texty": "<unk>-LC-y",
-            "textal": "<unk>-LC-al",
-            "-": "<unk>-DASH",
-            "72": "<unk>-NUM",
-        }
+        map_token_unkified = {"": "<unk>", "72": "<unk>-NUM"}
 
         for token, expected_unkified in map_token_unkified.items():
             self.assertEqual(unkify(token), expected_unkified)
