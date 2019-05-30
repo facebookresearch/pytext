@@ -199,11 +199,9 @@ class CompositionalDataHandlerTest(unittest.TestCase):
             self.train_data, self.eval_data, self.test_data
         )
         # <unk>-NUM = <unk> for numeric tokens
-        # <unk>-LC = <unk> for lower-cased tokens
-        # <unk>-LC-y = <unk> for lower-cased tokens with suffix "y" ("today")
         self.assertSetEqual(
             set(custom_dh.features["word_feat"].vocab.stoi),
-            {"<unk>", "<unk>-NUM", "<unk>-LC", "<unk>-LC-y", "events"},
+            {"<unk>", "<unk>-NUM", "<unk>", "<unk>", "events"},
         )
 
     def test_uppercase_tokens(self):
