@@ -129,6 +129,14 @@ class MetricReporter(Component):
             isinstance(elem, torch.Tensor) for elem in data
         ):
             return [elem.tolist() for elem in data]
+        elif (
+            isinstance(data, List)
+            and all(isinstance(elem, List) for elem in data)
+            and all(
+                isinstance(elem, torch.Tensor) for elemlist in data for elem in elemlist
+            )
+        ):
+            return [[elem.tolist() for elem in elemlist] for elemlist in data]
         elif isinstance(data, List):
             return data
         elif isinstance(data, tuple):
