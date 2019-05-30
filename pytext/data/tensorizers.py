@@ -721,7 +721,8 @@ class GazetteerTensorizer(Tensorizer):
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column)
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        return cls(config.text_column, config.dict_column, tokenizer)
 
     def __init__(
         self,
@@ -774,11 +775,46 @@ class GazetteerTensorizer(Tensorizer):
         return res_idx, res_weights, res_lens
 
     def tensorize(self, batch):
-        dict_feat_ids, weights, seq_lens = zip(*batch)
+        # Pad a minibatch of dictionary features to be
+        # batch_size * max_number_of_words * max_number_of_features
+        # unpack the minibatch
+        feats, weights, lengths = zip(*batch)
+        lengths_flattened = [l for l_list in lengths for l in l_list]
+        seq_lens = [len(l_list) for l_list in lengths]
+        max_ex_len = max(seq_lens)
+        max_feat_len = max(lengths_flattened)
+        all_lengths, all_feats, all_weights = [], [], []
+        for i, seq_len in enumerate(seq_lens):
+            ex_feats, ex_weights, ex_lengths = [], [], []
+            feats_lengths, feats_vals, feats_weights = lengths[i], feats[i], weights[i]
+            max_feat_len_example = max(feats_lengths)
+            r_offset = 0
+            for _ in feats_lengths:
+                # The dict feats obtained from the featurizer will have necessary
+                # padding at the utterance level. Therefore we move the offset by
+                # max feature length in the example.
+                ex_feats.extend(feats_vals[r_offset : r_offset + max_feat_len_example])
+                ex_feats.extend(
+                    [self.vocab.get_pad_index()] * (max_feat_len - max_feat_len_example)
+                )
+                ex_weights.extend(
+                    feats_weights[r_offset : r_offset + max_feat_len_example]
+                )
+                ex_weights.extend([0.0] * (max_feat_len - max_feat_len_example))
+                r_offset += max_feat_len_example
+            ex_lengths.extend(feats_lengths)
+            # Pad examples
+            ex_padding = (max_ex_len - seq_len) * max_feat_len
+            ex_feats.extend([self.vocab.get_pad_index()] * ex_padding)
+            ex_weights.extend([0.0] * ex_padding)
+            ex_lengths.extend([1] * (max_ex_len - seq_len))
+            all_feats.append(ex_feats)
+            all_weights.append(ex_weights)
+            all_lengths.append(ex_lengths)
         return (
-            pad_and_tensorize(dict_feat_ids, self.vocab.get_pad_index()),
-            pad_and_tensorize(weights, self.vocab.get_pad_index()),
-            pad_and_tensorize(seq_lens),
+            cuda.tensor(all_feats, torch.long),
+            cuda.tensor(all_weights, torch.float),
+            cuda.tensor(all_lengths, torch.long),
         )
 
 

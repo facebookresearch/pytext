@@ -19,6 +19,7 @@ from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttentio
 class VocabStub:
     def __init__(self):
         self.itos = []
+        self.stoi = {}
 
 
 class ModuleLoadSaveTest(unittest.TestCase):
