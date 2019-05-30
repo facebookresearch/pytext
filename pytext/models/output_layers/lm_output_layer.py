@@ -97,8 +97,7 @@ class LMOutputLayer(OutputLayerBase):
             targets (torch.Tensor): True words.
             context (Dict[str, Any]): Context is a dictionary of items
                 that's passed as additional metadata by the
-                :class:`~pytext.data.LanguageModelDataHandler` or
-                :class:`~pytext.data.BPTTLanguageModelDataHandler`.
+                :class:`~pytext.data.LanguageModelDataHandler`
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
