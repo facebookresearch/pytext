@@ -37,7 +37,7 @@ class LMOutputLayer(OutputLayerBase):
     ):
         if labels is not None:
             vocab = list(labels)
-            pad_token_idx = labels.idx[PAD]
+            pad_token_idx = labels.get_pad_index()
         else:
             vocab = metadata.vocab.itos
             pad_token_idx = metadata.pad_token_idx
