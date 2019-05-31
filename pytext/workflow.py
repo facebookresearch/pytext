@@ -256,14 +256,21 @@ def get_logits(
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
+    print(f"Successfully loaded model from {snapshot_path}")
     if isinstance(task, NewTask):
         task.model.eval()
-        data_source = _get_data_source(test_path, field_names, task)
+        data_source = _get_data_source(
+            test_path,
+            getattr(train_config.task.data, "source", None),
+            field_names,
+            task,
+        )
         task.data.batcher = Batcher()
+        task.data.sort_key = None
         batches = task.data.batches(Stage.TEST, data_source=data_source)
         results = []
-        for batch in batches:
-            model_inputs = task.model.arrange_model_inputs(batch)
+        for (_, tensor_dict) in batches:
+            model_inputs = task.model.arrange_model_inputs(tensor_dict)
             model_outputs = task.model(*model_inputs)
             MetricReporter.aggregate_data(results, model_outputs)
         with open(output_path, "w", encoding="utf-8") as fout:
