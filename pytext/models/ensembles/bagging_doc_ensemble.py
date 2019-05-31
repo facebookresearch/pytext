@@ -5,7 +5,7 @@ from typing import List
 import torch
 from pytext.models.doc_model import DocModel, DocModel_Deprecated
 
-from .ensemble import Ensemble, Ensemble_Deprecated
+from .ensemble import Ensemble_Deprecated, EnsembleModel
 
 
 class BaggingDocEnsemble_Deprecated(Ensemble_Deprecated):
@@ -43,12 +43,12 @@ class BaggingDocEnsemble_Deprecated(Ensemble_Deprecated):
         return torch.mean(logit_d_list, dim=2)
 
 
-class BaggingDocEnsemble(Ensemble):
+class BaggingDocEnsembleModel(EnsembleModel):
     """Ensemble class that uses bagging for ensembling document classification
     models.
     """
 
-    class Config(Ensemble.Config):
+    class Config(EnsembleModel.Config):
         """Configuration class for `NewBaggingDocEnsemble`. These attributes are
         used by `Ensemble.from_config()` to construct instance of
         `NewBaggingDocEnsemble`.

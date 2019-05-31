@@ -34,9 +34,10 @@ from pytext.metric_reporters import (
 )
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import (
-    BaggingDocEnsemble,
     BaggingDocEnsemble_Deprecated,
+    BaggingDocEnsembleModel,
     BaggingIntentSlotEnsemble_Deprecated,
+    EnsembleModel,
 )
 from pytext.models.joint_model import IntentSlotModel, JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
@@ -127,13 +128,12 @@ class EnsembleTask_Deprecated(Task_Deprecated):
 
 
 class EnsembleTask(NewTask):
-    # TODO: support BaggingIntentSlotEnsemble
     class Config(NewTask.Config):
-        model: BaggingDocEnsemble.Config
+        model: EnsembleModel.Config
         trainer: EnsembleTrainer.Config = EnsembleTrainer.Config()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
+        metric_reporter: Union[
+            ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
+        ] = ClassificationMetricReporter.Config()
 
     def train_single_model(self, train_config, model_id, rank=0, world_size=1):
         return self.trainer.train_single_model(
@@ -146,7 +146,9 @@ class EnsembleTask(NewTask):
 
     @classmethod
     def example_config(cls):
-        return cls.Config(model=BaggingDocEnsemble.Config(models=[DocModel.Config()]))
+        return cls.Config(
+            model=BaggingDocEnsembleModel.Config(models=[DocModel.Config()])
+        )
 
 
 class DocClassificationTask_Deprecated(Task_Deprecated):
