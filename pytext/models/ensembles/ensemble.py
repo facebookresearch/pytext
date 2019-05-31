@@ -74,7 +74,9 @@ class Ensemble_Deprecated(Model):
             model.save_modules(base_path, suffix)
 
 
-class Ensemble(Ensemble_Deprecated):
+class EnsembleModel(Ensemble_Deprecated):
+    __EXPANSIBLE__ = True
+
     class Config(Ensemble_Deprecated.Config):
         @property
         def inputs(self):
@@ -109,3 +111,6 @@ class Ensemble(Ensemble_Deprecated):
 
     def arrange_targets(self, tensor_dict):
         return self.models[0].arrange_targets(tensor_dict)
+
+    def arrange_model_context(self, tensor_dict):
+        return self.models[0].arrange_model_context(tensor_dict)
