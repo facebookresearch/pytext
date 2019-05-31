@@ -7,6 +7,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
+    ByteTokenTensorizer,
     LabelTensorizer,
     NumericLabelTensorizer,
     Tensorizer,
@@ -16,7 +17,7 @@ from pytext.data.utils import PAD, UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.loss import BinaryCrossEntropyLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.embeddings import WordEmbedding
+from pytext.models.embeddings import CharacterEmbedding, EmbeddingList, WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import ClassificationOutputLayer, RegressionOutputLayer
@@ -27,7 +28,12 @@ from pytext.models.output_layers.doc_classification_output_layer import (
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
-from pytext.utils.torch import Vocabulary, list_max
+from pytext.utils.torch import (
+    Vocabulary,
+    make_byte_inputs,
+    make_sequence_lengths,
+    pad_2d,
+)
 from torch import jit
 
 
@@ -120,17 +126,9 @@ class DocModel(Model):
 
             @jit.script_method
             def forward(self, tokens: List[List[str]]):
+                seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
-
-                seq_lens = jit.annotate(List[int], [])
-
-                for sentence in word_ids:
-                    seq_lens.append(len(sentence))
-                pad_to_length = list_max(seq_lens)
-                for sentence in word_ids:
-                    for _ in range(pad_to_length - len(sentence)):
-                        sentence.append(self.pad_idx)
-
+                word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
                 logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
                 return self.output_layer(logits)
 
@@ -168,6 +166,83 @@ class DocModel(Model):
         )
         output_layer = output_layer_cls(list(labels), loss)
         return cls(embedding, representation, decoder, output_layer)
+
+
+class ByteTokensDocumentModel(DocModel):
+    """
+    DocModel that receives both word IDs and byte IDs as inputs (concatenating
+    word and byte-token embeddings to represent input tokens).
+    """
+
+    class Config(DocModel.Config):
+        class ByteModelInput(DocModel.Config.ModelInput):
+            token_bytes: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config()
+
+        inputs: ByteModelInput = ByteModelInput()
+        byte_embedding: CharacterEmbedding.Config = CharacterEmbedding.Config()
+
+    @classmethod
+    def create_embedding(cls, config, tensorizers: Dict[str, Tensorizer]):
+        word_tensorizer = config.inputs.tokens
+        byte_tensorizer = config.inputs.token_bytes
+        assert word_tensorizer.column == byte_tensorizer.column
+        assert word_tensorizer.tokenizer.items() == byte_tensorizer.tokenizer.items()
+        assert word_tensorizer.max_seq_len == byte_tensorizer.max_seq_len
+
+        word_embedding = create_module(
+            config.embedding, tensorizer=tensorizers["tokens"]
+        )
+        byte_embedding = CharacterEmbedding(
+            ByteTokenTensorizer.NUM_BYTES,
+            config.byte_embedding.embed_dim,
+            config.byte_embedding.cnn.kernel_num,
+            config.byte_embedding.cnn.kernel_sizes,
+            config.byte_embedding.highway_layers,
+            config.byte_embedding.projection_dim,
+        )
+        return EmbeddingList([word_embedding, byte_embedding], concat=True)
+
+    def arrange_model_inputs(self, tensor_dict):
+        tokens, seq_lens, _ = tensor_dict["tokens"]
+        token_bytes, byte_seq_lens, _ = tensor_dict["token_bytes"]
+        assert (seq_lens == byte_seq_lens).all().item()
+        return tokens, token_bytes, seq_lens
+
+    def get_export_input_names(self, tensorizers):
+        return ["tokens", "token_bytes", "tokens_lens"]
+
+    def torchscriptify(self, tensorizers, traced_model):
+        output_layer = self.output_layer.torchscript_predictions()
+        max_byte_len = tensorizers["token_bytes"].max_byte_len
+        byte_offset_for_non_padding = tensorizers["token_bytes"].offset_for_non_padding
+        input_vocab = tensorizers["tokens"].vocab
+
+        class Model(jit.ScriptModule):
+            def __init__(self):
+                super().__init__()
+                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.max_byte_len = jit.Attribute(max_byte_len, int)
+                self.byte_offset_for_non_padding = jit.Attribute(
+                    byte_offset_for_non_padding, int
+                )
+                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.model = traced_model
+                self.output_layer = output_layer
+
+            @jit.script_method
+            def forward(self, tokens: List[List[str]]):
+                seq_lens = make_sequence_lengths(tokens)
+                word_ids = self.vocab.lookup_indices_2d(tokens)
+                word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
+                token_bytes, _ = make_byte_inputs(
+                    tokens, self.max_byte_len, self.byte_offset_for_non_padding
+                )
+                logits = self.model(
+                    torch.tensor(word_ids), token_bytes, torch.tensor(seq_lens)
+                )
+                return self.output_layer(logits)
+
+        return Model()
 
 
 class DocRegressionModel(DocModel):
