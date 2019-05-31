@@ -138,22 +138,13 @@ class VocabUsingNestedField(VocabUsingField, NestedField):
 
 
 class DocLabelField(Field):
-    def __init__(self, label_weights: Mapping[str, float] = None, **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__(
             sequential=False,
             batch_first=True,
             tokenize=data_utils.no_tokenize,
             unk_token=None,  # Don't include unk in the list of labels
         )
-        self.label_weights = label_weights or {}
-
-    # TODO: Create LabelFieldMeta class
-    def get_meta(self):
-        meta = super().get_meta()
-        weights_tensor = get_label_weights(meta.vocab.stoi, self.label_weights)
-        if weights_tensor is not None:
-            meta.label_weights = weights_tensor.cpu().numpy()
-        return meta
 
 
 class WordLabelField(Field):

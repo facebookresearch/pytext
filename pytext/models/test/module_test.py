@@ -13,6 +13,7 @@ from pytext.models.doc_model import DocModel_Deprecated
 class VocabStub:
     def __init__(self):
         self.itos = []
+        self.stoi = {}
 
 
 def mock_metadata():

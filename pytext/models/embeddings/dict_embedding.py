@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.onnx.operators
 from pytext.config.field_config import DictFeatConfig
 from pytext.config.module_config import PoolingType
+from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 
@@ -53,6 +54,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         config: DictFeatConfig,
         metadata: Optional[FieldMeta] = None,
         labels: Optional[Vocabulary] = None,
+        tensorizer: Optional[Tensorizer] = None,
     ):
         """Factory method to construct an instance of DictEmbedding from
         the module's config object and the field's metadata object.
@@ -66,7 +68,14 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             type: An instance of DictEmbedding.
 
         """
-        vocab_size = len(labels) if labels is not None else metadata.vocab_size
+        # TODO: clean this up once fully migrated to new data handler design
+        vocab_size = (
+            len(tensorizer.vocab)
+            if tensorizer is not None
+            else len(labels)
+            if labels is not None
+            else metadata.vocab_size
+        )
         return cls(
             num_embeddings=vocab_size,
             embed_dim=config.embed_dim,

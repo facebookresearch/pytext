@@ -16,7 +16,7 @@ from pytext.loss import (
     KLDivergenceCELoss,
     SoftHardBCELoss,
 )
-from pytext.utils.cuda import FloatTensor
+from pytext.utils.label import get_label_weights
 from torch import jit
 
 from .output_layer_base import OutputLayerBase
@@ -46,6 +46,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             KLDivergenceCELoss.Config,
             SoftHardBCELoss.Config,
         ] = CrossEntropyLoss.Config()
+        label_weights: Optional[Dict[str, float]] = None
 
     @classmethod
     def from_config(
@@ -54,10 +55,18 @@ class ClassificationOutputLayer(OutputLayerBase):
         metadata: Optional[FieldMeta] = None,
         labels: Optional[Vocabulary] = None,
     ):
-        label_weights = getattr(metadata, "label_weights", None)
-        if label_weights is not None:
-            label_weights = FloatTensor(label_weights)
-        vocab = list(labels) if labels is not None else metadata.vocab.itos
+        if labels is not None:
+            vocab = list(labels)
+            vocab_dict = labels.idx
+        else:
+            vocab = metadata.vocab.itos
+            vocab_dict = metadata.vocab.stoi
+
+        label_weights = (
+            get_label_weights(vocab_dict, config.label_weights)
+            if config.label_weights
+            else None
+        )
         loss = create_loss(config.loss, weight=label_weights)
         cls = (
             BinaryClassificationOutputLayer

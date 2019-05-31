@@ -1,1 +1,2 @@
 Order coffee from Starbucks please	[{"tokenIdx": 1, "features": {"drink/beverage": 0.8, "music/song": 0.2}},{"tokenIdx": 3, "features": {"store/coffee_shop": 1.0}}]
+Order some fries from McDonalds please	[{"tokenIdx": 2, "features": {"food": 1.0}},{"tokenIdx": 4, "features": {"store/fast_food": 1.0}}]

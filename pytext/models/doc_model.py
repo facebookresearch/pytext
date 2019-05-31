@@ -116,7 +116,7 @@ class DocModel(Model):
                 self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
                 self.model = traced_model
                 self.output_layer = output_layer
-                self.pad_idx = jit.Attribute(input_vocab.get_pad_index(), int)
+                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
 
             @jit.script_method
             def forward(self, tokens: List[List[str]]):
@@ -160,7 +160,6 @@ class DocModel(Model):
         decoder = cls.create_decoder(
             config, representation.representation_dim, len(labels)
         )
-        # TODO change from_config function of ClassificationOutputLayer after migriting to new design
         loss = create_loss(config.output_layer.loss)
         output_layer_cls = (
             BinaryClassificationOutputLayer
