@@ -149,7 +149,10 @@ def register_tasks(task_cls: Union[Type, List[Type]]):
 def create_component(component_type: ComponentType, config: Any, *args, **kwargs):
     config_cls = type(config)
     cls = Registry.get(component_type, config_cls)
-    return cls.from_config(config, *args, **kwargs)
+    try:
+        return cls.from_config(config, *args, **kwargs)
+    except TypeError as e:
+        raise Exception(f"Can't create component {cls}: {str(e)}")
 
 
 def create_data_handler(data_handler_config, *args, **kwargs):
