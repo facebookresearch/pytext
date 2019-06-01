@@ -261,6 +261,13 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
 
 
 class SessionTSVDataSource(TSVDataSource):
+    """
+    Data source for session based data, the input data is organized in sessions,
+    each session may have multiple rows. The first column is always the session id.
+    Raw input rows are consolidated by session id and returned as one session
+    per example
+    """
+
     def __init__(
         self,
         train_file=None,
