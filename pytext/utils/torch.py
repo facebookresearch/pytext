@@ -181,6 +181,11 @@ class BPE(torch.jit.ScriptModule):
     def from_vocab_file(cls, vocab_file: io.IOBase) -> "BPE":
         return cls(cls.load_vocab(vocab_file))
 
+    @classmethod
+    def from_vocab_filename(cls, vocab_filename: str) -> "BPE":
+        with open(vocab_filename) as vocab_file:
+            return cls(cls.load_vocab(vocab_file))
+
     @staticmethod
     def load_vocab(file: io.IOBase) -> Dict[str, int]:
         def read_words(lines):
