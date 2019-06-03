@@ -97,7 +97,7 @@ class StackedBidirectionalRNN(Module):
                 concat_layers = True else batch, max_seq_len, hidden_size
         """
         # Sort in descending order of sequence lengths.
-        seq_lengths = tokens_mask.eq(0).long().sum(1).squeeze()
+        seq_lengths = tokens_mask.eq(0).long().sum(1)
         seq_lengths_sorted, idx_of_sorted = torch.sort(
             seq_lengths, dim=0, descending=True
         )
