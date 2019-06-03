@@ -1,6 +1,8 @@
 Train Intent-Slot model on ATIS Dataset
 ======================================================
 
+**OBSOLETE** This documentation is using the old API and needs to be updated with the new classes configs.
+
 Intent detection and Slot filling are two common tasks in Natural Language Understanding for personal assistants. Given a user's "utterance" (e.g. Set an alarm for 10 pm), we detect its intent (set_alarm) and tag the slots required to fulfill the intent (10 pm).
 
 The two tasks can be modeled as text classification and sequence labeling, respectively. We can train two separate models, but training a joint model has been shown to perform better.
