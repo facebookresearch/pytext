@@ -8,6 +8,15 @@ from typing import List, Optional, Tuple, Type
 import torch
 from pytext.common import Padding
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.data.data_structures.annotation import (
+    REDUCE,
+    SHIFT,
+    Annotation,
+    is_intent_nonterminal,
+    is_slot_nonterminal,
+    is_unsupported,
+    is_valid_nonterminal,
+)
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.utils import cuda
@@ -970,6 +979,79 @@ class SeqTokenTensorizer(Tensorizer):
     def sort_key(self, row):
         # use seq_len as sort key
         return row[1]
+
+
+class AnnotationNumberizer(Tensorizer):
+    """
+    Not really a Tensorizer (since it does not create tensors) but technically
+    serves the same function. This class parses Annotations in the format below
+    and extracts the actions (type List[List[int]])
+    ::
+
+        [IN:GET_ESTIMATED_DURATION How long will it take to [SL:METHOD_TRAVEL
+        drive ] from [SL:SOURCE Chicago ] to [SL:DESTINATION Mississippi ] ]
+
+    Extraction algorithm is handled by Annotation class. We only care about
+    the list of actions, which before vocab index lookups would look like:
+    ::
+
+        [
+            IN:GET_ESTIMATED_DURATION, SHIFT, SHIFT, SHIFT, SHIFT, SHIFT, SHIFT,
+            SL:METHOD_TRAVEL, SHIFT, REDUCE,
+            SHIFT,
+            SL:SOURCE, SHIFT, REDUCE,
+            SHIFT,
+            SL:DESTINATION, SHIFT, REDUCE,
+        ]
+
+    """
+
+    class Config(Tensorizer.Config):
+        column: str = "seqlogical"
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(column=config.column)
+
+    def __init__(self, column: str = Config.column, vocab=None):
+        super().__init__([(column, str)])
+        self.column = column
+        self.vocab = vocab
+
+    def initialize(self, vocab_builder=None):
+        """Build vocabulary based on training corpus."""
+        if self.vocab:
+            return
+        vocab_builder = vocab_builder or VocabBuilder()
+        vocab_builder.use_unk = False
+        vocab_builder.use_pad = False
+
+        try:
+            while True:
+                row = yield
+                annotation = Annotation(row[self.column])
+                actions = annotation.tree.to_actions()
+                vocab_builder.add_all(actions)
+        except GeneratorExit:
+            self.vocab = vocab_builder.make_vocab()
+            self.shift_idx = self.vocab.idx[SHIFT]
+            self.reduce_idx = self.vocab.idx[REDUCE]
+
+            def filterVocab(fn):
+                return [token for nt, token in self.vocab.idx.items() if fn(nt)]
+
+            self.ignore_subNTs_roots = filterVocab(is_unsupported)
+            self.valid_NT_idxs = filterVocab(is_valid_nonterminal)
+            self.valid_IN_idxs = filterVocab(is_intent_nonterminal)
+            self.valid_SL_idxs = filterVocab(is_slot_nonterminal)
+
+    def numberize(self, row):
+        """Tokenize, look up in vocabulary."""
+        annotation = Annotation(row[self.column])
+        return self.vocab.lookup_all(annotation.tree.to_actions())
+
+    def tensorize(self, batch):
+        return batch
 
 
 class MetricTensorizer(Tensorizer):
