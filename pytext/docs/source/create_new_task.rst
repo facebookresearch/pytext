@@ -1,6 +1,8 @@
 Creating A New Task
 ======================================================
 
+**OBSOLETE** This documentation is using the old API and needs to be updated with the new classes configs.
+
 PyText uses a :class:`~Task` class as a central place to define components for data processing,
 model training, metric reporting etc. and wire up those components. One can easily inherit from
 an existing task and replace some (or all) components.

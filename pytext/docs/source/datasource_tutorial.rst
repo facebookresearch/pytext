@@ -241,7 +241,7 @@ First let's get a config using our new :class:`~AtisIntentDataSource`
 
 .. code-block:: console
 
-    $ pytext --include my_classifier gen-default-config AtisIntentDataSource NewDocumentClassification > my_classifier/config.json
+    $ pytext --include my_classifier gen-default-config AtisIntentDataSource DocumentClassificationTask > my_classifier/config.json
     Including: my_classifier
     ... importing module: my_classifier.source
     ... importing: <class 'my_classifier.source.AtisIntentDataSource'>
@@ -258,7 +258,7 @@ Now we edit the config to remove the parameters that we don't care about and can
       "export_onnx_path": "my_classifier.onnx",
       "save_snapshot_path": "my_classifier.pt",
       "task": {
-        "NewDocumentClassification": {
+        "DocumentClassificationTask": {
           "data": {
             "source": {
               "AtisIntentDataSource": {
@@ -278,7 +278,7 @@ Now we edit the config to remove the parameters that we don't care about and can
         }
       },
       "test_out_path": "my_classifier_test.out",
-      "version": 3
+      "version": 11
     }
 
 And, at last, we can train the model

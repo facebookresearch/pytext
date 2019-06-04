@@ -66,13 +66,26 @@ To get our feet wet, let's run one of the demo configurations included with PyTe
 
   (pytext) $ cat demo/configs/docnn.json
   {
+    "version": 8,
     "task": {
-      "DocClassificationTask": {
-	"data_handler": {
-	  "train_path": "tests/data/train_data_tiny.tsv",
-	  "eval_path": "tests/data/test_data_tiny.tsv",
-	  "test_path": "tests/data/test_data_tiny.tsv"
-	}
+      "DocumentClassificationTask": {
+        "data": {
+          "source": {
+            "TSVDataSource": {
+              "field_names": ["label", "slots", "text"],
+              "train_filename": "pytext/tests/data/train_data_tiny.tsv",
+              "test_filename": "pytext/tests/data/test_data_tiny.tsv",
+              "eval_filename": "pytext/tests/data/test_data_tiny.tsv"
+            }
+          }
+        },
+        "model": {
+          "DocModel": {
+            "representation": {
+              "DocNNRepresentation": {}
+            }
+          }
+        }
       }
     }
   }
@@ -87,7 +100,7 @@ This config will train a document classification model (DocNN) to detect the "cl
   (pytext) $ wc -l tests/data/train_data_tiny.tsv
       10 tests/data/train_data_tiny.tsv
 
-As you can see, the dataset is quite small, so don't get your hopes up on accuracy! We included this dataset for running unit tests against our models. PyText uses data in a tab separated (TSV) format. The order of the columns can be configured, but here we use the default. The first column is the "class", the output label that we're trying to predict. The second column is word-level tags, which we're not trying to predict yet, so ignore them for now. The last column here is the input text, which is the command whose class (the first column) the model tries to predict.
+As you can see, the dataset is quite small, so don't get your hopes up on accuracy! We included this dataset for running unit tests against our models. PyText uses data in a tab separated format, as specified in the config by TSVDataSource. The order of the columns can be configured, but here we use the default. The first column is the "class", the output label that we're trying to predict. The second column is word-level tags, which we're not trying to predict yet, so ignore them for now. The last column here is the input text, which is the command whose class (the first column) the model tries to predict.
 
 Let's train the model!
 
