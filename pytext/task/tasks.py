@@ -6,7 +6,6 @@ from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config import (
     contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
-    pair_classification as PairClassification,
     query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
 )
 from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
@@ -17,7 +16,6 @@ from pytext.data import (
     DocClassificationDataHandler,
     JointModelDataHandler,
     LanguageModelDataHandler,
-    PairClassificationDataHandler,
     QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
@@ -42,11 +40,7 @@ from pytext.models.ensembles import (
 from pytext.models.joint_model import IntentSlotModel, JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.model import BaseModel
-from pytext.models.pair_classification_model import (
-    BasePairwiseModel,
-    PairClassificationModel,
-    PairwiseModel,
-)
+from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
 from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocPairwiseRankingModel,
     QueryDocumentPairwiseRankingModel_Deprecated,
@@ -306,22 +300,6 @@ class LMTask(NewTask):
         model: LMLSTM.Config = LMLSTM.Config()
         metric_reporter: LanguageModelMetricReporter.Config = (
             LanguageModelMetricReporter.Config()
-        )
-
-
-class PairClassificationTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        features: PairClassification.ModelInputConfig = (
-            PairClassification.ModelInputConfig()
-        )
-        model: PairClassificationModel.Config = PairClassificationModel.Config()
-        data_handler: PairClassificationDataHandler.Config = (
-            PairClassificationDataHandler.Config()
-        )
-        trainer: Trainer.Config = Trainer.Config()
-        labels: PairClassification.TargetConfig = PairClassification.TargetConfig()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
         )
 
 
