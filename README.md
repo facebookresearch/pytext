@@ -15,7 +15,7 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
     - [Zhang et al. (2016): A Joint Model of Intent Determination and Slot Filling for Spoken Language Understanding](https://www.ijcai.org/Proceedings/16/Papers/425.pdf)
   - Contextual intent-slot models
 - Distributed-training support built on the new C10d backend in PyTorch 1.0
-- Mixed precision training support through [APEX](https://github.com/NVIDIA/apex) (trains faster with less GPU memory on [NVIDIA tensor cores](https://developer.nvidia.com/tensor-cores))
+- Mixed precision training support through [APEX](https://github.com/NVIDIA/apex) (trains faster with less GPU memory on [NVIDIA Tensor Cores](https://developer.nvidia.com/tensor-cores))
 - Extensible components that allows easy creation of new models and tasks
 - Reference implementation and a pretrained model for the paper: [Gupta et al. (2018): Semantic Parsing for Task Oriented Dialog using Hierarchical Representations](http://aclweb.org/anthology/D18-1300)
 - Ensemble training support
