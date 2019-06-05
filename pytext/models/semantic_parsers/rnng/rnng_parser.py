@@ -19,7 +19,6 @@ from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     CompositionalNN,
     CompositionalSummationNN,
-    CompositionFunction,
     Element,
     ParserState,
 )
@@ -153,7 +152,7 @@ class RNNGParser(BaseModel):
         valid_IN_idxs: List[int],
         valid_SL_idxs: List[int],
         embedding: EmbeddingList,
-        p_compositional: CompositionFunction,
+        p_compositional,
     ) -> None:
         """
         Initialize the model

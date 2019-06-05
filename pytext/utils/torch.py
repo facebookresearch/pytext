@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 
 
+# ===== the following section should be replaced once JIT provide native support
 @torch.jit.script
 def list_max(l: List[int]):
     max_value = l[0]  # fine to throw if empty
@@ -22,6 +23,18 @@ def list_membership(item: int, list: List[int]):
         if item == i:
             item_present = True
     return item_present
+
+
+@torch.jit.script
+def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
+    l_len = len(int_list)
+    res = []
+    for idx in range(l_len):
+        res.append(int_list[l_len - idx - 1])
+    return res
+
+
+# ========= end section
 
 
 class Vocabulary(torch.jit.ScriptModule):

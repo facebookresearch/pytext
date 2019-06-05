@@ -23,12 +23,6 @@ def zerovar(*size):
     return Variable(torch.zeros(*size))
 
 
-def xaviervar(*size):
-    t = torch.Tensor(*size)
-    t = torch.nn.init.xavier_normal_(t)
-    return Variable(t)
-
-
 def FloatTensor(*args):
     if CUDA_ENABLED:
         return torch.cuda.FloatTensor(*args)

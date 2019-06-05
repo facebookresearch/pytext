@@ -5,7 +5,9 @@ from typing import Any, List, Sized, Tuple
 
 import torch as torch
 import torch.nn as nn
-from pytext.utils.cuda import FloatTensor, xaviervar
+from pytext.utils.cuda import FloatTensor
+from pytext.utils.tensor import xaviervar
+from pytext.utils.torch import reverse_tensor_list
 
 
 class Element:
@@ -95,27 +97,22 @@ class StackLSTM(Sized):
         return other
 
 
-class CompositionFunction(nn.Module):
-    """
-    Combines a list / sequence of embeddings into one
-    """
-
-    def __init__(self):
-        super().__init__()
-
-
-class CompositionalNN(CompositionFunction):
+class CompositionalNN(torch.jit.ScriptModule):
     """
     Combines a list / sequence of embeddings into one using a biLSTM
     """
 
-    def __init__(self, lstm_dim: int):
+    __constants__ = ["lstm_dim", "linear_seq", "device"]
+
+    def __init__(self, lstm_dim: int, device: str = "cpu"):
         super().__init__()
+        self.device = device
         self.lstm_dim = lstm_dim
         self.lstm_fwd = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
         self.lstm_rev = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
         self.linear_seq = nn.Sequential(nn.Linear(2 * lstm_dim, lstm_dim), nn.Tanh())
 
+    @torch.jit.script_method
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         """
         Embed the sequence. If the input corresponds to [IN:GL where am I at]:
@@ -132,17 +129,17 @@ class CompositionalNN(CompositionFunction):
         """
         # reset hidden state every time
         lstm_hidden_fwd = (
-            xaviervar(1, 1, self.lstm_dim),
-            xaviervar(1, 1, self.lstm_dim),
+            xaviervar([1, 1, self.lstm_dim], device=self.device),
+            xaviervar([1, 1, self.lstm_dim], device=self.device),
         )
         lstm_hidden_rev = (
-            xaviervar(1, 1, self.lstm_dim),
-            xaviervar(1, 1, self.lstm_dim),
+            xaviervar([1, 1, self.lstm_dim], device=self.device),
+            xaviervar([1, 1, self.lstm_dim], device=self.device),
         )
         nonterminal_element = x[-1]
         reversed_rest = x[:-1]
         # Always put nonterminal_element at the front
-        fwd_input = [nonterminal_element] + reversed_rest[::-1]
+        fwd_input = [nonterminal_element] + reverse_tensor_list(reversed_rest)
         rev_input = [nonterminal_element] + reversed_rest
         stacked_fwd = self.lstm_fwd(torch.stack(fwd_input), lstm_hidden_fwd)[0][0]
         stacked_rev = self.lstm_rev(torch.stack(rev_input), lstm_hidden_rev)[0][0]
@@ -151,7 +148,7 @@ class CompositionalNN(CompositionFunction):
         return subtree_embedding
 
 
-class CompositionalSummationNN(CompositionFunction):
+class CompositionalSummationNN(torch.jit.ScriptModule):
     """
     Simpler version of CompositionalNN
     """
@@ -161,6 +158,7 @@ class CompositionalSummationNN(CompositionFunction):
         self.lstm_dim = lstm_dim
         self.linear_seq = nn.Sequential(nn.Linear(lstm_dim, lstm_dim), nn.Tanh())
 
+    @torch.jit.script_method
     def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
         combined = torch.sum(torch.cat(x, dim=0), dim=0, keepdim=True)
         subtree_embedding = self.linear_seq(combined)
