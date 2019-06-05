@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+
 import json
 from typing import List, Optional
 
 from pytext.data.sources.data_source import DataSource, generator_property
+from pytext.data.sources.tsv import TSVDataSource
 
 
 def unflatten(fname, ignore_impossible):
@@ -85,3 +87,29 @@ class SquadDataSource(DataSource):
     @generator_property
     def eval(self):
         return unflatten(self.eval_filename, self.ignore_impossible)
+
+
+class SquadTSVDataSource(TSVDataSource):
+    """
+    Squad-like data passed in TSV format.
+    Will return tuples of (doc, question, answer, answer_start, has_answer)
+    """
+
+    class Config(TSVDataSource.Config):
+        field_names: List[str] = [
+            "doc",
+            "question",
+            "answers",
+            "answer_starts",
+            "has_answer",
+        ]
+
+    def __init__(self, **kwargs):
+        kwargs["schema"] = {
+            "doc": str,
+            "question": str,
+            "answers": List[str],
+            "answer_starts": List[int],
+            "has_answer": str,
+        }
+        super().__init__(**kwargs)
