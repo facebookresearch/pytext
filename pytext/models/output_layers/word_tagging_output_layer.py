@@ -10,7 +10,7 @@ from pytext.common import Padding
 from pytext.config.component import create_loss
 from pytext.config.serialize import MissingValueError
 from pytext.data.joint_data_handler import SEQ_LENS  # TODO move to constant
-from pytext.data.utils import PAD, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss
 from pytext.models.crf import CRF
@@ -46,7 +46,9 @@ class WordTaggingOutputLayer(OutputLayerBase):
         if labels is not None:
             vocab = list(labels)
             vocab_dict = labels.idx
-            pad_token_idx = labels.idx.get(PAD, Padding.DEFAULT_LABEL_PAD_IDX)
+            pad_token_idx = labels.idx.get(
+                labels.pad_token, Padding.DEFAULT_LABEL_PAD_IDX
+            )
         else:
             vocab = metadata.vocab.itos
             pad_token_idx = metadata.pad_token_idx

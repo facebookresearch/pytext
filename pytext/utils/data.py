@@ -35,16 +35,22 @@ class Slot:
         token_overlap = self.token_overlap(token_start, token_end)
 
         if use_bio_labels:
-            blabel_name = "{}{}".format(self.B_LABEL_PREFIX, self.label)
-            ilabel_name = "{}{}".format(self.I_LABEL_PREFIX, self.label)
             if token_start == self.start and token_overlap:
-                token_label = blabel_name
+                token_label = self.b_label_name
             elif token_start > self.start and token_overlap:
-                token_label = ilabel_name
+                token_label = self.i_label_name
         else:
             if token_overlap:
                 token_label = self.label
         return token_label
+
+    @property
+    def b_label_name(self):
+        return "{}{}".format(self.B_LABEL_PREFIX, self.label)
+
+    @property
+    def i_label_name(self):
+        return "{}{}".format(self.I_LABEL_PREFIX, self.label)
 
     def __repr__(self):
         return "{}:{}:{}".format(self.start, self.end, self.label)
@@ -78,6 +84,14 @@ def parse_json_array(json_text: str) -> List[str]:
 def align_slot_labels(
     token_ranges: List[Tuple[int, int]], slots_field: str, use_bio_labels: bool = False
 ):
+    return " ".join(
+        parse_and_align_slot_labels_list(token_ranges, slots_field, use_bio_labels)
+    )
+
+
+def parse_and_align_slot_labels_list(
+    token_ranges: List[Tuple[int, int]], slots_field: str, use_bio_labels: bool = False
+):
     slots_field = slots_field or ""
     slot_list = parse_slot_string(slots_field)
 
@@ -91,7 +105,7 @@ def align_slot_labels(
                 max_overlap = curr_overlap
                 tok_label = s.token_label(use_bio_labels, t_start, t_end)
         token_labels.append(tok_label)
-    return " ".join(token_labels)
+    return token_labels
 
 
 class ResultRow:

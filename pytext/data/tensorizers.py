@@ -2,8 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import os
 import re
-from typing import List, Optional, Tuple, Type
+from typing import List, Optional, Set, Tuple, Type
 
 import torch
 from pytext.common import Padding
@@ -112,6 +113,10 @@ class TokenTensorizer(Tensorizer):
         #: If False, will not create token vocab during initialization. The vocab will
         #: need to be set during model initialization (e.g. see WordEmbedding)
         build_vocab: bool = True
+        vocab_file: str = ""
+        #: The number of lines in the above provided vocab_file to add to the
+        #: overall vocab
+        vocab_file_size_limit: int = 0
 
     @classmethod
     def from_config(cls, config: Config):
@@ -124,6 +129,8 @@ class TokenTensorizer(Tensorizer):
             use_eos_token_for_bos=config.use_eos_token_for_bos,
             max_seq_len=config.max_seq_len,
             build_vocab=config.build_vocab,
+            vocab_file=config.vocab_file,
+            vocab_file_size_limit=config.vocab_file_size_limit,
         )
 
     def __init__(
@@ -136,6 +143,8 @@ class TokenTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         build_vocab=True,
         vocab=None,
+        vocab_file=Config.vocab_file,
+        vocab_file_size_limit=Config.vocab_file_size_limit,
     ):
         super().__init__([(text_column, str)])
         self.text_column = text_column
@@ -147,6 +156,8 @@ class TokenTensorizer(Tensorizer):
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
         self.build_vocab = build_vocab
         self.vocab_builder = None
+        self.vocab_file = vocab_file
+        self.vocab_file_size_limit = vocab_file_size_limit
 
     def _lookup_tokens(self, text=None, pre_tokenized=None):
         tokenized = pre_tokenized or self.tokenizer.tokenize(text)[: self.max_seq_len]
@@ -182,7 +193,32 @@ class TokenTensorizer(Tensorizer):
                 tokenized = self.tokenizer.tokenize(raw_text)
                 self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
+            self._add_vocab_from_file()
             self.vocab = self.vocab_builder.make_vocab()
+
+    def _add_vocab_from_file(self):
+        vocab_from_file: Set[str] = set()
+        if self.vocab_file:
+            if os.path.isfile(self.vocab_file):
+                with open(self.vocab_file, "r") as f:
+                    for i, line in enumerate(f):
+                        if (
+                            self.vocab_file_size_limit > 0
+                            and len(vocab_from_file) == self.vocab_file_size_limit
+                        ):
+                            print(
+                                f"Read {i+1} items from {self.vocab_file} to "
+                                f"load vocab of size {self.vocab_file_size_limit}. "
+                                f"Skipping rest of the file"
+                            )
+                            break
+                        line = line.strip()
+                        vocab_from_file.add(
+                            line.lower() if self.tokenizer.lowercase else line
+                        )
+            else:
+                print(f"{self.vocab_file} does not exist. Cannot load vocab from it")
+        self.vocab_builder.add_all(vocab_from_file)
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""

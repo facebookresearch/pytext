@@ -52,11 +52,16 @@ def _union_from_json(subclasses, json_obj):
         raise IncorrectTypeError(
             f"incorrect Union value {json_obj} for union {subclasses}"
         )
-    subclasses_dict = {
-        _canonical_typename(subclass).lower(): subclass
-        for subclass in subclasses
-        if type(None) != subclass
-    }
+    subclasses_dict = {}
+    for subclass in subclasses:
+        if type(None) != subclass:
+            if getattr(subclass, "__EXPANSIBLE__", False):
+                children = Registry.subconfigs(subclass)
+                for child in children:
+                    subclasses_dict[_canonical_typename(child).lower()] = child
+            else:
+                subclasses_dict[_canonical_typename(subclass).lower()] = subclass
+
     type_name = list(json_obj)[0].lower()
     if len(json_obj) == 1 and type_name in subclasses_dict:
         json_obj = next(iter(json_obj.values()))
