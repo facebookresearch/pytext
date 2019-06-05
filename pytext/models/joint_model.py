@@ -97,6 +97,8 @@ class IntentSlotModel(Model):
     difference between this and JointModel
     """
 
+    __EXPANSIBLE__ = True
+
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
@@ -175,6 +177,15 @@ class IntentSlotModel(Model):
         intent_tensor = tensor_dict["doc_labels"]
         slot_tensor = tensor_dict["word_labels"]
         return intent_tensor, slot_tensor
+
+    def vocab_to_export(self, tensorizers):
+        return {"tokens": list(tensorizers["tokens"].vocab)}
+
+    def get_export_input_names(self, tensorizers):
+        return ["tokens", "tokens_lens"]
+
+    def get_export_output_names(self, tensorizers):
+        return ["doc_scores", "word_scores"]
 
     def arrange_model_context(self, tensor_dict):
         return {

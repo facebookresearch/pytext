@@ -88,17 +88,24 @@ def create_frame(intent_label, slot_names_str, utterance):
 
 
 class IntentSlotMetricReporter(MetricReporter):
+    __EXPANSIBLE__ = True
+
     def __init__(
         self,
         doc_label_names: List[str],
         word_label_names: List[str],
         use_bio_labels: bool,
         channels: List[Channel],
+        slot_column_name: str = "slots",
     ) -> None:
         super().__init__(channels)
         self.doc_label_names = doc_label_names
         self.word_label_names = word_label_names
         self.use_bio_labels = use_bio_labels
+        self.slot_column_name = slot_column_name
+
+    class Config(MetricReporter.Config):
+        pass
 
     @classmethod
     def from_config(
@@ -122,11 +129,12 @@ class IntentSlotMetricReporter(MetricReporter):
             return cls(
                 tensorizers["doc_labels"].vocab,
                 tensorizers["word_labels"].vocab,
-                False,
+                getattr(tensorizers["word_labels"], "use_bio_labels", False),
                 [
                     ConsoleChannel(),
                     IntentSlotChannel((Stage.TEST,), config.output_path),
                 ],
+                tensorizers["word_labels"].slot_column,
             )
 
     def _reset(self):
@@ -205,7 +213,8 @@ class IntentSlotMetricReporter(MetricReporter):
             DatasetFieldName.SEQ_LENS: batch["tokens"][1],
             DatasetFieldName.TOKEN_RANGE: batch["tokens"][2],
             DatasetFieldName.RAW_WORD_LABEL: [
-                ",".join([str(x) for x in row["slots"]]) for row in raw_batch
+                ",".join([str(x) for x in row[self.slot_column_name]])
+                for row in raw_batch
             ],
             BatchContext.INDEX: [x for x in range(len(raw_batch))],
         }
