@@ -111,6 +111,30 @@ class DataTest(unittest.TestCase):
             self.tensorizers["labels"].vocab[batch["labels"][8]], "alarm/snooze_alarm"
         )
 
+    def test_create_batches_with_cache(self):
+        data = Data(
+            self.data_source,
+            self.tensorizers,
+            Batcher(train_batch_size=1),
+            in_memory=True,
+        )
+        list(data.batches(Stage.TRAIN))
+        self.assertEqual(10, len(data.numberized_cache[Stage.TRAIN]))
+
+        data1 = Data(
+            self.data_source,
+            self.tensorizers,
+            Batcher(train_batch_size=1),
+            in_memory=True,
+        )
+        with self.assertRaises(Exception):
+            # Concurrent iteration not supported
+            batches1 = data1.batches(Stage.TRAIN)
+            batches2 = data1.batches(Stage.TRAIN)
+            for _ in batches1:
+                for _ in batches2:
+                    continue
+
 
 class BatcherTest(unittest.TestCase):
     def test_batcher(self):

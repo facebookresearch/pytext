@@ -257,6 +257,7 @@ class Data(Component):
         self.sort_key = sort_key
         self.in_memory = in_memory
         self.numberized_cache: MutableMapping[str, Any] = {}
+        self.cache_mutex: Dict[str, bool] = {}
         full_train_data = (
             data_source.train_unsharded
             if isinstance(data_source, ShardedDataSource)
@@ -271,6 +272,19 @@ class Data(Component):
                 for name, tensorizer in self.tensorizers.items()
             }
             yield RowData(row, numberized)
+
+    def cache(self, numberized_rows, stage):
+        if stage in self.cache_mutex:
+            # already have generator caching the numberized data
+            for numberized_row in numberized_rows:
+                yield numberized_row
+        else:
+            self.cache_mutex[stage] = True
+            result = []
+            for numberized_row in numberized_rows:
+                result.append(numberized_row)
+                yield numberized_row
+            self.numberized_cache[stage] = result
 
     @generator_iterator
     def batches(self, stage: Stage, data_source=None):
@@ -295,10 +309,9 @@ class Data(Component):
         if self.in_memory:
             numberized_rows = self.numberized_cache.get(stage, None)
             if numberized_rows is None:
-                numberized_rows = list(self.numberize_rows(rows))
-                self.numberized_cache[stage] = numberized_rows
+                numberized_rows = self.cache(self.numberize_rows(rows), stage)
             else:
-                print(f"Get numberized rows from cache in stage: {stage}")
+                print(f"Get numberized rows from cache in stage: {stage}", flush=True)
         else:
             numberized_rows = self.numberize_rows(rows)
         sort_key = self.sort_key
