@@ -2,8 +2,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import random
 import unittest
 
+import numpy as np
+import torch
+from pytext.utils import set_random_seeds
 from pytext.utils.data import (
     align_slot_labels,
     merge_token_labels_to_slot,
@@ -93,3 +97,16 @@ class UtilTest(unittest.TestCase):
             tps.update(i)
         self.assertEqual(tps.n, 45)
         self.assertTrue(tps.avg > 1)
+
+    def test_set_random_seeds(self):
+        set_random_seeds(456, False)
+
+        self.assertEqual(random.randint(23, 57), 51)
+        self.assertEqual(np.random.randint(93, 177), 120)
+        self.assertTrue(
+            bool(
+                torch.eq(
+                    torch.randint(23, 57, (1,)), torch.tensor([24], dtype=torch.long)
+                ).tolist()[0]
+            )
+        )

@@ -13,9 +13,7 @@ from pytext.metric_reporters.channel import Channel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
-from pytext.utils import set_random_seeds
-
-from .utils import cuda, distributed, precision, timing
+from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
 
 
 def _set_cuda(
@@ -118,7 +116,7 @@ def prepare_task(
     _set_distributed(rank, world_size, dist_init_url, device_id, metadata)
 
     if config.random_seed is not None:
-        set_random_seeds(config.random_seed)
+        set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
 
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task, _ = load(config.load_snapshot_path)
