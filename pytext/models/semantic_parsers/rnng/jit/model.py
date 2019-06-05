@@ -165,14 +165,12 @@ class RNNGParserJIT(jit.ScriptModule):
         valid_NT_idxs: List[int],
         valid_IN_idxs: List[int],
         valid_SL_idxs: List[int],
-        embedding,
         embedding_dim: int,
         p_compositional,
         device: str,
     ) -> None:
         super().__init__()
         self.device = device
-        self.embedding = embedding
         self.lstm_num_layers = lstm_num_layers
         self.lstm_dim = lstm_dim
 
@@ -234,14 +232,11 @@ class RNNGParserJIT(jit.ScriptModule):
     def forward(
         self,
         tokens: torch.Tensor,
-        seq_lens: torch.Tensor,
-        dict_feat: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        token_embeddings: torch.Tensor,
         actions: List[List[int]],
-        contextual_token_embeddings: torch.Tensor,
         beam_size: int = 1,
         top_k: int = 1,
     ) -> List[Tuple[torch.Tensor, torch.Tensor]]:
-
         actions_idx = jit.annotate(List[int], [])
         if self.training:
             # batch size is only 1 for now
@@ -249,9 +244,7 @@ class RNNGParserJIT(jit.ScriptModule):
             assert len(actions_idx) > 0, "actions must be provided for training"
         else:
             torch.manual_seed(0)
-        token_embeddings = self.embedding(
-            tokens, dict_feat, contextual_token_embeddings
-        )
+
         beam = [self.gen_init_state(tokens, token_embeddings)]
         all_finished = False
         while not all_finished:
@@ -281,7 +274,7 @@ class RNNGParserJIT(jit.ScriptModule):
         for state in beam[:top_k]:
             res.append(
                 (
-                    torch.tensor([state.predicted_actions_idx]),
+                    torch.tensor([state.predicted_actions_idx], device=self.device),
                     # Unsqueeze to add batch dimension
                     torch.cat(state.action_scores).unsqueeze(0),
                 )
@@ -407,7 +400,7 @@ class RNNGParserJIT(jit.ScriptModule):
 
     @jit.script_method
     def apply_action(self, state: ParserState, target_action_idx: int) -> None:
-        action_t = torch.tensor([target_action_idx])
+        action_t = torch.tensor([target_action_idx], device=self.device)
         # action_t.requires_grad_()
         action_embedding = self.actions_lookup(action_t)
         self.push_action(action_embedding, target_action_idx, state.action_state_stack)
@@ -510,9 +503,12 @@ class RNNGModel(BaseModel):
             RNNGParser.Config.CompositionalType.BLSTM
         )
 
+    def trace_embedding(self):
+        return torch.jit.trace(self.embedding, self.input_for_trace)
+
     @classmethod
-    def trace_embedding(cls, emb_module, contextual_emb_dim):
-        dummy_input = (
+    def get_input_for_trace(cls, contextual_emb_dim):
+        return (
             torch.tensor([[1], [1]]),
             (
                 torch.tensor([[1], [1]]),
@@ -521,7 +517,6 @@ class RNNGModel(BaseModel):
             ),
             torch.tensor([[1.0] * contextual_emb_dim, [1.0] * contextual_emb_dim]),
         )
-        return torch.jit.trace(emb_module, dummy_input)
 
     @classmethod
     def from_config(cls, model_config, feature_config, metadata: CommonMetadata):
@@ -547,11 +542,11 @@ class RNNGModel(BaseModel):
                 )
             )
         emb_module = Model.create_embedding(feature_config, metadata=metadata)
-        embedding = cls.trace_embedding(
-            emb_module, feature_config.contextual_token_embedding.embed_dim
-        )
+        contextual_emb_dim = feature_config.contextual_token_embedding.embed_dim
 
         return cls(
+            cls.get_input_for_trace(contextual_emb_dim),
+            embedding=emb_module,
             ablation=model_config.ablation,
             constraints=model_config.constraints,
             lstm_num_layers=model_config.lstm.num_layers,
@@ -565,19 +560,32 @@ class RNNGModel(BaseModel):
             valid_NT_idxs=metadata.valid_NT_idxs,
             valid_IN_idxs=metadata.valid_IN_idxs,
             valid_SL_idxs=metadata.valid_SL_idxs,
-            embedding=embedding,
             embedding_dim=emb_module.embedding_dim,
             p_compositional=p_compositional,
             device=device,
         )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, input_for_trace, embedding, *args, **kwargs):
         super().__init__()
+        self.input_for_trace = input_for_trace
+        self.embedding = embedding
         self.jit_model = RNNGParserJIT(*args, **kwargs)
         self.loss_func = nn.CrossEntropyLoss()
 
-    def forward(self, *args, **kwargs):
-        return self.jit_model(*args, **kwargs)
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        seq_lens: torch.Tensor,
+        dict_feat: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        actions: List[List[int]],
+        contextual_token_embeddings: torch.Tensor,
+        beam_size: int = 1,
+        top_k: int = 1,
+    ):
+        token_embeddings = self.embedding(
+            tokens, dict_feat, contextual_token_embeddings
+        )
+        return self.jit_model(tokens, token_embeddings, actions, beam_size, top_k)
 
     def get_loss(
         self,
