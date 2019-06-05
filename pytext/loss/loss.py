@@ -28,12 +28,12 @@ class CrossEntropyLoss(Loss):
         self.weight = weight
 
     def __call__(self, logits, targets, reduce=True):
-        return F.cross_entropy(
-            logits,
+        return F.nll_loss(
+            F.log_softmax(logits, 1, dtype=torch.float32),
             targets,
-            ignore_index=self.ignore_index,
-            reduction="elementwise_mean" if reduce else "none",
             weight=self.weight,
+            ignore_index=self.ignore_index,
+            reduction="mean" if reduce else "none",
         )
 
 
