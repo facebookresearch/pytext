@@ -307,6 +307,6 @@ class Data(Component):
             return self.tensorizers[sort_key].sort_key(row.numberized[sort_key])
 
         batches = self.batcher.batchify(
-            numberized_rows, sort_key=(key if sort_key else None)
+            numberized_rows, sort_key=(key if sort_key else None), stage=stage
         )
         return pad_and_tensorize_batches(self.tensorizers, batches)
