@@ -110,24 +110,44 @@ class Vocabulary:
             self.idx[replacement] = idx
 
     def lookup_all(self, nested_values):
+        res, unk_counter, total = self.lookup_all_internal(nested_values)
+        if (unk_counter / total) > 0.8 and total > 1:
+            print(f"{unk_counter / total} of tokens not in vocab:", flush=True)
+            print(f"{nested_values}", flush=True)
+        return res
+
+    def lookup_all_internal(self, nested_values):
         """
         Look up a value or nested container of values in the vocab index.
         The return value will have the same shape as the input, with all values
         replaced with their respective indicies.
         """
-        if UNK in self.idx:
-            unk_idx = self.idx[UNK]
-            lookup = lambda value: self.idx.get(value, unk_idx)
-        else:
-            lookup = self.idx.__getitem__
+
+        def lookup(value):
+            if UNK in self.idx:
+                unk_idx = self.idx[UNK]
+                v = self.idx.get(value, unk_idx)
+                return v, 1 if v == unk_idx else 0, 1
+            else:
+                return self.idx.__getitem__(value), 0, 1
 
         def lookup_value(value):
-            return self.lookup_all(value) if should_iter(value) else lookup(value)
+            return (
+                self.lookup_all_internal(value) if should_iter(value) else lookup(value)
+            )
 
         if not should_iter(nested_values):
             return lookup_value(nested_values)
         else:
-            return [lookup_value(value) for value in nested_values]
+            indices = []
+            unks = 0
+            total = 0
+            for value in nested_values:
+                v, unk, t = lookup_value(value)
+                indices.append(v)
+                unks += unk
+                total += t
+            return indices, unks, total
 
     def get_pad_index(self):
         return self.idx[self.pad_token]

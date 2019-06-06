@@ -57,3 +57,15 @@ class VocabularyTest(unittest.TestCase):
 
         indices = vocab.lookup_all(["can i get a coffee".split()])
         self.assertEqual([[0, 21, 19, 0, 0]], indices)
+        indices = vocab.lookup_all_internal(
+            ["your unk unk unk unk unk unk unk unk unk".split()]
+        )
+        self.assertEqual(0.9, indices[1] / indices[2])
+        indices = vocab.lookup_all_internal(
+            [["bones unk unk unk unk unk".split()], ["bones on on on".split()]]
+        )
+        self.assertEqual(0.5, indices[1] / indices[2])
+        indices = vocab.lookup_all_internal(
+            [["bones unk unk unk unk".split()], ["unk unk unk unk unk".split()]]
+        )
+        self.assertEqual(0.9, indices[1] / indices[2])
