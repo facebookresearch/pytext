@@ -153,6 +153,8 @@ class CompositionalSummationNN(torch.jit.ScriptModule):
     Simpler version of CompositionalNN
     """
 
+    __constants__ = ["lstm_dim", "linear_seq"]
+
     def __init__(self, lstm_dim: int):
         super().__init__()
         self.lstm_dim = lstm_dim

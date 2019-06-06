@@ -4,6 +4,7 @@ import json
 import unicodedata
 from typing import Any, List, Tuple
 
+import torch
 from pytext.common.constants import VocabMeta
 
 
@@ -241,8 +242,11 @@ def is_number(string):
     return False
 
 
-def unkify(token):  # noqa: C901
-    if any(char.isdigit() for char in token.rstrip()):
-        return VocabMeta.UNK_NUM_TOKEN
+@torch.jit.script
+def unkify(token: str):
+    res = "<unk>"
+    for idx in range(len(token)):
+        if token[idx].isdigit():
+            res = "<unk>-NUM"
 
-    return VocabMeta.UNK_TOKEN
+    return res

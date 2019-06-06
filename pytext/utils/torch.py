@@ -86,14 +86,19 @@ class Vocabulary(torch.jit.ScriptModule):
         for idx in range(values.size(0)):
             value = int(values[idx])
             if not list_membership(value, filter_token_list):
-                if value < len(self.vocab):
-                    result.append(self.vocab[int(value)])
-                else:
-                    if possible_unk_token is not None:
-                        result.append(possible_unk_token)
-                    else:
-                        result.append(self.vocab[self.unk_idx])
+                result.append(self.lookup_word(value, possible_unk_token))
         return result
+
+    @torch.jit.script_method
+    def lookup_word(self, idx: int, possible_unk_token: Optional[str] = None):
+        if idx < len(self.vocab):
+            return self.vocab[idx]
+        else:
+            return (
+                self.vocab[self.unk_idx]
+                if possible_unk_token is None
+                else possible_unk_token
+            )
 
 
 @torch.jit.script
