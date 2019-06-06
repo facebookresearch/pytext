@@ -5,9 +5,16 @@ from typing import Any, Dict, List
 
 from pytext.common.constants import DatasetFieldName, DFColumn
 from pytext.config import ConfigBase
+from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import DocLabelConfig, FeatureConfig
 from pytext.data.featurizer import InputRecord
-from pytext.fields import DocLabelField, Field, RawField, SeqFeatureField
+from pytext.fields import (
+    DocLabelField,
+    Field,
+    FloatVectorField,
+    RawField,
+    SeqFeatureField,
+)
 from pytext.utils import data
 
 from .joint_data_handler import JointModelDataHandler
@@ -32,8 +39,9 @@ class SeqModelDataHandler(JointModelDataHandler):
         **kwargs
     ):
         word_feat_config = feature_config.word_feat
+        dense_feat_config = feature_config.dense_feat
         features: Dict[str, Field] = {
-            DatasetFieldName.TEXT_FIELD: SeqFeatureField(
+            ModelInput.WORD_FEAT: SeqFeatureField(
                 pretrained_embeddings_path=word_feat_config.pretrained_embeddings_path,
                 embed_dim=word_feat_config.embed_dim,
                 embedding_init_strategy=word_feat_config.embedding_init_strategy,
@@ -42,6 +50,12 @@ class SeqModelDataHandler(JointModelDataHandler):
                 vocab_from_train_data=word_feat_config.vocab_from_train_data,
             )
         }
+        if dense_feat_config:
+            features[ModelInput.DENSE_FEAT] = FloatVectorField(
+                dim=dense_feat_config.dim,
+                dim_error_check=dense_feat_config.dim_error_check,
+            )
+
         labels: Dict[str, Field] = {DocLabelConfig._name: DocLabelField()}
         extra_fields: Dict[str, Field] = {DatasetFieldName.UTTERANCE_FIELD: RawField()}
 
@@ -67,13 +81,13 @@ class SeqModelDataHandler(JointModelDataHandler):
             self.featurizer.featurize(InputRecord(raw_text=utterance))
             for utterance in sequence
         ]
-
-        return {
+        res = {
             # features
-            DatasetFieldName.TEXT_FIELD: [
-                utterance.tokens for utterance in features_list
-            ],
+            ModelInput.WORD_FEAT: [utterance.tokens for utterance in features_list],
             # labels
             DatasetFieldName.DOC_LABEL_FIELD: row_data[DFColumn.DOC_LABEL],
             DatasetFieldName.UTTERANCE_FIELD: row_data[DFColumn.UTTERANCE],
         }
+        if DFColumn.DENSE_FEAT in row_data:
+            res[ModelInput.DENSE_FEAT] = row_data.get(DFColumn.DENSE_FEAT)
+        return res

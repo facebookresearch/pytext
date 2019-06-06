@@ -320,6 +320,7 @@ class SeqNNTask_Deprecated(Task_Deprecated):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
         )
+        exporter: Optional[DenseFeatureExporter.Config] = None
 
 
 class SeqNNTask(NewTask):
