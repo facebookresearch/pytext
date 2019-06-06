@@ -156,7 +156,7 @@ class CompositionalDataHandler(DataHandler):
             text_input[0],
             text_input[1],
             getattr(batch, DatasetFieldName.DICT_FIELD, None),
-            None,
+            [],
             getattr(batch, DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING, None),
             1,
             1,
