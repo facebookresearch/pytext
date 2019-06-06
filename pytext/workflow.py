@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+
+import json
 import os
 from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 
@@ -10,7 +12,6 @@ from pytext.config.component import ComponentType, create_component, create_expo
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
-from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
@@ -255,6 +256,7 @@ def get_logits(
     _set_cuda(use_cuda_if_available)
     task, train_config = load(snapshot_path)
     print(f"Successfully loaded model from {snapshot_path}")
+    print(f"Model on GPU? {next(task.model.parameters()).is_cuda}")
     if isinstance(task, NewTask):
         task.model.eval()
         data_source = _get_data_source(
@@ -266,14 +268,25 @@ def get_logits(
         task.data.batcher = Batcher()
         task.data.sort_key = None
         batches = task.data.batches(Stage.TEST, data_source=data_source)
-        results = []
-        for (_, tensor_dict) in batches:
-            model_inputs = task.model.arrange_model_inputs(tensor_dict)
-            model_outputs = task.model(*model_inputs)
-            MetricReporter.aggregate_data(results, model_outputs)
-        with open(output_path, "w", encoding="utf-8") as fout:
-            for row in results:
-                fout.write(f"{row}\n")
+
+        with open(output_path, "w", encoding="utf-8") as fout, torch.no_grad():
+            for (_, tensor_dict) in batches:
+                model_inputs = task.model.arrange_model_inputs(tensor_dict)
+                model_outputs = task.model(*model_inputs)
+                if isinstance(model_outputs, tuple):
+                    model_outputs_list = [m.tolist() for m in model_outputs]
+                    for row in zip(*model_outputs_list):
+                        # row is a tuple of lists
+                        dump_row = "\t".join(json.dumps(r) for r in row)
+                        fout.write(f"{dump_row}\n")
+                elif isinstance(model_outputs, torch.Tensor):
+                    model_outputs_list = model_outputs.tolist()
+                    for row in zip(model_outputs_list):
+                        fout.write(f"{json.dumps(row)}\n")
+                else:
+                    raise Exception(
+                        "Expecting tuple or torchTensor types for model_outputs"
+                    )
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
