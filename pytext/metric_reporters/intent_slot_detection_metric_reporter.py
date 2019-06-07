@@ -173,7 +173,7 @@ class IntentSlotMetricReporter(MetricReporter):
     def gen_extra_context(self):
         self.all_context["slots_prediction"] = [
             merge_token_labels_to_slot(
-                token_range,
+                token_range[0:seq_len],
                 self.process_pred(word_pred[0:seq_len]),
                 self.use_bio_labels,
             )
