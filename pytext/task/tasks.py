@@ -261,15 +261,10 @@ class JointTextTask_Deprecated(Task_Deprecated):
 
 class IntentSlotTask(NewTask):
     class Config(NewTask.Config):
-        labels: List[TargetConfigBase]
         model: IntentSlotModel.Config = IntentSlotModel.Config()
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
         )
-
-    @classmethod
-    def example_config(cls):
-        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
     @classmethod
     def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
