@@ -14,6 +14,7 @@ from pytext.models.embeddings.word_embedding import WordEmbedding
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import OutputLayerBase
+from pytext.models.output_layers.lm_adaptive_softmax_output_layer import LMASOutputLayer
 from pytext.models.output_layers.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.representations.representation_base import RepresentationBase
@@ -64,7 +65,9 @@ class LMLSTM_Deprecated(Model):
 
         representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
         decoder: MLPDecoder.Config = MLPDecoder.Config()
-        output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
+        output_layer: Union[
+            LMOutputLayer.Config, LMASOutputLayer.Config
+        ] = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
 
@@ -168,7 +171,9 @@ class LMLSTM(BaseModel):
         embedding: WordEmbedding.Config = WordEmbedding.Config()
         representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
         decoder: Optional[MLPDecoder.Config] = MLPDecoder.Config()
-        output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
+        output_layer: Union[
+            LMOutputLayer.Config, LMASOutputLayer.Config
+        ] = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
 
@@ -213,7 +218,7 @@ class LMLSTM(BaseModel):
         self._states: Optional[Tuple] = None
 
     def arrange_model_inputs(self, tensor_dict):
-        tokens, seq_lens = tensor_dict["tokens"]
+        tokens, seq_lens, _ = tensor_dict["tokens"]
         # Omit last token because it won't have a corresponding target
         return (tokens[:, 0:-1].contiguous(), seq_lens - 1)
 
