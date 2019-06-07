@@ -102,6 +102,7 @@ class CompositionalDataHandler(DataHandler):
             test_batch_size=config.test_batch_size,
             shuffle=config.shuffle,
             sort_within_batch=config.sort_within_batch,
+            column_mapping=config.column_mapping,
             **kwargs,
         )
 
