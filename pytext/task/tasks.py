@@ -266,14 +266,6 @@ class IntentSlotTask(NewTask):
             IntentSlotMetricReporter.Config()
         )
 
-    @classmethod
-    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return IntentSlotMetricReporter.from_config(
-            config.metric_reporter,
-            doc_labels=tensorizers["doc_labels"].vocab,
-            word_labels=tensorizers["word_labels"].vocab,
-        )
-
 
 class LMTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):

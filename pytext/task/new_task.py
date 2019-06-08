@@ -64,19 +64,26 @@ class _NewTask(TaskBase):
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
-        metric_reporter = create_component(
-            ComponentType.METRIC_REPORTER,
-            config.metric_reporter,
-            tensorizers=tensorizers,
-        )
+        metric_reporter = cls.create_metric_reporter(config, tensorizers)
         trainer = create_trainer(config.trainer, model)
         return cls(data, model, metric_reporter, trainer)
 
     @classmethod
+    def create_metric_reporter(cls, config, tensorizers):
+        return create_component(
+            ComponentType.METRIC_REPORTER,
+            config.metric_reporter,
+            tensorizers=tensorizers,
+        )
+
+    @classmethod
     def _init_tensorizers(cls, config: Config, rank, world_size):
+        model_inputs_dict = config.model.inputs
+        if not isinstance(model_inputs_dict, dict):
+            model_inputs_dict = config.model.inputs._asdict()
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer_config)
-            for name, tensorizer_config in config.model.inputs._asdict().items()
+            for name, tensorizer_config in model_inputs_dict.items()
             if tensorizer_config
         }
         schema: Dict[str, Type] = {}
