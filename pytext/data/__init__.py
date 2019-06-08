@@ -20,6 +20,7 @@ from .query_document_pairwise_ranking_data_handler import (
     QueryDocumentPairwiseRankingDataHandler,
 )
 from .seq_data_handler import SeqModelDataHandler
+from .tensorizers import Tensorizer
 
 
 __all__ = [
@@ -44,4 +45,5 @@ __all__ = [
     "RawData",
     "RoundRobinBatchSampler",
     "SeqModelDataHandler",
+    "Tensorizer",
 ]
