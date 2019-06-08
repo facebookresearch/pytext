@@ -103,10 +103,6 @@ class RNNGJitTest(unittest.TestCase):
             contextual_token_embeddings=[0.2, 0.2, 0.3, 0.2],
         )[0]
 
-    def test_save_inference(self):
-        self.inference_model.save("/tmp/test.pt1")
-        torch.jit.load("/tmp/test.pt1")
-
     def test_unkify(self):
         self.assertEqual(
             self.inference_model.unkify(["foo", "bar", "Unknown", "Unknow1"]),
