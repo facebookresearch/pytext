@@ -5,7 +5,6 @@ from typing import List, Optional
 
 import torch
 import torch.nn as nn
-from fairseq.modules import LayerNorm
 
 from .decoder_base import DecoderBase
 
@@ -47,7 +46,7 @@ class MLPDecoder(DecoderBase):
             layers.append(nn.Linear(in_dim, dim))
             layers.append(nn.ReLU())
             if config.layer_norm:
-                layers.append(LayerNorm(dim))
+                layers.append(nn.LayerNorm(dim))
             in_dim = dim
         if config.out_dim:
             out_dim = config.out_dim
