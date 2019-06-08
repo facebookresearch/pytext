@@ -3,7 +3,12 @@
 
 from typing import Dict, List, Optional, Tuple
 
-from pytext.common.constants import BatchContext, DatasetFieldName, Stage
+from pytext.common.constants import (
+    BatchContext,
+    DatasetFieldName,
+    RawExampleFieldName,
+    Stage,
+)
 from pytext.data import CommonMetadata
 from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
 from pytext.metrics.intent_slot_metrics import (
@@ -216,7 +221,9 @@ class IntentSlotMetricReporter(MetricReporter):
                 ",".join([str(x) for x in row[self.slot_column_name]])
                 for row in raw_batch
             ],
-            BatchContext.INDEX: [x for x in range(len(raw_batch))],
+            BatchContext.INDEX: [
+                row[RawExampleFieldName.ROW_INDEX] for row in raw_batch
+            ],
         }
 
     def get_model_select_metric(self, metrics):
