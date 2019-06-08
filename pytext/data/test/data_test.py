@@ -3,7 +3,7 @@
 
 import unittest
 
-from pytext.common.constants import Stage
+from pytext.common.constants import RawExampleFieldName, Stage
 from pytext.data import Batcher, Data, PoolingBatcher
 from pytext.data.data import RowData
 from pytext.data.sources.data_source import SafeFileWrapper
@@ -46,7 +46,9 @@ class DataTest(unittest.TestCase):
         self.assertEqual(set(self.tensorizers), set(batch))
         tokens, seq_lens, _ = batch["tokens"]
         self.assertEqual(10, len(raw_batch))
-        self.assertEqual({"text", "label"}, set(raw_batch[0]))
+        self.assertEqual(
+            {"text", "label", RawExampleFieldName.ROW_INDEX}, set(raw_batch[0])
+        )
         self.assertEqual((10,), seq_lens.size())
         self.assertEqual((10,), batch["labels"].size())
         self.assertEqual({"tokens", "labels"}, set(batch))
@@ -93,23 +95,33 @@ class DataTest(unittest.TestCase):
         data = Data(
             self.data_source,
             self.tensorizers,
-            Batcher(train_batch_size=16),
+            Batcher(train_batch_size=5),
             sort_key="tokens",
         )
-        batches = list(data.batches(Stage.TRAIN))
-        raw_batch, batch = next(iter(batches))
-        _, seq_lens, _ = batch["tokens"]
-        seq_lens = seq_lens.tolist()
-        for i in range(len(seq_lens) - 1):
-            self.assertTrue(seq_lens[i] >= seq_lens[i + 1])
+
+        def assert_sorted(batch):
+            _, seq_lens, _ = batch["tokens"]
+            seq_lens = seq_lens.tolist()
+            for i in range(len(seq_lens) - 1):
+                self.assertTrue(seq_lens[i] >= seq_lens[i + 1])
+
+        batches = iter(list(data.batches(Stage.TRAIN)))
+        first_raw_batch, first_batch = next(batches)
+        assert_sorted(first_batch)
         # make sure labels are also in the same order of sorted tokens
         self.assertEqual(
-            self.tensorizers["labels"].vocab[batch["labels"][1]],
-            "reminder/set_reminder",
+            self.tensorizers["labels"].vocab[first_batch["labels"][1]],
+            "alarm/set_alarm",
         )
+        self.assertEqual(first_raw_batch[1][RawExampleFieldName.ROW_INDEX], 1)
+        second_raw_batch, second_batch = next(batches)
+        assert_sorted(second_batch)
         self.assertEqual(
-            self.tensorizers["labels"].vocab[batch["labels"][8]], "alarm/snooze_alarm"
+            self.tensorizers["labels"].vocab[second_batch["labels"][1]],
+            "alarm/time_left_on_alarm",
         )
+        self.assertEqual(second_raw_batch[0][RawExampleFieldName.ROW_INDEX], 6)
+        self.assertEqual(second_raw_batch[1][RawExampleFieldName.ROW_INDEX], 5)
 
     def test_create_batches_with_cache(self):
         data = Data(

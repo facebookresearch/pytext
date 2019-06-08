@@ -7,7 +7,7 @@ import math
 import random
 from typing import Any, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type
 
-from pytext.common.constants import Stage
+from pytext.common.constants import RawExampleFieldName, Stage
 from pytext.config.component import Component, ComponentType, Registry, create_component
 
 from .sources import DataSource, RawExample, TSVDataSource
@@ -286,6 +286,11 @@ class Data(Component):
                 yield numberized_row
             self.numberized_cache[stage] = result
 
+    def add_row_indices(self, rows):
+        for idx, row in enumerate(rows):
+            row[RawExampleFieldName.ROW_INDEX] = idx
+            yield row
+
     @generator_iterator
     def batches(self, stage: Stage, data_source=None):
         """Create batches of tensors to pass to model train_batch.
@@ -304,16 +309,20 @@ class Data(Component):
             Stage.EVAL: data_source.eval,
         }[stage]
 
+        # We add row indices here so that the original order can be reproduced
+        # after shuffling the data if necessary.
+        indexed_rows = self.add_row_indices(rows)
+
         # rows and numberized_rows are generators which can iterate over large
         # datasets; be careful not to do any operations which will expend them.
         if self.in_memory:
             numberized_rows = self.numberized_cache.get(stage, None)
             if numberized_rows is None:
-                numberized_rows = self.cache(self.numberize_rows(rows), stage)
+                numberized_rows = self.cache(self.numberize_rows(indexed_rows), stage)
             else:
                 print(f"Get numberized rows from cache in stage: {stage}", flush=True)
         else:
-            numberized_rows = self.numberize_rows(rows)
+            numberized_rows = self.numberize_rows(indexed_rows)
         sort_key = self.sort_key
 
         def key(row):

@@ -84,3 +84,7 @@ class Stage(Enum):
     TRAIN = "Training"
     EVAL = "Evaluation"
     TEST = "Test"
+
+
+class RawExampleFieldName:
+    ROW_INDEX = "row_index"
