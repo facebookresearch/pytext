@@ -1,0 +1,36 @@
+{
+  "debug_path": "my_model.debug",
+  "export_caffe2_path": "my_model.caffe2.predictor",
+  "export_onnx_path": "my_model.onnx",
+  "save_snapshot_path": "my_model.pt",
+  "task": {
+    "MyTaggingTask": {
+      "data": {
+        "Data": {
+          "source": {
+            "AtisSlotsDataSource": {
+              "field_names": ["text", "slots"],
+              "path": "/home/egaudet/atis"
+            }
+          }
+        }
+      },
+      "metric_reporter": {
+        "output_path": "my_test.out"
+      },
+      "model": {
+        "embedding": {
+          "embed_dim": 100
+        }
+      },
+      "trainer": {
+        "epochs": 3
+      }
+    }
+  },
+  "test_out_path": "my_test_out.txt",
+  "use_cuda_if_available": true,
+  "use_fp16": false,
+  "use_tensorboard": true,
+  "version": 12
+}
