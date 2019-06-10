@@ -96,6 +96,7 @@ class BiLSTM(RepresentationBase):
 
         """
         embedded_tokens = self.dropout(embedded_tokens)
+
         if states is not None:
             # convert (h0, c0) from (bsz x num_layers*num_directions x nhid) to
             # (num_layers*num_directions x bsz x nhid)
@@ -115,7 +116,6 @@ class BiLSTM(RepresentationBase):
                 device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
             )
             states = (state, state)
-
         if torch.onnx.is_in_onnx_export():
             lstm_in = [embedded_tokens, states[0], states[1]] + [
                 param.detach() for param in self.lstm._flat_weights
@@ -139,9 +139,7 @@ class BiLSTM(RepresentationBase):
                 batch_first=True,
                 total_length=embedded_tokens.size(1),
             )  # Make sure the output from LSTM is padded to input's sequence length.
-
         # convert states back to (bsz x num_layers*num_directions x nhid) to be
         # used in data parallel model
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
-
         return rep, new_state
