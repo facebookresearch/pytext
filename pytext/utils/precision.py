@@ -26,13 +26,15 @@ except AttributeError as e:
 
 """
 Tips:
-1. Must run fp16 on latest generation (Volta V100) GPU, CUDA 9.1 or newer
+1. Recommand run fp16 on latest generation (Volta V100) GPU, CUDA 9.1 or newer
+   to leverage tensor cores, which provide 8x more throughput than single
+   precision math pipelines.
 2. Additionally:
     - Batch size should be a multiple of 8
     - Tokens size should be a multiple of 8
     - Embedding layers should be padded to be a multiple of 8
     - Ideally, everything should be a multiple of 8 (e.g padding, etc)
-3. Larger batch_size could increase GPU utilization and better performance.
+3. Larger batch_size might increase GPU utilization and better performance.
 4. Amp might not work well for model that require too many back-and-forth
     parameter casting between fp16 and fp32.
 """
@@ -46,25 +48,41 @@ FP32 Master Weights <--(step)-- FP32 Gradients <--(unscale)-- Scaled FP16 Gradie
        |                                                        |
 FP16 Weights --(forward)--> FP32 Loss --(loss scaling)--> Scaled FP32 Loss
 
-For Apex.amp, it handle the Mixed precision training in the folloing ways
-1. [Master weights]: master weights(e.g fp32) will mainted by PyTorch model
-2. [Forward & Backward]: amp wrap PyTorch functions, it will cast inputs &
-   weights into fp16 or fp32, _amp_handle caches the casted arguments.
-3. [Loss scaling]: _amp_handle handle loss scaling and unscaling
-
 Using amp require adding three lines of code.
-1. Allow Amp to perform casts as required by the opt_level
+https://nvidia.github.io/apex/amp.html
+1. Allow Amp to perform casts as required by the opt_level:
 model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
-...
-2. loss.backward() becomes:
+
+2. loss.backward() replace with:
 with amp.scale_loss(loss, optimizer) as scaled_loss:
     scaled_loss.backward()
+
+3. torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm) replace with:
+torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_norm)
+
+Opt level explaination (from Nvidia Apex):
+
+* O1:  Insert automatic casts around Pytorch functions and Tensor methods
+ - The type of your model's weights is not altered.  However, internally,
+   Pytorch functions are patched to cast any Tensor Core-friendly ops to FP16
+   for speed, while operations that might benefit from the additional stability
+   of FP32 are patched to cast their inputs to fp32.
+ - O1 is the safest way to try mixed precision training, and is recommended when
+   trying mixed precision training for the first time.
+
+* O2:  FP16 training with FP32 batchnorm and FP32 master weights.
+ - Calls .half() on your model, converting the entire model (except for batchnorms)
+   to FP16.  Batchnorms are retained in FP32 for additional stability.
+ - The forward pass is patched to cast incoming Tensors to FP16, so you don't
+   need to change your data pipeline.
+ - O2 creates FP32 master weights outside the model and patches any optimizers
+   to update these master weights, then copy the master weights into the FP16
+   model weights.
 """
 
 
 _FP16_ENABLED = False
-_USE_FP16_OPTIMIZER = False
-_amp_handle = None
+_OPT_LEVEL = None
 
 
 def set_fp16(fp16_enabled: bool):
@@ -80,50 +98,35 @@ def set_fp16(fp16_enabled: bool):
         _FP16_ENABLED = fp16_enabled
 
 
-def activate(model):
-    # Warning: this function should be called before train.
-
-    global _amp_handle
-    global _USE_FP16_OPTIMIZER
-
-    if _FP16_ENABLED:
-        _USE_FP16_OPTIMIZER = model.SUPPORT_FP16_OPTIMIZER
-
-        if _USE_FP16_OPTIMIZER:
-            model.half()
-
-
 def initialize(model, optimizer):
+    global _OPT_LEVEL
+
     if _FP16_ENABLED:
-        if _USE_FP16_OPTIMIZER:
-            return model, FP16_Optimizer(optimizer, dynamic_loss_scale=True)
-        else:
-            return amp.initialize(model, optimizer, opt_level="O1")
+        _OPT_LEVEL = "O2" if model.SUPPORT_FP16_OPTIMIZER else "O1"
+        return amp.initialize(model, optimizer, opt_level=_OPT_LEVEL)
     else:
         return model, optimizer
 
 
 def backward(optimizer, loss):
     if _FP16_ENABLED:
-        if _USE_FP16_OPTIMIZER:
-            # 1. Manage master weights update
-            # 2. Manage dynamic loss scaling
-            optimizer.backward(loss)
+        # 1. Use automatic loss scaling to best use fp16 range
+        # 2. Clear handle's cache of casted parameters
+        if loss > 0:
+            with amp.scale_loss(loss, optimizer) as scaled_loss:
+                scaled_loss.backward()
         else:
-            # 1. Use automatic loss scaling to best use fp16 range
-            # 2. Clear handle's cache of casted parameters
-            if loss > 0:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
+            loss.backward()
     else:
         loss.backward()
 
 
 def clip_grad_norm(model, optimizer, max_clip_norm):
-    if _FP16_ENABLED and _USE_FP16_OPTIMIZER:
-        return optimizer.clip_master_grads(max_clip_norm)
+    if _FP16_ENABLED:
+        # Refer: https://nvidia.github.io/apex/advanced.html
+        return torch.nn.utils.clip_grad_norm_(
+            amp.master_params(optimizer), max_clip_norm
+        )
     else:
         return torch.nn.utils.clip_grad_norm_(model.parameters(), max_clip_norm)
 
@@ -133,13 +136,13 @@ def deactivate(model):
     # In case need to deactivate before train, should invoke unwrap_optimizer first.
 
     global _FP16_ENABLED
-    global _USE_FP16_OPTIMIZER
+    global _OPT_LEVEL
 
     if _FP16_ENABLED:
-        if _USE_FP16_OPTIMIZER:
+        if _OPT_LEVEL == "O2":
             # convert model parameters back to fp32
             model.float()
-            _USE_FP16_OPTIMIZER = False
+            _OPT_LEVEL = None
         else:
             # restoring uncasted versions of functions
             amp._amp_state.handle._deactivate()

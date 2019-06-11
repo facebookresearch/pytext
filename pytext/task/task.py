@@ -103,7 +103,6 @@ class TaskBase(Component):
         if model_state:
             model.load_state_dict(model_state)
 
-        precision.activate(model)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
         metric_reporter = create_metric_reporter(task_config.metric_reporter, metadata)
