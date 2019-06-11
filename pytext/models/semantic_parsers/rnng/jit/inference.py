@@ -53,8 +53,7 @@ class RNNGInference(jit.ScriptModule):
                 res.append(tokens[token_idx])
                 token_idx += 1
             else:
-                res.append(self.OPEN_BRACKET)
-                res.append(self.action_vocab.lookup_word(action))
+                res.append(self.OPEN_BRACKET + self.action_vocab.lookup_word(action))
         return res
 
     @jit.script_method
