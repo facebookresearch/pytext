@@ -677,6 +677,7 @@ class SlotLabelTensorizer(Tensorizer):
         self.text_column = text_column
         self.allow_unknown = allow_unknown
         self.tokenizer = tokenizer or Tokenizer()
+        self.pad_idx = Padding.DEFAULT_LABEL_PAD_IDX
 
     def initialize(self):
         """Look through the dataset for all labels and create a vocab map for them."""

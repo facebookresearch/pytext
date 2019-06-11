@@ -28,6 +28,7 @@ from pytext.metric_reporters import (
     LanguageModelMetricReporter,
     PairwiseRankingMetricReporter,
     RegressionMetricReporter,
+    SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
@@ -219,12 +220,12 @@ class WordTaggingTask_Deprecated(Task_Deprecated):
 class WordTaggingTask(NewTask):
     class Config(NewTask.Config):
         model: WordTaggingModel.Config = WordTaggingModel.Config()
-        metric_reporter: WordTaggingMetricReporter.Config = WordTaggingMetricReporter.Config()
+        metric_reporter: SequenceTaggingMetricReporter.Config = SequenceTaggingMetricReporter.Config()
 
     @classmethod
     def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        return WordTaggingMetricReporter.from_config_and_label_names(
-            config.metric_reporter, list(tensorizers["labels"].vocab)
+        return SequenceTaggingMetricReporter.from_config(
+            config.metric_reporter, tensorizers["labels"]
         )
 
 
