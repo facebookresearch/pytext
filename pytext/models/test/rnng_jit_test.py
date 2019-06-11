@@ -114,15 +114,5 @@ class RNNGJitTest(unittest.TestCase):
             self.inference_model.actions_to_seqlogical(
                 torch.tensor([2, 0, 0, 3, 0, 1, 1]), ["cancel", "the", "call"]
             ),
-            [
-                "[",
-                "IN:END_CALL",
-                "cancel",
-                "the",
-                "[",
-                "SL:METHOD_CALL",
-                "call",
-                "]",
-                "]",
-            ],
+            ["[IN:END_CALL", "cancel", "the", "[SL:METHOD_CALL", "call", "]", "]"],
         )
