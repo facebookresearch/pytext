@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 
 import torch
 from pytext.config.component import Component, ComponentType
-from pytext.utils import cuda
+from pytext.utils import cuda, precision
 
 
 def should_iter(i):
@@ -24,7 +24,8 @@ def _infer_pad_shape(nested_lists):
     """Return the minimal tensor shape which could contain the input data."""
     yield len(nested_lists)
     while nested_lists and all(should_iter(i) for i in nested_lists):
-        yield max(len(nested) for nested in nested_lists)
+        # pad shape to be multiple of 8 when fp16 enabled
+        yield precision.pad_length(max(len(nested) for nested in nested_lists))
         nested_lists = list(itertools.chain.from_iterable(nested_lists))
 
 
