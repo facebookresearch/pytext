@@ -9,6 +9,8 @@ from pytext.data.data import RowData
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, TokenTensorizer
+from pytext.data.utils import pad
+from pytext.utils import precision
 from pytext.utils.test import import_tests_module
 
 
@@ -146,6 +148,18 @@ class DataTest(unittest.TestCase):
             for _ in batches1:
                 for _ in batches2:
                     continue
+
+    def test_fp16_padding(self):
+        nested_lists = [[1, 2, 3], [4, 5]]
+        padded_lists = pad(nested_lists, pad_token=0)
+        expected_lists = [[1, 2, 3], [4, 5, 0]]
+        self.assertEqual(padded_lists, expected_lists)
+
+        precision._FP16_ENABLED = True
+        padded_lists = pad(nested_lists, pad_token=0)
+        expected_lists = [[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0, 0]]
+        self.assertEqual(padded_lists, expected_lists)
+        precision._FP16_ENABLED = False
 
 
 class BatcherTest(unittest.TestCase):
