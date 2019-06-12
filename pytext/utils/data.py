@@ -4,9 +4,6 @@ import json
 import unicodedata
 from typing import Any, List, Tuple
 
-import torch
-from pytext.common.constants import VocabMeta
-
 
 def simple_tokenize(s: str) -> List[str]:
     return s.split(" ")
@@ -242,7 +239,6 @@ def is_number(string):
     return False
 
 
-@torch.jit.script
 def unkify(token: str):
     res = "<unk>"
     for idx in range(len(token)):

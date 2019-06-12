@@ -9,18 +9,12 @@ _run:
     command: |
       sudo ./install_deps
       sudo pip install --progress-bar off pytest pytest-cov
-  install_pytorch_nightly: &install_pytorch_nightly
-    name: install_pytorch_nightly
-    command: |
-      sudo pip uninstall -y torch
-      sudo pip install --progress-bar off torch_nightly -f https://download.pytorch.org/whl/nightly/cpu/torch_nightly.html
 
 
 _do_tests: &do_tests
   - checkout
   - run: *install_system_deps
   - run: *install_test_deps
-  - run: *install_pytorch_nightly
   - run:
       name: run tests and gather coverag
       command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
@@ -57,7 +51,6 @@ jobs:
             sudo pip install --upgrade pip
             sudo pip install -r docs_requirements.txt
             sudo pip install -r pytext/docs/requirements.txt
-      - run: *install_pytorch_nightly
       - run:
           name: build docs
           command: |
