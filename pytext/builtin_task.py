@@ -47,7 +47,7 @@ def add_include(path):
         if os.path.isfile(f) and not f.endswith("__init__.py")
     ]
     for mod_name in all:
-        mod_path = path + "." + mod_name
+        mod_path = path.replace("/", ".") + "." + mod_name
         eprint("... importing module:", mod_path)
         my_module = importlib.import_module(mod_path)
 
