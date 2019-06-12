@@ -112,7 +112,7 @@ class Vocabulary:
 
     def lookup_all(self, nested_values):
         res, unk_counter, total = self.lookup_all_internal(nested_values)
-        if (unk_counter / total) > 0.8 and total > 1:
+        if total > 1 and (unk_counter / total) > 0.8:
             print(f"{unk_counter / total} of tokens not in vocab:", flush=True)
             print(f"{nested_values}", flush=True)
         return res
