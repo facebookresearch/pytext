@@ -74,6 +74,7 @@ If you want to use PyText as a library and build your own models, please check t
 
   overview
   datasource_tutorial
+  tensorizer
   dense
   create_new_model
 
