@@ -34,6 +34,38 @@ def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
     return res
 
 
+@torch.jit.script
+def long_tensor_2d(shape: Tuple[int, int], fill_value: int = 0) -> torch.Tensor:
+    """Return a new 2d torch.LongTensor with size according to shape.
+    The values of this tensor will be fill_value."""
+    outer = torch.jit.annotate(List[List[int]], [])
+    inner = torch.jit.annotate(List[int], [])
+    for _i in range(shape[1]):
+        inner.append(fill_value)
+    for _i in range(shape[0]):
+        outer.append(inner)
+    return torch.tensor(outer, dtype=torch.long)
+
+
+@torch.jit.script
+def pad_2d_mask(
+    input: List[List[int]], pad_value: int = 0
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Pad a list to a 2d tensor. Returns a pair of tensors, the padded tensor
+    as well as a mask tensor. The mask tensor has the same shape as the padded tensor,
+    with a 1 in the position of non-pad values and a 0 in the position of pads."""
+    max_len = 0
+    for i in input:
+        max_len = max(max_len, len(i))
+    tensor = long_tensor_2d((len(input), max_len), pad_value)
+    mask = long_tensor_2d((len(input), max_len), 0)
+    for i in range(len(input)):
+        for j in range(len(input[i])):
+            tensor[i][j] = input[i][j]
+            mask[i][j] = 1
+    return tensor, mask
+
+
 # ========= end section
 
 
@@ -331,6 +363,22 @@ def pad_2d(
         for _ in range(pad_to_length - len(sentence)):
             sentence.append(pad_idx)
     return batch
+
+
+@torch.jit.script
+def add_bos_eos_2d(
+    values: List[List[int]], special_token: int = 0, use_first_value: bool = False
+) -> List[List[int]]:
+    results = torch.jit.annotate(List[List[int]], [])
+    for value in values:
+        result = torch.jit.annotate(List[int], [])
+        if use_first_value and len(value) > 0:
+            special_token = value[0]
+        result.append(special_token)
+        result.extend(value)
+        result.append(special_token)
+        results.append(result)
+    return results
 
 
 @torch.jit.script
