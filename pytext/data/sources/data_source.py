@@ -3,7 +3,7 @@
 
 import json
 import logging
-from typing import Dict, List
+from typing import Dict, List, TypeVar
 
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
@@ -294,6 +294,7 @@ def load_slots(s):
 
 
 Gazetteer = List[Dict[str, Dict[str, float]]]
+JSONString = TypeVar("JSONString", str, bytes)
 
 
 @RootDataSource.register_type(Gazetteer)
@@ -302,6 +303,18 @@ Gazetteer = List[Dict[str, Dict[str, float]]]
 @RootDataSource.register_type(List[int])
 def load_json(s):
     return json.loads(s)
+
+
+@RootDataSource.register_type(JSONString)
+def load_json_string(s):
+    parsed = json.loads(s)
+    if not isinstance(parsed, str):
+        raise TypeError(
+            "Expected input to be parsed into a string object. "
+            + f"Got {type(parsed)} type.\n"
+            + f"Original: <<{s}>>, Parsed: <<{parsed}>>"
+        )
+    return parsed
 
 
 @RootDataSource.register_type(float)
