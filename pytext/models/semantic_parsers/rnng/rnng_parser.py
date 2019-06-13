@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pytext.utils.cuda as cuda_utils
@@ -13,8 +13,12 @@ from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import ComponentType
 from pytext.data import CommonMetadata
+from pytext.data.tensorizers import AnnotationNumberizer, Tensorizer, TokenTensorizer
+from pytext.data.utils import pad_and_tensorize
 from pytext.models import BaseModel, Model
 from pytext.models.embeddings import EmbeddingList
+from pytext.models.embeddings.word_embedding import WordEmbedding
+from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     CompositionalNN,
@@ -24,7 +28,7 @@ from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
 )
 
 
-class RNNGParser(BaseModel):
+class RNNGParserBase(BaseModel):
     """
     The Recurrent Neural Network Grammar (RNNG) parser from
     Dyer et al.: https://arxiv.org/abs/1602.07776 and
@@ -102,7 +106,13 @@ class RNNGParser(BaseModel):
         compositional_type: CompositionalType = CompositionalType.BLSTM
 
     @classmethod
-    def from_config(cls, model_config, feature_config, metadata: CommonMetadata):
+    def from_config(
+        cls,
+        model_config,
+        feature_config=None,
+        metadata: CommonMetadata = None,
+        tensorizers: Dict[str, Tensorizer] = None,
+    ):
         if model_config.compositional_type == RNNGParser.Config.CompositionalType.SUM:
             p_compositional = CompositionalSummationNN(
                 lstm_dim=model_config.lstm.lstm_dim
@@ -118,6 +128,22 @@ class RNNGParser(BaseModel):
                 )
             )
 
+        if tensorizers is not None:
+            embedding = EmbeddingList(
+                [
+                    create_module(
+                        model_config.embedding, tensorizer=tensorizers["tokens"]
+                    )
+                ],
+                concat=True,
+            )
+            actions_params = tensorizers["actions"]
+            actions_vocab = actions_params.vocab
+        else:
+            embedding = Model.create_embedding(feature_config, metadata=metadata)
+            actions_params = metadata
+            actions_vocab = metadata.actions_vocab
+
         return cls(
             ablation=model_config.ablation,
             constraints=model_config.constraints,
@@ -125,14 +151,14 @@ class RNNGParser(BaseModel):
             lstm_dim=model_config.lstm.lstm_dim,
             max_open_NT=model_config.max_open_NT,
             dropout=model_config.dropout,
-            actions_vocab=metadata.actions_vocab,
-            shift_idx=metadata.shift_idx,
-            reduce_idx=metadata.reduce_idx,
-            ignore_subNTs_roots=metadata.ignore_subNTs_roots,
-            valid_NT_idxs=metadata.valid_NT_idxs,
-            valid_IN_idxs=metadata.valid_IN_idxs,
-            valid_SL_idxs=metadata.valid_SL_idxs,
-            embedding=Model.create_embedding(feature_config, metadata=metadata),
+            actions_vocab=actions_vocab,
+            shift_idx=actions_params.shift_idx,
+            reduce_idx=actions_params.reduce_idx,
+            ignore_subNTs_roots=actions_params.ignore_subNTs_roots,
+            valid_NT_idxs=actions_params.valid_NT_idxs,
+            valid_IN_idxs=actions_params.valid_IN_idxs,
+            valid_SL_idxs=actions_params.valid_SL_idxs,
+            embedding=embedding,
             p_compositional=p_compositional,
         )
 
@@ -615,7 +641,9 @@ class RNNGParser(BaseModel):
         return predicted_action_idx.tolist()[0], predicted_scores
 
     # Supports beam search by checking if top K exists return type
-    def get_pred(self, logits: List[Tuple[torch.Tensor, torch.Tensor]], *args):
+    def get_pred(
+        self, logits: List[Tuple[torch.Tensor, torch.Tensor]], context=None, *args
+    ):
         """
         Return Shapes:
             preds: batch (1) * topk * action_len
@@ -635,3 +663,41 @@ class RNNGParser(BaseModel):
 
     def contextualize(self, context):
         self.context = context
+
+
+class RNNGParser_Deprecated(RNNGParserBase):
+    pass
+
+
+class RNNGParser(RNNGParserBase):
+    class Config(RNNGParserBase.Config):
+        class ModelInput(BaseModel.Config.ModelInput):
+            tokens: TokenTensorizer.Config = TokenTensorizer.Config(
+                column="tokenized_text"
+            )
+            actions: AnnotationNumberizer.Config = AnnotationNumberizer.Config()
+
+        inputs: ModelInput = ModelInput()
+        embedding: WordEmbedding.Config = WordEmbedding.Config()
+
+    def arrange_model_inputs(self, tensor_dict):
+        tokens, seq_lens, _ = tensor_dict["tokens"]
+        actions = tensor_dict["actions"]
+        dict_feat = None
+        contextual_token_embeddings = None
+        return (tokens, seq_lens, dict_feat, actions, contextual_token_embeddings)
+
+    def arrange_targets(self, tensor_dict):
+        return pad_and_tensorize(tensor_dict["actions"])
+
+    def get_export_input_names(self, tensorizers):
+        return ["tokens", "tokens_lens"]
+
+    def get_export_output_names(self, tensorizers):
+        return ["scores"]
+
+    def vocab_to_export(self, tensorizers):
+        ret = {"tokens": list(tensorizers["tokens"].vocab)}
+        if "actions" in tensorizers:
+            ret["actions"] = list(tensorizers["actions"].vocab)
+        return ret

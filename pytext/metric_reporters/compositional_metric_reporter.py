@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Set, Union
+from typing import Dict, List, Set, Union
 
 from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data import CommonMetadata
@@ -14,6 +14,8 @@ from pytext.data.data_structures.annotation import (
     Tree,
     TreeBuilder,
 )
+from pytext.data.tensorizers import Tensorizer
+from pytext.data.tokenizers import Tokenizer
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
     Node,
@@ -43,12 +45,38 @@ class CompositionalFileChannel(FileChannel):
 
 
 class CompositionalMetricReporter(MetricReporter):
-    def __init__(self, actions_vocab, channels: List[Channel]) -> None:
+    class Config(MetricReporter.Config):
+        text_column_name: str = "tokenized_text"
+
+    def __init__(
+        self,
+        actions_vocab,
+        channels: List[Channel],
+        text_column_name: str = Config.text_column_name,
+        tokenizer: Tokenizer = None,
+    ) -> None:
         super().__init__(channels)
         self.actions_vocab = actions_vocab
+        self.text_column_name = text_column_name
+        self.tokenizer = tokenizer or Tokenizer()
 
     @classmethod
-    def from_config(cls, config, metadata: CommonMetadata):
+    def from_config(
+        cls,
+        config,
+        metadata: CommonMetadata = None,
+        tensorizers: Dict[str, Tensorizer] = None,
+    ):
+        if tensorizers is not None:
+            return cls(
+                tensorizers["actions"].vocab,
+                [
+                    ConsoleChannel(),
+                    CompositionalFileChannel((Stage.TEST,), config.output_path),
+                ],
+                config.text_column_name,
+                tensorizers["tokens"].tokenizer,
+            )
         actions_vocab = metadata.actions_vocab.itos
         return cls(
             actions_vocab,
@@ -102,6 +130,22 @@ class CompositionalMetricReporter(MetricReporter):
 
     def get_model_select_metric(self, metrics):
         return metrics.frame_accuracy
+
+    def batch_context(self, raw_batch, batch):
+        context = super().batch_context(raw_batch, batch)
+        context[DatasetFieldName.TOKENS] = [
+            [
+                token.value
+                for token in self.tokenizer.tokenize(row[self.text_column_name])
+            ]
+            for row in raw_batch
+        ]
+        context[BatchContext.INDEX] = [1]
+        context[DatasetFieldName.UTTERANCE_FIELD] = [
+            row[self.text_column_name] for row in raw_batch
+        ]
+
+        return context
 
     @staticmethod
     def tree_from_tokens_and_indx_actions(
