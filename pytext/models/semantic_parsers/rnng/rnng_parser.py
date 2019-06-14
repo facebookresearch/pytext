@@ -97,6 +97,7 @@ class RNNGParser(BaseModel):
         constraints: RNNGConstraints = RNNGConstraints()
         max_open_NT: int = 10
         dropout: float = 0.1
+        slot_dropout: float = 0.0
         beam_size: int = 1
         top_k: int = 1
         compositional_type: CompositionalType = CompositionalType.BLSTM
