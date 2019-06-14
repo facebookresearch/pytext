@@ -19,6 +19,7 @@ from pytext.data import (
     QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
+from pytext.data.data import Data
 from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import DenseFeatureExporter
 from pytext.metric_reporters import (
@@ -46,7 +47,10 @@ from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocPairwiseRankingModel,
     QueryDocumentPairwiseRankingModel_Deprecated,
 )
-from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
+from pytext.models.semantic_parsers.rnng.rnng_parser import (
+    RNNGParser,
+    RNNGParser_Deprecated,
+)
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
 from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
@@ -56,6 +60,7 @@ from pytext.trainers import (
     EnsembleTrainer,
     EnsembleTrainer_Deprecated,
     HogwildTrainer,
+    HogwildTrainer_Deprecated,
     Trainer,
 )
 
@@ -342,8 +347,32 @@ class ContextualIntentSlotTask_Deprecated(Task_Deprecated):
 
 class SemanticParsingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
-        model: RNNGParser.Config = RNNGParser.Config()
-        trainer: HogwildTrainer.Config = HogwildTrainer.Config()
+        model: RNNGParser_Deprecated.Config = RNNGParser_Deprecated.Config()
+        trainer: HogwildTrainer_Deprecated.Config = HogwildTrainer_Deprecated.Config()
         data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
         labels: Optional[WordLabelConfig] = None
         metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
+
+
+class SemanticParsingTask(NewTask):
+    class Config(NewTask.Config):
+        model: RNNGParser.Config = RNNGParser.Config()
+        trainer: HogwildTrainer.Config = HogwildTrainer.Config()
+        metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
+
+    def __init__(
+        self,
+        data: Data,
+        model: RNNGParser,
+        metric_reporter: CompositionalMetricReporter,
+        trainer: HogwildTrainer,
+    ):
+        super().__init__(data, model, metric_reporter, trainer)
+        assert (
+            (data.batcher.train_batch_size == 1)
+            and (data.batcher.eval_batch_size == 1)
+            and (data.batcher.test_batch_size == 1)
+        ), "RNNGParser only supports batch size = 1"
+        assert (
+            trainer.config.report_train_metrics is False
+        ), "Disable report_train_metrics because trees are not necessarily valid during training"
