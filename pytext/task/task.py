@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from pprint import pprint
 from typing import List, Optional
 
 from pytext.common.constants import BatchContext
-from pytext.config import ConfigBase, config_to_json
+from pytext.config import ConfigBase
 from pytext.config.component import (
     Component,
     ComponentType,
