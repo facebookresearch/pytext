@@ -104,16 +104,15 @@ class CompositionalNN(torch.jit.ScriptModule):
 
     __constants__ = ["lstm_dim", "linear_seq", "device"]
 
-    def __init__(self, lstm_dim: int, device: str = "cpu"):
+    def __init__(self, lstm_dim: int):
         super().__init__()
-        self.device = device
         self.lstm_dim = lstm_dim
         self.lstm_fwd = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
         self.lstm_rev = nn.LSTM(lstm_dim, lstm_dim, num_layers=1)
         self.linear_seq = nn.Sequential(nn.Linear(2 * lstm_dim, lstm_dim), nn.Tanh())
 
     @torch.jit.script_method
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, x: List[torch.Tensor], device: str = "cpu") -> torch.Tensor:
         """
         Embed the sequence. If the input corresponds to [IN:GL where am I at]:
         - x will contain the embeddings of [at I am where IN:GL] in that order.
@@ -129,12 +128,12 @@ class CompositionalNN(torch.jit.ScriptModule):
         """
         # reset hidden state every time
         lstm_hidden_fwd = (
-            xaviervar([1, 1, self.lstm_dim], device=self.device),
-            xaviervar([1, 1, self.lstm_dim], device=self.device),
+            xaviervar([1, 1, self.lstm_dim], device=device),
+            xaviervar([1, 1, self.lstm_dim], device=device),
         )
         lstm_hidden_rev = (
-            xaviervar([1, 1, self.lstm_dim], device=self.device),
-            xaviervar([1, 1, self.lstm_dim], device=self.device),
+            xaviervar([1, 1, self.lstm_dim], device=device),
+            xaviervar([1, 1, self.lstm_dim], device=device),
         )
         nonterminal_element = x[-1]
         reversed_rest = x[:-1]
@@ -161,7 +160,7 @@ class CompositionalSummationNN(torch.jit.ScriptModule):
         self.linear_seq = nn.Sequential(nn.Linear(lstm_dim, lstm_dim), nn.Tanh())
 
     @torch.jit.script_method
-    def forward(self, x: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, x: List[torch.Tensor], device: str = "cpu") -> torch.Tensor:
         combined = torch.sum(torch.cat(x, dim=0), dim=0, keepdim=True)
         subtree_embedding = self.linear_seq(combined)
         return subtree_embedding
