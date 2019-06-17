@@ -31,7 +31,9 @@ def find_dicts_containing_key(json_config, key):
 
 def rename(json_config, old_name, new_name):
     for section in find_dicts_containing_key(json_config, old_name):
-        section[new_name] = section.pop(old_name)
+        value = section.pop(old_name)
+        if new_name:
+            section[new_name] = value
 
 
 def is_type_specifier(json_dict):
@@ -429,6 +431,12 @@ def rename_bitransformer_inputs(json_config):
         char_config["offset_for_non_padding"] = 1
         model_val["inputs"]["bytes"] = char_config
 
+    return json_config
+
+
+@register_adapter(from_version=12)
+def remove_output_encoded_layers(json_config):
+    rename(json_config, "output_encoded_layers", None)
     return json_config
 
 
