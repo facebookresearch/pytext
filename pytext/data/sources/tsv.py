@@ -240,8 +240,8 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
                 file,
                 field_names=field_names,
                 delimiter=delimiter,
-                block_id=self.rank,
-                num_blocks=self.world_size,
+                block_id=rank,
+                num_blocks=world_size,
             )
 
         self._train_tsv = (
