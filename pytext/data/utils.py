@@ -100,6 +100,10 @@ class Vocabulary:
         self.pad_token = pad_token
         if replacements:
             self.replace_tokens(replacements)
+        self.unk_token_counter = [0, 0]  # count of unk tokens, total tokens
+        # count of examples with least 75% unk tokens, total examples
+        self.unk_example_counter = [0, 0]
+        self.messages_printed = 0
 
     def replace_tokens(self, replacements):
         """Replace tokens in vocab with given replacement.
@@ -112,9 +116,23 @@ class Vocabulary:
 
     def lookup_all(self, nested_values):
         res, unk_counter, total = self.lookup_all_internal(nested_values)
-        if total > 1 and (unk_counter / total) > 0.8:
-            print(f"{unk_counter / total} of tokens not in vocab:", flush=True)
-            print(f"{nested_values}", flush=True)
+        self.unk_token_counter[0] += unk_counter
+        self.unk_token_counter[1] += total
+        self.unk_example_counter[1] += 1
+        if total > 3 and (unk_counter / total) > 0.75:
+            self.unk_example_counter[0] += 1
+            if self.unk_example_counter[0] % 100 == 0 and self.messages_printed < 200:
+                self.messages_printed += 1
+                c1, c2 = self.unk_token_counter
+                print("")
+                print(f"{c1} out of {c2} ({int(100 * c1 / c2)}%) tokens not in vocab")
+                c1, c2 = self.unk_example_counter
+                print(
+                    f"{c1} out of {c2} ({int(100 * c1 / c2)}%) examples have >= 75% "
+                    f"tokens not in vocab"
+                )
+                print("Example: (first 20 tokens)")
+                print(nested_values[:20], flush=True)
         return res
 
     def lookup_all_internal(self, nested_values):
