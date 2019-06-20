@@ -12,6 +12,7 @@ from pytext.models.module import create_module
 from pytext.models.output_layers import CRFOutputLayer, WordTaggingOutputLayer
 from pytext.models.representations.bilstm_slot_attn import BiLSTMSlotAttention
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
+from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.pass_through import PassThroughRepresentation
 
 
@@ -32,6 +33,7 @@ class WordTaggingModel_Deprecated(Model):
             BiLSTMSlotAttention.Config,
             BSeqCNNRepresentation.Config,
             PassThroughRepresentation.Config,
+            DeepCNNRepresentation.Config,
         ] = BiLSTMSlotAttention.Config()
         output_layer: Union[
             WordTaggingOutputLayer.Config, CRFOutputLayer.Config
