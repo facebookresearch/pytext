@@ -84,6 +84,7 @@ class ConsoleChannel(Channel):
         *args,
     ):
         print(f"\n\n{stage}")
+        print(f"Epoch:{epoch}")
         print(f"loss: {loss:.6f}")
         # TODO change print_metrics function to __str__ T33522209
         if hasattr(metrics, "print_metrics"):
