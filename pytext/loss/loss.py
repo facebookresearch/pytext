@@ -28,6 +28,9 @@ class CrossEntropyLoss(Loss):
         self.weight = weight
 
     def __call__(self, logits, targets, reduce=True):
+        # Don't change to F.cross_entropy() because @barlaso suggested not doing so.
+        # There's some wisdom from fairseq folks that it's the preferred way.
+        # Needs more testing before we can change to using F.cross_entropy().
         return F.nll_loss(
             F.log_softmax(logits, 1, dtype=torch.float32),
             targets,
@@ -57,14 +60,14 @@ class BinaryCrossEntropyLoss(Loss):
         reweight_negative: bool = True
         reduce: bool = True
 
-    def __call__(self, m_out, targets, reduce=True):
+    def __call__(self, logits, targets, reduce=True):
         """
         Computes 1-vs-all binary cross entropy loss for multiclass
         classification.
         """
         # Converts targets to one-hot representation. Dim: [batch, n_classes]
         one_hot_targets = (
-            FloatTensor(targets.size(0), m_out.size(1))
+            FloatTensor(targets.size(0), logits.size(1))
             .zero_()
             .scatter_(1, targets.unsqueeze(1).data, 1)
         )
@@ -79,7 +82,7 @@ class BinaryCrossEntropyLoss(Loss):
         # weights = total_positive.unsqueeze(0) / examples_per_class
 
         loss = F.binary_cross_entropy_with_logits(
-            precision.maybe_float(m_out), one_hot_targets, reduction="none"
+            precision.maybe_float(logits), one_hot_targets, reduction="none"
         )
 
         if self.config.reweight_negative:
@@ -251,11 +254,15 @@ class AUCPRHingeLoss(nn.Module, Loss):
 class KLDivergenceBCELoss(Loss):
     class Config(ConfigBase):
         temperature: float = 1.0
+        hard_weight: float = 0.0
 
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        assert 0.0 <= config.hard_weight < 1.0
+
         self.ignore_index = ignore_index
         self.weight = weight
         self.t = config.temperature
+        self.hard_weight = config.hard_weight
 
     def __call__(self, logits, targets, reduce=True):
         """
@@ -272,22 +279,38 @@ class KLDivergenceBCELoss(Loss):
         probs_neg = probs.neg().add(1).clamp(1e-20, 1 - 1e-20)
         soft_targets_neg = soft_targets.neg().add(1).clamp(1e-20, 1 - 1e-20)
         if self.weight is not None:
-            loss = (
+            soft_loss = (
                 F.kl_div(probs.log(), soft_targets, reduction="none") * self.weight
                 + F.kl_div(probs_neg.log(), soft_targets_neg, reduction="none")
                 * self.weight
             )
             if reduce:
-                loss = loss.mean()
+                soft_loss = soft_loss.mean()
         else:
-            loss = F.kl_div(
+            soft_loss = F.kl_div(
                 probs.log(), soft_targets, reduction="mean" if reduce else "none"
             ) + F.kl_div(
                 probs_neg.log(),
                 soft_targets_neg,
                 reduction="mean" if reduce else "none",
             )
-        return loss
+        soft_loss *= self.t ** 2  # see https://arxiv.org/pdf/1503.02531.pdf
+
+        hard_loss = 0.0
+        if self.hard_weight > 0.0:
+            one_hot_targets = (
+                FloatTensor(hard_targets.size(0), logits.size(1))
+                .zero_()
+                .scatter_(1, hard_targets.unsqueeze(1).data, 1)
+            )
+            hard_loss = F.binary_cross_entropy_with_logits(
+                logits,
+                one_hot_targets,
+                reduction="mean" if reduce else "none",
+                weight=self.weight,
+            )
+
+        return (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
 
 
 class KLDivergenceCELoss(Loss):
@@ -336,50 +359,6 @@ class KLDivergenceCELoss(Loss):
             )
 
         return (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
-
-
-class SoftHardBCELoss(Loss):
-    """ Reference implementation from Distilling the knowledge in a Neural Network:
-    https://arxiv.org/pdf/1503.02531.pdf
-    """
-
-    class Config(ConfigBase):
-        temperature: float = 1.0
-
-    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
-        self.ignore_index = ignore_index
-        self.weight = weight
-        self.config = config
-        self.t = config.temperature
-
-    def __call__(self, logits, targets, reduce=True):
-        """
-        Computes soft and hard loss for knowledge distillation
-        """
-        hard_targets, _, _ = targets
-
-        # hard targets
-        one_hot_targets = (
-            FloatTensor(hard_targets.size(0), logits.size(1))
-            .zero_()
-            .scatter_(1, hard_targets.unsqueeze(1).data, 1)
-        )
-
-        prob_loss = KLDivergenceBCELoss(self.config, weight=self.weight)
-        if self.weight is not None:
-            hard_loss = (
-                F.binary_cross_entropy_with_logits(
-                    logits, one_hot_targets, reduction="none"
-                )
-                * self.weight
-            )
-            if reduce:
-                hard_loss = hard_loss.mean()
-        else:
-            hard_loss = F.binary_cross_entropy_with_logits(
-                logits, one_hot_targets, reduction="mean" if reduce else "none"
-            )
-        return self.t * self.t * prob_loss(logits, targets, reduce=reduce) + hard_loss
 
 
 class PairwiseRankingLoss(Loss):
