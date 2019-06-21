@@ -95,6 +95,17 @@ class _NewTask(TaskBase):
                     )
                 schema[name] = type
 
+        if hasattr(config.metric_reporter, "text_column_names"):
+            for text_column in config.metric_reporter.text_column_names:
+                if text_column in schema and schema[text_column] != str:
+                    raise TypeError(
+                        f"""
+                        Unexpected different types for column {text_column}:
+                        {str} != {schema[text_column]}
+                        """
+                    )
+                schema[text_column] = str
+
         # This initializes the tensorizers
         data = create_component(
             ComponentType.DATA_HANDLER,
