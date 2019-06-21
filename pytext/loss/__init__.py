@@ -12,7 +12,6 @@ from .loss import (
     MSELoss,
     NLLLoss,
     PairwiseRankingLoss,
-    SoftHardBCELoss,
 )
 
 
@@ -25,7 +24,6 @@ __all__ = [
     "KLDivergenceCELoss",
     "MSELoss",
     "NLLLoss",
-    "SoftHardBCELoss",
     "PairwiseRankingLoss",
     "LabelSmoothedCrossEntropyLoss",
 ]

@@ -19,7 +19,7 @@ from pytext.config.field_config import FeatureConfig
 from pytext.data import DataHandler
 from pytext.data.featurizer import Featurizer, SimpleFeaturizer
 from pytext.exporters import ModelExporter
-from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss, SoftHardBCELoss
+from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
@@ -76,11 +76,7 @@ class TaskBase(Component):
         if hasattr(task_config.labels, "target_prob"):
             assert task_config.labels.target_prob == isinstance(
                 task_config.model.output_layer.loss,
-                (
-                    KLDivergenceBCELoss.Config,
-                    KLDivergenceCELoss.Config,
-                    SoftHardBCELoss.Config,
-                ),
+                (KLDivergenceBCELoss.Config, KLDivergenceCELoss.Config),
             ), "target_prob must be set to True for KD losses"
         featurizer = create_featurizer(task_config.featurizer, task_config.features)
         # load data

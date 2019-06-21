@@ -14,7 +14,6 @@ from pytext.loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
-    SoftHardBCELoss,
 )
 from pytext.utils.label import get_label_weights
 from torch import jit
@@ -44,7 +43,6 @@ class ClassificationOutputLayer(OutputLayerBase):
             AUCPRHingeLoss.Config,
             KLDivergenceBCELoss.Config,
             KLDivergenceCELoss.Config,
-            SoftHardBCELoss.Config,
         ] = CrossEntropyLoss.Config()
         label_weights: Optional[Dict[str, float]] = None
 
