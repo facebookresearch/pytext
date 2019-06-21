@@ -8,9 +8,9 @@ from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
 from pytext.models.decoders import DecoderBase
-from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.decoders.mlp_decoder import DecompMLPDecoder, MLPDecoder
 from pytext.models.embeddings import EmbeddingBase
-from pytext.models.embeddings.word_embedding import WordEmbedding
+from pytext.models.embeddings.word_embedding import DecompWordEmbedding, WordEmbedding
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import OutputLayerBase
@@ -165,12 +165,15 @@ class LMLSTM(BaseModel):
             )
 
         inputs: ModelInput = ModelInput()
-        embedding: WordEmbedding.Config = WordEmbedding.Config()
+        embedding: Union[
+            WordEmbedding.Config, DecompWordEmbedding.Config
+        ] = WordEmbedding.Config()
         representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
-        decoder: Optional[MLPDecoder.Config] = MLPDecoder.Config()
+        decoder: Union[MLPDecoder.Config, DecompMLPDecoder.Config] = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
+        decomp: bool = False
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -185,7 +188,12 @@ class LMLSTM(BaseModel):
             out_dim=len(labels),
         )
         if config.tied_weights:
-            decoder.get_decoder()[0].weight = embedding.weight
+            if config.decomp:
+                decoder.get_decoder()[0][-1].w_a = embedding.w_a
+                decoder.get_decoder()[0][-1].w_b = embedding.w_b
+                decoder.get_decoder()[0][-1].b1 = embedding.b1
+            else:
+                decoder.get_decoder()[0].weight = embedding.weight
         output_layer = create_module(config.output_layer, labels=labels)
         return cls(
             embedding=embedding,
@@ -213,7 +221,7 @@ class LMLSTM(BaseModel):
         self._states: Optional[Tuple] = None
 
     def arrange_model_inputs(self, tensor_dict):
-        tokens, seq_lens = tensor_dict["tokens"]
+        tokens, seq_lens, _ = tensor_dict["tokens"]
         # Omit last token because it won't have a corresponding target
         return (tokens[:, 0:-1].contiguous(), seq_lens - 1)
 

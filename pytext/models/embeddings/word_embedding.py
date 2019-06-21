@@ -5,10 +5,11 @@ import collections
 from typing import List, Optional
 
 import torch
-from pytext.config.field_config import WordFeatConfig
+from pytext.config.field_config import DecompWordFeatConfig, WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import UNK
 from pytext.fields import FieldMeta
+from pytext.models.language_models.layers import DecompEmbedding
 from pytext.utils.embeddings import PretrainedEmbedding
 from torch import nn
 
@@ -151,3 +152,50 @@ class WordEmbedding(EmbeddingBase):
     def freeze(self):
         for param in self.word_embedding.parameters():
             param.requires_grad = False
+
+
+class DecompWordEmbedding(EmbeddingBase):
+    """
+    A word ebmedding wrapper module around `torch.nn.Embedding` using a decomposed
+    weight. Currently, there are no options to initialize the word embedding
+    weights and add MLP layers, as are available in `WordEmbedding`.
+
+    Args:
+        num_embeddings (int): Total number of words/tokens (vocabulary size).
+        mid_dim (int): Intermediate dimension for the decomposed weight.
+        embedding_dim (int): Size of the embedding vector.
+
+    """
+
+    Config = DecompWordFeatConfig
+
+    @classmethod
+    def from_config(
+        cls,
+        config: DecompWordFeatConfig,
+        metadata: Optional[FieldMeta] = None,
+        tensorizer: Optional[Tensorizer] = None,
+        init_from_saved_state: Optional[bool] = False,
+    ):
+        assert tensorizer is not None
+        return cls(
+            num_embeddings=len(tensorizer.vocab),
+            mid_dim=config.mid_dim,
+            embedding_dim=config.embed_dim,
+        )
+
+    def __init__(self, num_embeddings: int, mid_dim: int, embedding_dim: int):
+        EmbeddingBase.__init__(self, embedding_dim=embedding_dim)
+        self.word_embedding = DecompEmbedding(num_embeddings, mid_dim, embedding_dim)
+
+    def __getattr__(self, name):
+        if name == "w_a":
+            return self.word_embedding.w_a
+        elif name == "w_b":
+            return self.word_embedding.w_b
+        elif name == "b1":
+            return self.word_embedding.b1
+        return super().__getattr__(name)
+
+    def forward(self, input):
+        return self.word_embedding(input)

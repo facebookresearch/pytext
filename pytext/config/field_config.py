@@ -41,6 +41,11 @@ class WordFeatConfig(ModuleConfig):
     mlp_layer_dims: Optional[List[int]] = []
 
 
+class DecompWordFeatConfig(ModuleConfig):
+    embed_dim: int = 100
+    mid_dim: int = 100
+
+
 class DictFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False

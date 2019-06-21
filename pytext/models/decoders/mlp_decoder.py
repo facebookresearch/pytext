@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import torch
 import torch.nn as nn
+from pytext.models.language_models.layers import DecompLinear
 
 from .decoder_base import DecoderBase
 
@@ -62,4 +63,37 @@ class MLPDecoder(DecoderBase):
     def get_decoder(self) -> List[nn.Module]:
         """Returns the MLP module that is used as a decoder.
         """
+        return [self.mlp]
+
+
+class DecompMLPDecoder(DecoderBase):
+    """
+    `DecompMLPDecoder` is a fully connected layer using a decomposed weight.
+    This module projects an input tensor to `out_dim` using `mid_dim` as the
+    intermediate dimension of the decomposed weight. Currently, the module
+    only supports one layer with no activation function.
+
+    Args:
+        config (Config): Configuration object of type DecompMLPDecoder.Config.
+        in_dim (int): Dimension of input Tensor passed to MLP.
+        mid_dim (int): Intermediate dimension for the decomposed weight
+                       passed to MLP. Defaults to 100.
+        out_dim (int): Dimension of output Tensor produced by MLP. Defaults to 0.
+
+    Attributes:
+        mlp (type): Module that implements the MLP.
+
+    """
+
+    class Config(DecoderBase.Config):
+        mid_dim: int = 100
+
+    def __init__(self, config: Config, in_dim: int, out_dim: int) -> None:
+        super().__init__(config)
+        self.mlp = nn.Sequential(*[DecompLinear(in_dim, config.mid_dim, out_dim)])
+
+    def forward(self, *input: torch.Tensor) -> torch.Tensor:
+        return self.mlp(torch.cat(input, 1))
+
+    def get_decoder(self) -> List[nn.Module]:
         return [self.mlp]
