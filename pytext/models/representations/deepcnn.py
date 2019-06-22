@@ -69,4 +69,4 @@ class DeepCNNRepresentation(RepresentationBase):
             words = conv(words)
             words = self.glu(words)
             words = (words + residual) * math.sqrt(0.5)
-        return words.transpose(1, 2)
+        return words.permute(0, 2, 1)
