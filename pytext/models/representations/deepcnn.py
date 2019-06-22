@@ -43,8 +43,8 @@ class DeepCNNRepresentation(RepresentationBase):
                 else None
             )
             linear_layers.append(proj)
-            single_conv = nn.Conv1d(
-                in_channels, 2 * out_channels, k, padding=int((k - 1) / 2)
+            single_conv = nn.Conv2d(
+                1, 2 * out_channels, (k, in_channels), padding=(int((k - 1) / 2), 0)
             )
             conv_layers.append(single_conv)
             in_channels = out_channels
@@ -66,7 +66,9 @@ class DeepCNNRepresentation(RepresentationBase):
             else:
                 tranposed = words.transpose(1, 2)
                 residual = proj(tranposed).transpose(1, 2)
+            words = words.transpose(1, 2).unsqueeze(1)
             words = conv(words)
+            words = words.squeeze(3)
             words = self.glu(words)
             words = (words + residual) * math.sqrt(0.5)
         return words.transpose(1, 2)

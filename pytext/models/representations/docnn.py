@@ -22,7 +22,7 @@ class DocNNRepresentation(RepresentationBase):
         self.max_kernel = max(config.cnn.kernel_sizes)
         self.convs = nn.ModuleList(
             [
-                nn.Conv1d(embed_dim, config.cnn.kernel_num, K, padding=K)
+                nn.Conv2d(1, config.cnn.kernel_num, (K, embed_dim), padding=(K, 0))
                 for K in config.cnn.kernel_sizes
             ]
         )
@@ -33,12 +33,12 @@ class DocNNRepresentation(RepresentationBase):
         # embedded_tokens of size (N,W,D)
         rep = embedded_tokens
         # nn.Conv1d expects a tensor of dim (batch_size x embed_dim x seq_len)
-        rep = rep.transpose(1, 2)
+        # rep = rep.transpose(1, 2)
         rep = [self.conv_and_pool(rep, conv) for conv in self.convs]
         rep = self.dropout(torch.cat(rep, 1))  # (N,len(Ks)*Co)
         return rep
 
     def conv_and_pool(self, x, conv):
-        x = F.relu(conv(x))
+        x = F.relu(conv(x.unsqueeze(1)).squeeze(3))
         x, _ = torch.max(x, dim=2)
         return x

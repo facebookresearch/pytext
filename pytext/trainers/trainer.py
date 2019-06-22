@@ -453,9 +453,12 @@ class Trainer(TrainerBase):
 
             if report_metric:
                 with timing.time("add metrics"):
-                    preds, scores = model.get_pred(
-                        logits, targets, context, state.stage, *inputs
-                    )
+                    if state.stage != Stage.TRAIN:
+                        preds, scores = model.get_pred(
+                            logits, targets, context, state.stage, *inputs
+                        )
+                    else:
+                        preds, scores, targets = [[], []], [[], []], [[], []]
                     metric_reporter.add_batch_stats(
                         batch_id, preds, targets, scores, loss.item(), inputs, **context
                     )

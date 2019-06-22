@@ -93,7 +93,7 @@ class CharacterEmbedding(EmbeddingBase):
                 # of dim [max_word_length] with embed_dim channels
                 # Adding padding to provide robustness in cases where input
                 # length is less than conv filter width
-                nn.Conv1d(embed_dim, out_channels, K, padding=K // 2)
+                nn.Conv2d(1, out_channels, (K, embed_dim), padding=(K // 2,0))
                 for K in kernel_sizes
             ]
         )
@@ -127,8 +127,9 @@ class CharacterEmbedding(EmbeddingBase):
         char_embedding = self.char_embed(chars)
 
         # conv_inp dim: (bsize * max_sent_length, emb_size, max_word_length)
-        conv_inp = char_embedding.transpose(1, 2)
-        char_conv_outs = [F.relu(conv(conv_inp)) for conv in self.convs]
+        # conv_inp = char_embedding.transpose(1, 2)
+        conv_inp = char_embedding.unsqueeze(1)
+        char_conv_outs = [F.relu(conv(conv_inp).squeeze(3)) for conv in self.convs]
 
         # Apply max pooling
         # char_pool_out[i] dims: (bsize * max_sent_length, out_channels)
