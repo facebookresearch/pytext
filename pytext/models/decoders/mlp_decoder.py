@@ -37,6 +37,7 @@ class MLPDecoder(DecoderBase):
         hidden_dims: List[int] = []
         out_dim: Optional[int] = None
         layer_norm: bool = False
+        dropout: float = 0.0
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -47,6 +48,8 @@ class MLPDecoder(DecoderBase):
             layers.append(nn.ReLU())
             if config.layer_norm:
                 layers.append(nn.LayerNorm(dim))
+            if config.dropout > 0:
+                layers.append(nn.Dropout(config.dropout))
             in_dim = dim
         if config.out_dim:
             out_dim = config.out_dim
