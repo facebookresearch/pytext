@@ -82,6 +82,11 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             RawData.DOC_WEIGHT,
             RawData.WORD_WEIGHT,
         ]
+        exclude_current_text_for_doc: bool = False
+
+    def __init__(self, exclude_current_text_for_doc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exclude_current_text_for_doc = exclude_current_text_for_doc
 
     @classmethod
     def from_config(
@@ -200,9 +205,13 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             )
         )
 
+        seq_feature_list = features_list
+        if self.exclude_current_text_for_doc:
+            seq_feature_list = features_list[:-1]
+
         res = {
             # features
-            ModelInput.SEQ: [utterance.tokens for utterance in features_list],
+            ModelInput.SEQ: [utterance.tokens for utterance in seq_feature_list],
             ModelInput.TEXT: features_list[-1].tokens,
             ModelInput.DICT: (
                 features_list[-1].gazetteer_feats,

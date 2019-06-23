@@ -6,8 +6,10 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.models.module import create_module
 
 from .decoder_base import DecoderBase
+from .mlp_decoder import MLPDecoder
 
 
 class IntentSlotModelDecoder(DecoderBase):
@@ -48,6 +50,8 @@ class IntentSlotModelDecoder(DecoderBase):
         """
 
         use_doc_probs_in_word: bool = False
+        doc_decoder: MLPDecoder.Config = MLPDecoder.Config()
+        word_decoder: MLPDecoder.Config = MLPDecoder.Config()
 
     def __init__(
         self,
@@ -60,12 +64,16 @@ class IntentSlotModelDecoder(DecoderBase):
         super().__init__(config)
 
         self.use_doc_probs_in_word = config.use_doc_probs_in_word
-        self.doc_decoder = nn.Linear(in_dim_doc, out_dim_doc)
 
+        self.doc_decoder = create_module(
+            config.doc_decoder, in_dim=in_dim_doc, out_dim=out_dim_doc
+        )
         if self.use_doc_probs_in_word:
             in_dim_word += out_dim_doc
 
-        self.word_decoder = nn.Linear(in_dim_word, out_dim_word)
+        self.word_decoder = create_module(
+            config.word_decoder, in_dim=in_dim_word, out_dim=out_dim_word
+        )
 
     def forward(
         self, x_d: torch.Tensor, x_w: torch.Tensor, dense: Optional[torch.Tensor] = None
