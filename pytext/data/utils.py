@@ -213,21 +213,26 @@ class VocabBuilder:
 
     def make_vocab(self) -> Vocabulary:
         """Build a Vocabulary object from the values seen by the builder."""
-        vocab_list = list(self._counter)
-
         tokens_to_insert: List[Tuple[int, object]] = []
         if self.use_unk:
             tokens_to_insert.append((self.unk_index, UNK))
+            del self._counter[UNK]
         if self.use_pad:
             tokens_to_insert.append((self.pad_index, self.pad_token))
+            del self._counter[self.pad_token]
         if self.use_bos:
             tokens_to_insert.append((self.bos_index, BOS))
+            del self._counter[BOS]
         if self.use_eos:
             tokens_to_insert.append((self.eos_index, EOS))
+            del self._counter[EOS]
         if self.use_bol:
             tokens_to_insert.append((self.bol_index, BOL))
+            del self._counter[BOL]
         if self.use_eol:
             tokens_to_insert.append((self.eol_index, EOL))
+            del self._counter[EOL]
+        vocab_list = list(self._counter)
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
 
