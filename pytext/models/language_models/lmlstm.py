@@ -185,7 +185,12 @@ class LMLSTM(BaseModel):
             out_dim=len(labels),
         )
         if config.tied_weights:
-            decoder.get_decoder()[0].weight = embedding.weight
+            if decoder.get_decoder()[0][-1].weight.size() != embedding.weight.size():
+                raise ValueError(
+                    "Embedding dimension must be same as representation "
+                    "dimensions when using tied weights"
+                )
+            decoder.get_decoder()[0][-1].weight = embedding.weight
         output_layer = create_module(config.output_layer, labels=labels)
         return cls(
             embedding=embedding,
@@ -213,7 +218,7 @@ class LMLSTM(BaseModel):
         self._states: Optional[Tuple] = None
 
     def arrange_model_inputs(self, tensor_dict):
-        tokens, seq_lens = tensor_dict["tokens"]
+        tokens, seq_lens, _ = tensor_dict["tokens"]
         # Omit last token because it won't have a corresponding target
         return (tokens[:, 0:-1].contiguous(), seq_lens - 1)
 
