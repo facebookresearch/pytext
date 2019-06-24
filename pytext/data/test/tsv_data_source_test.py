@@ -43,7 +43,7 @@ class TSVDataSourceTest(unittest.TestCase):
 
     def test_read_test_data_source(self):
         data = list(self.data.test)
-        self.assertEqual(4, len(data))
+        self.assertEqual(5, len(data))
         example = next(iter(data))
         self.assertEqual(2, len(example))
         self.assertEqual({"label", "text"}, set(example))

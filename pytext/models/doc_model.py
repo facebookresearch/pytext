@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
-    FloatListTensorizer,
     LabelTensorizer,
     NumericLabelTensorizer,
     Tensorizer,
@@ -72,7 +71,6 @@ class DocModel(Model):
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-            dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
         inputs: ModelInput = ModelInput()
@@ -89,19 +87,13 @@ class DocModel(Model):
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]
-        model_inputs = (tokens, seq_lens)
-        if "dense" in tensor_dict:
-            model_inputs += (tensor_dict["dense"],)
-        return model_inputs
+        return (tokens, seq_lens)
 
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
     def get_export_input_names(self, tensorizers):
-        res = ["tokens", "tokens_lens"]
-        if "dense" in tensorizers:
-            res += ["float_vec_vals"]
-        return res
+        return ["tokens", "tokens_lens"]
 
     def get_export_output_names(self, tensorizers):
         return ["scores"]
@@ -140,27 +132,7 @@ class DocModel(Model):
                 logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
                 return self.output_layer(logits)
 
-        class ModelWithDenseFeat(jit.ScriptModule):
-            def __init__(self):
-                super().__init__()
-                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
-                self.model = traced_model
-                self.output_layer = output_layer
-                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
-
-            @jit.script_method
-            def forward(self, tokens: List[List[str]], dense_feat: List[List[float]]):
-                seq_lens = make_sequence_lengths(tokens)
-                word_ids = self.vocab.lookup_indices_2d(tokens)
-                word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
-                logits = self.model(
-                    torch.tensor(word_ids),
-                    torch.tensor(seq_lens),
-                    torch.tensor(dense_feat),
-                )
-                return self.output_layer(logits)
-
-        return ModelWithDenseFeat() if "dense" in tensorizers else Model()
+        return Model()
 
     @classmethod
     def create_embedding(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -172,14 +144,9 @@ class DocModel(Model):
 
     @classmethod
     def create_decoder(cls, config: Config, representation_dim: int, num_labels: int):
-        num_decoder_modules = 0
-        in_dim = representation_dim
-        if hasattr(config.inputs, "dense") and config.inputs.dense:
-            num_decoder_modules += 1
-            in_dim += config.inputs.dense.dim
-        decoder = create_module(config.decoder, in_dim=in_dim, out_dim=num_labels)
-        decoder.num_decoder_modules = num_decoder_modules
-        return decoder
+        return create_module(
+            config.decoder, in_dim=representation_dim, out_dim=num_labels
+        )
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
