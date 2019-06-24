@@ -219,8 +219,6 @@ class ByteTokensDocumentModel(DocModel):
         word_tensorizer = config.inputs.tokens
         byte_tensorizer = config.inputs.token_bytes
         assert word_tensorizer.column == byte_tensorizer.column
-        assert word_tensorizer.tokenizer.items() == byte_tensorizer.tokenizer.items()
-        assert word_tensorizer.max_seq_len == byte_tensorizer.max_seq_len
 
         word_embedding = create_module(
             config.embedding, tensorizer=tensorizers["tokens"]
