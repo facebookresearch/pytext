@@ -8,6 +8,25 @@ from pytext.config.module_config import CNNParams
 from pytext.models.representations.representation_base import RepresentationBase
 
 
+def WeightNormalizedLinear(in_features, out_features, dropout=0):
+    """Weight-normalized Linear layer (input: N x T x C)"""
+    m = nn.Linear(in_features, out_features)
+    nn.init.normal_(m.weight, mean=0, std=math.sqrt((1 - dropout) / in_features))
+    nn.init.constant_(m.bias, 0)
+    return nn.utils.weight_norm(m)
+
+
+def WeightNormalizedConv1d(
+    in_channels, out_channels, kernel_size, padding=0, dropout=0
+):
+    """Weight-normalized Conv1d layer optimized for decoding"""
+    m = nn.Conv1d(in_channels, out_channels, kernel_size, padding=padding)
+    std = math.sqrt((4 * (1.0 - dropout)) / (m.kernel_size[0] * in_channels))
+    nn.init.normal_(m.weight, mean=0, std=std)
+    nn.init.constant_(m.bias, 0)
+    return nn.utils.weight_norm(m, dim=2)
+
+
 class DeepCNNRepresentation(RepresentationBase):
     """
     `DeepCNNRepresentation` implements CNN representation layer
@@ -35,17 +54,28 @@ class DeepCNNRepresentation(RepresentationBase):
         linear_layers = []
         in_channels = embed_dim
 
-        for k in kernel_sizes:
+        for i, k in enumerate(kernel_sizes):
             assert (k - 1) % 2 == 0
             proj = (
-                nn.Linear(in_channels, out_channels)
+                WeightNormalizedLinear(
+                    in_channels, out_channels, dropout=config.dropout
+                )
                 if in_channels != out_channels
                 else None
             )
             linear_layers.append(proj)
-            single_conv = nn.Conv1d(
-                in_channels, 2 * out_channels, k, padding=int((k - 1) / 2)
-            )
+            if i == 0 and linear_layers[0] is None:
+                single_conv = WeightNormalizedConv1d(
+                    in_channels,
+                    2 * out_channels,
+                    k,
+                    padding=int((k - 1) / 2),
+                    dropout=config.dropout,
+                )
+            else:
+                single_conv = WeightNormalizedConv1d(
+                    in_channels, 2 * out_channels, k, padding=int((k - 1) / 2)
+                )
             conv_layers.append(single_conv)
             in_channels = out_channels
 
