@@ -27,12 +27,12 @@ class CrossEntropyLoss(Loss):
         self.ignore_index = ignore_index
         self.weight = weight
 
-    def __call__(self, logits, targets, reduce=True):
+    def __call__(self, logits, targets, reduce=True, cast=True):
         # Don't change to F.cross_entropy() because @barlaso suggested not doing so.
         # There's some wisdom from fairseq folks that it's the preferred way.
         # Needs more testing before we can change to using F.cross_entropy().
         return F.nll_loss(
-            F.log_softmax(logits, 1, dtype=torch.float32),
+            F.log_softmax(logits, 1, dtype=torch.float32 if cast else None),
             targets,
             weight=self.weight,
             ignore_index=self.ignore_index,
