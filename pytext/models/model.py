@@ -34,7 +34,7 @@ class ModelInputMeta(ConfigBaseMeta):
     def __new__(metacls, typename, bases, namespace):
         annotations = namespace.get("__annotations__", {})
         for t in annotations.values():
-            if type(t) == type(Union):
+            if getattr(t, "__origin__", "") is Union:
                 for ut in t.__args__:
                     _assert_tensorizer_type(ut)
             else:
