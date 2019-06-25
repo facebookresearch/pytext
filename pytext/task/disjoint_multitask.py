@@ -182,7 +182,7 @@ class NewDisjointMultitask(_NewTask):
         for name, task in task_config.tasks.items():
             tensorizers, data = NewTask._init_tensorizers(task, rank, world_size)
             data_dict[name] = data
-            models[name] = NewTask._init_model(task, tensorizers)
+            models[name] = NewTask._init_model(task.model, tensorizers)
             metric_reporters[name] = create_component(
                 ComponentType.METRIC_REPORTER,
                 task.metric_reporter,

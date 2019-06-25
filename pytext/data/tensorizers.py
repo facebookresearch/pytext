@@ -19,7 +19,7 @@ from pytext.data.data_structures.annotation import (
     is_valid_nonterminal,
 )
 from pytext.data.sources.data_source import Gazetteer
-from pytext.data.tokenizers import Token, Tokenizer
+from pytext.data.tokenizers import DoNothingTokenizer, Token, Tokenizer
 from pytext.utils import cuda
 from pytext.utils.data import Slot
 
@@ -146,7 +146,10 @@ class TokenTensorizer(Tensorizer):
         vocab_file=Config.vocab_file,
         vocab_file_size_limit=Config.vocab_file_size_limit,
     ):
-        super().__init__([(text_column, str)])
+        if isinstance(tokenizer, DoNothingTokenizer):
+            super().__init__([(text_column, List[str])])
+        else:
+            super().__init__([(text_column, str)])
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.vocab = vocab
@@ -322,7 +325,10 @@ class ByteTokenTensorizer(Tensorizer):
         max_byte_len=Config.max_byte_len,
         offset_for_non_padding=Config.offset_for_non_padding,
     ):
-        super().__init__([(text_column, str)])
+        if isinstance(tokenizer, DoNothingTokenizer):
+            super().__init__([(text_column, List[str])])
+        else:
+            super().__init__([(text_column, str)])
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.max_seq_len = max_seq_len or 2 ** 30  # large number

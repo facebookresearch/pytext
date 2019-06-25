@@ -59,7 +59,7 @@ class _NewTask(TaskBase):
         tensorizers, data = NewTask._init_tensorizers(config, rank, world_size)
 
         # Initialized tensorizers can be used to create the model
-        model = NewTask._init_model(config, tensorizers, model_state)
+        model = NewTask._init_model(config.model, tensorizers, model_state)
 
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
@@ -77,10 +77,9 @@ class _NewTask(TaskBase):
         )
 
     @classmethod
-    def _init_tensorizers(cls, config: Config, rank, world_size):
-        model_inputs_dict = config.model.inputs
+    def _create_tensorizers(cls, model_inputs_dict):
         if not isinstance(model_inputs_dict, dict):
-            model_inputs_dict = config.model.inputs._asdict()
+            model_inputs_dict = model_inputs_dict._asdict()
         tensorizers = {
             name: create_component(ComponentType.TENSORIZER, tensorizer_config)
             for name, tensorizer_config in model_inputs_dict.items()
@@ -94,6 +93,12 @@ class _NewTask(TaskBase):
                         f"Unexpected different types for column {name}: {type} != {schema[name]}"
                     )
                 schema[name] = type
+
+        return tensorizers, schema
+
+    @classmethod
+    def _init_tensorizers(cls, config: Config, rank, world_size):
+        tensorizers, schema = NewTask._create_tensorizers(config.model.inputs)
 
         if hasattr(config.metric_reporter, "text_column_names"):
             for text_column in config.metric_reporter.text_column_names:
@@ -118,10 +123,10 @@ class _NewTask(TaskBase):
         return tensorizers, data
 
     @classmethod
-    def _init_model(cls, config: Config, tensorizers, model_state=None):
-        config.model.init_from_saved_state = model_state is not None
+    def _init_model(cls, model_config, tensorizers, model_state=None):
+        model_config.init_from_saved_state = model_state is not None
         model = create_component(
-            ComponentType.MODEL, config.model, tensorizers=tensorizers
+            ComponentType.MODEL, model_config, tensorizers=tensorizers
         )
         if model_state:
             model.load_state_dict(model_state)
