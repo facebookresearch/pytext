@@ -59,13 +59,13 @@ class DeepCNNRepresentation(RepresentationBase):
     def forward(self, inputs: torch.Tensor, *args) -> torch.Tensor:
         inputs = self.dropout(inputs)
         # bsz * seq_len * embed_dim -> bsz * embed_dim * seq_len
-        words = inputs.transpose(1, 2)
+        words = inputs.permute(0, 2, 1)
         for conv, proj in zip(self.convs, self.projections):
             if proj is None:
                 residual = words
             else:
-                tranposed = words.transpose(1, 2)
-                residual = proj(tranposed).transpose(1, 2)
+                tranposed = words.permute(0, 2, 1)
+                residual = proj(tranposed).permute(0, 2, 1)
             words = conv(words)
             words = self.glu(words)
             words = (words + residual) * math.sqrt(0.5)
