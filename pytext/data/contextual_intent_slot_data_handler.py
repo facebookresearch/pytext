@@ -195,6 +195,8 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             for utterance in sequence[:-1]
         ]
 
+        seq_feature_list = features_list
+
         # adding dictionary feature for the last (current) message
         features_list.append(
             self.featurizer.featurize(
@@ -205,9 +207,8 @@ class ContextualIntentSlotModelDataHandler(JointModelDataHandler):
             )
         )
 
-        seq_feature_list = features_list
-        if self.exclude_current_text_for_doc:
-            seq_feature_list = features_list[:-1]
+        if not self.exclude_current_text_for_doc:
+            seq_feature_list = features_list
 
         res = {
             # features
