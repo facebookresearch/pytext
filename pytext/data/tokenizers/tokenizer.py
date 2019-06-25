@@ -47,3 +47,24 @@ class Tokenizer(Component):
             start = split_end
         tokens.append(Token(tokenize_input[start : len(input)], start, len(input)))
         return [token for token in tokens if token.value]
+
+
+class DoNothingTokenizer(Tokenizer):
+    """
+    Tokenizer that takes a list of strings and converts to a list of Tokens.
+    Used for Fluent2 integration, where tokenizer is run before-hand
+    """
+
+    class Config(Component.Config):
+        do_nothing: str = ""
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls()
+
+    def __init__(self):
+        super().__init__(None)
+
+    def tokenize(self, input: List[str]) -> List[Token]:
+        tokens = [Token(token_text, -1, -1) for token_text in input if token_text]
+        return tokens
