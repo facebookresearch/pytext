@@ -114,6 +114,8 @@ class TokenTensorizer(Tensorizer):
         #: need to be set during model initialization (e.g. see WordEmbedding)
         build_vocab: bool = True
         vocab_file: str = ""
+        #: Init vocab from file
+        init_vocab_from_file: bool = False
         #: The number of lines in the above provided vocab_file to add to the
         #: overall vocab
         vocab_file_size_limit: int = 0
@@ -130,6 +132,7 @@ class TokenTensorizer(Tensorizer):
             max_seq_len=config.max_seq_len,
             build_vocab=config.build_vocab,
             vocab_file=config.vocab_file,
+            init_vocab_from_file=config.init_vocab_from_file,
             vocab_file_size_limit=config.vocab_file_size_limit,
         )
 
@@ -144,6 +147,7 @@ class TokenTensorizer(Tensorizer):
         build_vocab=True,
         vocab=None,
         vocab_file=Config.vocab_file,
+        init_vocab_from_file=Config.init_vocab_from_file,
         vocab_file_size_limit=Config.vocab_file_size_limit,
     ):
         if isinstance(tokenizer, DoNothingTokenizer):
@@ -160,6 +164,7 @@ class TokenTensorizer(Tensorizer):
         self.build_vocab = build_vocab
         self.vocab_builder = None
         self.vocab_file = vocab_file
+        self.init_vocab_from_file = init_vocab_from_file
         self.vocab_file_size_limit = vocab_file_size_limit
 
     def _lookup_tokens(self, text=None, pre_tokenized=None):
@@ -191,10 +196,13 @@ class TokenTensorizer(Tensorizer):
 
         try:
             while True:
-                row = yield
-                raw_text = row[self.text_column]
-                tokenized = self.tokenizer.tokenize(raw_text)
-                self.vocab_builder.add_all([t.value for t in tokenized])
+                if self.init_vocab_from_file:
+                    yield
+                else:
+                    row = yield
+                    raw_text = row[self.text_column]
+                    tokenized = self.tokenizer.tokenize(raw_text)
+                    self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
             self._add_vocab_from_file()
             self.vocab = self.vocab_builder.make_vocab()
