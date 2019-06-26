@@ -8,7 +8,7 @@ from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
-    FloatListTensorizer,
+    LabelListTensorizer,
     LabelTensorizer,
     NumericLabelTensorizer,
     Tensorizer,
@@ -16,7 +16,7 @@ from pytext.data.tensorizers import (
 )
 from pytext.data.utils import PAD, UNK
 from pytext.exporters.exporter import ModelExporter
-from pytext.loss import BinaryCrossEntropyLoss
+from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import CharacterEmbedding, EmbeddingList, WordEmbedding
 from pytext.models.model import Model
@@ -25,6 +25,7 @@ from pytext.models.output_layers import ClassificationOutputLayer, RegressionOut
 from pytext.models.output_layers.doc_classification_output_layer import (
     BinaryClassificationOutputLayer,
     MulticlassOutputLayer,
+    MultiLabelOutputLayer,
 )
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
@@ -72,7 +73,6 @@ class DocModel(Model):
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
-            dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
         inputs: ModelInput = ModelInput()
@@ -192,11 +192,14 @@ class DocModel(Model):
             config, representation.representation_dim, len(labels)
         )
         loss = create_loss(config.output_layer.loss)
-        output_layer_cls = (
-            BinaryClassificationOutputLayer
-            if isinstance(loss, BinaryCrossEntropyLoss)
-            else MulticlassOutputLayer
-        )
+
+        if isinstance(loss, BinaryCrossEntropyLoss):
+            output_layer_cls = BinaryClassificationOutputLayer
+        elif isinstance(loss, MultiLabelSoftMarginLoss):
+            output_layer_cls = MultiLabelOutputLayer
+        else:
+            output_layer_cls = MulticlassOutputLayer
+
         output_layer = output_layer_cls(list(labels), loss)
         return cls(embedding, representation, decoder, output_layer)
 

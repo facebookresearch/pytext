@@ -27,6 +27,7 @@ from pytext.metric_reporters import (
     CompositionalMetricReporter,
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
+    MultiLabelClassificationMetricReporter,
     PairwiseRankingMetricReporter,
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
@@ -184,6 +185,8 @@ class DocumentClassificationTask(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config()
         )
+        #   for multi-label classification task,
+        #   choose MultiLabelClassificationMetricReporter
 
 
 class DocumentRegressionTask(NewTask):

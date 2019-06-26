@@ -97,6 +97,48 @@ class BinaryCrossEntropyLoss(Loss):
         return loss.sum(1).mean() if reduce else loss.sum(1)
 
 
+class MultiLabelSoftMarginLoss(Loss):
+    def __call__(self, m_out, targets, reduce=True):
+        """
+        Computes multi-label classification loss
+        see details in torch.nn.MultiLabelSoftMarginLoss
+        """
+
+        num_classes = m_out.size()[1]
+        target_labels = targets[0]
+
+        #  each label list is padded by -1 to make every
+        # observation example has the same length of list of labels
+        #  since -1 is out of the index range
+        # add 1 to target_labels temporarily
+        tmp_target_labels = target_labels + 1
+
+        #  the idea is similar to one_hot_targets
+        #  the following encoding supports multi-label task
+        #  need to delete the first-column endoing since
+        #  it's for the padded label -1
+        n_hot_targets = (
+            FloatTensor(target_labels.size(0), num_classes + 1)
+            .zero_()
+            .scatter_(1, tmp_target_labels, 1)
+        )[:, 1:]
+
+        """
+        `F.multilabel_soft_margin_loss` or `torch.nn.MultiLabelSoftMarginLoss.`
+        requires the
+        output of the previous function be already a FloatTensor.
+        """
+
+        #  default: equal weight for each class
+        #  the losses are averaged over observations for each mini-batch
+
+        loss = F.multilabel_soft_margin_loss(
+            precision.maybe_float(m_out), n_hot_targets, reduction="mean"
+        )
+
+        return loss
+
+
 class AUCPRHingeLoss(nn.Module, Loss):
     """area under the precision-recall curve loss,
     Reference: "Scalable Learning of Non-Decomposable Objectives", Section 5 \
