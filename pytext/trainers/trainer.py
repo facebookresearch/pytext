@@ -500,7 +500,7 @@ class TaskTrainer(Trainer):
                     model.accumulate_gradients(False)
 
             with timing.time("model.train_batch"):
-                loss, metric_data = model.train_batch(model, batch)
+                loss, metric_data = model.train_batch(model, batch, state)
                 if sample_size > 1:
                     # gradients averaged per each batch and accumulated across samples.
                     # divide sample_size to let gradients averaged per example

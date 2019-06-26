@@ -153,7 +153,7 @@ class BaseModel(nn.Module, Component):
     # def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
     #     raise NotImplementedError
     @classmethod
-    def train_batch(cls, model, batch):
+    def train_batch(cls, model, batch, state=None):
         # This is a class method so that it works when model is a DistributedModel
         # wrapper. Otherwise the forward call here skips the DDP forward call.
 
@@ -162,6 +162,13 @@ class BaseModel(nn.Module, Component):
         model_context = model.arrange_model_context(batch)
         targets = model.arrange_targets(batch)
         model_outputs = model(*model_inputs)
+
+        # Add stage to context.
+        if state:
+            if model_context is None:
+                model_context = {"stage": state.stage}
+            else:
+                model_context["stage"] = state.stage
 
         # Compute loss and predictions.
         loss = maybe_float(model.get_loss(model_outputs, targets, model_context))

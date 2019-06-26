@@ -206,7 +206,6 @@ class TensorizersTest(unittest.TestCase):
         for row in self.data.train:
             init.send(row)
         init.close()
-        print(tensorizer.vocab._vocab)
         self.assertEqual(7, len(tensorizer.vocab))
 
     def test_create_label_tensors(self):
