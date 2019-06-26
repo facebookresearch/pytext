@@ -92,6 +92,8 @@ class PyTextConfig(ConfigBase):
     export_onnx_path: str = "/tmp/model.onnx"
     # Exported torchscript model will be stored here
     export_torchscript_path: Optional[str] = None
+    # Export quantized torchscript model
+    torchscript_quantize: Optional[bool] = False
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules if they are best yet

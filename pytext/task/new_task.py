@@ -183,7 +183,7 @@ class _NewTask(TaskBase):
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
 
-    def torchscript_export(self, model, export_path=None):
+    def torchscript_export(self, model, export_path=None, quantize=False):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
@@ -195,9 +195,14 @@ class _NewTask(TaskBase):
 
         unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
         inputs = model.arrange_model_inputs(batch)
+        # call model forward to set correct device types
+        model(*inputs)
+        if quantize:
+            model.quantize()
         trace = jit.trace(model, inputs)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
+        trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
             trace.save(export_path)
