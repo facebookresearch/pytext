@@ -2,7 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .channel import Channel
-from .classification_metric_reporter import ClassificationMetricReporter
+from .classification_metric_reporter import (
+    ClassificationMetricReporter,
+    MultiLabelClassificationMetricReporter,
+)
 from .compositional_metric_reporter import CompositionalMetricReporter
 from .intent_slot_detection_metric_reporter import IntentSlotMetricReporter
 from .language_model_metric_reporter import LanguageModelMetricReporter
@@ -19,6 +22,7 @@ __all__ = [
     "Channel",
     "MetricReporter",
     "ClassificationMetricReporter",
+    "MultiLabelClassificationMetricReporter",
     "RegressionMetricReporter",
     "IntentSlotMetricReporter",
     "LanguageModelMetricReporter",

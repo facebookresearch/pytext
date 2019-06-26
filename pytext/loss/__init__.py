@@ -10,6 +10,7 @@ from .loss import (
     LabelSmoothedCrossEntropyLoss,
     Loss,
     MSELoss,
+    MultiLabelSoftMarginLoss,
     NLLLoss,
     PairwiseRankingLoss,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "Loss",
     "CrossEntropyLoss",
     "BinaryCrossEntropyLoss",
+    "MultiLabelSoftMarginLoss",
     "KLDivergenceBCELoss",
     "KLDivergenceCELoss",
     "MSELoss",
