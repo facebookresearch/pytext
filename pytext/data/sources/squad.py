@@ -4,7 +4,7 @@
 import json
 from typing import List, Optional
 
-from pytext.data.sources.data_source import DataSource, generator_property
+from pytext.data.sources.data_source import DataSource, JSONString, generator_property
 from pytext.data.sources.tsv import TSVDataSource
 
 
@@ -111,5 +111,44 @@ class SquadTSVDataSource(TSVDataSource):
             "answers": List[str],
             "answer_starts": List[int],
             "has_answer": str,
+        }
+        super().__init__(**kwargs)
+
+
+class SquadTSVForKDDataSource(TSVDataSource):
+    """
+    Squad-like data along with soft labels (logits) passed in TSV format.
+    Will return tuples of (
+        doc, question, answer, answer_start, has_answer,
+        start_logits, end_logits, has_answer_logits, pad_mask, segment_labels
+    )
+    """
+
+    class Config(TSVDataSource.Config):
+        field_names: List[str] = [
+            "doc",
+            "question",
+            "answers",
+            "answer_starts",
+            "has_answer",
+            "start_logits",
+            "end_logits",
+            "has_answer_logits",
+            "pad_mask",
+            "segment_labels",
+        ]
+
+    def __init__(self, **kwargs):
+        kwargs["schema"] = {
+            "doc": JSONString,
+            "question": JSONString,
+            "answers": List[str],
+            "answer_starts": List[int],
+            "has_answer": JSONString,
+            "start_logits": List[float],
+            "end_logits": List[float],
+            "has_answer_logits": List[float],
+            "pad_mask": List[int],
+            "segment_labels": List[int],
         }
         super().__init__(**kwargs)

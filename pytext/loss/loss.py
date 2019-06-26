@@ -327,10 +327,11 @@ class KLDivergenceCELoss(Loss):
         self.t = config.temperature
         self.hard_weight = config.hard_weight
 
-    def __call__(self, logits, targets, reduce=True):
+    def __call__(self, logits, targets, reduce=True, combine_loss=True):
         """
         Computes Kullback-Leibler divergence loss for multiclass classification
-        probability distribution computed by CrossEntropyLoss loss
+        probability distribution computed by CrossEntropyLoss loss.
+        For, KL-divergence, batchmean is the right way to reduce, not just mean.
         """
         hard_targets, _, soft_targets_logits = targets
         soft_targets = F.softmax(FloatTensor(soft_targets_logits) / self.t, dim=1)
@@ -342,10 +343,10 @@ class KLDivergenceCELoss(Loss):
                 F.kl_div(log_probs, soft_targets, reduction="none") * self.weight
             )
             if reduce:
-                soft_loss = soft_loss.mean()
+                soft_loss = torch.sum(soft_loss, dim=1).mean()
         else:
             soft_loss = F.kl_div(
-                log_probs, soft_targets, reduction="mean" if reduce else "none"
+                log_probs, soft_targets, reduction="batchmean" if reduce else "none"
             )
         soft_loss *= self.t ** 2  # see https://arxiv.org/pdf/1503.02531.pdf
 
@@ -358,7 +359,11 @@ class KLDivergenceCELoss(Loss):
                 weight=self.weight,
             )
 
-        return (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
+        return (
+            (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
+            if combine_loss
+            else (soft_loss, hard_loss)
+        )
 
 
 class PairwiseRankingLoss(Loss):
