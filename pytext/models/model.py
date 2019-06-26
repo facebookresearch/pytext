@@ -16,6 +16,7 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
 from pytext.utils.precision import maybe_float
+from torch.jit import quantized
 
 from .decoders import DecoderBase
 from .embeddings import EmbeddingBase, EmbeddingList
@@ -113,6 +114,12 @@ class BaseModel(nn.Module, Component):
                 module.prepare_for_onnx_export_(**kwargs)
 
         self.apply(apply_prepare_for_onnx_export_)
+
+    def quantize(self):
+        """Quantize the model during export."""
+        # by default only quantize the linear modules, override this method if your
+        # model wants other modules quantized
+        quantized.quantize_linear_modules(self)
 
     def get_param_groups_for_optimizer(self) -> List[Dict[str, List[nn.Parameter]]]:
         """

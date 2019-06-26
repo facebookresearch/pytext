@@ -150,7 +150,9 @@ def save_and_export(
             config.export_onnx_path,
         )
     if config.export_torchscript_path:
-        task.torchscript_export(task.model, config.export_torchscript_path)
+        task.torchscript_export(
+            task.model, config.export_torchscript_path, config.torchscript_quantize
+        )
 
 
 def export_saved_model_to_caffe2(
@@ -169,9 +171,11 @@ def export_saved_model_to_caffe2(
     task.export(task.model, export_caffe2_path, export_onnx_path=output_onnx_path)
 
 
-def export_saved_model_to_torchscript(saved_model_path: str, path: str) -> None:
+def export_saved_model_to_torchscript(
+    saved_model_path: str, path: str, quantize: bool = False
+) -> None:
     task, train_config = load(saved_model_path)
-    task.torchscript_export(task.model, path)
+    task.torchscript_export(task.model, path, quantize)
 
 
 def test_model(
