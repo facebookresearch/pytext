@@ -6,7 +6,12 @@ from typing import List, Optional
 
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
-from pytext.metrics import LabelPrediction, compute_classification_metrics
+from pytext.metrics import (
+    LabelListPrediction,
+    LabelPrediction,
+    compute_classification_metrics,
+    compute_multi_label_classification_metrics,
+)
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -42,6 +47,8 @@ class ComparableClassificationMetric(Enum):
 
 
 class ClassificationMetricReporter(MetricReporter):
+    __EXPANSIBLE__ = True
+
     class Config(MetricReporter.Config):
         model_select_metric: ComparableClassificationMetric = (
             ComparableClassificationMetric.ACCURACY
@@ -148,3 +155,17 @@ class ClassificationMetricReporter(MetricReporter):
 
         assert metric is not None
         return metric
+
+
+class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
+    def calculate_metric(self):
+        return compute_multi_label_classification_metrics(
+            [
+                LabelListPrediction(scores, pred, expect)
+                for scores, pred, expect in zip(
+                    self.all_scores, self.all_preds, self.all_targets
+                )
+            ],
+            self.label_names,
+            self.calculate_loss(),
+        )

@@ -438,8 +438,52 @@ def rename_bitransformer_inputs(json_config):
 
 
 @register_adapter(from_version=12)
-def remove_output_encoded_layers(json_config):
+def v12_to_v13(json_config):
+    """remove_output_encoded_layers(json_config)"""
     rename(json_config, "output_encoded_layers", None)
+    """
+    Make 'ClassificationMetricReporter'
+    expansible.
+
+    If the 'metric_reporter' field should be an instance of
+    'ClassificationMetricReporter',
+    convert it to '{ClassificationMetricReporter: metric_reporter}'.
+    """
+
+    [(task_name, task)] = json_config["task"].items()
+    if task_name not in (
+        "EnsembleTask_Deprecated",
+        "EnsembleTask",
+        "DocClassificationTask_Deprecated",
+        "DocumentClassificationTask",
+        "PairwiseClassificationTask",
+        "SeqNNTask_Deprecated",
+        "SeqNNTask",
+        "ShallowClassificationTask_Deprecated",
+        "KDDocClassificationTask_Deprecated",
+        "ElmoDocClassificationTask_Deprecated",
+        "PairwiseAttentionClassificationTask_Deprecated",
+        "ElmoFineTunePairwiseClassificationTask_Deprecated",
+        "ElmoKDClassificationTask_Deprecated",
+        "XLMDocumentClassification",
+        "XLMPairClassification",
+        "NewBertClassificationTask",
+        "NewBertPairClassificationTask",
+        "LaserClassificationTask",
+    ):
+        # Task has a metric reporter different from ClassificationMetricReporter
+        return json_config
+    metric_reporter = task.get("metric_reporter")
+    if metric_reporter is None:
+        return json_config
+    keys = list(metric_reporter.keys())
+    if keys == []:
+        return json_config
+    set = {"output_path", "model_select_metric", "target_label", "text_column_names"}
+    if keys[0] in set:
+        task["metric_reporter"] = {"ClassificationMetricReporter": metric_reporter}
+    else:
+        return json_config
     return json_config
 
 

@@ -14,6 +14,7 @@ from pytext.loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
+    MultiLabelSoftMarginLoss,
 )
 from pytext.utils.label import get_label_weights
 from torch import jit
@@ -40,6 +41,7 @@ class ClassificationOutputLayer(OutputLayerBase):
         loss: Union[
             CrossEntropyLoss.Config,
             BinaryCrossEntropyLoss.Config,
+            MultiLabelSoftMarginLoss.Config,
             AUCPRHingeLoss.Config,
             KLDivergenceBCELoss.Config,
             KLDivergenceCELoss.Config,
@@ -66,11 +68,14 @@ class ClassificationOutputLayer(OutputLayerBase):
             else None
         )
         loss = create_loss(config.loss, weight=label_weights)
-        cls = (
-            BinaryClassificationOutputLayer
-            if isinstance(loss, BinaryCrossEntropyLoss)
-            else MulticlassOutputLayer
-        )
+
+        if isinstance(loss, BinaryCrossEntropyLoss):
+            cls = BinaryClassificationOutputLayer
+        elif isinstance(loss, MultiLabelSoftMarginLoss):
+            cls = MultiLabelOutputLayer
+        else:
+            cls = MulticlassOutputLayer
+
         return cls(vocab, create_loss(config.loss, weight=label_weights), config)
 
     def get_pred(self, logit, *args, **kwargs):
@@ -163,6 +168,31 @@ class MulticlassOutputLayer(ClassificationOutputLayer):
     ) -> List[core.BlobReference]:
         """See `OutputLayerBase.export_to_caffe2()`."""
         probability_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
+        return OutputLayerUtils.gen_additional_blobs(
+            predict_net, probability_out, model_out, output_name, self.target_names
+        )
+
+
+class MultiLabelOutputLayer(ClassificationOutputLayer):
+    def get_pred(self, logit, *args, **kwargs):
+        """See `OutputLayerBase.get_pred()`."""
+        preds = logit > 0
+        scores = F.logsigmoid(logit)
+        return preds, scores
+
+    def torchscript_predictions(self):
+        return ClassificationScores(self.target_names, F.log_softmax)
+
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+    ) -> List[core.BlobReference]:
+        """See `OutputLayerBase.export_to_caffe2()`."""
+        probability_out = predict_net.Sigmoid(output_name)
         return OutputLayerUtils.gen_additional_blobs(
             predict_net, probability_out, model_out, output_name, self.target_names
         )
