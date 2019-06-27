@@ -116,6 +116,40 @@ class RoundRobinBatchSampler(BaseBatchSampler):
                         yield name, next(new_iter)
 
 
+def select_key_and_batch(
+    iterator_names: Dict[str, str],
+    iterator_probs: Dict[str, float],
+    iter_dict: Dict[str, Iterator],
+    iterators: Dict[str, Iterator],
+):
+    """ Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
+    to select a key from iterator_names using iterator_probs and return a batch
+    for the selected key using iter_dict and iterators.
+    """
+    # Select a candidate iterator using the uniform distribtion
+    selected_key = np.random.choice(iterator_names, p=iterator_probs)
+    try:
+        batch = next(iter_dict[selected_key])
+    except StopIteration:
+        iter_dict[selected_key] = iter(iterators[selected_key])
+        batch = next(iter_dict[selected_key])
+
+    return selected_key, batch
+
+
+def extract_iterator_properties(input_iterator_probs: Dict[str, float]):
+    """ Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
+    to generate iterator properties: iterator_names and iterator_probs.
+    """
+    iterator_names = list(input_iterator_probs)
+    iterator_probs = np.array(
+        [float(input_iterator_probs[name]) for name in iterator_names]
+    )
+    iterator_probs /= iterator_probs.sum()
+
+    return iterator_names, iterator_probs
+
+
 class RandomizedBatchSampler(BaseBatchSampler):
     """
     This sampler takes in a dictionary of iterators and returns batches according
@@ -147,11 +181,9 @@ class RandomizedBatchSampler(BaseBatchSampler):
         return cls(config.unnormalized_iterator_probs)
 
     def __init__(self, unnormalized_iterator_probs: Dict[str, float]) -> None:
-        self.iterator_names = list(unnormalized_iterator_probs)
-        self.iterator_probs = np.array(
-            [float(unnormalized_iterator_probs[name]) for name in self.iterator_names]
+        self.iterator_names, self.iterator_probs = extract_iterator_properties(
+            unnormalized_iterator_probs
         )
-        self.iterator_probs /= self.iterator_probs.sum()
         # Note: we need to make `iter_dict` an instance attribute so that it persists
         # across calls to `batchify()`. This way subsequent epochs will continue from
         # previous states of the iterators (instead of recreating them).
@@ -166,13 +198,79 @@ class RandomizedBatchSampler(BaseBatchSampler):
         num_batches = 0
 
         while True:
-            # Select a candidate iterator using the uniform distribtion
-            selected_key = np.random.choice(self.iterator_names, p=self.iterator_probs)
-            try:
-                batch = next(self.iter_dict[selected_key])
-            except StopIteration:
-                self.iter_dict[selected_key] = iter(iterators[selected_key])
-                batch = next(self.iter_dict[selected_key])
-
+            selected_key, batch = select_key_and_batch(
+                self.iterator_names, self.iterator_probs, self.iter_dict, iterators
+            )
             num_batches += 1
+            yield selected_key, batch
+
+
+class AlternatingRandomizedBatchSampler(RandomizedBatchSampler):
+    """
+    This sampler takes in a dictionary of iterators and returns batches alternating
+    between keys and probabilities specified by `unnormalized_iterator_probs` and
+    'second_unnormalized_iterator_probs', This is used for example in XLM
+    pre-training where we alternate between MLM and TLM batches.
+    """
+
+    __COMPONENT_TYPE__ = ComponentType.BATCH_SAMPLER
+
+    class Config(Component.Config):
+        unnormalized_iterator_probs: Dict[str, float]
+        second_unnormalized_iterator_probs: Dict[str, float]
+
+    @classmethod
+    def from_config(cls, config: Config):
+        assert (
+            len(config.unnormalized_iterator_probs) > 0
+            and len(config.second_unnormalized_iterator_probs) > 0
+        )
+        return cls(
+            unnormalized_iterator_probs=config.unnormalized_iterator_probs,
+            second_unnormalized_iterator_probs=(
+                config.second_unnormalized_iterator_probs
+            ),
+        )
+
+    def __init__(
+        self,
+        unnormalized_iterator_probs: Dict[str, float],
+        second_unnormalized_iterator_probs: Dict[str, float],
+    ) -> None:
+        super().__init__(unnormalized_iterator_probs)
+
+        (
+            self.second_iterator_names,
+            self.second_iterator_probs,
+        ) = extract_iterator_properties(second_unnormalized_iterator_probs)
+        self.is_secondary_turn = False
+
+    def batchify(self, iterators: Dict[str, Iterator]):
+        assert set(iterators) == set(self.iterator_names).union(
+            set(self.second_iterator_names)
+        )
+
+        if self.iter_dict is None:
+            self.iter_dict = {
+                name: iter(iterator) for name, iterator in iterators.items()
+            }
+
+        while True:
+            curr_iter = (
+                self.second_iterator_names
+                if self.is_secondary_turn
+                else self.iterator_names
+            )
+            curr_probs = (
+                self.second_iterator_probs
+                if self.is_secondary_turn
+                else self.iterator_probs
+            )
+
+            selected_key, batch = select_key_and_batch(
+                curr_iter, curr_probs, self.iter_dict, iterators
+            )
+
+            self.is_secondary_turn = not self.is_secondary_turn
+
             yield selected_key, batch

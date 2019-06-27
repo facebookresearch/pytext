@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .batch_sampler import (
+    AlternatingRandomizedBatchSampler,
     BaseBatchSampler,
     EvalBatchSampler,
     RandomizedBatchSampler,
@@ -24,6 +25,7 @@ from .tensorizers import Tensorizer
 
 
 __all__ = [
+    "AlternatingRandomizedBatchSampler",
     "Batcher",
     "BaseBatchSampler",
     "BatchIterator",
