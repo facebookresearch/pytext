@@ -7,6 +7,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
+from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingBase
@@ -234,6 +235,16 @@ class LMLSTM(BaseModel):
 
     def vocab_to_export(self, tensorizers):
         return {"tokens": list(tensorizers["tokens"].vocab)}
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            self.get_export_input_names(tensorizers),
+            self.arrange_model_inputs(tensor_dict),
+            self.vocab_to_export(tensorizers),
+            self.get_export_output_names(tensorizers),
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
     def forward(
         self, tokens: torch.Tensor, seq_len: torch.Tensor

@@ -97,6 +97,8 @@ class BiLSTM(RepresentationBase):
         """
         embedded_tokens = self.dropout(embedded_tokens)
 
+        stateful = states is not None
+
         if states is not None:
             # convert (h0, c0) from (bsz x num_layers*num_directions x nhid) to
             # (num_layers*num_directions x bsz x nhid)
@@ -127,7 +129,10 @@ class BiLSTM(RepresentationBase):
                 True,
                 self.lstm.bidirectional,
             )
-            new_state = (new_state_0, new_state_1)
+            if stateful:
+                new_state = (new_state_0, new_state_1)
+            else:
+                new_state = (states[0], states[1])
         else:
             rnn_input = pack_padded_sequence(
                 embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
