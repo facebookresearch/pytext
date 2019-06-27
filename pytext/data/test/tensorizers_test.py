@@ -6,6 +6,7 @@ from typing import List
 
 import numpy as np
 import torch
+from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.tensorizers import (
@@ -20,6 +21,7 @@ from pytext.data.tensorizers import (
     TokenTensorizer,
     initialize_tensorizers,
 )
+from pytext.data.tokenizers import WordPieceTokenizer
 from pytext.utils.test import import_tests_module
 
 
@@ -437,3 +439,101 @@ class TensorizersTest(unittest.TestCase):
         for row, expected in zip(data.train, EXPECTED_ACTIONS):
             actions = nbrz.numberize(row)
             self.assertEqual(expected, actions)
+
+
+class BERTTensorizerTest(unittest.TestCase):
+    def test_bert_tensorizer(self):
+        sentence = "<SOS>  Focus Driving School Mulungushi bus station along Kasuba road, wamkopeka building.  Ndola,  Zambia."
+        # expected result was obtained offline by running BertModelDataHandler
+        expected = [
+            101,
+            133,
+            278,
+            217,
+            135,
+            175,
+            287,
+            766,
+            462,
+            100,
+            379,
+            182,
+            459,
+            334,
+            459,
+            280,
+            504,
+            462,
+            425,
+            283,
+            171,
+            462,
+            567,
+            474,
+            180,
+            262,
+            217,
+            459,
+            931,
+            262,
+            913,
+            117,
+            192,
+            262,
+            407,
+            478,
+            287,
+            744,
+            263,
+            478,
+            262,
+            560,
+            119,
+            183,
+            282,
+            287,
+            843,
+            117,
+            195,
+            262,
+            407,
+            931,
+            566,
+            119,
+            102,
+        ]
+        row = {"text": sentence}
+        tensorizer = BERTTensorizer.from_config(
+            BERTTensorizer.Config(
+                tokenizer=WordPieceTokenizer.Config(
+                    wordpiece_vocab_path="pytext/data/test/data/wordpiece_1k.txt"
+                )
+            )
+        )
+        tokens, segment_label, seq_len = tensorizer.numberize(row)
+        self.assertEqual(tokens, expected)
+        self.assertEqual(seq_len, len(expected))
+        self.assertEqual(segment_label, [0] * len(expected))
+
+        tokens, pad_mask, segment_labels = tensorizer.tensorize(
+            [(tokens, segment_label, seq_len)]
+        )
+        self.assertEqual(pad_mask[0].tolist(), [1] * len(expected))
+
+    def test_bert_pair_tensorizer(self):
+        sentences = ["Focus", "Driving School"]
+        expected_tokens = [101, 175, 287, 766, 462, 102, 100, 379, 102]
+        expected_segment_labels = [0, 0, 0, 0, 0, 0, 1, 1, 1]
+        row = {"text1": sentences[0], "text2": sentences[1]}
+        tensorizer = BERTTensorizer.from_config(
+            BERTTensorizer.Config(
+                columns=["text1", "text2"],
+                tokenizer=WordPieceTokenizer.Config(
+                    wordpiece_vocab_path="pytext/data/test/data/wordpiece_1k.txt"
+                ),
+            )
+        )
+        tokens, segment_labels, seq_len = tensorizer.numberize(row)
+        self.assertEqual(tokens, expected_tokens)
+        self.assertEqual(segment_labels, expected_segment_labels)
+        self.assertEqual(seq_len, len(expected_tokens))
