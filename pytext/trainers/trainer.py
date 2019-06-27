@@ -452,10 +452,12 @@ class Trainer(TrainerBase):
             self.backprop(state, loss)
 
             if report_metric:
-                with timing.time("add metrics"):
+                with timing.time("get pred"):
                     preds, scores = model.get_pred(
                         logits, targets, context, state.stage, *inputs
                     )
+
+                with timing.time("add metrics"):
                     metric_reporter.add_batch_stats(
                         batch_id, preds, targets, scores, loss.item(), inputs, **context
                     )
