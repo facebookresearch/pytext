@@ -224,7 +224,8 @@ class LMLSTM(BaseModel):
 
     def arrange_targets(self, tensor_dict):
         # Omit first token because it won't have a corresponding input
-        return tensor_dict["tokens"][0][:, 1:].contiguous()
+        tokens, seq_lens, _ = tensor_dict["tokens"]
+        return (tokens[:, 1:].contiguous(), seq_lens - 1)
 
     def get_export_input_names(self, tensorizers):
         return ["tokens", "tokens_lens"]
