@@ -3,7 +3,12 @@
 
 import unittest
 
-from pytext.data import EvalBatchSampler, RandomizedBatchSampler, RoundRobinBatchSampler
+from pytext.data import (
+    AlternatingRandomizedBatchSampler,
+    EvalBatchSampler,
+    RandomizedBatchSampler,
+    RoundRobinBatchSampler,
+)
 
 
 class BatchSamplerTest(unittest.TestCase):
@@ -11,6 +16,15 @@ class BatchSamplerTest(unittest.TestCase):
         self.iteratorA = ["1", "2", "3", "4", "5"]
         self.iteratorB = ["a", "b", "c"]
         self.iter_dict = {"A": self.iteratorA, "B": self.iteratorB}
+
+        self.iteratorC = ["d", "e", "f"]
+        self.iteratorD = ["6", "7", "8", "9", "10"]
+        self.alternating_iter_dict = {
+            "A": self.iteratorA,
+            "B": self.iteratorB,
+            "C": self.iteratorC,
+            "D": self.iteratorD,
+        }
 
     def test_round_robin_batch_sampler(self):
 
@@ -34,23 +48,47 @@ class BatchSamplerTest(unittest.TestCase):
     def test_prob_batch_sampler(self):
         sampler = RandomizedBatchSampler(unnormalized_iterator_probs={"A": 1, "B": 0})
 
-        def truncate(items, length):
-            for _ in range(length):
-                yield next(items)
-
-        prob_iterator = truncate(iter(sampler.batchify(self.iter_dict)), 8)
+        prob_iterator = self._truncate(iter(sampler.batchify(self.iter_dict)), 8)
         expected_items = ["1", "2", "3", "4", "5", "1", "2", "3"]
         self._check_iterator(prob_iterator, expected_items)
-        prob_iterator = truncate(iter(sampler.batchify(self.iter_dict)), 8)
+        prob_iterator = self._truncate(iter(sampler.batchify(self.iter_dict)), 8)
         expected_items = ["4", "5", "1", "2", "3", "4", "5", "1"]
         self._check_iterator(prob_iterator, expected_items)
 
         sampler = RandomizedBatchSampler(unnormalized_iterator_probs={"A": 0, "B": 1})
-        prob_iterator = truncate(sampler.batchify(self.iter_dict), 5)
+        prob_iterator = self._truncate(sampler.batchify(self.iter_dict), 5)
         expected_items = ["a", "b", "c", "a", "b"]
         self._check_iterator(prob_iterator, expected_items)
-        prob_iterator = truncate(sampler.batchify(self.iter_dict), 5)
+        prob_iterator = self._truncate(sampler.batchify(self.iter_dict), 5)
         expected_items = ["c", "a", "b", "c", "a"]
+        self._check_iterator(prob_iterator, expected_items)
+
+    def test_alternate_prob_batch_sampler(self):
+        sampler = AlternatingRandomizedBatchSampler(
+            unnormalized_iterator_probs={"A": 1, "B": 0},
+            second_unnormalized_iterator_probs={"C": 0, "D": 1},
+        )
+
+        prob_iterator = self._truncate(
+            iter(sampler.batchify(self.alternating_iter_dict)), 12
+        )
+        expected_items = ["1", "6", "2", "7", "3", "8", "4", "9", "5", "10", "1", "6"]
+        self._check_iterator(prob_iterator, expected_items)
+        prob_iterator = self._truncate(
+            iter(sampler.batchify(self.alternating_iter_dict)), 4
+        )
+        expected_items = ["2", "7", "3", "8"]
+        self._check_iterator(prob_iterator, expected_items)
+
+        sampler = AlternatingRandomizedBatchSampler(
+            unnormalized_iterator_probs={"A": 0, "B": 1},
+            second_unnormalized_iterator_probs={"C": 1, "D": 0},
+        )
+        prob_iterator = self._truncate(sampler.batchify(self.alternating_iter_dict), 9)
+        expected_items = ["a", "d", "b", "e", "c", "f", "a", "d", "b"]
+        self._check_iterator(prob_iterator, expected_items)
+        prob_iterator = self._truncate(sampler.batchify(self.alternating_iter_dict), 3)
+        expected_items = ["e", "c", "f"]
         self._check_iterator(prob_iterator, expected_items)
 
     def _check_iterator(self, iterator, expected_items, fixed_order=True):
@@ -60,3 +98,7 @@ class BatchSamplerTest(unittest.TestCase):
             actual_items = sorted(actual_items)
             expected_items = sorted(expected_items)
         self.assertListEqual(actual_items, expected_items)
+
+    def _truncate(self, items, length):
+        for _ in range(length):
+            yield next(items)
