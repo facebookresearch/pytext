@@ -1,10 +1,12 @@
 click
+fairseq @ git+https://github.com/pytorch/fairseq.git@master#egg=fairseq-0
 future
 hypothesis<4.0
 joblib
 numpy
 onnx
 pandas
+pytorch-pretrained-bert
 requests
 scipy
 torchtext
