@@ -68,14 +68,17 @@ class SafeFileWrapper:
         self._file = open(*args, **kwargs)
 
     def __del__(self):
-        self._file.close()
+        if hasattr(self, "_file"):
+            self._file.close()
+            del self._file
 
     def __iter__(self):
         """Some file utilities check hasattr(o, "__iter__") explicitly."""
         return iter(self._file)
 
     def __getattr__(self, attr):
-        return getattr(self._file, attr)
+        file = object.__getattribute__(self, "_file")
+        return getattr(file, attr)
 
 
 class GeneratorIterator:

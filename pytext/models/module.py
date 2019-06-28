@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict
+import os
+from typing import Dict, Set
 
 import torch
 import torch.nn as nn
@@ -71,7 +72,8 @@ class Module(nn.Module, Component):
 
     def __init__(self, config=None) -> None:
         nn.Module.__init__(self)
-        Component.__init__(self, config)
+        Component.__init__(self)
+        self.save_path = getattr(config, "save_path", None)
 
     def freeze(self) -> None:
         for param in self.parameters():

@@ -98,13 +98,17 @@ class BaseModel(nn.Module, Component):
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
         """Save each sub-module in separate files for reusing later."""
-        for module in self.module_list:
-            if module and getattr(module.config, "save_path", None):
-                path = module.config.save_path + suffix
+
+        def save(module):
+            save_path = getattr(module, "save_path", None)
+            if save_path is not None:
+                path = module.save_path + suffix
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
                 torch.save(module.state_dict(), path)
+
+        self.apply(save)
 
     def prepare_for_onnx_export_(self, **kwargs):
         """Make model exportable via ONNX trace."""

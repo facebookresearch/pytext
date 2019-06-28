@@ -56,6 +56,7 @@ class BiLSTM(RepresentationBase):
     ) -> None:
         super().__init__(config)
 
+        self.config = config
         self.padding_value: float = padding_value
         self.dropout = nn.Dropout(config.dropout)
         self.lstm = nn.LSTM(
