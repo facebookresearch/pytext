@@ -19,7 +19,9 @@ from pytext.data import (
     QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
+from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
+from pytext.data.packed_lm_data import PackedLMData
 from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import DenseFeatureExporter
 from pytext.metric_reporters import (
@@ -33,6 +35,11 @@ from pytext.metric_reporters import (
     SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
 )
+from pytext.metric_reporters.language_model_metric_reporter import (
+    MaskedLMMetricReporter,
+)
+from pytext.models.bert_classification_models import NewBertModel
+from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import (
     BaggingDocEnsemble_Deprecated,
@@ -42,6 +49,7 @@ from pytext.models.ensembles import (
 )
 from pytext.models.joint_model import IntentSlotModel, JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
+from pytext.models.masked_lm import MaskedLanguageModel
 from pytext.models.model import BaseModel
 from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
 from pytext.models.query_document_pairwise_ranking_model import (
@@ -197,6 +205,30 @@ class DocumentRegressionTask(NewTask):
         )
 
 
+class NewBertClassificationTask(DocumentClassificationTask):
+    class Config(DocumentClassificationTask.Config):
+        model: NewBertModel.Config = NewBertModel.Config()
+
+
+class NewBertPairClassificationTask(DocumentClassificationTask):
+    class Config(DocumentClassificationTask.Config):
+        model: NewBertModel.Config = NewBertModel.Config(
+            inputs=NewBertModel.Config.BertModelInput(
+                tokens=BERTTensorizer.Config(
+                    columns=["text1", "text2"], max_seq_len=128
+                )
+            )
+        )
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
+        )
+
+
+class BertPairRegressionTask(DocumentRegressionTask):
+    class Config(DocumentRegressionTask.Config):
+        model: NewBertRegressionModel.Config = NewBertRegressionModel.Config()
+
+
 class WordTaggingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: WordTaggingModel_Deprecated.Config = WordTaggingModel_Deprecated.Config()
@@ -296,6 +328,15 @@ class LMTask(NewTask):
         model: LMLSTM.Config = LMLSTM.Config()
         metric_reporter: LanguageModelMetricReporter.Config = (
             LanguageModelMetricReporter.Config()
+        )
+
+
+class MaskedLMTask(NewTask):
+    class Config(NewTask.Config):
+        data: Data.Config = PackedLMData.Config()
+        model: MaskedLanguageModel.Config = MaskedLanguageModel.Config()
+        metric_reporter: MaskedLMMetricReporter.Config = (
+            MaskedLMMetricReporter.Config()
         )
 
 

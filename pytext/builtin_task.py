@@ -11,6 +11,7 @@ from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultita
 from pytext.task.new_task import NewTask
 from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
+    BertPairRegressionTask,
     ContextualIntentSlotTask_Deprecated,
     DocClassificationTask_Deprecated,
     DocumentClassificationTask,
@@ -20,6 +21,9 @@ from pytext.task.tasks import (
     JointTextTask_Deprecated,
     LMTask,
     LMTask_Deprecated,
+    MaskedLMTask,
+    NewBertClassificationTask,
+    NewBertPairClassificationTask,
     PairwiseClassificationTask,
     QueryDocumentPairwiseRankingTask,
     QueryDocumentPairwiseRankingTask_Deprecated,
@@ -66,6 +70,7 @@ def add_include(path):
 def register_builtin_tasks():
     register_tasks(
         (
+            BertPairRegressionTask,
             ContextualIntentSlotTask_Deprecated,
             DisjointMultitask,
             DocClassificationTask_Deprecated,
@@ -76,6 +81,9 @@ def register_builtin_tasks():
             JointTextTask_Deprecated,
             LMTask,
             LMTask_Deprecated,
+            MaskedLMTask,
+            NewBertClassificationTask,
+            NewBertPairClassificationTask,
             NewDisjointMultitask,
             PairwiseClassificationTask,
             QueryDocumentPairwiseRankingTask,
