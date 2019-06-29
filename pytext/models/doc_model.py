@@ -8,7 +8,7 @@ from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
-    LabelListTensorizer,
+    FloatListTensorizer,
     LabelTensorizer,
     NumericLabelTensorizer,
     Tensorizer,
@@ -73,6 +73,7 @@ class DocModel(Model):
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
+            dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
         inputs: ModelInput = ModelInput()
