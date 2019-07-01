@@ -7,8 +7,11 @@ from typing import List
 import numpy as np
 import torch
 from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.sources import SquadDataSource
 from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
+from pytext.data.squad_for_bert_tensorizer import SquadForBERTTensorizer
+from pytext.data.squad_tensorizer import SquadTensorizer
 from pytext.data.tensorizers import (
     AnnotationNumberizer,
     ByteTensorizer,
@@ -21,7 +24,7 @@ from pytext.data.tensorizers import (
     TokenTensorizer,
     initialize_tensorizers,
 )
-from pytext.data.tokenizers import WordPieceTokenizer
+from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
 from pytext.utils.test import import_tests_module
 
 
@@ -537,3 +540,149 @@ class BERTTensorizerTest(unittest.TestCase):
         self.assertEqual(tokens, expected_tokens)
         self.assertEqual(segment_labels, expected_segment_labels)
         self.assertEqual(seq_len, len(expected_tokens))
+
+
+class SquadForBERTTensorizerTest(unittest.TestCase):
+    def test_squad_tensorizer(self):
+        source = SquadDataSource.from_config(
+            SquadDataSource.Config(eval_filename="pytext/tests/data/squad_tiny.json")
+        )
+        row = next(iter(source.eval))
+        tensorizer = SquadForBERTTensorizer.from_config(
+            SquadForBERTTensorizer.Config(
+                tokenizer=WordPieceTokenizer.Config(
+                    wordpiece_vocab_path="pytext/data/test/data/wordpiece_1k.txt"
+                ),
+                max_seq_len=250,
+            )
+        )
+        tokens, segments, seq_len, start, end = tensorizer.numberize(row)
+        # check against manually verified answer positions in tokenized output
+        # there are 4 identical answers
+        self.assertEqual(start, [83, 83, 83, 83])
+        self.assertEqual(end, [87, 87, 87, 87])
+        self.assertEqual(len(tokens), seq_len)
+        self.assertEqual(len(segments), seq_len)
+
+        tensorizer.max_seq_len = 50
+        # answer should be truncated out
+        _, _, _, start, end = tensorizer.numberize(row)
+        self.assertEqual(start, [-100, -100, -100, -100])
+        self.assertEqual(end, [-100, -100, -100, -100])
+        self.assertEqual(len(tokens), seq_len)
+        self.assertEqual(len(segments), seq_len)
+
+
+class SquadTensorizerTest(unittest.TestCase):
+    def setUp(self):
+        self.data_source = SquadDataSource.from_config(
+            SquadDataSource.Config(
+                train_filename="pytext/tests/data/squad_tiny.json",
+                eval_filename=None,
+                test_filename=None,
+            )
+        )
+        self.tensorizer_with_wordpiece = SquadTensorizer.from_config(
+            SquadTensorizer.Config(
+                tokenizer=WordPieceTokenizer.Config(
+                    wordpiece_vocab_path="pytext/data/test/data/wordpiece_1k.txt"
+                ),
+                max_seq_len=250,
+            )
+        )
+        self.tensorizer_with_alphanumeric = SquadTensorizer.from_config(
+            SquadTensorizer.Config(
+                tokenizer=Tokenizer.Config(split_regex=r"\W+"), max_seq_len=250
+            )
+        )
+
+    def _init_tensorizer(self):
+        tensorizer_dict = {
+            "wordpiece": self.tensorizer_with_wordpiece,
+            "alphanumeric": self.tensorizer_with_alphanumeric,
+        }
+        initialize_tensorizers(tensorizer_dict, self.data_source.train)
+
+    def test_initialize(self):
+        self._init_tensorizer()
+        self.assertEqual(len(self.tensorizer_with_wordpiece.vocab), 1000)
+        self.assertEqual(
+            len(self.tensorizer_with_wordpiece.ques_tensorizer.vocab), 1000
+        )
+        self.assertEqual(len(self.tensorizer_with_wordpiece.doc_tensorizer.vocab), 1000)
+        self.assertEqual(len(self.tensorizer_with_alphanumeric.vocab), 1418)
+        self.assertEqual(
+            len(self.tensorizer_with_alphanumeric.ques_tensorizer.vocab), 1418
+        )
+        self.assertEqual(
+            len(self.tensorizer_with_alphanumeric.doc_tensorizer.vocab), 1418
+        )
+
+    def test_numberize_with_alphanumeric(self):
+        self._init_tensorizer()
+        row = next(iter(self.data_source.train))
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_alphanumeric.numberize(row)
+
+        # check against manually verified answer positions in tokenized output
+        # there are 4 identical answers
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(ques_tokens, [2, 3, 4, 5, 6, 7])  # It's a coincidence.
+        self.assertEqual(answer_start_token_idx, [26, 26, 26, 26])
+        self.assertEqual(answer_end_token_idx, [26, 26, 26, 26])
+
+        self.tensorizer_with_alphanumeric.doc_tensorizer.max_seq_len = 20
+        # answer should be truncated out because max doc len is smaller.
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_alphanumeric.numberize(row)
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(answer_start_token_idx, [-100])
+        self.assertEqual(answer_end_token_idx, [-100])
+
+    def test_numberize_with_wordpiece(self):
+        self._init_tensorizer()
+        row = next(iter(self.data_source.train))
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_wordpiece.numberize(row)
+
+        # check against manually verified answer positions in tokenized output
+        # there are 4 identical answers
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(answer_start_token_idx, [70, 70, 70, 70])
+        self.assertEqual(answer_end_token_idx, [74, 74, 74, 74])
+
+        self.tensorizer_with_wordpiece.doc_tensorizer.max_seq_len = 50
+        # answer should be truncated out because max doc len is smaller.
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_wordpiece.numberize(row)
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(answer_start_token_idx, [-100])
+        self.assertEqual(answer_end_token_idx, [-100])

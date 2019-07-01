@@ -33,6 +33,7 @@ from pytext.metric_reporters import (
     PairwiseRankingMetricReporter,
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
+    SquadMetricReporter,
     WordTaggingMetricReporter,
 )
 from pytext.metric_reporters.language_model_metric_reporter import (
@@ -52,6 +53,8 @@ from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.masked_lm import MaskedLanguageModel
 from pytext.models.model import BaseModel
 from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
+from pytext.models.qna.bert_squad_qa import BertSquadQAModel
+from pytext.models.qna.dr_qa import DrQAModel
 from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocPairwiseRankingModel,
     QueryDocumentPairwiseRankingModel_Deprecated,
@@ -366,6 +369,12 @@ class SeqNNTask(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config(text_column_names=["text_seq"])
         )
+
+
+class SquadQATask(NewTask):
+    class Config(NewTask.Config):
+        model: Union[BertSquadQAModel.Config, DrQAModel.Config] = DrQAModel.Config()
+        metric_reporter: SquadMetricReporter.Config = SquadMetricReporter.Config()
 
 
 class ContextualIntentSlotTask_Deprecated(Task_Deprecated):
