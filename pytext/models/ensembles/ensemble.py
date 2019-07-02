@@ -137,3 +137,6 @@ class EnsembleModel(Ensemble_Deprecated):
             self.get_export_output_names(tensorizers),
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
+
+    def torchscriptify(self, tensorizers, traced_model):
+        return self.models[0].torchscriptify(tensorizers, traced_model)
