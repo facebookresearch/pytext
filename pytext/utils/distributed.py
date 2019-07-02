@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from contextlib import contextmanager
+
 import torch
 import torch.distributed as dist_c10d
+import torch.nn.parallel as parallel
 
 
 def dist_init(
@@ -77,3 +80,12 @@ def get_shard_range(dataset_size: int, rank: int, world_size: int):
     shard_end = shard_offset + shard_len - 1
 
     return (shard_offset, shard_end)
+
+
+@contextmanager
+def ddp_sync(ddp_model: torch.nn.Module, no_sync: bool):
+    if isinstance(ddp_model, parallel.DistributedDataParallel) and no_sync:
+        with ddp_model.no_sync():
+            yield
+    else:
+        yield

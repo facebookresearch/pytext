@@ -21,7 +21,7 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.scheduler import Scheduler
-from pytext.utils import cuda, precision, timing
+from pytext.utils import cuda, distributed, precision, timing
 
 
 class TrainerBase(Component):
@@ -425,31 +425,27 @@ class Trainer(TrainerBase):
         model = state.model
         self.zero_grads(state)
         for i, (batch_id, (inputs, targets, context)) in enumerate(samples):
-            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-                # Whenever *samples* contains more than one mini-batch, we
-                # want to accumulate gradients locally and only call
-                # all-reduce in the last backwards pass.
-                if i < sample_size - 1:
-                    # sync gradients in the last sample backward
-                    model.accumulate_gradients(True)
-                else:
-                    model.accumulate_gradients(False)
+            # Whenever *samples* contains more than one mini-batch, we
+            # want to accumulate gradients locally and only call
+            # all-reduce in the last backwards pass.
+            with distributed.ddp_sync(model, no_sync=(i < sample_size - 1)):
+                # pass context to model to use in forward call if needed
+                model.contextualize(context)
+                with timing.time("model.forward"):
+                    logits = model(*inputs)
 
-            # pass context to model to use in forward call if needed
-            model.contextualize(context)
-            with timing.time("model.forward"):
-                logits = model(*inputs)
+                with timing.time("compute loss"):
+                    loss = precision.maybe_float(
+                        model.get_loss(logits, targets, context)
+                    )
+                    if BatchContext.IGNORE_LOSS in context:
+                        loss *= 0
+                    elif sample_size > 1:
+                        # gradients averaged per batch and accumulated across samples.
+                        # divide sample_size to let gradients averaged per example
+                        loss = loss / sample_size
 
-            with timing.time("compute loss"):
-                loss = precision.maybe_float(model.get_loss(logits, targets, context))
-                if BatchContext.IGNORE_LOSS in context:
-                    loss *= 0
-                elif sample_size > 1:
-                    # gradients averaged per each batch and accumulated across samples.
-                    # divide sample_size to let gradients averaged per example
-                    loss = loss / sample_size
-
-            self.backprop(state, loss)
+                self.backprop(state, loss)
 
             if report_metric:
                 with timing.time("get pred"):
@@ -491,23 +487,17 @@ class TaskTrainer(Trainer):
         model = state.model
         self.zero_grads(state)
         for i, (batch_id, (raw_batch, batch)) in enumerate(samples):
-            if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-                # Whenever *samples* contains more than one mini-batch, we
-                # want to accumulate gradients locally and only call
-                # all-reduce in the last backwards pass.
-                if i < sample_size - 1:
-                    # sync gradients in the last sample backward
-                    model.accumulate_gradients(True)
-                else:
-                    model.accumulate_gradients(False)
-
-            with timing.time("model.train_batch"):
-                loss, metric_data = model.train_batch(model, batch, state)
-                if sample_size > 1:
-                    # gradients averaged per each batch and accumulated across samples.
-                    # divide sample_size to let gradients averaged per example
-                    loss = loss / sample_size
-            self.backprop(state, loss)
+            # Whenever *samples* contains more than one mini-batch, we
+            # want to accumulate gradients locally and only call
+            # all-reduce in the last backwards pass.
+            with distributed.ddp_sync(model, no_sync=(i < sample_size - 1)):
+                with timing.time("model.train_batch"):
+                    loss, metric_data = model.train_batch(model, batch)
+                    if sample_size > 1:
+                        # gradients averaged per batch and accumulated across samples.
+                        # divide sample_size to let gradients averaged per example.
+                        loss = loss / sample_size
+                self.backprop(state, loss)
 
             if report_metric:
                 with timing.time("add metrics"):
