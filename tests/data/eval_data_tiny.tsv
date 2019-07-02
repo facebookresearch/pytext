@@ -1,0 +1,3 @@
+alarm/time_left_on_alarm		How much time is left?
+alarm/set_alarm	23:38:datetime	Set my alarm on all days
+reminder/set_reminder	10:18:datetime,22:38:reminder/todo	remind me tomorrow to call my mom
