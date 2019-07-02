@@ -3,10 +3,15 @@
 
 from typing import Union
 
-from pytext.data.tensorizers import SlotLabelTensorizer, TokenTensorizer
+from pytext.data.tensorizers import (
+    ByteTokenTensorizer,
+    SlotLabelTensorizer,
+    TokenTensorizer,
+)
 from pytext.data.utils import UNK
+from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.embeddings import WordEmbedding
+from pytext.models.embeddings import CharacterEmbedding, WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import CRFOutputLayer, WordTaggingOutputLayer
@@ -52,6 +57,9 @@ class WordTaggingModel_Deprecated(Model):
 
 
 class WordTaggingModel(Model):
+
+    __EXPANSIBLE__ = True
+
     class Config(Model.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config()
@@ -108,3 +116,56 @@ class WordTaggingModel(Model):
 
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
+
+    def get_export_input_names(self, tensorizers):
+        return ["tokens", "tokens_lens"]
+
+    def get_export_output_names(self, tensorizers):
+        return ["word_scores"]
+
+    def vocab_to_export(self, tensorizers):
+        return {"tokens": list(tensorizers["tokens"].vocab)}
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            self.get_export_input_names(tensorizers),
+            self.arrange_model_inputs(tensor_dict),
+            self.vocab_to_export(tensorizers),
+            self.get_export_output_names(tensorizers),
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
+
+
+class WordTaggingLiteModel(WordTaggingModel):
+    """
+    Also a word tagging model, but uses bytes as inputs to the model. Using
+    bytes instead of words, the model does not need to store a word embedding
+    table mapping words in the vocab to their embedding vector representations,
+    but instead compute them on the fly using CharacterEmbedding. This produces
+    an exported/serialized model that requires much less storage space as well
+    as less memory during run/inference time.
+    """
+
+    class Config(WordTaggingModel.Config):
+        class ModelInput(WordTaggingModel.Config.ModelInput):
+            # We should support characters as well, but CharacterTokenTensorizer
+            # does not support adding characters to vocab yet.
+            tokens: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config()
+
+        inputs: ModelInput = ModelInput()
+        embedding: CharacterEmbedding.Config = CharacterEmbedding.Config()
+
+    @classmethod
+    def create_embedding(cls, config, tensorizers):
+        return CharacterEmbedding(
+            tensorizers["tokens"].NUM_BYTES,
+            config.embedding.embed_dim,
+            config.embedding.cnn.kernel_num,
+            config.embedding.cnn.kernel_sizes,
+            config.embedding.highway_layers,
+            config.embedding.projection_dim,
+        )
+
+    def vocab_to_export(self, tensorizers):
+        return {}
