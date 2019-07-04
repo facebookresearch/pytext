@@ -55,14 +55,9 @@ def _set_fp16(use_fp16: bool) -> None:
 
 
 def _set_distributed(
-    rank: int,
-    world_size: int,
-    dist_init_url: str,
-    device_id: int,
-    metadata: CommonMetadata,
+    rank: int, world_size: int, dist_init_url: str, device_id: int,
 ) -> None:
     if dist_init_url and world_size > 1:
-        assert metadata is not None
         distributed.dist_init(rank, world_size, dist_init_url, device_id)
 
 
@@ -114,7 +109,7 @@ def prepare_task(
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     _set_fp16(config.use_fp16)
-    _set_distributed(rank, world_size, dist_init_url, device_id, metadata)
+    _set_distributed(rank, world_size, dist_init_url, device_id)
 
     if config.random_seed is not None:
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
