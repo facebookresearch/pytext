@@ -178,6 +178,11 @@ class _NewTask(TaskBase):
         precision.deactivate(model)
 
         unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
+        if metric_channels:
+            print("Exporting metrics")
+            for mc in metric_channels:
+                mc.export(model, model.arrange_model_inputs(batch))
+
         print(f"Saving caffe2 model to: {export_path}")
         return model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
