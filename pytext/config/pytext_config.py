@@ -41,6 +41,11 @@ class ConfigBase(metaclass=ConfigBaseMeta):
     def _asdict(self):
         return {k: getattr(self, k) for k in type(self).__annotations__}
 
+    def _replace(self, **kwargs):
+        args = self._asdict()
+        args.update(kwargs)
+        return type(self)(**args)
+
     def __init__(self, **kwargs):
         """Configs can be constructed by specifying values by keyword.
         If a keyword is supplied that isn't in the config, or if a config requires
