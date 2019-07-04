@@ -226,6 +226,10 @@ class RootDataSource(DataSource):
 
     @classmethod
     def register_type(cls, type):
+        # Make sure we don't accidentally use RootDataSource's registry
+        if "DATA_SOURCE_TYPES" not in vars(cls):
+            cls.DATA_SOURCE_TYPES = {}
+
         def decorator(fn):
             cls.DATA_SOURCE_TYPES[type] = fn
             return fn
@@ -233,15 +237,12 @@ class RootDataSource(DataSource):
         return decorator
 
     def load(self, value, schema_type):
-        if schema_type in self.DATA_SOURCE_TYPES:
-            converter = self.DATA_SOURCE_TYPES[schema_type]
-            return converter(value)
-        try:
-            return super().load(value, schema_type)
-        except AttributeError:  # super lower than RootDataSource without load()
-            raise Exception(
-                'Type not registered in data source: "{}"'.format(schema_type)
-            )
+        for cls in type(self).__mro__:
+            if schema_type in getattr(cls, "DATA_SOURCE_TYPES", {}):
+                converter = cls.DATA_SOURCE_TYPES[schema_type]
+                return converter(value)
+        else:
+            raise Exception(f'Type not registered in data source: "{schema_type}"')
 
     def raw_train_data_generator(self):
         """
