@@ -148,12 +148,12 @@ class WordTaggingLiteModel(WordTaggingModel):
     """
 
     class Config(WordTaggingModel.Config):
-        class ModelInput(WordTaggingModel.Config.ModelInput):
+        class ByteModelInput(WordTaggingModel.Config.ModelInput):
             # We should support characters as well, but CharacterTokenTensorizer
             # does not support adding characters to vocab yet.
             tokens: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config()
 
-        inputs: ModelInput = ModelInput()
+        inputs: ByteModelInput = ByteModelInput()
         embedding: CharacterEmbedding.Config = CharacterEmbedding.Config()
 
     @classmethod
