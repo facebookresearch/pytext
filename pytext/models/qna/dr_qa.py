@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 from typing import Dict, Tuple
 
 import torch
@@ -9,8 +8,6 @@ import torch.nn.functional as F
 from pytext.data.squad_tensorizer import SquadTensorizer
 from pytext.data.tensorizers import LabelTensorizer, Tensorizer
 from pytext.data.utils import Vocabulary
-
-# from pytext.models.representations.stacked_bi_rnn import StackedBRNN
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import BaseModel

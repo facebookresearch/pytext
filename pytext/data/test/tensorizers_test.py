@@ -545,7 +545,9 @@ class BERTTensorizerTest(unittest.TestCase):
 class SquadForBERTTensorizerTest(unittest.TestCase):
     def test_squad_tensorizer(self):
         source = SquadDataSource.from_config(
-            SquadDataSource.Config(eval_filename="pytext/tests/data/squad_tiny.json")
+            SquadDataSource.Config(
+                eval_filename=tests_module.test_file("squad_tiny.json")
+            )
         )
         row = next(iter(source.eval))
         tensorizer = SquadForBERTTensorizer.from_config(
@@ -577,7 +579,7 @@ class SquadTensorizerTest(unittest.TestCase):
     def setUp(self):
         self.data_source = SquadDataSource.from_config(
             SquadDataSource.Config(
-                train_filename="pytext/tests/data/squad_tiny.json",
+                train_filename=tests_module.test_file("squad_tiny.json"),
                 eval_filename=None,
                 test_filename=None,
             )
