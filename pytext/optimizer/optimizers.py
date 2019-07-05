@@ -26,8 +26,8 @@ class Adagrad(torch.optim.Adagrad, Optimizer):
         super().__init__(parameters, lr=lr, weight_decay=weight_decay)
 
     @classmethod
-    def from_config(cls, config: Config, model: torch.nn.Module):
-        return cls(model.parameters(), config.lr, config.weight_decay)
+    def from_config(cls, config: Config, model_params):
+        return cls(model_params, config.lr, config.weight_decay)
 
 
 class Adam(torch.optim.Adam, Optimizer):
@@ -39,8 +39,8 @@ class Adam(torch.optim.Adam, Optimizer):
         super().__init__(parameters, lr=lr, weight_decay=weight_decay)
 
     @classmethod
-    def from_config(cls, config: Config, model: torch.nn.Module):
-        return cls(model.parameters(), config.lr, config.weight_decay)
+    def from_config(cls, config: Config, model_params):
+        return cls(model_params, config.lr, config.weight_decay)
 
 
 class SGD(torch.optim.SGD, Optimizer):
@@ -52,8 +52,8 @@ class SGD(torch.optim.SGD, Optimizer):
         super().__init__(parameters, lr=lr, momentum=momentum)
 
     @classmethod
-    def from_config(cls, config: Config, model: torch.nn.Module):
-        return cls(model.parameters(), config.lr, config.momentum)
+    def from_config(cls, config: Config, model_params):
+        return cls(model_params, config.lr, config.momentum)
 
 
 def learning_rates(optimizer):

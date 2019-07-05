@@ -102,7 +102,9 @@ class Trainer(TrainerBase):
         scheduler: Optional[Scheduler.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
-        optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
+        optimizer: torch.optim.Optimizer = create_optimizer(
+            config.optimizer, model.parameters()
+        )
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, optimizer)
             if config.scheduler

@@ -177,9 +177,9 @@ def create_model(model_config, *args, **kwargs):
     return create_component(ComponentType.MODEL, model_config, *args, **kwargs)
 
 
-def create_optimizer(optimizer_config, model: torch.nn.Module, *args, **kwargs):
+def create_optimizer(optimizer_config, model_params, *args, **kwargs):
     return create_component(
-        ComponentType.OPTIMIZER, optimizer_config, model, *args, **kwargs
+        ComponentType.OPTIMIZER, optimizer_config, model_params, *args, **kwargs
     )
 
 
