@@ -5,6 +5,7 @@ import json
 import logging
 from typing import Dict, List, TypeVar
 
+import torch
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
 from pytext.utils.data import Slot, parse_slot_string
