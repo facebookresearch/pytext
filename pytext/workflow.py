@@ -55,7 +55,7 @@ def _set_fp16(use_fp16: bool) -> None:
 
 
 def _set_distributed(
-    rank: int, world_size: int, dist_init_url: str, device_id: int,
+    rank: int, world_size: int, dist_init_url: str, device_id: int
 ) -> None:
     if dist_init_url and world_size > 1:
         distributed.dist_init(rank, world_size, dist_init_url, device_id)
