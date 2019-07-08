@@ -24,7 +24,6 @@ class DistributedModel(nn.parallel.DistributedDataParallel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.accumulate_grads = False
 
     def __getattr__(self, name):
         wrapped_module = super().__getattr__("module")
@@ -64,13 +63,3 @@ class DistributedModel(nn.parallel.DistributedDataParallel):
         wrapped_module = super().__getattr__("module")
         if hasattr(wrapped_module, "stage"):
             wrapped_module.stage = stage
-
-    def accumulate_gradients(self, enable):
-        self.accumulate_grads = enable
-
-    def forward(self, *inputs, **kwargs):
-        # support accumulate gradients in PyText
-        if self.accumulate_grads:
-            return self.module(*inputs, **kwargs)
-        else:
-            return super().forward(*inputs, **kwargs)
