@@ -211,8 +211,9 @@ class CRFOutputLayer(OutputLayerBase):
         if not context:
             raise MissingValueError("Expected non-None context but got None.")
         pred = self.crf.decode(logit, context[SEQ_LENS])
-        logit = _rearrange_output(logit, pred)
-        return pred, F.log_softmax(logit, 2)
+        logit_rearranged = _rearrange_output(logit, pred)
+        scores = F.log_softmax(logit_rearranged, 2)
+        return pred, scores
 
     def export_to_caffe2(
         self,
@@ -235,30 +236,14 @@ class CRFOutputLayer(OutputLayerBase):
         )
 
 
-# TODO T33442979 remove this after exposing prediction in caffe2 model
 def _rearrange_output(logit, pred):
     """
     Rearrange the word logits so that the decoded word has the highest valued
-    logits.
+    logits by swapping the indices predicted with those with maximum logits.
     """
-
-    """Context: without this line, the logit gets modified in place by this function
-    (which appears to be unintentional), causing errors during backpropagation.
-
-    In the old trainer, this didn't matter, since get_preds (and therefore this
-    function) runs after backprop, but in the new trainer, get_preds is run
-    before backprop because it is bundled with get_loss in train_batch."""
-    logit = logit.detach().clone()
-
-    for batch_idx, v_path in enumerate(pred):
-        for w_idx, word in enumerate(v_path):
-            w_logits = logit[batch_idx][w_idx]
-            v_label = word.item()
-            # make the word on the optimal path the greatest
-            _, maxIndex = torch.max(w_logits, 0)
-            w_logits[v_label], w_logits[maxIndex] = (
-                w_logits[maxIndex].item(),
-                w_logits[v_label].item(),
-            )
-            logit[batch_idx][w_idx] = w_logits
-    return logit
+    max_logits, max_logit_indices = torch.max(logit, 2, keepdim=True)
+    pred_indices = pred.unsqueeze(2)
+    pred_logits = torch.gather(logit, 2, pred_indices)
+    logit_rearranged = logit.scatter(2, pred_indices, max_logits)
+    logit_rearranged.scatter_(2, max_logit_indices, pred_logits)
+    return logit_rearranged
