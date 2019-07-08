@@ -629,11 +629,8 @@ def compute_multi_label_soft_metrics(
         y_true = []
         y_score = []
         for label_scores, _, expected in predictions:
-            for expected_label in expected:
-                if expected_label < 0:
-                    break
-                y_true.append(expected_label == i)
-                y_score.append(label_scores[i])
+            y_true.append(i in expected)
+            y_score.append(label_scores[i])
         y_true_sorted, y_score_sorted = sort_by_score(y_true, y_score)
         ap = average_precision_score(y_true_sorted, y_score_sorted)
         recall_at_precision_dict = recall_at_precision(
