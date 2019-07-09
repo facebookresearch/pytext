@@ -23,7 +23,7 @@ class DeepCNNRepresentation(RepresentationBase):
 
     class Config(RepresentationBase.Config):
         cnn: CNNParams = CNNParams()
-        dropout: float = 0
+        dropout: float = 0.3
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
