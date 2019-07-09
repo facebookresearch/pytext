@@ -199,6 +199,15 @@ class DocumentClassificationTask(NewTask):
         #   for multi-label classification task,
         #   choose MultiLabelClassificationMetricReporter
 
+    @classmethod
+    def format_prediction(cls, predictions, scores, context, target_names):
+        for prediction, score in zip(predictions, scores):
+            score_with_name = {n: s for n, s in zip(target_names, score.tolist())}
+            yield {
+                "prediction": target_names[prediction.data],
+                "score": score_with_name,
+            }
+
 
 class DocumentRegressionTask(NewTask):
     class Config(NewTask.Config):
