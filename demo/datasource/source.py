@@ -124,7 +124,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.train_queries_filepath, self.words),
-                intent_reader=reader(self.train_intent_filepath, self.intent),
+                intent_reader=reader(self.train_intent_filepath, self.intents),
                 select_fn=self._selector(select_eval=False),
             )
         )
@@ -133,7 +133,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.train_queries_filepath, self.words),
-                intent_reader=reader(self.train_intent_filepath, self.intent),
+                intent_reader=reader(self.train_intent_filepath, self.intents),
                 select_fn=self._selector(select_eval=True),
             )
         )
@@ -142,7 +142,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.test_queries_filepath, self.words),
-                intent_reader=reader(self.test_intent_filepath, self.intent),
+                intent_reader=reader(self.test_intent_filepath, self.intents),
             )
         )
 
