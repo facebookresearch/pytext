@@ -241,13 +241,13 @@ First let's get a config using our new :class:`~AtisIntentDataSource`
 
 .. code-block:: console
 
-    $ pytext --include my_classifier gen-default-config AtisIntentDataSource DocumentClassificationTask > my_classifier/config.json
+    $ pytext --include my_classifier gen-default-config DocumentClassificationTask AtisIntentDataSource > my_classifier/config.json
     Including: my_classifier
     ... importing module: my_classifier.source
     ... importing: <class 'my_classifier.source.AtisIntentDataSource'>
     INFO - Applying option: task->data->source = AtisIntentDataSource
 
-Now we edit the config to remove the parameters that we don't care about and can use the default values, and we edit the ones we care about. We only want to run 3 epochs for now. It looks like this.
+This default config contains all the parameters with their default value. So we edit the config to remove the parameters that we don't care about, and we edit the ones we care about. We only want to run 3 epochs for now. It looks like this.
 
 .. code-block:: console
 
@@ -260,12 +260,14 @@ Now we edit the config to remove the parameters that we don't care about and can
       "task": {
         "DocumentClassificationTask": {
           "data": {
-            "source": {
-              "AtisIntentDataSource": {
-                "field_names": ["text", "label"],
-                "path": "atis",
-                "random_seed": 12345,
-                "validation_split": 0.25
+            "Data": {
+              "source": {
+                "AtisIntentDataSource": {
+                  "field_names": ["text", "label"],
+                  "path": "atis",
+                  "random_seed": 12345,
+                  "validation_split": 0.25
+                }
               }
             }
           },
@@ -278,7 +280,7 @@ Now we edit the config to remove the parameters that we don't care about and can
         }
       },
       "test_out_path": "my_classifier_test.out",
-      "version": 11
+      "version": 12
     }
 
 And, at last, we can train the model
