@@ -50,6 +50,7 @@ class BiLSTM(RepresentationBase):
         lstm_dim: int = 32
         num_layers: int = 1
         bidirectional: bool = True
+        stateful: bool = True
 
     def __init__(
         self, config: Config, embed_dim: int, padding_value: float = 0.0
@@ -67,6 +68,16 @@ class BiLSTM(RepresentationBase):
         self.representation_dim: int = config.lstm_dim * (
             2 if config.bidirectional else 1
         )
+        self.stateful = config.stateful
+
+    def _create_zero_state(self, embedded_tokens):
+        state = torch.zeros(
+            self.config.num_layers * (2 if self.config.bidirectional else 1),
+            embedded_tokens.size(0),  # batch size
+            self.config.lstm_dim,
+            device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
+        )
+        return state
 
     def forward(
         self,
@@ -109,12 +120,7 @@ class BiLSTM(RepresentationBase):
             # torch.jit tracing currently traces this as constant and therefore
             # locks the traced model into a static batch size.
             # see https://github.com/pytorch/pytorch/issues/16664
-            state = torch.zeros(
-                self.config.num_layers * (2 if self.config.bidirectional else 1),
-                seq_lengths.size(0),  # batch size
-                self.config.lstm_dim,
-                device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
-            )
+            state = self._create_zero_state(embedded_tokens)
             states = (state, state)
         if torch.onnx.is_in_onnx_export():
             lstm_in = [embedded_tokens, states[0], states[1]] + [
@@ -127,7 +133,10 @@ class BiLSTM(RepresentationBase):
                 True,
                 self.lstm.bidirectional,
             )
-            new_state = (new_state_0, new_state_1)
+            if self.stateful:
+                new_state = (new_state_0, new_state_1)
+            else:
+                new_state = (states[0], states[1])
         else:
             rnn_input = pack_padded_sequence(
                 embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
