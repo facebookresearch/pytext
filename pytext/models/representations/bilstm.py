@@ -50,6 +50,7 @@ class BiLSTM(RepresentationBase):
         lstm_dim: int = 32
         num_layers: int = 1
         bidirectional: bool = True
+        pack_sequence: bool = True
 
     def __init__(
         self, config: Config, embed_dim: int, padding_value: float = 0.0
@@ -63,10 +64,12 @@ class BiLSTM(RepresentationBase):
             config.lstm_dim,
             num_layers=config.num_layers,
             bidirectional=config.bidirectional,
+            batch_first=True,
         )
         self.representation_dim: int = config.lstm_dim * (
             2 if config.bidirectional else 1
         )
+        self.pack_sequence = config.pack_sequence
 
     def forward(
         self,
@@ -129,16 +132,21 @@ class BiLSTM(RepresentationBase):
             )
             new_state = (new_state_0, new_state_1)
         else:
-            rnn_input = pack_padded_sequence(
-                embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
-            )
+            if self.pack_sequence:
+                rnn_input = pack_padded_sequence(
+                    embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
+                )
+            else:
+                rnn_input = embedded_tokens
             rep, new_state = self.lstm(rnn_input, states)
-            rep, _ = pad_packed_sequence(
-                rep,
-                padding_value=self.padding_value,
-                batch_first=True,
-                total_length=embedded_tokens.size(1),
-            )  # Make sure the output from LSTM is padded to input's sequence length.
+            if self.pack_sequence:
+                rep, _ = pad_packed_sequence(
+                    rep,
+                    padding_value=self.padding_value,
+                    batch_first=True,
+                    total_length=embedded_tokens.size(1),
+                )
+        # Make sure the output from LSTM is padded to input's sequence length.
         # convert states back to (bsz x num_layers*num_directions x nhid) to be
         # used in data parallel model
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
