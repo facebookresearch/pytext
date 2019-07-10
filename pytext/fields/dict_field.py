@@ -23,11 +23,13 @@ class DictFeatureField(VocabUsingField):
         pad_token=VocabMeta.PAD_TOKEN,
         unk_token=VocabMeta.UNK_TOKEN,
         batch_first=True,
+        left_pad=False,
         **kwargs,
     ):
         super().__init__(
             sequential=True,
             batch_first=batch_first,
+            pad_first=left_pad,
             tokenize=no_tokenize,
             use_vocab=True,
             pad_token=pad_token,
@@ -92,9 +94,16 @@ class DictFeatureField(VocabUsingField):
             ex_lengths.extend(feats_lengths)
             # Pad examples
             ex_padding = (max_ex_len - seq_len) * max_feat_len
-            ex_feats.extend([self.pad_token] * ex_padding)
-            ex_weights.extend([0.0] * ex_padding)
-            ex_lengths.extend([1] * (max_ex_len - seq_len))
+            if self.pad_first:
+                # left padding
+                ex_feats = [self.pad_token] * ex_padding + ex_feats
+                ex_weights = [0.0] * ex_padding + ex_weights
+                ex_lengths = [1] * (max_ex_len - seq_len) + ex_lengths
+            else:
+                # right padding
+                ex_feats.extend([self.pad_token] * ex_padding)
+                ex_weights.extend([0.0] * ex_padding)
+                ex_lengths.extend([1] * (max_ex_len - seq_len))
             all_feats.append(ex_feats)
             all_weights.append(ex_weights)
             all_lengths.append(ex_lengths)
