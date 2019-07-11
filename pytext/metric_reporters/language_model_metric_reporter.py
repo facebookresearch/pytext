@@ -3,6 +3,7 @@
 import math
 import time
 
+import torch
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
 from pytext.metrics.language_model_metrics import (
@@ -34,23 +35,26 @@ class LanguageModelMetricReporter(MetricReporter):
             [ConsoleChannel(), LanguageModelChannel((Stage.TEST,), config.output_path)]
         )
 
+    def add_batch_stats(
+        self, n_batches, preds, targets, scores, loss, m_input, **context
+    ):
+        if isinstance(loss, torch.Tensor):
+            loss = loss.item()
+        num_words_in_batch = targets[1].sum().item()
+        self.aggregate_loss += loss * num_words_in_batch
+        self.total_num_tokens += num_words_in_batch
+
+    def calculate_loss(self) -> float:
+        return self.aggregate_loss / float(self.total_num_tokens)
+
+    def _reset(self):
+        super()._reset()
+        self.aggregate_loss = 0.0
+        self.total_num_tokens = 0
+
     def calculate_metric(self) -> LanguageModelMetric:
         # In language model self.total_loss is the loss per word
         return compute_language_model_metric(self.total_loss)
-
-    def _get_target_seq_lens(self):
-        return self.all_context[DatasetFieldName.TARGET_SEQ_LENS]
-
-    def calculate_loss(self) -> float:
-        total_loss = n_words = pos = 0
-        for loss, batch_size in zip(self.all_loss, self.batch_size):
-            num_words_in_batch = sum(
-                self._get_target_seq_lens()[pos : pos + batch_size]
-            )
-            pos = pos + batch_size
-            total_loss += loss * num_words_in_batch
-            n_words += num_words_in_batch
-        return total_loss / float(n_words)
 
     def get_model_select_metric(self, metrics) -> float:
         return metrics.perplexity_per_word
