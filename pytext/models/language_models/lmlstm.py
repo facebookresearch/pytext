@@ -227,13 +227,13 @@ class LMLSTM(BaseModel):
         return tensor_dict["tokens"][0][:, 1:].contiguous()
 
     def get_export_input_names(self, tensorizers):
-        return ["tokens", "tokens_lens"]
+        return ["tokens_vals", "tokens_lens"]
 
     def get_export_output_names(self, tensorizers):
         return ["scores"]
 
     def vocab_to_export(self, tensorizers):
-        return {"tokens": list(tensorizers["tokens"].vocab)}
+        return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
     def forward(
         self, tokens: torch.Tensor, seq_len: torch.Tensor
