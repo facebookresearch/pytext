@@ -95,7 +95,8 @@ class BiLSTM(RepresentationBase):
                 Shape of each state is (bsize x num_layers * num_directions x nhid).
 
         """
-        embedded_tokens = self.dropout(embedded_tokens)
+        if self.dropout.p > 0.0:
+            embedded_tokens = self.dropout(embedded_tokens)
 
         if states is not None:
             # convert (h0, c0) from (bsz x num_layers*num_directions x nhid) to
