@@ -487,6 +487,50 @@ def v12_to_v13(json_config):
     return json_config
 
 
+@register_adapter(from_version=13)
+def rename_tensorizer_vocab_params(json_config):
+    [(task_name, task)] = json_config["task"].items()
+    # XLM and Bert models use the `vocab_file` field, but in a custom way. This
+    # field should not be migrated to `vocab.vocab_files` as for TokenTensorizer.
+    if "XLM" in task_name or "Bert" in task_name:
+        return json_config
+
+    def resolve_model(model_config):
+        if len(model_config) == 1 and list(model_config)[0][0].isupper():
+            [(model_name, model_config)] = model_config.items()
+            if "XLM" in model_name or "Bert" in model_name:
+                return {}
+        return model_config
+
+    model = resolve_model(task.get("model", {}))
+    if not model:
+        return json_config
+
+    def update_model_config(model_config):
+        model_config = resolve_model(model_config)
+        tokens = model_config.get("inputs", {}).get("tokens")
+        if not tokens:
+            return
+
+        vocab = {"build_from_data": tokens.pop("build_vocab", True), "vocab_files": []}
+        if "vocab_file" in tokens:
+            vocab["vocab_files"].append(
+                {
+                    "filepath": tokens.pop("vocab_file"),
+                    "size_limit": tokens.pop("vocab_file_size_limit", 0),
+                }
+            )
+
+    if "models" in model:
+        # ensemble model
+        for sub_model in model["models"]:
+            update_model_config(sub_model)
+    else:
+        update_model_config(model)
+
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)

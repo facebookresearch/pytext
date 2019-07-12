@@ -95,6 +95,27 @@ class Tensorizer(Component):
         yield
 
 
+class VocabFileConfig(Component.Config):
+    #: File containing tokens to add to vocab (first whitespace-separated entry per
+    #: line)
+    filepath: str = ""
+    #: Whether to skip the first line of the file (e.g. if it is a header line)
+    skip_header_line: bool = False
+    #: Whether to lowercase each of the tokens in the file
+    lowercase_tokens: bool = False
+    #: The max number of tokens to add to vocab
+    size_limit: int = 0
+
+
+class VocabConfig(Component.Config):
+    #: Whether to add tokens from training data to vocab.
+    build_from_data: bool = True
+    #: Add `size_from_data` most frequent tokens in training data to vocab (if this
+    #: is 0, add all tokens from training data).
+    size_from_data: int = 0
+    vocab_files: List[VocabFileConfig] = []
+
+
 class TokenTensorizer(Tensorizer):
     """Convert text to a list of tokens. Do this based on a tokenizer configuration,
     and build a vocabulary for numberization. Finally, pad the batch to create
@@ -110,13 +131,7 @@ class TokenTensorizer(Tensorizer):
         add_eos_token: bool = False
         use_eos_token_for_bos: bool = False
         max_seq_len: Optional[int] = None
-        #: If False, will not create token vocab during initialization. The vocab will
-        #: need to be set during model initialization (e.g. see WordEmbedding)
-        build_vocab: bool = True
-        vocab_file: str = ""
-        #: The number of lines in the above provided vocab_file to add to the
-        #: overall vocab
-        vocab_file_size_limit: int = 0
+        vocab: VocabConfig = VocabConfig()
 
     @classmethod
     def from_config(cls, config: Config):
@@ -128,9 +143,7 @@ class TokenTensorizer(Tensorizer):
             add_eos_token=config.add_eos_token,
             use_eos_token_for_bos=config.use_eos_token_for_bos,
             max_seq_len=config.max_seq_len,
-            build_vocab=config.build_vocab,
-            vocab_file=config.vocab_file,
-            vocab_file_size_limit=config.vocab_file_size_limit,
+            vocab_config=config.vocab,
         )
 
     def __init__(
@@ -141,10 +154,8 @@ class TokenTensorizer(Tensorizer):
         add_eos_token=Config.add_eos_token,
         use_eos_token_for_bos=Config.use_eos_token_for_bos,
         max_seq_len=Config.max_seq_len,
-        build_vocab=True,
+        vocab_config=None,
         vocab=None,
-        vocab_file=Config.vocab_file,
-        vocab_file_size_limit=Config.vocab_file_size_limit,
     ):
         super().__init__([(text_column, str)])
         self.text_column = text_column
@@ -154,10 +165,8 @@ class TokenTensorizer(Tensorizer):
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
-        self.build_vocab = build_vocab
         self.vocab_builder = None
-        self.vocab_file = vocab_file
-        self.vocab_file_size_limit = vocab_file_size_limit
+        self.vocab_config = vocab_config or VocabConfig()
 
     def _lookup_tokens(self, text=None, pre_tokenized=None):
         tokenized = pre_tokenized or self.tokenizer.tokenize(text)[: self.max_seq_len]
@@ -180,11 +189,27 @@ class TokenTensorizer(Tensorizer):
 
     def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
-        self.vocab_builder = vocab_builder or VocabBuilder()
-        if self.vocab or not self.build_vocab:
+        if self.vocab:
+            if self.vocab_config.build_from_data or self.vocab_config.vocab_files:
+                print(
+                    f"`{self.text_column}` column: vocab already provided, skipping "
+                    f"adding tokens from data and from vocab files."
+                )
             return
+
+        if not self.vocab_config.build_from_data and not self.vocab_config.vocab_files:
+            raise ValueError(
+                f"To create token tensorizer for '{self.text_column}', either "
+                f"`build_from_data` or `vocab_files` must be set."
+            )
+
+        self.vocab_builder = vocab_builder or VocabBuilder()
         self.vocab_builder.use_bos = self.add_bos_token
         self.vocab_builder.use_eos = self.add_eos_token
+        if not self.vocab_config.build_from_data:
+            self._add_vocab_from_files()
+            self.vocab = self.vocab_builder.make_vocab()
+            return
 
         try:
             while True:
@@ -193,32 +218,19 @@ class TokenTensorizer(Tensorizer):
                 tokenized = self.tokenizer.tokenize(raw_text)
                 self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
-            self._add_vocab_from_file()
+            self.vocab_builder.truncate_to_vocab_size(self.vocab_config.size_from_data)
+            self._add_vocab_from_files()
             self.vocab = self.vocab_builder.make_vocab()
 
-    def _add_vocab_from_file(self):
-        vocab_from_file: Set[str] = set()
-        if self.vocab_file:
-            if os.path.isfile(self.vocab_file):
-                with open(self.vocab_file, "r") as f:
-                    for i, line in enumerate(f):
-                        if (
-                            self.vocab_file_size_limit > 0
-                            and len(vocab_from_file) == self.vocab_file_size_limit
-                        ):
-                            print(
-                                f"Read {i+1} items from {self.vocab_file} to "
-                                f"load vocab of size {self.vocab_file_size_limit}. "
-                                f"Skipping rest of the file"
-                            )
-                            break
-                        line = line.strip()
-                        vocab_from_file.add(
-                            line.lower() if self.tokenizer.lowercase else line
-                        )
-            else:
-                print(f"{self.vocab_file} does not exist. Cannot load vocab from it")
-        self.vocab_builder.add_all(vocab_from_file)
+    def _add_vocab_from_files(self):
+        for vocab_file in self.vocab_config.vocab_files:
+            with open(vocab_file.filepath) as f:
+                self.vocab_builder.add_from_file(
+                    f,
+                    vocab_file.skip_header_line,
+                    vocab_file.lowercase_tokens,
+                    vocab_file.size_limit,
+                )
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""

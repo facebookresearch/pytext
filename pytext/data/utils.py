@@ -211,6 +211,23 @@ class VocabBuilder:
         """Count a single value in the vocabulary."""
         self._counter[value] += 1
 
+    def add_from_file(self, file_pointer, skip_header_line, lowercase_tokens, size):
+        vocab_from_file = set()
+        if skip_header_line:
+            next(file_pointer)
+        for i, line in enumerate(file_pointer):
+            if size and len(vocab_from_file) == size:
+                print(
+                    f"Read {i + 1} items from vocab file and loaded {size} tokens. "
+                    f"Skipping rest of the file."
+                )
+                break
+            token = line.split()[0].strip()
+            if lowercase_tokens:
+                token = token.lower()
+            vocab_from_file.add(token)
+        self.add_all(sorted(vocab_from_file))
+
     def make_vocab(self) -> Vocabulary:
         """Build a Vocabulary object from the values seen by the builder."""
         tokens_to_insert: List[Tuple[int, object]] = []
@@ -237,6 +254,12 @@ class VocabBuilder:
             vocab_list.insert(index, token)
 
         return Vocabulary(vocab_list, counts=self._counter, pad_token=self.pad_token)
+
+    def truncate_to_vocab_size(self, vocab_size) -> None:
+        if len(self._counter) > vocab_size > 0:
+            self._counter = collections.Counter(
+                dict(self._counter.most_common(vocab_size))
+            )
 
 
 def align_target_labels(
