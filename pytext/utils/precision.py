@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from contextlib import contextmanager
 from sys import stderr
 
 import torch
@@ -83,6 +84,21 @@ Opt level explaination (from Nvidia Apex):
 
 _FP16_ENABLED = False
 _OPT_LEVEL = None
+_DELAY_UNSCALE = False
+
+
+@contextmanager
+def delay_unscale():
+    global _DELAY_UNSCALE
+
+    # delay_unscale is required for gradients accumulation, model accumulate
+    # gradient on FP16 parameters when set to True and using the same loss_scale
+    old_delay_unscale = _DELAY_UNSCALE
+    _DELAY_UNSCALE = True
+    try:
+        yield
+    finally:
+        _DELAY_UNSCALE = old_delay_unscale
 
 
 def set_fp16(fp16_enabled: bool):
@@ -113,7 +129,9 @@ def backward(optimizer, loss):
         # 1. Use automatic loss scaling to best use fp16 range
         # 2. Clear handle's cache of casted parameters
         if loss > 0:
-            with amp.scale_loss(loss, optimizer) as scaled_loss:
+            with amp.scale_loss(
+                loss, optimizer, delay_unscale=_DELAY_UNSCALE
+            ) as scaled_loss:
                 scaled_loss.backward()
         else:
             loss.backward()
