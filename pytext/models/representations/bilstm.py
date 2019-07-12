@@ -115,7 +115,7 @@ class BiLSTM(RepresentationBase):
             # see https://github.com/pytorch/pytorch/issues/16664
             state = torch.zeros(
                 self.config.num_layers * (2 if self.config.bidirectional else 1),
-                seq_lengths.size(0),  # batch size
+                embedded_tokens.size(0),  # batch size
                 self.config.lstm_dim,
                 device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
             )
