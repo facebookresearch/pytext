@@ -22,6 +22,8 @@ from pytext.data.tensorizers import (
     LabelTensorizer,
     SeqTokenTensorizer,
     TokenTensorizer,
+    VocabConfig,
+    VocabFileConfig,
     initialize_tensorizers,
 )
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
@@ -118,6 +120,15 @@ class TensorizersTest(unittest.TestCase):
             schema={"text": str, "label": str},
         )
 
+    def _initialize_tensorizer(self, tensorizer, data=None):
+        if data is None:
+            data = self.data
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        for row in data.train:
+            init.send(row)
+        init.close()
+
     def test_initialize_tensorizers(self):
         tensorizers = {
             "tokens": TokenTensorizer(text_column="text"),
@@ -128,22 +139,55 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(49, len(tensorizers["tokens"].vocab))
         self.assertEqual(7, len(tensorizers["labels"].vocab))
 
-    def test_initialize_word_tensorizer(self):
+    def test_initialize_token_tensorizer(self):
+        # default (build from data)
         tensorizer = TokenTensorizer(text_column="text")
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in self.data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer)
         self.assertEqual(49, len(tensorizer.vocab))
+
+        # size limit on tokens from data
+        tensorizer = TokenTensorizer(
+            text_column="text", vocab_config=VocabConfig(size_from_data=3)
+        )
+        self._initialize_tensorizer(tensorizer)
+        self.assertEqual(5, len(tensorizer.vocab))  # 3 + unk token + pad token
+
+        embed_file = tests_module.test_file("pretrained_embed_raw")
+
+        # vocab from data + vocab_file
+        tensorizer = TokenTensorizer(
+            text_column="text",
+            vocab_config=VocabConfig(
+                size_from_data=3,
+                vocab_files=[
+                    VocabFileConfig(filepath=embed_file, skip_header_line=True)
+                ],
+            ),
+        )
+        self._initialize_tensorizer(tensorizer)
+        self.assertEqual(15, len(tensorizer.vocab))
+
+        # vocab just from vocab_file
+        tensorizer = TokenTensorizer(
+            text_column="text",
+            vocab_config=VocabConfig(
+                build_from_data=False,
+                vocab_files=[
+                    VocabFileConfig(
+                        filepath=embed_file, skip_header_line=True, size_limit=5
+                    )
+                ],
+            ),
+        )
+        init = tensorizer.initialize()
+        # Should skip initialization
+        with self.assertRaises(StopIteration):
+            init.send(None)
+        self.assertEqual(7, len(tensorizer.vocab))  # 5 + unk token + pad token
 
     def test_create_word_tensors(self):
         tensorizer = TokenTensorizer(text_column="text")
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in self.data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer)
 
         rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
         tensors = (tensorizer.numberize(row) for row in rows)
@@ -206,20 +250,12 @@ class TensorizersTest(unittest.TestCase):
 
     def test_initialize_label_tensorizer(self):
         tensorizer = LabelTensorizer(label_column="label")
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in self.data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer)
         self.assertEqual(7, len(tensorizer.vocab))
 
     def test_create_label_tensors(self):
         tensorizer = LabelTensorizer(label_column="label")
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in self.data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer)
 
         rows = [
             {"label": "weather/find"},
@@ -268,11 +304,7 @@ class TensorizersTest(unittest.TestCase):
             schema={"text": str, "dict": Gazetteer},
         )
 
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer, data)
         # UNK + PAD + 5 labels
         self.assertEqual(7, len(tensorizer.vocab))
 
@@ -331,11 +363,7 @@ class TensorizersTest(unittest.TestCase):
             schema={"text_seq": List[str]},
         )
 
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer, data)
         # UNK + PAD + 6 tokens
         self.assertEqual(8, len(tensorizer.vocab))
 
@@ -364,11 +392,7 @@ class TensorizersTest(unittest.TestCase):
             schema={"text_seq": List[str]},
         )
 
-        init = tensorizer.initialize()
-        init.send(None)  # kick
-        for row in data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(tensorizer, data)
         # UNK + PAD + BOS + EOS + BOL + EOL + 6 tokens
         self.assertEqual(12, len(tensorizer.vocab))
 
@@ -417,11 +441,7 @@ class TensorizersTest(unittest.TestCase):
             schema={"text": str, "seqlogical": str},
         )
         nbrz = AnnotationNumberizer()
-        init = nbrz.initialize()
-        init.send(None)  # kick
-        for row in data.train:
-            init.send(row)
-        init.close()
+        self._initialize_tensorizer(nbrz, data)
 
         # vocab = {'IN:GET_INFO_TRAFFIC': 0, 'SHIFT': 1, 'SL:LOCATION': 2,
         # 'REDUCE': 3, 'IN:GET_DIRECTIONS': 4, 'SL:DESTINATION': 5, 'SL:SOURCE': 6,

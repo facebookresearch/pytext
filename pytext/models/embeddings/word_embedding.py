@@ -58,34 +58,28 @@ class WordEmbedding(EmbeddingBase):
 
         """
         if tensorizer is not None:
+            if config.vocab_from_pretrained_embeddings:
+                raise ValueError(
+                    "In new data design, to adda tokens from a pretrained embeddings "
+                    "file to the vocab, specify `vocab_file` in the token tensorizer."
+                )
+
             embeddings_weight = None
-            if config.pretrained_embeddings_path and (
-                # We don't need to load pretrained embeddings if we know the
-                # embedding weights are going to be loaded from a snapshot. The
-                # exception is if we rely on the pretrained embeddings to give us
-                # the vocab, in which case, we have to load it regardless.
-                config.vocab_from_pretrained_embeddings
-                or not init_from_saved_state
-            ):
+            # We don't need to load pretrained embeddings if we know the
+            # embedding weights are going to be loaded from a snapshot.
+            if config.pretrained_embeddings_path and not init_from_saved_state:
+                if not any(
+                    vocab_file.filepath == config.pretrained_embeddings_path
+                    for vocab_file in tensorizer.vocab_config.vocab_files
+                ):
+                    raise ValueError(
+                        f"Tensorizer's vocab files should include pretrained "
+                        f"embeddings file {config.pretrained_embeddings_path}."
+                    )
                 pretrained_embedding = PretrainedEmbedding(
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=config.lowercase_tokens,
                 )
-
-                if config.vocab_from_pretrained_embeddings:
-                    # pretrained embeddings will get a freq count of 1
-                    assert config.min_freq == 1, (
-                        "If `vocab_from_pretrained_embeddings` is set, the vocab's "
-                        "`min_freq` must be 1"
-                    )
-                    if not config.vocab_from_train_data:  # Reset token counter.
-                        tensorizer.vocab_builder._counter = collections.Counter()
-                    pretrained_vocab = pretrained_embedding.embed_vocab
-                    if config.vocab_size:
-                        pretrained_vocab = pretrained_vocab[: config.vocab_size]
-                    tensorizer.vocab_builder.add_all(pretrained_vocab)
-                    tensorizer.vocab = tensorizer.vocab_builder.make_vocab()
-
                 embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
                     tensorizer.vocab.idx,
                     UNK,
