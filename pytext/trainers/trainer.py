@@ -37,20 +37,27 @@ def cycle(iterator: Iterable[Any]) -> Iterable[Any]:
         yield from iterator
 
 
-def maybe_no_sync(model, index, sample_size):
-    """
-    Whenever *samples* contains more than one mini-batch (e.g sample_size > 1),
-    we want to accumulate gradients locally and only call all-reduce in the last
-    backwards pass.
-    """
+def maybe_accumulate_gradients(exit_stack, model, index, sample_size):
+    # index == sample_size - 1 represents the last backward pass
     if (
         cuda.DISTRIBUTED_WORLD_SIZE > 1
         and hasattr(model, "no_sync")
         and index < sample_size - 1
     ):
-        return model.no_sync()
-    else:
-        return contextlib_ExitStack()
+        """
+        Whenever *samples* contains more than one mini-batch (e.g sample_size > 1),
+        we want to accumulate gradients locally and only call all-reduce in the
+        last backwards pass.
+        """
+        exit_stack.enter_context(model.no_sync())
+
+    if precision._FP16_ENABLED and index < sample_size - 1:
+        """
+        Whenever *samples* contains more than one mini-batch (e.g sample_size > 1),
+        we want to accumulate gradients in FP16 parameters (e.g delay unscale)
+        and only unscale to FP32 parameters after the last backward pass.
+        """
+        exit_stack.enter_context(precision.delay_unscale())
 
 
 class TrainingState:
@@ -442,7 +449,8 @@ class Trainer(TrainerBase):
         model = state.model
         self.zero_grads(state)
         for idx, (batch_id, (inputs, targets, context)) in enumerate(samples):
-            with maybe_no_sync(model, idx, sample_size):
+            with contextlib_ExitStack() as exit_stack:
+                maybe_accumulate_gradients(exit_stack, model, idx, sample_size)
                 # pass context to model to use in forward call if needed
                 model.contextualize(context)
                 with timing.time("model.forward"):
@@ -506,7 +514,9 @@ class TaskTrainer(Trainer):
         model = state.model
         self.zero_grads(state)
         for idx, (batch_id, (raw_batch, batch)) in enumerate(samples):
-            with maybe_no_sync(model, idx, sample_size):
+            with contextlib_ExitStack() as exit_stack:
+                # enter ddp no_sync context and fp16 delay_scale context if needed
+                maybe_accumulate_gradients(exit_stack, model, idx, sample_size)
                 with timing.time("model.train_batch"):
                     loss, metric_data = model.train_batch(model, batch, state)
                     if sample_size > 1:
