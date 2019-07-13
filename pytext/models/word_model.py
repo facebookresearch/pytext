@@ -118,13 +118,13 @@ class WordTaggingModel(Model):
         return tensor_dict["labels"]
 
     def get_export_input_names(self, tensorizers):
-        return ["tokens", "tokens_lens"]
+        return ["tokens_vals", "tokens_lens"]
 
     def get_export_output_names(self, tensorizers):
         return ["word_scores"]
 
     def vocab_to_export(self, tensorizers):
-        return {"tokens": list(tensorizers["tokens"].vocab)}
+        return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         exporter = ModelExporter(

@@ -99,7 +99,7 @@ class DocModel(Model):
         return tensor_dict["labels"]
 
     def get_export_input_names(self, tensorizers):
-        res = ["tokens", "tokens_lens"]
+        res = ["tokens_vals", "tokens_lens"]
         if "dense" in tensorizers:
             res += ["float_vec_vals"]
         return res
@@ -108,7 +108,7 @@ class DocModel(Model):
         return ["scores"]
 
     def vocab_to_export(self, tensorizers):
-        return {"tokens": list(tensorizers["tokens"].vocab)}
+        return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         exporter = ModelExporter(
@@ -249,7 +249,7 @@ class ByteTokensDocumentModel(DocModel):
         return model_inputs
 
     def get_export_input_names(self, tensorizers):
-        names = ["tokens", "token_bytes", "tokens_lens"]
+        names = ["tokens_vals", "token_bytes", "tokens_lens"]
         if "dense" in tensorizers:
             names.append("float_vec_vals")
         return names

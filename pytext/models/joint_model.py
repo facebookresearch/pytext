@@ -179,10 +179,10 @@ class IntentSlotModel(Model):
         return intent_tensor, slot_tensor
 
     def vocab_to_export(self, tensorizers):
-        return {"tokens": list(tensorizers["tokens"].vocab)}
+        return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
     def get_export_input_names(self, tensorizers):
-        return ["tokens", "tokens_lens"]
+        return ["tokens_vals", "tokens_lens"]
 
     def get_export_output_names(self, tensorizers):
         return ["doc_scores", "word_scores"]
