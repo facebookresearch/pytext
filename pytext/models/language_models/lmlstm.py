@@ -7,6 +7,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
+from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingBase
@@ -217,6 +218,11 @@ class LMLSTM(BaseModel):
         self.module_list = [embedding, representation, decoder]
         self._states: Optional[Tuple] = None
 
+    def cpu(self):
+        if self.stateful:
+            self._states = (self._states[0].cpu(), self._states[1].cpu())
+        return self._apply(lambda t: t.cpu())
+
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]
         # Omit last token because it won't have a corresponding target
@@ -235,6 +241,16 @@ class LMLSTM(BaseModel):
 
     def vocab_to_export(self, tensorizers):
         return {"tokens_vals": list(tensorizers["tokens"].vocab)}
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            self.get_export_input_names(tensorizers),
+            self.arrange_model_inputs(tensor_dict),
+            self.vocab_to_export(tensorizers),
+            self.get_export_output_names(tensorizers),
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
     def forward(
         self, tokens: torch.Tensor, seq_len: torch.Tensor
