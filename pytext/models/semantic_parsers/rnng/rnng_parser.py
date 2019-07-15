@@ -691,13 +691,13 @@ class RNNGParser(RNNGParserBase):
         return pad_and_tensorize(tensor_dict["actions"])
 
     def get_export_input_names(self, tensorizers):
-        return ["tokens", "tokens_lens"]
+        return ["tokens_vals", "tokens_lens"]
 
     def get_export_output_names(self, tensorizers):
         return ["scores"]
 
     def vocab_to_export(self, tensorizers):
-        ret = {"tokens": list(tensorizers["tokens"].vocab)}
+        ret = {"tokens_vals": list(tensorizers["tokens"].vocab)}
         if "actions" in tensorizers:
             ret["actions"] = list(tensorizers["actions"].vocab)
         return ret
