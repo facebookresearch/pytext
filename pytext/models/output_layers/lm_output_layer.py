@@ -5,12 +5,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 import torch.nn.functional as F
+from caffe2.python import core
 from pytext.config.component import create_loss
 from pytext.data.utils import PAD, Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss, Loss
 
 from .output_layer_base import OutputLayerBase
+from .utils import OutputLayerUtils
 
 
 class LMOutputLayer(OutputLayerBase):
@@ -105,6 +107,19 @@ class LMOutputLayer(OutputLayerBase):
         """
         logits = logits.permute(0, 2, 1)  # [bsz, vocab, seq_len]
         return ((F.log_softmax(logits, 1), self.pad_token_idx), None)
+
+    def export_to_caffe2(
+        self,
+        workspace: core.workspace,
+        init_net: core.Net,
+        predict_net: core.Net,
+        model_out: torch.Tensor,
+        output_name: str,
+    ) -> List[core.BlobReference]:
+        prob_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
+        return OutputLayerUtils.gen_additional_blobs(
+            predict_net, prob_out, model_out, output_name, self.target_names
+        )
 
     @staticmethod
     def calculate_perplexity(sequence_loss: torch.Tensor) -> torch.Tensor:
