@@ -201,5 +201,5 @@ class PatchedPythonDomain(PythonDomain):
 
 
 def setup(app):
-    app.override_domain(PatchedPythonDomain)
+    app.add_domain(PatchedPythonDomain, override=True)
     app.connect("builder-inited", run_apidoc)
