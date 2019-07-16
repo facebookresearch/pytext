@@ -223,7 +223,7 @@ Now that we have a fully functional class:`~Task`, we can generate a default JSO
 
 .. code-block:: console
 
-  (pytext) $ pytext --include my_tagging gen_default_config MyTaggingTask > my_config.json
+  (pytext) $ pytext --include my_tagging gen-default-config MyTaggingTask > my_config.json
 
 Tweak the config as you like, for instance change the number of epochs. Most importantly, specify the path to your ATIS dataset. Then train the model with:
 
