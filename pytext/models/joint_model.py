@@ -12,6 +12,7 @@ from pytext.data.tensorizers import (
     TokenTensorizer,
 )
 from pytext.data.utils import UNK
+from pytext.exporters.exporter import ModelExporter
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
@@ -193,3 +194,13 @@ class IntentSlotModel(Model):
             "word_weight": tensor_dict["word_weight"],
             "seq_lens": tensor_dict["tokens"][1],
         }
+
+    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            self.get_export_input_names(tensorizers),
+            self.arrange_model_inputs(tensor_dict),
+            self.vocab_to_export(tensorizers),
+            self.get_export_output_names(tensorizers),
+        )
+        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -12,7 +12,13 @@ from pytext.config.serialize import MissingValueError
 from pytext.data.joint_data_handler import SEQ_LENS  # TODO move to constant
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
-from pytext.loss import CrossEntropyLoss
+from pytext.loss import (
+    AUCPRHingeLoss,
+    BinaryCrossEntropyLoss,
+    CrossEntropyLoss,
+    KLDivergenceBCELoss,
+    KLDivergenceCELoss,
+)
 from pytext.models.crf import CRF
 from pytext.utils.label import get_label_weights
 
@@ -33,8 +39,15 @@ class WordTaggingOutputLayer(OutputLayerBase):
     """
 
     class Config(OutputLayerBase.Config):
-        loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
+        loss: Union[
+            CrossEntropyLoss.Config,
+            BinaryCrossEntropyLoss.Config,
+            AUCPRHingeLoss.Config,
+            KLDivergenceBCELoss.Config,
+            KLDivergenceCELoss.Config,
+        ] = CrossEntropyLoss.Config()
         label_weights: Dict[str, float] = {}
+        ignore_pad_in_loss: Optional[bool] = True
 
     @classmethod
     def from_config(
@@ -60,13 +73,17 @@ class WordTaggingOutputLayer(OutputLayerBase):
         )
         return cls(
             vocab,
-            create_loss(config.loss, weight=label_weights, ignore_index=pad_token_idx),
+            create_loss(
+                config.loss,
+                weight=label_weights,
+                ignore_index=pad_token_idx if config.ignore_pad_in_loss else -1,
+            ),
         )
 
     def get_loss(
         self,
         logit: torch.Tensor,
-        target: torch.Tensor,
+        target: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
         context: Dict[str, Any],
         reduce: bool = True,
     ) -> torch.Tensor:
@@ -88,7 +105,17 @@ class WordTaggingOutputLayer(OutputLayerBase):
         """
         # flatten the logit from [batch_size, seq_lens, dim] to
         # [batch_size * seq_lens, dim]
-        return self.loss_fn(logit.view(-1, logit.size()[-1]), target.view(-1), reduce)
+        flattened_logit = logit.view(-1, logit.size()[-1])
+        if isinstance(target, tuple):
+            hard_target, _, soft_target = target
+            target = (
+                hard_target.view(-1),
+                None,
+                soft_target.view(-1, soft_target.size()[-1]),
+            )
+            return self.loss_fn(flattened_logit, target, reduce)
+
+        return self.loss_fn(flattened_logit, target.view(-1), reduce)
 
     def get_pred(
         self, logit: torch.Tensor, *args, **kwargs
@@ -135,6 +162,8 @@ class CRFOutputLayer(OutputLayerBase):
         num_tags: Total number of possible word tags.
 
     """
+
+    __EXPANSIBLE__ = True
 
     @classmethod
     def from_config(
