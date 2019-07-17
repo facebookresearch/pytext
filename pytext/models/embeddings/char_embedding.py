@@ -47,7 +47,7 @@ class CharacterEmbedding(EmbeddingBase):
         cls,
         config: CharFeatConfig,
         metadata: Optional[FieldMeta] = None,
-        labels: Optional[Vocabulary] = None,
+        vocab_size: Optional[int] = None,
     ):
         """Factory method to construct an instance of CharacterEmbedding from
         the module's config object and the field's metadata object.
@@ -61,7 +61,9 @@ class CharacterEmbedding(EmbeddingBase):
             type: An instance of CharacterEmbedding.
 
         """
-        vocab_size = len(labels) if labels is not None else metadata.vocab_size
+        if vocab_size is None:
+            vocab_size = metadata.vocab_size
+
         return cls(
             vocab_size,
             config.embed_dim,

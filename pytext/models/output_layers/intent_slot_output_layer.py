@@ -107,8 +107,9 @@ class IntentSlotOutputLayer(OutputLayerBase):
             w_logit, w_target, context=context, reduce=False
         )
         # w_loss could have been flattened
-        if w_loss.size()[0] != w_target.size()[0]:
-            w_loss = w_loss.reshape(w_target.size())
+        w_hard_target = w_target[0] if type(w_target) is tuple else w_target
+        if w_loss.size()[0] != w_hard_target.size()[0]:
+            w_loss = w_loss.reshape(w_hard_target.size())
             w_loss = torch.mean(w_loss, dim=1)
         d_weighted_loss = torch.mean(torch.mul(d_loss, d_weight))
         w_weighted_loss = torch.mean(torch.mul(w_loss, w_weight))

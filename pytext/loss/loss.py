@@ -378,19 +378,18 @@ class KLDivergenceCELoss(Loss):
         soft_targets = F.softmax(FloatTensor(soft_targets_logits) / self.t, dim=1)
         soft_targets = soft_targets.clamp(1e-10, 1 - 1e-10)
         log_probs = F.log_softmax(logits / self.t, 1)
-
+        soft_loss = F.kl_div(log_probs, soft_targets, reduction="none")
         if self.weight is not None:
-            soft_loss = (
-                F.kl_div(log_probs, soft_targets, reduction="none") * self.weight
-            )
-            if reduce:
-                soft_loss = soft_loss.mean()
+            soft_loss = soft_loss * self.weight
+        if reduce:
+            soft_loss = soft_loss.mean()
         else:
-            soft_loss = F.kl_div(
-                log_probs, soft_targets, reduction="mean" if reduce else "none"
-            )
-        soft_loss *= self.t ** 2  # see https://arxiv.org/pdf/1503.02531.pdf
+            # soft_loss dim is batch_size * num_labels, while hard_loss is just
+            # batch size, we have to still reduce soft_loss by the labels
+            # dimension in order to be able to add the two losses.
+            soft_loss = soft_loss.mean(1)
 
+        soft_loss *= self.t ** 2  # see https://arxiv.org/pdf/1503.02531.pdf
         hard_loss = 0.0
         if self.hard_weight > 0.0:
             hard_loss = F.cross_entropy(
