@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
-import operator
 import time
 
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import Stage
-from pytext.config.module_config import PerplexityType
 from pytext.data import CommonMetadata
 from pytext.metrics.language_model_metrics import (
     LanguageModelMetric,
@@ -16,22 +14,6 @@ from pytext.metrics.language_model_metrics import (
 
 from .channel import ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
-
-
-PERPLEXITY_FUNC_MAP = {
-    PerplexityType.MIN: torch.min,
-    PerplexityType.MAX: torch.max,
-    PerplexityType.MEAN: torch.mean,
-    PerplexityType.MEDIAN: torch.median,
-    PerplexityType.EOS: operator.itemgetter(-1),
-}
-
-
-def get_perplexity_func(perplexity_type):
-    func = PERPLEXITY_FUNC_MAP.get(perplexity_type, None)
-    if not func:
-        raise NotImplementedError
-    return func
 
 
 class LanguageModelChannel(FileChannel):
@@ -50,7 +32,6 @@ class LanguageModelMetricReporter(MetricReporter):
 
     class Config(MetricReporter.Config):
         aggregate_metrics: bool = True
-        perplexity_type: PerplexityType = PerplexityType.MEDIAN
 
     @classmethod
     def from_config(cls, config: Config, meta: CommonMetadata = None, tensorizers=None):
@@ -58,14 +39,12 @@ class LanguageModelMetricReporter(MetricReporter):
             [ConsoleChannel(), LanguageModelChannel((Stage.TEST,), config.output_path)],
             tensorizers,
             config.aggregate_metrics,
-            config.perplexity_type,
         )
 
-    def __init__(self, channels, tensorizers, aggregate_metrics, perplexity_type):
+    def __init__(self, channels, tensorizers, aggregate_metrics):
         super().__init__(channels)
         self.tensorizers = tensorizers
         self.aggregate_metrics = aggregate_metrics
-        self.perplexity_func = get_perplexity_func(perplexity_type)
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
@@ -110,12 +89,10 @@ class LanguageModelMetricReporter(MetricReporter):
         return context
 
     def compute_scores(self, pred, target):
-        def _compute_score(tensor):
-            return torch.exp(self.perplexity_func(tensor[tensor != 0.0]))
-
         logits, pad_idx = pred
         scores = F.nll_loss(logits, target, ignore_index=pad_idx, reduction="none")
-        return map(lambda x: _compute_score(x).item(), scores)
+        per_sentence_loss = (torch.exp(y[y != 0].mean()) for y in scores)
+        return map(lambda x: x.item(), per_sentence_loss)
 
     def aggregate_scores(self, scores):
         self.all_scores.extend(scores)
@@ -130,12 +107,7 @@ class LanguageModelMetricReporter(MetricReporter):
 class MaskedLMMetricReporter(LanguageModelMetricReporter):
     @classmethod
     def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
-        return cls(
-            [ConsoleChannel()],
-            tensorizers,
-            config.aggregate_metrics,
-            config.perplexity_type,
-        )
+        return cls([ConsoleChannel()], tensorizers, config.aggregate_metrics)
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
