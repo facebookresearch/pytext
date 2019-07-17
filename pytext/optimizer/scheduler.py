@@ -336,3 +336,80 @@ class WarmupScheduler(_LRScheduler, BatchScheduler):
         else:
             lr_multiplier = self.current_steps / self.warmup_steps
         return [lr_multiplier * base_lr for base_lr in self.base_lrs]
+
+
+class PolynomialDecayScheduler(_LRScheduler, BatchScheduler):
+    """
+    Applies a polynomial decay with lr warmup to the learning rate.
+
+    It is commonly observed that a monotonically decreasing learning rate, whose
+    degree of change is carefully chosen, results in a better performing model.
+
+    This scheduler linearly increase learning rate from 0 to final value at the
+    beginning of training, determined by warmup_steps.
+    Then it applies a polynomial decay function to an optimizer step, given a
+    provided `base_lrs` to reach an `end_learning_rate` after `total_steps`.
+    """
+
+    class Config(BatchScheduler.Config):
+        #: number of training steps over which to increase learning rate
+        warmup_steps: int = 0
+        #: number of training steps for learning rate decay
+        total_steps: int
+        #: end learning rate after `total_steps` of training
+        end_learning_rate: float
+        #: power used for polynomial decay calculation
+        power: float = 1.0
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(
+            optimizer,
+            config.warmup_steps,
+            config.total_steps,
+            config.end_learning_rate,
+            config.power,
+        )
+
+    def __init__(self, optimizer, warmup_steps, total_steps, end_learning_rate, power):
+        assert total_steps > warmup_steps >= 0
+        super().__init__(optimizer)
+        self.warmup_steps = warmup_steps
+        self.total_steps = total_steps
+        self.end_learning_rate = end_learning_rate
+        self.power = power
+        self.current_steps = 0
+
+    def prepare(self, train_iter, total_epochs):
+        super().prepare(train_iter, total_epochs)
+        self.step_batch()  # initialize learning rate
+
+    def get_lr(self):
+        if self.current_steps <= self.warmup_steps:
+            # during warmup the learning rate linearly increases until
+            # it reaches base_lr.
+            warmup_factor = self.current_steps / self.warmup_steps
+            lrs = [warmup_factor * base_lr for base_lr in self.base_lrs]
+        elif self.current_steps <= self.total_steps:
+            # start polynomial weight decay until it reaches end_learning_rate
+            decay_factor = (
+                1
+                - (self.current_steps - self.warmup_steps)
+                / (self.total_steps - self.warmup_steps)
+            ) ** self.power
+
+            lrs = [
+                (base_lr - self.end_learning_rate) * decay_factor
+                + self.end_learning_rate
+                for base_lr in self.base_lrs
+            ]
+        else:
+            # reach end_learning_rate after total_steps
+            lrs = [self.end_learning_rate for _ in self.base_lrs]
+
+        return lrs
+
+    def step_batch(self):
+        self.current_steps += 1
+        # update optimizer.param_groups's learning rate
+        self.step()
