@@ -8,7 +8,7 @@ import unittest
 
 from pytext.common.constants import DatasetFieldName
 from pytext.config.component import create_model
-from pytext.config.field_config import FeatureConfig
+from pytext.config.field_config import FeatureConfig, WordFeatConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -55,7 +55,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
                 ),
                 decoder=MLPDecoder.Config(save_path=self.decoder_path),
             ),
-            FeatureConfig(save_path=self.embedding_path),
+            FeatureConfig(word_feat=WordFeatConfig(save_path=self.embedding_path)),
             metadata,
         )
         saved_model.save_modules()
@@ -67,7 +67,7 @@ class ModuleLoadSaveTest(unittest.TestCase):
                 ),
                 decoder=MLPDecoder.Config(load_path=self.decoder_path),
             ),
-            FeatureConfig(load_path=self.embedding_path),
+            FeatureConfig(word_feat=WordFeatConfig(load_path=self.embedding_path)),
             metadata,
         )
 

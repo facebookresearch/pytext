@@ -44,7 +44,13 @@ class DisjointMultitask(TaskBase):
 
     @classmethod
     def from_config(
-        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+        cls,
+        task_config,
+        metadata=None,
+        model_state=None,
+        model=None,
+        rank=0,
+        world_size=1,
     ):
         print("Task parameters:\n")
         pprint(config_to_json(type(task_config), task_config))
@@ -97,15 +103,16 @@ class DisjointMultitask(TaskBase):
                 task_config.metric_reporter.use_subtask_select_metric
             ),
         )
-        model = DisjointMultitaskModel(
-            OrderedDict(
-                (name, create_model(task.model, task.features, metadata[name]))
-                for name, task in task_config.tasks.items()
-            ),
-            loss_weights=task_weights,
-        )
-        if model_state:
-            model.load_state_dict(model_state)
+        if model is None:
+            model = DisjointMultitaskModel(
+                OrderedDict(
+                    (name, create_model(task.model, task.features, metadata[name]))
+                    for name, task in task_config.tasks.items()
+                ),
+                loss_weights=task_weights,
+            )
+            if model_state:
+                model.load_state_dict(model_state)
         if cuda.CUDA_ENABLED:
             model = model.cuda()
 
@@ -174,7 +181,13 @@ class NewDisjointMultitask(_NewTask):
 
     @classmethod
     def from_config(
-        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+        cls,
+        task_config,
+        metadata=None,
+        model=None,
+        model_state=None,
+        rank=0,
+        world_size=1,
     ):
         data_dict = OrderedDict()
         models = OrderedDict()
@@ -196,9 +209,10 @@ class NewDisjointMultitask(_NewTask):
         data = DisjointMultitaskData.from_config(
             task_config.data, data_dict=data_dict, rank=rank, world_size=world_size
         )
-        model = NewDisjointMultitaskModel(models, loss_weights=task_weights)
-        if model_state:
-            model.load_state_dict(model_state)
+        if model is None:
+            model = NewDisjointMultitaskModel(models, loss_weights=task_weights)
+            if model_state:
+                model.load_state_dict(model_state)
         metric_reporter = DisjointMultitaskMetricReporter(
             metric_reporters,
             loss_weights=task_weights,

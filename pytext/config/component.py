@@ -133,7 +133,8 @@ class Component(metaclass=ComponentMeta):
         return cls(config, *args, **kwargs)
 
     def __init__(self, config=None, *args, **kwargs):
-        self.config = config
+        # Empty configs don't pickle well.
+        self.config = config or ()
 
 
 def register_tasks(task_cls: Union[Type, List[Type]]):

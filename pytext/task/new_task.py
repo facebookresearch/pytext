@@ -53,13 +53,15 @@ class _NewTask(TaskBase):
         config: Config,
         unused_metadata=None,
         model_state=None,
+        model=None,
         rank=0,
         world_size=1,
     ):
         tensorizers, data = NewTask._init_tensorizers(config, rank, world_size)
 
-        # Initialized tensorizers can be used to create the model
-        model = NewTask._init_model(config.model, tensorizers, model_state)
+        if model is None:
+            # Initialized tensorizers can be used to create the model
+            model = NewTask._init_model(config.model, tensorizers, model_state)
 
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between

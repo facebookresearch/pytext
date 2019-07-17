@@ -68,11 +68,22 @@ class ConfigBase(metaclass=ConfigBaseMeta):
 
         vars(self).update(kwargs)
 
+    def __bool__(self):
+        return any(type(self).__annotations__)
+
     def __str__(self):
         lines = [self.__class__.__name__ + ":"]
         for key, val in sorted(self._asdict().items()):
             lines += f"{key}: {val}".split("\n")
         return "\n    ".join(lines)
+
+    def __eq__(self, other):
+        try:
+            other_dict = other._asdict()
+        except Exception:
+            return False
+        else:
+            return self._asdict() == other_dict
 
 
 class PlaceHolder:

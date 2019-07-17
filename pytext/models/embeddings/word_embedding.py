@@ -93,7 +93,7 @@ class WordEmbedding(EmbeddingBase):
             embeddings_weight = metadata.pretrained_embeds_weight
             unk_token_idx = metadata.unk_token_idx
 
-        return cls(
+        embedding = cls(
             num_embeddings=num_embeddings,
             embedding_dim=config.embed_dim,
             embeddings_weight=embeddings_weight,
@@ -101,6 +101,11 @@ class WordEmbedding(EmbeddingBase):
             unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
         )
+        # embeddings collectively aren't obeying the Module contract of storing
+        # save_path from their config in their save_path attribute; for now at least
+        # re-enable this for WordEmbedding even if other embeddings aren't
+        embedding.save_path = config.save_path
+        return embedding
 
     def __init__(
         self,
