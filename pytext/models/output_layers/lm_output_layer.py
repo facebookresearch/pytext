@@ -117,8 +117,11 @@ class LMOutputLayer(OutputLayerBase):
         output_name: str,
     ) -> List[core.BlobReference]:
         prob_out = predict_net.Softmax(output_name, axis=model_out.dim() - 1)
+        # prepend an underscore to target_names to avoid conflicts between
+        # existing cell names and target names
+        edited_target_names = [f"_{name}" for name in self.target_names]
         return OutputLayerUtils.gen_additional_blobs(
-            predict_net, prob_out, model_out, output_name, self.target_names
+            predict_net, prob_out, model_out, output_name, edited_target_names
         )
 
     @staticmethod
