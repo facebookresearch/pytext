@@ -7,11 +7,15 @@ from typing import Callable, Mapping, Optional
 import numpy as np
 from caffe2.python import workspace
 from caffe2.python.predictor import predictor_exporter
+from pytext.data.tensorizers import (
+    FloatListTensorizer,
+    GazetteerTensorizer,
+    TokenTensorizer,
+)
+from pytext.task.new_task import NewTask
 
 from .builtin_task import register_builtin_tasks
 from .config import PyTextConfig, pytext_config_from_json
-from .config.component import create_featurizer
-from .data.featurizer import InputRecord
 from .utils.onnx import CAFFE2_DB_TYPE, convert_caffe2_blob_name
 
 
@@ -21,34 +25,16 @@ register_builtin_tasks()
 Predictor = Callable[[Mapping[str, str]], Mapping[str, np.array]]
 
 
-def _predict(workspace_id, feature_config, predict_net, featurizer, input):
+def _predict(workspace_id, predict_net, model, tensorizers, input):
     workspace.SwitchWorkspace(workspace_id)
-    features = featurizer.featurize(InputRecord(**input))
-    if feature_config.word_feat:
-        for blob_name in feature_config.word_feat.export_input_names:
-            converted_blob_name = convert_caffe2_blob_name(blob_name)
-            workspace.blobs[converted_blob_name] = np.array(
-                [features.tokens], dtype=str
-            )
-        workspace.blobs["tokens_lens"] = np.array([len(features.tokens)], dtype=np.int_)
-    if feature_config.dict_feat:
-        dict_feats, weights, lens = feature_config.dict_feat.export_input_names
-        converted_dict_blob_name = convert_caffe2_blob_name(dict_feats)
-        workspace.blobs[converted_dict_blob_name] = np.array(
-            [features.gazetteer_feats], dtype=str
-        )
-        workspace.blobs[weights] = np.array(
-            [features.gazetteer_feat_weights], dtype=np.float32
-        )
-        workspace.blobs[lens] = np.array(features.gazetteer_feat_lengths, dtype=np.int_)
-
-    if feature_config.char_feat:
-        for blob_name in feature_config.char_feat.export_input_names:
-            converted_blob_name = convert_caffe2_blob_name(blob_name)
-            workspace.blobs[converted_blob_name] = np.array(
-                [features.characters], dtype=str
-            )
-
+    tensor_dict = {
+        name: tensorizer.numberize(input) for name, tensorizer in tensorizers.items()
+    }
+    model_inputs = model.arrange_model_inputs(tensor_dict)
+    model_input_names = model.get_export_input_names(tensorizers)
+    for blob_name, model_input in zip(model_input_names, model_inputs):
+        converted_blob_name = convert_caffe2_blob_name(blob_name)
+        workspace.blobs[converted_blob_name] = np.array([model_input], dtype=str)
     workspace.RunNet(predict_net)
     return {
         str(blob): workspace.blobs[blob][0] for blob in predict_net.external_outputs
@@ -81,10 +67,18 @@ def create_predictor(
         filename=model_file or config.export_caffe2_path, db_type=CAFFE2_DB_TYPE
     )
 
-    task = config.task
-    feature_config = task.features
-    featurizer = create_featurizer(task.featurizer, feature_config)
+    supportedInputTensorizers = [
+        FloatListTensorizer,
+        GazetteerTensorizer,
+        TokenTensorizer,
+    ]
+    new_task = NewTask.from_config(config.task)
+    input_tensorizers = {
+        name: tensorizer
+        for name, tensorizer in new_task.data.tensorizers.items()
+        if any(isinstance(tensorizer, t) for t in supportedInputTensorizers)
+    }
 
     return lambda input: _predict(
-        workspace_id, feature_config, predict_net, featurizer, input
+        workspace_id, predict_net, new_task.model, input_tensorizers, input
     )
