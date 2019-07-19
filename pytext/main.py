@@ -154,7 +154,9 @@ def gen_config_impl(task_name, options):
 
 
 @click.group()
-@click.option("--include", multiple=True)
+@click.option(
+    "--include", multiple=True, help="directory containing custom python classes"
+)
 @click.option("--config-file", default="")
 @click.option("--config-json", default="")
 @click.option(
@@ -171,7 +173,8 @@ def main(context, config_file, config_json, config_module, include):
       pytext train < demos/docnn.json
     """
     for path in include or []:
-        add_include(path)
+        # remove possible trailing / from autocomple in --include
+        add_include(path.rstrip("/"))
 
     context.obj = Attrs()
 
