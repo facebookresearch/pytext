@@ -34,3 +34,11 @@ class SlotAttentionType(Enum):
     CONCAT = "concat"
     MULTIPLY = "multiply"
     DOT = "dot"
+
+
+class PerplexityType(Enum):
+    MIN = "min"
+    MAX = "max"
+    MEAN = "mean"
+    MEDIAN = "median"
+    EOS = "eos"
