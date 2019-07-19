@@ -7,6 +7,9 @@ import torch
 from fairseq.modules import (
     TransformerSentenceEncoder as TransformerSentenceEncoderModule,
 )
+from fairseq.modules.sparse_transformer_sentence_encoder import (
+    SparseTransformerSentenceEncoder as SparseTransformerSentenceEncoderModule,
+)
 from pytext.config import ConfigBase
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
@@ -64,6 +67,12 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         freeze_embeddings: bool = False
         n_trans_layers_to_freeze: int = 0
 
+        # Sparse multihead attention parameters
+        sparse: bool = False
+        is_bidirectional: bool = True
+        stride: int = 32
+        expressivity: int = 8
+
     def __init__(
         self,
         config: Config,
@@ -78,27 +87,53 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         self.multilingual = config.multilingual
         self.offset_positions_by_padding = config.offset_positions_by_padding
 
-        self.sentence_encoder = TransformerSentenceEncoderModule(
-            padding_idx=padding_idx,
-            vocab_size=vocab_size,
-            num_encoder_layers=config.num_encoder_layers,
-            embedding_dim=config.embedding_dim,
-            ffn_embedding_dim=config.ffn_embedding_dim,
-            num_attention_heads=config.num_attention_heads,
-            dropout=config.dropout,
-            attention_dropout=config.attention_dropout,
-            activation_dropout=config.activation_dropout,
-            max_seq_len=config.max_seq_len,
-            num_segments=config.num_segments,
-            use_position_embeddings=config.use_position_embeddings,
-            offset_positions_by_padding=config.offset_positions_by_padding,
-            encoder_normalize_before=config.encoder_normalize_before,
-            apply_bert_init=config.apply_bert_init,
-            activation_fn=config.activation_fn,
-            freeze_embeddings=config.freeze_embeddings,
-            n_trans_layers_to_freeze=config.n_trans_layers_to_freeze,
-            export=self.export,
-        )
+        if config.sparse:
+            self.sentence_encoder = SparseTransformerSentenceEncoderModule(
+                padding_idx=padding_idx,
+                vocab_size=vocab_size,
+                num_encoder_layers=config.num_encoder_layers,
+                embedding_dim=config.embedding_dim,
+                ffn_embedding_dim=config.ffn_embedding_dim,
+                num_attention_heads=config.num_attention_heads,
+                dropout=config.dropout,
+                attention_dropout=config.attention_dropout,
+                activation_dropout=config.activation_dropout,
+                max_seq_len=config.max_seq_len,
+                num_segments=config.num_segments,
+                use_position_embeddings=config.use_position_embeddings,
+                offset_positions_by_padding=config.offset_positions_by_padding,
+                encoder_normalize_before=config.encoder_normalize_before,
+                apply_bert_init=config.apply_bert_init,
+                activation_fn=config.activation_fn,
+                freeze_embeddings=config.freeze_embeddings,
+                n_trans_layers_to_freeze=config.n_trans_layers_to_freeze,
+                export=self.export,
+                is_bidirectional=config.is_bidirectional,
+                stride=config.stride,
+                expressivity=config.expressivity,
+            )
+        else:
+            self.sentence_encoder = TransformerSentenceEncoderModule(
+                padding_idx=padding_idx,
+                vocab_size=vocab_size,
+                num_encoder_layers=config.num_encoder_layers,
+                embedding_dim=config.embedding_dim,
+                ffn_embedding_dim=config.ffn_embedding_dim,
+                num_attention_heads=config.num_attention_heads,
+                dropout=config.dropout,
+                attention_dropout=config.attention_dropout,
+                activation_dropout=config.activation_dropout,
+                max_seq_len=config.max_seq_len,
+                num_segments=config.num_segments,
+                use_position_embeddings=config.use_position_embeddings,
+                offset_positions_by_padding=config.offset_positions_by_padding,
+                encoder_normalize_before=config.encoder_normalize_before,
+                apply_bert_init=config.apply_bert_init,
+                activation_fn=config.activation_fn,
+                freeze_embeddings=config.freeze_embeddings,
+                n_trans_layers_to_freeze=config.n_trans_layers_to_freeze,
+                export=self.export,
+            )
         self.projection = (
             torch.nn.Linear(self.representation_dim, self.representation_dim)
             if config.project_representation
