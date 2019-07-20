@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metrics import RealtimeMetrics
@@ -37,7 +37,6 @@ class MetricReporter(Component):
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
     lower_is_better: bool = False
-    realtime_report_freq: int = 500
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
@@ -98,8 +97,6 @@ class MetricReporter(Component):
         if DatasetFieldName.NUM_TOKENS in context:
             self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
             self.realtime_meters["ups"].update(1)
-        if n_batches and n_batches % self.realtime_report_freq == 0:
-            self.report_realtime_metric()
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -198,6 +195,7 @@ class MetricReporter(Component):
         model_select_metric = self.get_model_select_metric(metrics)
 
         if print_to_channels:
+            self.report_realtime_metric(stage)
             for channel in self.channels:
                 if stage in channel.stages:
                     channel.report(
@@ -213,21 +211,30 @@ class MetricReporter(Component):
                         self.get_meta(),
                         model,
                     )
-            self.report_realtime_metric()
 
         if reset:
             self._reset()
             self._reset_realtime()
         return metrics
 
-    def report_realtime_metric(self):
-        tps = self.realtime_meters["tps"].avg
-        ups = self.realtime_meters["ups"].avg
-
-        if not tps or not ups:
+    def report_realtime_metric(self, stage):
+        if stage != Stage.TRAIN:
             return
-        metrics = RealtimeMetrics(samples=self.n_batches + 1, tps=tps, ups=ups)
-        print(metrics, flush=True)
+
+        realtime_report = ""
+        if hasattr(self, "n_batches"):
+            realtime_report += f", number of batches: {self.n_batches + 1}"
+
+        if hasattr(self, "realtime_meters"):
+            ups = self.realtime_meters["ups"].avg
+            if ups:
+                realtime_report += f", accumulated updates/s: {ups:.0f}"
+            tps = self.realtime_meters["tps"].avg
+            if tps:
+                realtime_report += f", accumulated tokens/s: {tps:.0f}"
+
+        if realtime_report:
+            print("Training", realtime_report, flush=True)
 
     def get_model_select_metric(self, metrics):
         """
