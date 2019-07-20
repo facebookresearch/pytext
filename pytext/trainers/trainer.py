@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
+import multiprocessing
 import time
 from contextlib import ExitStack as contextlib_ExitStack
 from typing import Any, Iterable, List, Optional, Tuple
@@ -71,6 +72,7 @@ class TrainingState:
     epochs_since_last_improvement: int = 0
     best_model_state: Any = None
     best_model_metric: Any = None
+    output_queue: multiprocessing.Queue = None
 
     def __init__(self, **kwargs):
         unknown_keys = kwargs.keys() - TrainingState.__annotations__.keys()
@@ -289,6 +291,7 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
         rank: int = 0,
+        output_queue: multiprocessing.Queue = None,
     ) -> Tuple[torch.nn.Module, Any]:
         """
         Train and eval a model, the model states will be modified. This function
@@ -315,7 +318,11 @@ class Trainer(TrainerBase):
             model, best_metric: the trained model together with the best metric
         """
         state = TrainingState(
-            model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
+            model=model,
+            optimizer=self.optimizer,
+            scheduler=self.scheduler,
+            rank=rank,
+            output_queue=output_queue,
         )
         training_data = self.set_up_training(state, training_data)
         trainable_params = sum(

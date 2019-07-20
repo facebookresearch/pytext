@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import multiprocessing
 from typing import Dict, Optional, Type
 
 from pytext.common.constants import Stage
@@ -151,7 +152,13 @@ class _NewTask(TaskBase):
         )
         self.trainer = trainer or TaskTrainer()
 
-    def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
+    def train(
+        self,
+        config: PyTextConfig,
+        rank: int = 0,
+        world_size: int = 1,
+        output_queue: multiprocessing.Queue = None,
+    ):
         # TODO: move dist_init back to prepare_task in pytext/workflow.py
         # when processing time between dist_init and first loss.backward() is short
         return self.trainer.train(
@@ -161,6 +168,7 @@ class _NewTask(TaskBase):
             self.metric_reporter,
             config,
             rank=rank,
+            output_queue=output_queue,
         )
 
     def test(self, data_source):
