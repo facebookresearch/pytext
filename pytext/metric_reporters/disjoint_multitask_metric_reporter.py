@@ -88,6 +88,10 @@ class DisjointMultitaskMetricReporter(MetricReporter):
             metrics_dict[name] = reporter.get_model_select_metric(metrics_dict[name])
         return metrics_dict
 
+    def report_realtime_metric(self, stage):
+        for _, reporter in self.reporters.items():
+            reporter.report_realtime_metric(stage)
+
     def get_model_select_metric(self, metrics):
         if self.target_reporter:
             metric = self.target_reporter.get_model_select_metric(metrics)
