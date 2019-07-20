@@ -2,8 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
+import math
 import multiprocessing
 import time
+from collections import OrderedDict
 from contextlib import ExitStack as contextlib_ExitStack
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -434,6 +436,7 @@ class Trainer(TrainerBase):
         metrics = None
         if report_metric:
             with timing.time("report metrics"):
+                self.report_train_epoch_stats(sample[0], state, metric_reporter)
                 metrics = metric_reporter.report_metric(
                     model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
                 )
@@ -441,6 +444,20 @@ class Trainer(TrainerBase):
             metric_reporter._reset()
 
         return metrics
+
+    def report_train_epoch_stats(self, batch_id, state, metric_reporter):
+        if state.stage != Stage.TRAIN or state.rank != 0 or not state.output_queue:
+            return
+
+        train_stat = OrderedDict()
+        train_stat["num_updates"] = math.ceil(
+            (batch_id + 1) * state.epoch / self.config.num_accumulated_batches
+        )
+        if hasattr(metric_reporter, "realtime_meters"):
+            tps = metric_reporter.realtime_meters["tps"].avg
+            if tps:
+                train_stat["tps"] = math.ceil(tps)
+        state.output_queue.put_nowait(train_stat)
 
     @timing.time("run_step")
     def run_step(
