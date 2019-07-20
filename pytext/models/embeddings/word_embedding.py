@@ -68,14 +68,6 @@ class WordEmbedding(EmbeddingBase):
             # We don't need to load pretrained embeddings if we know the
             # embedding weights are going to be loaded from a snapshot.
             if config.pretrained_embeddings_path and not init_from_saved_state:
-                if not any(
-                    vocab_file.filepath == config.pretrained_embeddings_path
-                    for vocab_file in tensorizer.vocab_config.vocab_files
-                ):
-                    raise ValueError(
-                        f"Tensorizer's vocab files should include pretrained "
-                        f"embeddings file {config.pretrained_embeddings_path}."
-                    )
                 pretrained_embedding = PretrainedEmbedding(
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=config.lowercase_tokens,

@@ -122,7 +122,12 @@ class PretrainedEmbedding(object):
         Cache the processed embedding vectors and vocab to a file for faster
         loading
         """
+        t = time.time()
+        print("loading cached pretrained embedding")
         torch.save((self.embed_vocab, self.stoi, self.embedding_vectors), cache_path)
+        print(
+            f"Embedding loaded: {self.embedding_vectors.size()} in {time.time() - t} s."
+        )
 
     def load_cached_embeddings(self, cache_path: str) -> None:
         """
