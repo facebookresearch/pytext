@@ -135,7 +135,7 @@ class TaskBase(Component):
         self.metric_reporter: MetricReporter = metric_reporter
         self.exporter = exporter
 
-    def train(self, train_config, rank=0, world_size=1):
+    def train(self, train_config, rank=0, world_size=1, output_queue=None):
         """
         Wrapper method to train the model using :class:`~Trainer` object.
 
@@ -152,6 +152,7 @@ class TaskBase(Component):
             self.metric_reporter,
             train_config,
             rank=rank,
+            output_queue=output_queue,
         )
         return result
 
