@@ -4,7 +4,13 @@ from typing import Dict, Optional
 
 from pytext.common.constants import BatchContext, Stage
 from pytext.config.component import Component, ComponentType, create_component
-from pytext.data import BaseBatchSampler, Data, EvalBatchSampler, generator_iterator
+from pytext.data import (
+    BaseBatchSampler,
+    Data,
+    EvalBatchSampler,
+    RoundRobinBatchSampler,
+    generator_iterator,
+)
 from pytext.data.data import BatchData
 
 
@@ -26,7 +32,7 @@ class DisjointMultitaskData(Data):
     """
 
     class Config(Component.Config):
-        sampler: BaseBatchSampler.Config = EvalBatchSampler.Config()
+        sampler: BaseBatchSampler.Config = RoundRobinBatchSampler.Config()
         test_key: Optional[str] = None
 
     @classmethod
