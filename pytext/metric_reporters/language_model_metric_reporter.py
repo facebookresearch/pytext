@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
+import operator
 import time
 
 import torch
 import torch.nn.functional as F
 from pytext.common.constants import Stage
+from pytext.config.module_config import PerplexityType
 from pytext.data import CommonMetadata
 from pytext.metrics.language_model_metrics import (
     LanguageModelMetric,
@@ -14,6 +16,22 @@ from pytext.metrics.language_model_metrics import (
 
 from .channel import ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
+
+
+PERPLEXITY_FUNC_MAP = {
+    PerplexityType.MIN: torch.min,
+    PerplexityType.MAX: torch.max,
+    PerplexityType.MEAN: torch.mean,
+    PerplexityType.MEDIAN: torch.median,
+    PerplexityType.EOS: operator.itemgetter(-1),
+}
+
+
+def get_perplexity_func(perplexity_type):
+    func = PERPLEXITY_FUNC_MAP.get(perplexity_type, None)
+    if not func:
+        raise NotImplementedError
+    return func
 
 
 class LanguageModelChannel(FileChannel):
@@ -33,6 +51,7 @@ class LanguageModelMetricReporter(MetricReporter):
 
     class Config(MetricReporter.Config):
         aggregate_metrics: bool = True
+        perplexity_type: PerplexityType = PerplexityType.MEDIAN
 
     @classmethod
     def from_config(cls, config: Config, meta: CommonMetadata = None, tensorizers=None):
@@ -41,9 +60,12 @@ class LanguageModelMetricReporter(MetricReporter):
             meta,
             tensorizers,
             config.aggregate_metrics,
+            config.perplexity_type,
         )
 
-    def __init__(self, channels, metadata, tensorizers, aggregate_metrics):
+    def __init__(
+        self, channels, metadata, tensorizers, aggregate_metrics, perplexity_type
+    ):
         super().__init__(channels)
         self.metadata = metadata
         self.tensorizers = tensorizers
@@ -54,6 +76,7 @@ class LanguageModelMetricReporter(MetricReporter):
             self.pad_index = metadata.target.pad_token_idx
         if tensorizers:
             self.pad_index = tensorizers[self.TOKENS_COLUMN].vocab.get_pad_index()
+        self.perplexity_func = get_perplexity_func(perplexity_type)
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
@@ -100,6 +123,16 @@ class LanguageModelMetricReporter(MetricReporter):
         return context
 
     def compute_scores(self, logits, targets):
+        def _compute_score(tensor):
+            """
+            Uses a perplexity reduction function to compute a score for
+            a given tensor, e.g. the mean perplexity. Filters ignored tensor
+            items -- these are 0 by default.
+
+            """
+
+            return torch.exp(self.perplexity_func(tensor[tensor != 0.0]))
+
         # compute cross-entropy loss of logits wrt targets -- don't reduce
         # to access the loss of each item in the batch
         scores = F.cross_entropy(
@@ -108,9 +141,8 @@ class LanguageModelMetricReporter(MetricReporter):
             ignore_index=self.pad_index,
             reduction="none",
         )
-        # compute the average loss for each item in the batch
-        per_sentence_loss = (torch.exp(y[y != 0].mean()) for y in scores)
-        return map(lambda x: x.item(), per_sentence_loss)
+        # compute a score for each item in the batch
+        return map(lambda x: _compute_score(x).item(), scores)
 
     def aggregate_scores(self, scores):
         self.all_scores.extend(scores)
@@ -125,7 +157,13 @@ class LanguageModelMetricReporter(MetricReporter):
 class MaskedLMMetricReporter(LanguageModelMetricReporter):
     @classmethod
     def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
-        return cls([ConsoleChannel()], meta, tensorizers, config.aggregate_metrics)
+        return cls(
+            [ConsoleChannel()],
+            meta,
+            tensorizers,
+            config.aggregate_metrics,
+            config.perplexity_type,
+        )
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
