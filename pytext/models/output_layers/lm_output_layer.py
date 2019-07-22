@@ -87,14 +87,14 @@ class LMOutputLayer(OutputLayerBase):
         return self.loss_fn(logit.view(-1, logit.size()[-1]), target.view(-1), reduce)
 
     def get_pred(
-        self, logit: torch.Tensor, *args, **kwargs
+        self, logits: torch.Tensor, *args, **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute and return prediction and scores from the model.
         Prediction is computed using argmax over the word label/target space.
         Scores are softmax scores over the model logits.
 
         Args:
-            logit (torch.Tensor): Logits returned
+            logits (torch.Tensor): Logits returned
                 :class:`~pytext.models.language_models.lmlstm.LMLSTM`.
             targets (torch.Tensor): True words.
             context (Dict[str, Any]): Context is a dictionary of items
@@ -105,9 +105,7 @@ class LMOutputLayer(OutputLayerBase):
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
 
         """
-        preds = torch.max(logit, 2)[1]
-        scores = F.log_softmax(logit, 2)
-        return preds, scores
+        return (logits, None)
 
     def export_to_caffe2(
         self,
