@@ -532,6 +532,8 @@ class TaskTrainer(Trainer):
                         *metric_data,
                         **metric_reporter.batch_context(raw_batch, batch),
                     )
+                if batch_id % self.config.num_samples_to_log_progress == 0:
+                    metric_reporter.report_realtime_metric(state.stage)
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
 
