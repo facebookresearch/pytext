@@ -4,7 +4,7 @@
 import itertools
 from typing import List
 
-from fairseq.data.masked_lm_dictionary import BertDictionary
+from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import TokenTensorizer
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer

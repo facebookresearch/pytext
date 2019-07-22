@@ -5,7 +5,7 @@ import itertools
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
-from fairseq.data.masked_lm_dictionary import MaskedLMDictionary
+from fairseq.data.legacy.masked_lm_dictionary import MaskedLMDictionary
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.tokenizers import Tokenizer
