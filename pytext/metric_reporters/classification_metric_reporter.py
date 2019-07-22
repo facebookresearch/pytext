@@ -7,7 +7,7 @@ from typing import List, Optional
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
-    RECALL_AT_PRECISION_THREHOLDS,
+    RECALL_AT_PRECISION_THRESHOLDS,
     LabelListPrediction,
     LabelPrediction,
     compute_classification_metrics,
@@ -59,7 +59,7 @@ class ClassificationMetricReporter(MetricReporter):
         #: columns (usually just 1 column) will be concatenated and output in
         #: the IntentModelChannel as an evaluation tsv.
         text_column_names: List[str] = ["text"]
-        recall_at_precision_thresholds: List[float] = RECALL_AT_PRECISION_THREHOLDS
+        recall_at_precision_thresholds: List[float] = RECALL_AT_PRECISION_THRESHOLDS
 
     def __init__(
         self,

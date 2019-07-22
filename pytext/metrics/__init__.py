@@ -20,7 +20,7 @@ from pytext.utils import cuda
 from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
 
 
-RECALL_AT_PRECISION_THREHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
+RECALL_AT_PRECISION_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
 
 """
 Basic metric classes and functions for single-label prediction problems.
@@ -567,7 +567,7 @@ def recall_at_precision(
 def compute_soft_metrics(
     predictions: Sequence[LabelPrediction],
     label_names: Sequence[str],
-    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
 ) -> Dict[str, SoftClassificationMetrics]:
     """
     Computes soft classification metrics (for now, average precision) given a list of
@@ -607,7 +607,7 @@ def compute_soft_metrics(
 def compute_multi_label_soft_metrics(
     predictions: Sequence[LabelListPrediction],
     label_names: Sequence[str],
-    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
 ) -> Dict[str, SoftClassificationMetrics]:
     """
     Computes multi-label soft classification metrics
@@ -705,7 +705,7 @@ def compute_classification_metrics(
     label_names: Sequence[str],
     loss: float,
     average_precisions: bool = True,
-    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of label
@@ -770,7 +770,7 @@ def compute_multi_label_classification_metrics(
     label_names: Sequence[str],
     loss: float,
     average_precisions: bool = True,
-    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THREHOLDS,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of multi-label
