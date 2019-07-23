@@ -9,7 +9,7 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
-from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.decoders.mlp_decoder import DecompMLPDecoder, MLPDecoder
 from pytext.models.embeddings import EmbeddingBase
 from pytext.models.embeddings.word_embedding import WordEmbedding
 from pytext.models.model import BaseModel, Model
@@ -168,7 +168,9 @@ class LMLSTM(BaseModel):
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
         representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
-        decoder: Optional[MLPDecoder.Config] = MLPDecoder.Config()
+        decoder: Union[
+            MLPDecoder.Config, DecompMLPDecoder.Config, None
+        ] = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
