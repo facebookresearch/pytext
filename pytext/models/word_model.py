@@ -148,10 +148,11 @@ class WordTaggingLiteModel(WordTaggingModel):
     """
 
     class Config(WordTaggingModel.Config):
-        class ByteModelInput(WordTaggingModel.Config.ModelInput):
+        class ByteModelInput(Model.Config.ModelInput):
             # We should support characters as well, but CharacterTokenTensorizer
             # does not support adding characters to vocab yet.
-            tokens: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config()
+            token_bytes: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config()
+            labels: SlotLabelTensorizer.Config = SlotLabelTensorizer.Config()
 
         inputs: ByteModelInput = ByteModelInput()
         embedding: CharacterEmbedding.Config = CharacterEmbedding.Config()
@@ -159,7 +160,7 @@ class WordTaggingLiteModel(WordTaggingModel):
     @classmethod
     def create_embedding(cls, config, tensorizers):
         return CharacterEmbedding(
-            tensorizers["tokens"].NUM_BYTES,
+            tensorizers["token_bytes"].NUM_BYTES,
             config.embedding.embed_dim,
             config.embedding.cnn.kernel_num,
             config.embedding.cnn.kernel_sizes,
@@ -169,3 +170,10 @@ class WordTaggingLiteModel(WordTaggingModel):
 
     def vocab_to_export(self, tensorizers):
         return {}
+
+    def get_export_input_names(self, tensorizers):
+        return ["token_bytes", "token_lens"]
+
+    def arrange_model_inputs(self, tensor_dict):
+        token_bytes, tokens_lens, _ = tensor_dict["token_bytes"]
+        return (token_bytes, tokens_lens)
