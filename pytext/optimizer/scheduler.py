@@ -373,12 +373,12 @@ class PolynomialDecayScheduler(_LRScheduler, BatchScheduler):
 
     def __init__(self, optimizer, warmup_steps, total_steps, end_learning_rate, power):
         assert total_steps > warmup_steps >= 0
-        super().__init__(optimizer)
         self.warmup_steps = warmup_steps
         self.total_steps = total_steps
         self.end_learning_rate = end_learning_rate
         self.power = power
         self.current_steps = 0
+        super().__init__(optimizer)
 
     def prepare(self, train_iter, total_epochs):
         super().prepare(train_iter, total_epochs)
