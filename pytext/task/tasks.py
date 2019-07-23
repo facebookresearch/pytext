@@ -59,6 +59,9 @@ from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocPairwiseRankingModel,
     QueryDocumentPairwiseRankingModel_Deprecated,
 )
+from pytext.models.representations.sparse_transformer_sentence_encoder import (  # noqa f401
+    SparseTransformerSentenceEncoder,
+)
 from pytext.models.semantic_parsers.rnng.rnng_parser import (
     RNNGParser,
     RNNGParser_Deprecated,
