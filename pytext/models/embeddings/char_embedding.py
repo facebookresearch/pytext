@@ -7,10 +7,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import CharFeatConfig
-from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
+from pytext.models.compression import DecompEmbedding
 
 from .embedding_base import EmbeddingBase
+
+
+def pick_embedding(decomp) -> bool:
+    if decomp:
+        return DecompEmbedding
+    return nn.Embedding
 
 
 class CharacterEmbedding(EmbeddingBase):
@@ -71,6 +77,7 @@ class CharacterEmbedding(EmbeddingBase):
             config.cnn.kernel_sizes,
             config.highway_layers,
             config.projection_dim,
+            config.decomp,
         )
 
     def __init__(
@@ -81,6 +88,7 @@ class CharacterEmbedding(EmbeddingBase):
         kernel_sizes: List[int],
         highway_layers: int,
         projection_dim: Optional[int],
+        decomp: bool,
         *args,
         **kwargs,
     ) -> None:
@@ -88,7 +96,9 @@ class CharacterEmbedding(EmbeddingBase):
         output_dim = projection_dim or conv_out_dim
         super().__init__(output_dim)
 
-        self.char_embed = nn.Embedding(num_embeddings, embed_dim)
+        embedding = pick_embedding(decomp)
+
+        self.char_embed = embedding(num_embeddings, embed_dim)
         self.convs = nn.ModuleList(
             [
                 # in_channels = embed_dim because input is treated as sequence

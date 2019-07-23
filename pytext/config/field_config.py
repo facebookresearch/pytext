@@ -41,6 +41,12 @@ class WordFeatConfig(ModuleConfig):
     mlp_layer_dims: Optional[List[int]] = []
 
 
+class DecompWordFeatConfig(ModuleConfig):
+    embed_dim: int = 100
+    mid_dim: int = 100
+    export_input_names: List[str] = ["tokens_vals"]
+
+
 class DictFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
@@ -59,6 +65,7 @@ class CharFeatConfig(ModuleConfig):
     vocab_from_train_data: bool = True
     max_word_length: int = 20
     min_freq: int = 1
+    decomp: bool = False
 
 
 class ContextualTokenEmbeddingConfig(ConfigBase):
