@@ -7,6 +7,7 @@ from typing import List, Optional
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
+    RECALL_AT_PRECISION_THREHOLDS,
     LabelListPrediction,
     LabelPrediction,
     compute_classification_metrics,
@@ -58,6 +59,7 @@ class ClassificationMetricReporter(MetricReporter):
         #: columns (usually just 1 column) will be concatenated and output in
         #: the IntentModelChannel as an evaluation tsv.
         text_column_names: List[str] = ["text"]
+        recall_at_precision_thresholds: List[float] = RECALL_AT_PRECISION_THREHOLDS
 
     def __init__(
         self,
@@ -68,12 +70,16 @@ class ClassificationMetricReporter(MetricReporter):
         ),
         target_label: Optional[str] = None,
         text_column_names: List[str] = Config.text_column_names,
+        recall_at_precision_thresholds: List[float] = (
+            Config.recall_at_precision_thresholds
+        ),
     ) -> None:
         super().__init__(channels)
         self.label_names = label_names
         self.model_select_metric = model_select_metric
         self.target_label = target_label
         self.text_column_names = text_column_names
+        self.recall_at_precision_thresholds = recall_at_precision_thresholds
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
@@ -105,6 +111,7 @@ class ClassificationMetricReporter(MetricReporter):
             config.model_select_metric,
             config.target_label,
             config.text_column_names,
+            config.recall_at_precision_thresholds,
         )
 
     def batch_context(self, raw_batch, batch):
@@ -125,6 +132,7 @@ class ClassificationMetricReporter(MetricReporter):
             ],
             self.label_names,
             self.calculate_loss(),
+            recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
 
     def get_meta(self):
@@ -168,4 +176,5 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
             ],
             self.label_names,
             self.calculate_loss(),
+            recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
