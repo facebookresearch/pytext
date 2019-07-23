@@ -65,6 +65,7 @@ class CharFeatConfig(ModuleConfig):
     vocab_from_train_data: bool = True
     max_word_length: int = 20
     min_freq: int = 1
+    decomp: bool = False
 
 
 class ContextualTokenEmbeddingConfig(ConfigBase):
