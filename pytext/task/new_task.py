@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Type, Union
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
+from pytext.data.sources.data_source import Schema
+from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer
@@ -14,6 +16,44 @@ from pytext.utils import cuda, precision
 from torch import jit
 
 from .task import TaskBase
+
+
+def create_schema(
+    tensorizers: Dict[str, Tensorizer], extra_schema: Optional[Dict[str, Type]] = None
+) -> Schema:
+    schema: Dict[str, Type] = {}
+
+    def add_to_schema(name, type):
+        if name in schema and type != schema[name]:
+            raise TypeError(
+                f"Unexpected different types for column {name}: "
+                f"{type} != {schema[name]}"
+            )
+        schema[name] = type
+
+    for tensorizer in tensorizers.values():
+        for name, type in tensorizer.column_schema:
+            add_to_schema(name, type)
+
+    for name, type in (extra_schema or {}).items():
+        add_to_schema(name, type)
+
+    return schema
+
+
+def create_tensorizers(
+    model_inputs: Union[BaseModel.Config.ModelInput, Dict[str, Tensorizer.Config]],
+) -> Dict[str, Tensorizer]:
+    if not isinstance(model_inputs, dict):
+        model_inputs = model_inputs._asdict()
+
+    tensorizers = {
+        name: create_component(ComponentType.TENSORIZER, tensorizer_config)
+        for name, tensorizer_config in model_inputs.items()
+        if tensorizer_config
+    }
+
+    return tensorizers
 
 
 class _NewTask(TaskBase):
@@ -53,13 +93,14 @@ class _NewTask(TaskBase):
         config: Config,
         unused_metadata=None,
         model_state=None,
+        tensorizers=None,
         rank=0,
         world_size=1,
     ):
-        tensorizers, data = NewTask._init_tensorizers(config, rank, world_size)
+        tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
 
         # Initialized tensorizers can be used to create the model
-        model = NewTask._init_model(config.model, tensorizers, model_state)
+        model = cls._init_model(config.model, tensorizers, model_state)
 
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
@@ -77,39 +118,16 @@ class _NewTask(TaskBase):
         )
 
     @classmethod
-    def _create_tensorizers(cls, model_inputs_dict):
-        if not isinstance(model_inputs_dict, dict):
-            model_inputs_dict = model_inputs_dict._asdict()
-        tensorizers = {
-            name: create_component(ComponentType.TENSORIZER, tensorizer_config)
-            for name, tensorizer_config in model_inputs_dict.items()
-            if tensorizer_config
-        }
-        schema: Dict[str, Type] = {}
-        for tensorizer in tensorizers.values():
-            for name, type in tensorizer.column_schema:
-                if name in schema and type != schema[name]:
-                    raise TypeError(
-                        f"Unexpected different types for column {name}: {type} != {schema[name]}"
-                    )
-                schema[name] = type
-
-        return tensorizers, schema
-
-    @classmethod
-    def _init_tensorizers(cls, config: Config, rank, world_size):
-        tensorizers, schema = NewTask._create_tensorizers(config.model.inputs)
-
+    def _init_tensorizers(cls, config: Config, tensorizers=None, rank=0, world_size=1):
+        extra_schema = {}
         if hasattr(config.metric_reporter, "text_column_names"):
-            for text_column in config.metric_reporter.text_column_names:
-                if text_column in schema and schema[text_column] != str:
-                    raise TypeError(
-                        f"""
-                        Unexpected different types for column {text_column}:
-                        {str} != {schema[text_column]}
-                        """
-                    )
-                schema[text_column] = str
+            extra_schema = {
+                column: str for column in config.metric_reporter.text_column_names
+            }
+
+        if not tensorizers:
+            tensorizers = create_tensorizers(config.model.inputs)
+        schema = create_schema(tensorizers, extra_schema)
 
         # This initializes the tensorizers
         data = create_component(

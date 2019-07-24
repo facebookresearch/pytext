@@ -26,7 +26,9 @@ from pytext.trainers import Trainer
 from pytext.utils import cuda, precision
 
 
-def create_task(task_config, metadata=None, model_state=None, rank=0, world_size=1):
+def create_task(
+    task_config, metadata=None, model_state=None, tensorizers=None, rank=0, world_size=1
+):
     """
     Create a task by finding task class in registry and invoking the from_config
     function of the class, see :meth:`~Task.from_config` for more details
@@ -36,6 +38,7 @@ def create_task(task_config, metadata=None, model_state=None, rank=0, world_size
         task_config,
         metadata,
         model_state,
+        tensorizers=tensorizers,
         rank=rank,
         world_size=world_size,
     )
@@ -59,7 +62,13 @@ class TaskBase(Component):
 
     @classmethod
     def from_config(
-        cls, task_config, metadata=None, model_state=None, rank=1, world_size=0
+        cls,
+        task_config,
+        metadata=None,
+        model_state=None,
+        tensorizers=None,
+        rank=1,
+        world_size=0,
     ):
         """
         Create the task from config, and optionally load metadata/model_state

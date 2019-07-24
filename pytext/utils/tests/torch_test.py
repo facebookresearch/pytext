@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import io
+import pickle
 import unittest
 
 import torch
@@ -93,7 +94,18 @@ class BPETest(unittest.TestCase):
             self.assertEqual(list(word), utf8_chars(word))
 
     def test_simple_bpe(self):
+        BPE_VOCAB_FILE.seek(0)
         bpe = BPE.from_vocab_file(BPE_VOCAB_FILE)
+        tokenized = bpe.tokenize(["hello", "world", "this", "is", "bpe", "今日"])
+        self.assertEqual(
+            ["hello_EOW", "world_EOW", "th", "is_EOW", "is_EOW", "bpe_EOW", "今_EOW"],
+            tokenized,
+        )
+
+    def test_pickle_bpe(self):
+        BPE_VOCAB_FILE.seek(0)
+        original_bpe = BPE.from_vocab_file(BPE_VOCAB_FILE)
+        bpe = pickle.loads(pickle.dumps(original_bpe))
         tokenized = bpe.tokenize(["hello", "world", "this", "is", "bpe", "今日"])
         self.assertEqual(
             ["hello_EOW", "world_EOW", "th", "is_EOW", "is_EOW", "bpe_EOW", "今_EOW"],

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.sources import SquadDataSource
-from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper
+from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper, load_float_list
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.squad_for_bert_tensorizer import SquadForBERTTensorizer
 from pytext.data.squad_tensorizer import SquadTensorizer
@@ -413,24 +413,20 @@ class TensorizersTest(unittest.TestCase):
 
     def test_create_float_list_tensor(self):
         tensorizer = FloatListTensorizer(column="dense", dim=2, error_check=True)
-        rows = [
-            {"dense": "[0.1,0.2]"},  # comma
-            {"dense": "[0.1, 0.2]"},  # comma with single space
-            {"dense": "[0.1,  0.2]"},  # comma with multiple spaces
-            {"dense": "[0.1 0.2]"},  # space
-            {"dense": "[0.1  0.2]"},  # multiple spaces
-            {"dense": "[ 0.1  0.2]"},  # space after [
-            {"dense": "[0.1  0.2 ]"},  # space before ]
+        tests = [
+            ("[0.1,0.2]", [0.1, 0.2]),  # comma
+            ("[0.1, 0.2]", [0.1, 0.2]),  # comma with single space
+            ("[0.1,  0.2]", [0.1, 0.2]),  # comma with multiple spaces
+            ("[0.1 0.2]", [0.1, 0.2]),  # space
+            ("[0.1  0.2]", [0.1, 0.2]),  # multiple spaces
+            ("[ 0.1  0.2]", [0.1, 0.2]),  # space after [
+            ("[0.1  0.2 ]", [0.1, 0.2]),  # space before ]
+            ("[0.  1.]", [0.0, 1.0]),  # 0., 1.
         ]
-
-        tensors = (tensorizer.numberize(row) for row in rows)
-        for tensor in tensors:
-            self.assertEqual([0.1, 0.2], tensor)
-
-        # test that parsing 0. and 1. works
-        a_row = {"dense": "[0.  1.]"}
-        tensor = tensorizer.numberize(a_row)
-        self.assertEqual([0.0, 1.0], tensor)
+        for raw, expected in tests:
+            row = {"dense": load_float_list(raw)}
+            numberized = tensorizer.numberize(row)
+            self.assertEqual(expected, numberized)
 
     def test_annotation_num(self):
         data = TSVDataSource(

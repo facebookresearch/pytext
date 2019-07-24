@@ -75,8 +75,9 @@ def shard(rows, rank, num_workers):
 class SpecialToken(str):
     def __eq__(self, other):
         # We don't want to compare as equal to actual strings, but we want to behave
-        # like a string code-wise.
-        return self is other
+        # like a string code-wise. Don't use `is` comparison because we want
+        # SpecialToken instances created across picklings to equals-compare
+        return isinstance(other, SpecialToken) and super().__eq__(other)
 
     __hash__ = str.__hash__
 

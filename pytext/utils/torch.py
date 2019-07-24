@@ -345,6 +345,20 @@ class BPE(torch.jit.ScriptModule):
 
         return bpe_tokens
 
+    def __getstate__(self):
+        """These implement pickling for BPE modules.
+
+        TorchScript models can't be pickled normally. See
+        https://github.com/pytorch/pytorch/issues/15116 for more context; in the
+        meantime, for TorchScript modules that might want to be pickled
+        (this one is often included in say tensorizer/tokenizer state that we want
+        in snapshots) we need to implement a custom getstate and setstate for pickling.
+        """
+        return {"vocab": self.vocab, "eow": self.eow}
+
+    def __setstate__(self, state):
+        BPE.__init__(self, state["vocab"], state["eow"])
+
 
 @torch.jit.script
 def make_sequence_lengths(batch: List[List[str]]) -> List[int]:

@@ -66,7 +66,10 @@ class BERTTensorizer(TokenTensorizer):
         super().__init__(text_column=None, **kwargs)
         self.columns = columns
         # Manually initialize column_schema since we are sending None to TokenTensorizer
-        self.column_schema = [(column, str) for column in columns]
+
+    @property
+    def column_schema(self):
+        return [(column, str) for column in self.columns]
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
