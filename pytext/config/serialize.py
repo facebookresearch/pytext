@@ -122,13 +122,22 @@ def _value_from_json(cls, value):
     return cls(value)
 
 
+def _is_type_specifier(value):
+    if not _is_dict(value) or len(value) != 1:
+        return False
+    name = next(iter(value))
+    return name[0] == name[0].upper()
+
+
 def _try_component_config_from_json(cls, value):
-    if _is_dict(value) and len(value) == 1:
+    if _is_type_specifier(value):
         options = Registry.subconfigs(cls)
         type_name = list(value)[0]
         for option in options:
             if type_name.lower() == _canonical_typename(option).lower():
                 return _value_from_json(option, value[type_name])
+        else:
+            raise Exception(f"could not find specified component class {type_name}")
     return None
 
 
