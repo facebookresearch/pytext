@@ -30,6 +30,10 @@ class TSVDataSourceTest(unittest.TestCase):
         self.assertEqual({"label", "text"}, set(example))
 
     def test_quoting(self):
+        """
+        The text column of the first row of this file opens a quote but
+        does not close it.
+        """
         data_source = TSVDataSource(
             SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
             SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
@@ -40,6 +44,38 @@ class TSVDataSourceTest(unittest.TestCase):
 
         data = list(data_source.train)
         self.assertEqual(4, len(data))
+
+    def test_bad_quoting(self):
+        """
+        The text column of the first row of this file opens a quote but
+        does not close it.
+        """
+        data_source = TSVDataSource(
+            SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            eval_file=None,
+            field_names=["label", "text"],
+            schema={"text": str, "label": str},
+            quoted=True,
+        )
+
+        data = list(data_source.train)
+        self.assertEqual(1, len(data))
+
+    def test_csv(self):
+        data_source = TSVDataSource(
+            SafeFileWrapper(tests_module.test_file("test_data_tiny_csv.tsv")),
+            test_file=None,
+            eval_file=None,
+            field_names=["label", "slots", "text"],
+            delimiter=",",
+            schema={"text": str, "label": str},
+            quoted=True,
+        )
+
+        for row in data_source.train:
+            self.assertEqual("alarm/set_alarm", row["label"])
+            self.assertTrue(row["text"].startswith("this is the text"))
 
     def test_read_test_data_source(self):
         data = list(self.data.test)

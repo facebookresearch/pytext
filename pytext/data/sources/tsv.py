@@ -18,10 +18,11 @@ from .data_source import (
 
 
 class TSV:
-    def __init__(self, file, field_names=None, delimiter="\t"):
+    def __init__(self, file, field_names=None, delimiter="\t", quoted=False):
         self.file = file
         self.field_names = field_names
         self.delimiter = delimiter
+        self.quoted = quoted
         self._access_lock = threading.Lock()
         csv.field_size_limit(sys.maxsize)
 
@@ -35,7 +36,7 @@ class TSV:
                 (line.replace("\0", "") for line in self.file),
                 fieldnames=self.field_names,
                 delimiter=self.delimiter,
-                quoting=csv.QUOTE_NONE,
+                quoting=csv.QUOTE_MINIMAL if self.quoted else csv.QUOTE_NONE,
             )
             yield from reader
         finally:
@@ -57,6 +58,10 @@ class TSVDataSource(RootDataSource):
         field_names: Optional[List[str]] = None
         #: The column delimiter passed to Python's csv library. Change to "," for csv.
         delimiter: str = "\t"
+        #: Whether the columns can use quotes to include delimiters or not.
+        #: Rows with unclosed quotes will be merged with \n inside.
+        #: Change to True for quoted csv.
+        quoted: bool = False
 
     @classmethod
     def from_config(cls, config: Config, schema: Dict[str, Type], **kwargs):
@@ -95,14 +100,19 @@ class TSVDataSource(RootDataSource):
         eval_file=None,
         field_names=None,
         delimiter=Config.delimiter,
+        quoted=Config.quoted,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self._init_tsv(field_names, delimiter, train_file, test_file, eval_file)
+        self._init_tsv(field_names, delimiter, train_file, test_file, eval_file, quoted)
 
-    def _init_tsv(self, field_names, delimiter, train_file, test_file, eval_file):
+    def _init_tsv(
+        self, field_names, delimiter, train_file, test_file, eval_file, quoted
+    ):
         def make_tsv(file):
-            return TSV(file, field_names=field_names, delimiter=delimiter)
+            return TSV(
+                file, field_names=field_names, delimiter=delimiter, quoted=quoted
+            )
 
         self._train_tsv = make_tsv(train_file) if train_file else []
         self._test_tsv = make_tsv(test_file) if test_file else []

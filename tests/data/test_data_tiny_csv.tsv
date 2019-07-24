@@ -1,0 +1,5 @@
+alarm/set_alarm,"16:24:datetime,39:57:datetime",this is the text,
+alarm/set_alarm,,this is the text,
+alarm/set_alarm,12:27:datetime,this is the text,
+alarm/set_alarm,,"this is the text, why not"
+alarm/set_alarm,12:37:datetime,"this is the text, it's good",
