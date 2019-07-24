@@ -128,10 +128,14 @@ class XLMTensorizer(BERTTensorizer):
             max_seq_len=max_seq_len,
         )
         # if the dataset has a language column then adjust the schema appropriately
-        if has_language_in_data:
-            self.column_schema = self.column_schema + [
-                (column, str) for column in language_columns
-            ]
+        self.has_language_in_data = has_language_in_data
+
+    @property
+    def column_schema(self):
+        schema = super().column_schema
+        if self.has_language_in_data:
+            schema += [(column, str) for column in self.language_columns]
+        return schema
 
     def _lookup_tokens(self, text: str, seq_len: int) -> List[int]:
         tokenized_text = [t.value for t in self.tokenizer.tokenize(text)]

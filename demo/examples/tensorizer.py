@@ -20,9 +20,12 @@ class MyWordTensorizer(Tensorizer):
         return cls(column=config.column)
 
     def __init__(self, column):
-        super().__init__([(column, str)])
         self.column = column
         self.vocab = None
+
+    @property
+    def column_schema(self):
+        return [(self.column, str)]
 
     def _tokenize(self, row):
         raw_text = row[self.column]

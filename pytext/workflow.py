@@ -134,9 +134,12 @@ def save_and_export(
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
     meta = None
+    tensorizers = None
     if hasattr(task, "data_handler"):
         meta = task.data_handler.metadata_to_save()
-    save(config, task.model, meta)
+    else:
+        tensorizers = task.data.tensorizers
+    save(config, task.model, meta, tensorizers=tensorizers)
     if config.export_caffe2_path:
         task.export(
             task.model,

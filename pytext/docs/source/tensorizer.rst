@@ -11,13 +11,15 @@ PyText provides a number of tensorizers for the most common cases. However, if y
 
 First a :class:`~Config` inner class, from_config class method, and the constructor `__init__`. This is just to declare member variables.
 
-The constructor should declare the schema of your :class:`~Tensorizer` by calling `super().__init__(schema)`, where schema is a list of tuples, one for each field/column read from the data source. Each tuple specifies the name of the column, and the type of the data. By specifying the type of your data, the data source will automatically parse the inputs and pass objects of those types to the tensorizers. You don't need to parse your own inputs.
+The tensorizer should declare the schema of your :class:`~Tensorizer` by defining a `column_schema` property which returns a list of tuples, one for each field/column read from the data source. Each tuple specifies the name of the column, and the type of the data. By specifying the type of your data, the data source will automatically parse the inputs and pass objects of those types to the tensorizers. You don't need to parse your own inputs.
 
 For example, :class:`~SeqTokenTensorizer` reads one column from the input data. The data is formatted like a json list of strings: `["where do you wanna meet?", "MPK"]`. The schema declaration is like this:
 
 .. code:: python
 
-    super().__init__([(column, List[str])])
+    @property
+    def column_schema(self):
+        return [(self.column, List[str])]
 
 
 Another example with :class:`~GazetteerTensorizer`: it needs 2 columns, one string for the text itself, and one for the gazetteer features formatted like a complex json object. (The Gazetteer type is registered in the data source to automatically convert the raw strings from the input to this type.) The schema declaration is like this:
@@ -25,7 +27,10 @@ Another example with :class:`~GazetteerTensorizer`: it needs 2 columns, one stri
 .. code:: python
 
     Gazetteer = List[Dict[str, Dict[str, float]]]
-    super().__init__([(text_column, str), (dict_column, Gazetteer)])
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str), (self.dict_column, Gazetteer)]
 
 
 Example Implementation
@@ -46,9 +51,12 @@ Let's implement a simple word tensorizer that creates a tensor with the word ind
             return cls(column=config.column)
 
         def __init__(self, column):
-            super().__init__([(column, str)])
             self.column = column
             self.vocab = vocab
+
+        @property
+        def column_schema(self):
+            return [(self.column, str)]
 
 Next we need to build the vocabulary by reading the training data and count the words. Since multiple tensorizers might need to read the data, we parallelize the reading part and the tensorizers use the pattern `row = yield` to read their inputs. In this simple example, our "tokenize" function is just going to split on spaces.
 

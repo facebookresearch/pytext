@@ -44,7 +44,13 @@ class DisjointMultitask(TaskBase):
 
     @classmethod
     def from_config(
-        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+        cls,
+        task_config: Config,
+        metadata=None,
+        model_state=None,
+        tensorizers=None,
+        rank=0,
+        world_size=1,
     ):
         print("Task parameters:\n")
         pprint(config_to_json(type(task_config), task_config))
@@ -174,13 +180,25 @@ class NewDisjointMultitask(_NewTask):
 
     @classmethod
     def from_config(
-        cls, task_config, metadata=None, model_state=None, rank=0, world_size=1
+        cls,
+        task_config: Config,
+        unused_metadata=None,
+        model_state=None,
+        tensorizers=None,
+        rank=0,
+        world_size=1,
     ):
         data_dict = OrderedDict()
         models = OrderedDict()
         metric_reporters = OrderedDict()
+        tensorizers_dict = tensorizers or {}
+        # We can't really re-use the tensorizers, and the tensorizers saved for disjoint
+        # multitask are an empty dict right now anyway. Really we should serialize
+        # all of the subtasks individually.
         for name, task in task_config.tasks.items():
-            tensorizers, data = NewTask._init_tensorizers(task, rank, world_size)
+            tensorizers, data = cls._init_tensorizers(
+                task, tensorizers_dict.get(name), rank, world_size
+            )
             data_dict[name] = data
             models[name] = NewTask._init_model(task.model, tensorizers)
             metric_reporters[name] = create_component(
@@ -196,6 +214,10 @@ class NewDisjointMultitask(_NewTask):
         data = DisjointMultitaskData.from_config(
             task_config.data, data_dict=data_dict, rank=rank, world_size=world_size
         )
+        # for serialization
+        data.tensorizers = {
+            name: data.data_dict[name].tensorizers for name in data.data_dict
+        }
         model = NewDisjointMultitaskModel(models, loss_weights=task_weights)
         if model_state:
             model.load_state_dict(model_state)

@@ -55,8 +55,12 @@ class Tensorizer(Component):
     class Config(Component.Config):
         pass
 
-    def __init__(self, column_schema: List[Tuple[str, Type]]):
-        self.column_schema = column_schema
+    @property
+    def column_schema(self):
+        """Generic types don't pickle well pre-3.7, so we don't actually want
+        to store the schema as an attribute. We're already storing all of the
+        columns anyway, so until there's a better solution, schema is a property."""
+        return []
 
     def numberize(self, row):
         raise NotImplementedError
@@ -157,7 +161,6 @@ class TokenTensorizer(Tensorizer):
         vocab_config=None,
         vocab=None,
     ):
-        super().__init__([(text_column, str)])
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.vocab = vocab
@@ -167,6 +170,10 @@ class TokenTensorizer(Tensorizer):
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str)]
 
     def _lookup_tokens(self, text=None, pre_tokenized=None):
         tokenized = pre_tokenized or self.tokenizer.tokenize(text)[: self.max_seq_len]
@@ -271,10 +278,13 @@ class ByteTensorizer(Tensorizer):
         return cls(config.column, config.lower, config.max_seq_len)
 
     def __init__(self, text_column, lower=True, max_seq_len=None):
-        super().__init__([(text_column, str)])
         self.text_column = text_column
         self.lower = lower
         self.max_seq_len = max_seq_len
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str)]
 
     def numberize(self, row):
         """Convert text to characters."""
@@ -334,12 +344,15 @@ class ByteTokenTensorizer(Tensorizer):
         max_byte_len=Config.max_byte_len,
         offset_for_non_padding=Config.offset_for_non_padding,
     ):
-        super().__init__([(text_column, str)])
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
         self.max_byte_len = max_byte_len
         self.offset_for_non_padding = offset_for_non_padding
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str)]
 
     def numberize(self, row):
         """Convert text to bytes, pad batch."""
@@ -437,7 +450,6 @@ class LabelTensorizer(Tensorizer):
         pad_in_vocab: bool = False,
         label_vocab: Optional[List[str]] = None,
     ):
-        super().__init__([(label_column, str)])
         self.label_column = label_column
         self.pad_in_vocab = pad_in_vocab
         self.vocab_builder = VocabBuilder()
@@ -448,6 +460,10 @@ class LabelTensorizer(Tensorizer):
         if label_vocab:
             self.vocab_builder.add_all(label_vocab)
             self.vocab, self.pad_idx = self._create_vocab()
+
+    @property
+    def column_schema(self):
+        return [(self.label_column, str)]
 
     def initialize(self):
         """
@@ -487,7 +503,10 @@ class LabelListTensorizer(LabelTensorizer):
 
     def __init__(self, label_column: str = "label", *args, **kwargs):
         super().__init__(label_column, *args, **kwargs)
-        self.column_schema = [(label_column, List[str])]
+
+    @property
+    def column_schema(self):
+        return [(self.label_column, List[str])]
 
     def numberize(self, row):
         labels = super().numberize(row)
@@ -537,16 +556,18 @@ class SoftLabelTensorizer(LabelTensorizer):
         labels_column: str = "target_labels",
     ):
         super().__init__(label_column, allow_unknown, pad_in_vocab, label_vocab)
-        column_schema = [
-            (label_column, str),
-            (probs_column, List[float]),
-            (logits_column, List[float]),
-            (labels_column, List[str]),
-        ]
-        Tensorizer.__init__(self, column_schema)
         self.probs_column = probs_column
         self.logits_column = logits_column
         self.labels_column = labels_column
+
+    @property
+    def column_schema(self):
+        return [
+            (self.label_column, str),
+            (self.probs_column, List[float]),
+            (self.logits_column, List[float]),
+            (self.labels_column, List[str]),
+        ]
 
     def numberize(self, row):
         """Numberize hard and soft labels"""
@@ -584,12 +605,15 @@ class NumericLabelTensorizer(Tensorizer):
         label_column: str = Config.column,
         rescale_range: Optional[List[float]] = Config.rescale_range,
     ):
-        super().__init__([(label_column, str)])
         self.label_column = label_column
         if rescale_range is not None:
             assert len(rescale_range) == 2
             assert rescale_range[0] < rescale_range[1]
         self.rescale_range = rescale_range
+
+    @property
+    def column_schema(self):
+        return [(self.label_column, str)]
 
     def numberize(self, row):
         """Numberize labels."""
@@ -618,33 +642,22 @@ class FloatListTensorizer(Tensorizer):
         return cls(config.column, config.error_check, config.dim)
 
     def __init__(self, column: str, error_check: bool, dim: Optional[int]):
-        super().__init__([(column, str)])
         self.column = column
         self.error_check = error_check
         self.dim = dim
         assert not self.error_check or self.dim is not None, "Error check requires dim"
 
+    @property
+    def column_schema(self):
+        return [(self.column, List[float])]
+
     def numberize(self, row):
-        str = row[self.column]
-        # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
-        str = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", str)
-        # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
-        str = re.sub(r"(?<=\d)\.(?![\d])", "", str)
-        try:
-            res = json.loads(str)
-        except json.decoder.JSONDecodeError as e:
-            raise Exception(
-                f"Unable to parse dense feature:{row[self.column]}," f" re output:{str}"
-            ) from e
-        if type(res) is not list:
-            raise ValueError(f"{res} is not a valid float list")
+        dense = row[self.column]
         if self.error_check:
-            assert len(res) == self.dim, (
-                f"Expected dimension:{self.dim}"
-                f", got:{len(res)}"
-                f", dense-feature:{res}"
-            )
-        return [float(n) for n in res]
+            assert (
+                len(dense) == self.dim
+            ), f"Dense feature didn't match expected dimension {self.dim}: {dense}"
+        return dense
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch, dtype=torch.float)
@@ -684,12 +697,15 @@ class SlotLabelTensorizer(Tensorizer):
         tokenizer: Tokenizer = None,
         allow_unknown: bool = Config.allow_unknown,
     ):
-        super().__init__([(text_column, str), (slot_column, List[Slot])])
         self.slot_column = slot_column
         self.text_column = text_column
         self.allow_unknown = allow_unknown
         self.tokenizer = tokenizer or Tokenizer()
         self.pad_idx = Padding.DEFAULT_LABEL_PAD_IDX
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str), (self.slot_column, List[Slot])]
 
     def initialize(self):
         """Look through the dataset for all labels and create a vocab map for them."""
@@ -788,10 +804,13 @@ class GazetteerTensorizer(Tensorizer):
         dict_column: str = Config.dict_column,
         tokenizer: Tokenizer = None,
     ):
-        super().__init__([(text_column, str), (dict_column, Gazetteer)])
         self.text_column = text_column
         self.dict_column = dict_column
         self.tokenizer = tokenizer or Tokenizer()
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str), (self.dict_column, Gazetteer)]
 
     def initialize(self):
         """
@@ -961,7 +980,6 @@ class SeqTokenTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         vocab=None,
     ):
-        super().__init__([(column, List[str])])
         self.column = column
         self.tokenizer = tokenizer or Tokenizer()
         self.vocab = vocab
@@ -972,6 +990,10 @@ class SeqTokenTensorizer(Tensorizer):
         self.add_eol_token = add_eol_token
         self.use_eol_token_for_bol = use_eol_token_for_bol
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
+
+    @property
+    def column_schema(self):
+        return [(self.column, List[str])]
 
     def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
@@ -1063,9 +1085,12 @@ class AnnotationNumberizer(Tensorizer):
         return cls(column=config.column)
 
     def __init__(self, column: str = Config.column, vocab=None):
-        super().__init__([(column, str)])
         self.column = column
         self.vocab = vocab
+
+    @property
+    def column_schema(self):
+        return [(self.column, List[str])]
 
     def initialize(self, vocab_builder=None):
         """Build vocabulary based on training corpus."""
@@ -1116,7 +1141,6 @@ class MetricTensorizer(Tensorizer):
         return cls(config.names, config.indexes)
 
     def __init__(self, names: List[str], indexes: List[int]):
-        super().__init__([])
         self.names = names
         self.indexes = indexes
 
@@ -1152,8 +1176,11 @@ class FloatTensorizer(Tensorizer):
         return cls(config.column)
 
     def __init__(self, column: str):
-        super().__init__([(column, float)])
         self.column = column
+
+    @property
+    def column_schema(self):
+        return [(self.column, float)]
 
     def numberize(self, row):
         return row[self.column]

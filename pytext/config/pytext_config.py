@@ -74,6 +74,10 @@ class ConfigBase(metaclass=ConfigBaseMeta):
             lines += f"{key}: {val}".split("\n")
         return "\n    ".join(lines)
 
+    def __eq__(self, other):
+        """Mainly a convenience utility for unit testing."""
+        return type(self) == type(other) and self._asdict() == other._asdict()
+
 
 class PlaceHolder:
     pass

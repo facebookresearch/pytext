@@ -3,11 +3,15 @@
 
 import json
 import logging
-from typing import Dict, List, TypeVar
+import re
+from typing import Dict, List, Type, TypeVar
 
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
 from pytext.utils.data import Slot, parse_slot_string
+
+
+Schema = Dict[str, Type]
 
 
 class RawExample(dict):
@@ -127,7 +131,7 @@ class DataSource(Component):
     __COMPONENT_TYPE__ = ComponentType.DATA_SOURCE
     __EXPANSIBLE__ = True
 
-    def __init__(self, schema):
+    def __init__(self, schema: Schema):
         self.schema = schema
 
     @generator_property
@@ -191,7 +195,7 @@ class RootDataSource(DataSource):
         #: remap names from the raw data source to names in the schema.
         column_mapping: Dict[str, str] = {}
 
-    def __init__(self, schema, column_mapping=()):
+    def __init__(self, schema: Schema, column_mapping: Dict[str, str] = ()):
         super().__init__(schema)
         self.column_mapping = dict(column_mapping)
 
@@ -299,11 +303,27 @@ JSONString = TypeVar("JSONString", str, bytes)
 
 
 @RootDataSource.register_type(Gazetteer)
-@RootDataSource.register_type(List[float])
 @RootDataSource.register_type(List[str])
 @RootDataSource.register_type(List[int])
 def load_json(s):
     return json.loads(s)
+
+
+@RootDataSource.register_type(List[float])
+def load_float_list(s):
+    # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
+    processed = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", s)
+    # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
+    processed = re.sub(r"(?<=\d)\.(?![\d])", "", processed)
+    try:
+        parsed = json.loads(processed)
+    except json.decoder.JSONDecodeError as e:
+        raise ValueError(
+            f"Unable to parse float list `{s}` (normalized to `{processed}`)"
+        ) from e
+    if not isinstance(parsed, list):
+        raise ValueError(f"Expected float list for float feature, got {parsed}")
+    return [float(f) for f in parsed]
 
 
 @RootDataSource.register_type(JSONString)
