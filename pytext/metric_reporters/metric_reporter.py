@@ -4,10 +4,11 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metrics import RealtimeMetrics
+from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
 
 
@@ -37,7 +38,6 @@ class MetricReporter(Component):
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
     lower_is_better: bool = False
-    realtime_report_freq: int = 500
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
@@ -98,8 +98,6 @@ class MetricReporter(Component):
         if DatasetFieldName.NUM_TOKENS in context:
             self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
             self.realtime_meters["ups"].update(1)
-        if n_batches and n_batches % self.realtime_report_freq == 0:
-            self.report_realtime_metric()
 
     def aggregate_preds(self, new_batch):
         self.aggregate_data(self.all_preds, new_batch)
@@ -197,6 +195,10 @@ class MetricReporter(Component):
         metrics = self.calculate_metric()
         model_select_metric = self.get_model_select_metric(metrics)
 
+        # print_to_channels is true only on gpu 0, but we need all gpus to sync
+        # metric
+        self.report_realtime_metric(stage)
+
         if print_to_channels:
             for channel in self.channels:
                 if stage in channel.stages:
@@ -213,20 +215,32 @@ class MetricReporter(Component):
                         self.get_meta(),
                         model,
                     )
-            self.report_realtime_metric()
 
         if reset:
             self._reset()
             self._reset_realtime()
         return metrics
 
-    def report_realtime_metric(self):
-        tps = self.realtime_meters["tps"].avg
-        ups = self.realtime_meters["ups"].avg
+    def report_realtime_metric(self, stage):
+        if stage != Stage.TRAIN:
+            return
+
+        samples_total = self.n_batches + 1
+        tps_total = self.realtime_meters["tps"].n
+        ups_total = self.realtime_meters["ups"].n
+        elapsed_time = self.realtime_meters["tps"].elapsed_time
+
+        if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+            tensor = torch.cuda.IntTensor([samples_total, tps_total, ups_total])
+            torch.distributed.all_reduce(tensor)
+            [samples_total, tps_total, ups_total] = tensor.data.tolist()[:]
+
+        tps = tps_total / elapsed_time
+        ups = ups_total / elapsed_time
 
         if not tps or not ups:
             return
-        metrics = RealtimeMetrics(samples=self.n_batches + 1, tps=tps, ups=ups)
+        metrics = RealtimeMetrics(samples=samples_total, tps=tps, ups=ups)
         print(metrics, flush=True)
 
     def get_model_select_metric(self, metrics):

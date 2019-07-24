@@ -104,3 +104,7 @@ class DisjointMultitaskMetricReporter(MetricReporter):
             metric = -metrics[AVRG_LOSS]
 
         return metric
+
+    def report_realtime_metric(self, stage):
+        for _, reporter in self.reporters.items():
+            reporter.report_realtime_metric(stage)
