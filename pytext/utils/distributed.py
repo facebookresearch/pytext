@@ -4,6 +4,8 @@
 import torch
 import torch.distributed as dist_c10d
 
+from . import cuda
+
 
 def dist_init(
     distributed_rank: int,
@@ -77,3 +79,9 @@ def get_shard_range(dataset_size: int, rank: int, world_size: int):
     shard_end = shard_offset + shard_len - 1
 
     return (shard_offset, shard_end)
+
+
+def gather_metrics(metrics):
+    tensor = cuda.tensor(metrics, dtype=torch.float)
+    torch.distributed.all_reduce(tensor)
+    return tensor.data.tolist()

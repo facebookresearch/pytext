@@ -13,6 +13,7 @@ from pytext.metrics.language_model_metrics import (
     LanguageModelMetric,
     compute_language_model_metric,
 )
+from pytext.utils import cuda, distributed
 
 from .channel import ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -175,20 +176,31 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         self.total_num_tokens += num_words_in_batch
 
         # realtime stats
+        self.n_batches = n_batches
         total_tokens = float(targets[2].sum())
         self.realtime_meters["tps"].update(total_tokens)
-
-        if not n_batches % 1000:
-            tps = self.realtime_meters["tps"].avg
-            print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
-                f"batch ppl: {math.exp(loss.item()):.2f}, "
-                f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
-                f"number of batches: {n_batches}, "
-                f"accumulated tokens/s: {tps:.0f}",
-                flush=True,
-            )
+        self.last_batch_tps = total_tokens / (now - self.time)
+        self.last_loss = loss.item()
         self.time = now
+
+    def report_realtime_metric(self, stage):
+        if stage != Stage.TRAIN:
+            return
+
+        tps = self.realtime_meters["tps"].avg
+        agg_ppl = self.calculate_loss()
+        if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+            [tps, agg_ppl] = distributed.all_gather_metric(metrics=[tps, agg_ppl])
+            agg_ppl /= cuda.DISTRIBUTED_WORLD_SIZE
+
+        print(
+            f"Number of batches: {self.n_batches}, "
+            f"batch ppl: {math.exp(self.last_loss):.2f}, "
+            f"batch tokens/s: {self.last_batch_tps:.0f}, "
+            f"agg ppl: {math.exp(agg_ppl):.2f}, "
+            f"agg tokens/s: {tps:.0f}",
+            flush=True,
+        )
 
     def calculate_loss(self) -> float:
         return self.aggregate_loss / float(self.total_num_tokens)
@@ -197,4 +209,10 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         super()._reset()
         self.aggregate_loss = 0.0
         self.total_num_tokens = 0
+
+    def _reset_realtime(self):
+        super()._reset_realtime()
+        self.n_batches = 0
+        self.last_batch_tps = 0
+        self.last_loss = 0
         self.time = time.time()

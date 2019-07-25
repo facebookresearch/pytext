@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import sys
 from typing import Dict, List
 
 import numpy as np
@@ -7,8 +8,7 @@ import torch
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.metrics import RealtimeMetrics
-from pytext.utils import cuda
+from pytext.utils import cuda, distributed
 from pytext.utils.meter import TimeMeter
 
 
@@ -190,15 +190,14 @@ class MetricReporter(Component):
             reset (bool): if all data should be reset after report, default is True
             print_to_channels (bool): if report data to channels, default is True
         """
-        self.gen_extra_context()
-        self.total_loss = self.calculate_loss()
-        metrics = self.calculate_metric()
-        model_select_metric = self.get_model_select_metric(metrics)
-
         # print_to_channels is true only on gpu 0, but we need all gpus to sync
         # metric
         self.report_realtime_metric(stage)
 
+        self.gen_extra_context()
+        self.total_loss = self.calculate_loss()
+        metrics = self.calculate_metric()
+        model_select_metric = self.get_model_select_metric(metrics)
         if print_to_channels:
             for channel in self.channels:
                 if stage in channel.stages:
@@ -225,23 +224,26 @@ class MetricReporter(Component):
         if stage != Stage.TRAIN:
             return
 
-        samples_total = self.n_batches + 1
-        tps_total = self.realtime_meters["tps"].n
-        ups_total = self.realtime_meters["ups"].n
-        elapsed_time = self.realtime_meters["tps"].elapsed_time
+        try:
+            num_batches = self.n_batches + 1
+            tps = self.realtime_meters["tps"].avg
+            ups = self.realtime_meters["ups"].avg
+        except AttributeError as e:
+            # subclass might override which make it doesn't have the attribute
+            print(e, file=sys.stderr)
 
         if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-            tensor = torch.cuda.IntTensor([samples_total, tps_total, ups_total])
-            torch.distributed.all_reduce(tensor)
-            [samples_total, tps_total, ups_total] = tensor.data.tolist()[:]
+            [tps, ups] = distributed.gather_metrics(metrics=[tps, ups])
 
-        tps = tps_total / elapsed_time
-        ups = ups_total / elapsed_time
-
-        if not tps or not ups:
+        if not tps:
             return
-        metrics = RealtimeMetrics(samples=samples_total, tps=tps, ups=ups)
-        print(metrics, flush=True)
+
+        print(
+            f"Number of batches: {num_batches}, "
+            f"accumulated updates/s: {ups:.0f}, "
+            f"accumulated tokens/s: {tps:.0f}",
+            flush=True,
+        )
 
     def get_model_select_metric(self, metrics):
         """
