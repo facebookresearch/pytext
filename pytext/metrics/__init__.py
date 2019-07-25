@@ -3,6 +3,7 @@
 
 import itertools
 from collections import defaultdict
+from json import dumps as json_dumps
 from typing import (
     Any,
     DefaultDict,
@@ -121,7 +122,7 @@ class MacroPRF1Metrics(NamedTuple):
     per_label_scores: Dict[str, PRF1Scores]
     macro_scores: MacroPRF1Scores
 
-    def print_metrics(self, indentation="") -> None:
+    def print_metrics(self, indentation="", report_pep=False) -> None:
         print(
             ascii_table(
                 [
@@ -151,6 +152,23 @@ class MacroPRF1Metrics(NamedTuple):
                 indentation=indentation,
             )
         )
+        if report_pep:
+            self.print_pep()
+
+    def print_pep(self) -> None:
+        info = {
+            "type": "NET",
+            "metric": " ".join(["Overall", "macro", "Precision"]),
+            "unit": "None",
+            "value": f"{self.macro_scores.precision:.2f}",
+        }
+        print("PyTorchObserver " + json_dumps(info))
+        info["metric"] = " ".join(["Overall", "macro", "Recall"])
+        info["value"] = f"{self.macro_scores.recall:.2f}"
+        print("PyTorchObserver " + json_dumps(info))
+        info["metric"] = " ".join(["Overall", "macro", "F1"])
+        info["value"] = f"{self.macro_scores.f1:.2f}"
+        print("PyTorchObserver " + json_dumps(info))
 
 
 class PRF1Metrics(NamedTuple):
@@ -224,10 +242,10 @@ class ClassificationMetrics(NamedTuple):
     roc_auc: Optional[float]
     loss: float
 
-    def print_metrics(self) -> None:
+    def print_metrics(self, report_pep=False) -> None:
         print(f"Accuracy: {self.accuracy * 100:.2f}\n")
         print("Macro P/R/F1 Scores:")
-        self.macro_prf1_metrics.print_metrics()
+        self.macro_prf1_metrics.print_metrics(report_pep=report_pep)
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
             soft_scores = [
@@ -244,6 +262,19 @@ class ClassificationMetrics(NamedTuple):
                 "roc_auc": "ROC AUC",
             }
             print(ascii_table(soft_scores, columns))
+            if report_pep:
+                for label, metrics in sorted(self.per_label_soft_scores.items()):
+                    info = {
+                        "type": "NET",
+                        "metric": " ".join([label, "Average precision"]),
+                        "unit": "None",
+                        "value": f"{metrics.average_precision:.3f}",
+                    }
+                    print("PyTorchObserver " + json_dumps(info))
+                    info["metric"] = " ".join([label, "ROC AUC"])
+                    info["value"] = f"{(metrics.roc_auc or 0.0):.3f}"
+                    print("PyTorchObserver " + json_dumps(info))
+
             all_thresholds = set(
                 itertools.chain.from_iterable(
                     metrics.recall_at_precision
@@ -270,10 +301,32 @@ class ClassificationMetrics(NamedTuple):
                     alignments={"label": "<"},
                 )
             )
+            if report_pep:
+                for label, metrics in sorted(self.per_label_soft_scores.items()):
+                    for p, r in metrics.recall_at_precision.items():
+                        info = {
+                            "type": "NET",
+                            "metric": " ".join([label, "R@P", str(p)]),
+                            "unit": "None",
+                            "value": f"{r:.3f}",
+                        }
+                        print("PyTorchObserver " + json_dumps(info))
         if self.mcc:
             print(f"\nMatthews correlation coefficient: {self.mcc :.3f}")
         if self.roc_auc:
             print(f"\nROC AUC: {self.roc_auc:.3f}")
+        if report_pep:
+            self.print_pep()
+
+    def print_pep(self):
+        metrics = {"Accuracy": f"{self.accuracy * 100:.2f}"}
+        if self.mcc:
+            metrics["Matthews correlation coefficient"] = f"{self.mcc :.3f}"
+        if self.roc_auc:
+            metrics["ROC AUC"] = f"{self.roc_auc :.3f}"
+        for key, value in metrics.items():
+            info = {"type": "NET", "metric": key, "unit": "None", "value": value}
+            print("PyTorchObserver " + json_dumps(info))
 
 
 class Confusions:
