@@ -17,6 +17,7 @@ from pytext.models.module import create_module
 from pytext.models.output_layers import OutputLayerBase
 from pytext.models.output_layers.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
+from pytext.models.representations.deepcnn import DeepCNNRepresentation as CNN
 from pytext.models.representations.representation_base import RepresentationBase
 
 
@@ -167,7 +168,9 @@ class LMLSTM(BaseModel):
 
         inputs: ModelInput = ModelInput()
         embedding: WordEmbedding.Config = WordEmbedding.Config()
-        representation: BiLSTM.Config = BiLSTM.Config(bidirectional=False)
+        representation: Union[BiLSTM.Config, CNN.Config] = BiLSTM.Config(
+            bidirectional=False
+        )
         decoder: Optional[MLPDecoder.Config] = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
@@ -219,7 +222,7 @@ class LMLSTM(BaseModel):
         self._states: Optional[Tuple] = None
 
     def cpu(self):
-        if self.stateful:
+        if self.stateful and self._states:
             self._states = (self._states[0].cpu(), self._states[1].cpu())
         return self._apply(lambda t: t.cpu())
 
@@ -256,10 +259,17 @@ class LMLSTM(BaseModel):
         self, tokens: torch.Tensor, seq_len: torch.Tensor
     ) -> List[torch.Tensor]:
         token_emb = self.embedding(tokens)
-        if self.stateful and self._states is None:
-            self._states = self.init_hidden(tokens.size(0))
 
-        rep, states = self.representation(token_emb, seq_len, states=self._states)
+        rep = None
+        if isinstance(self.representation, BiLSTM):
+            if self.stateful and self._states is None:
+                self._states = self.init_hidden(tokens.size(0))
+            rep, states = self.representation(token_emb, seq_len, states=self._states)
+            if self.stateful:
+                self._states = repackage_hidden(states)
+        elif isinstance(self.representation, CNN):
+            rep = self.representation(token_emb)
+
         if self.decoder is None:
             output = rep
         else:
@@ -267,8 +277,6 @@ class LMLSTM(BaseModel):
                 rep = [rep]
             output = self.decoder(*rep)
 
-        if self.stateful:
-            self._states = repackage_hidden(states)
         return output  # (bsz, nclasses)
 
     def init_hidden(self, bsz: int) -> Tuple[torch.Tensor, torch.Tensor]:
