@@ -6,6 +6,7 @@ import functools
 import timeit
 import traceback
 import weakref
+from json import dumps as json_dumps
 
 from .ascii_table import ascii_table
 
@@ -71,11 +72,42 @@ class Snapshot:
         self.times = collections.defaultdict(Timings)
         self.start = timeit.default_timer()
 
-    def report(self):
+    def report(self, report_pep=False):
         snapshot_total = timeit.default_timer() - self.start
 
         def path(key):
             return " -> ".join(label for label, _ in key)
+
+        def print_pep(results, snapshot_total):
+            for key, times in sorted(self.times.items()):
+                info = {
+                    "type": path(key),
+                    "metric": "latency",
+                    "unit": "ms",
+                    "value": f"{times.sum * 1000:.1f}",
+                }
+                if times.sum < 0.001:
+                    info["unit"] = "ns"
+                    info["value"] = f"{times.sum * 1000000:.1f}"
+                if times.count > 1:
+                    info["info_string"] = " ".join(
+                        [
+                            "Count",
+                            str(times.count),
+                            "Average",
+                            f"{times.average * 1000:.1f}",
+                            "Max",
+                            f"{times.max * 1000:.1f}",
+                        ]
+                    )
+                print("PyTorchObserver " + json_dumps(info))
+            info = {
+                "type": "NET",
+                "metric": "latency",
+                "unit": "ms",
+                "value": f"{snapshot_total * 1000:.1f}",
+            }
+            print("PyTorchObserver " + json_dumps(info))
 
         results = [
             {
@@ -101,6 +133,8 @@ class Snapshot:
                 alignments={"name": "<"},
             )
         )
+        if report_pep:
+            print_pep(results, snapshot_total)
 
 
 class HierarchicalTimer:
