@@ -14,7 +14,7 @@ from pytext.config import LATEST_VERSION, PyTextConfig
 from pytext.data import Data, PoolingBatcher
 from pytext.data.sources import TSVDataSource
 from pytext.data.tensorizers import FloatListTensorizer
-from pytext.models.doc_model import DocModel
+from pytext.models.doc_model import DocModel, PersonalizedDocModel
 from pytext.models.model import Model
 from pytext.task.new_task import NewTask
 from pytext.task.tasks import DocumentClassificationTask
@@ -28,7 +28,10 @@ TestFileMetadata = tests_module.TestFileMetadata
 TestFileName = tests_module.TestFileName
 get_test_file_metadata = tests_module.get_test_file_metadata
 
-test_file_and_models = [(TestFileName.TRAIN_DENSE_FEATURES_TINY_TSV, DocModel)]
+test_file_and_models = [
+    (TestFileName.TRAIN_DENSE_FEATURES_TINY_TSV, DocModel),
+    (TestFileName.TEST_PERSONALIZATION_OPPOSITE_INPUTS_TSV, PersonalizedDocModel),
+]
 
 
 class ModelExporterTest(hu.HypothesisTestCase):
@@ -72,7 +75,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 ),
                 trainer=TaskTrainer.Config(epochs=1),
                 model=model_class.Config(
-                    inputs=model_class.Config.ModelInput(
+                    inputs=type(model_class.Config.inputs)(
                         dense=FloatListTensorizer.Config(
                             column=test_file_metadata.dense_col_name,
                             error_check=True,

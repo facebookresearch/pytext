@@ -521,6 +521,15 @@ class LabelListTensorizer(LabelTensorizer):
         return row[1]
 
 
+class UidTensorizer(LabelTensorizer):
+    """Numberize user IDs which are read as strings."""
+
+    class Config(LabelTensorizer.Config):
+        column: str = "uid"
+        # Allow unknown users during prediction.
+        allow_unknown: bool = True
+
+
 class SoftLabelTensorizer(LabelTensorizer):
     """
     Handles numberizing labels for knowledge distillation. This still requires the same
