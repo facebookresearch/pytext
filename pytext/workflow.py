@@ -236,8 +236,14 @@ def _get_data_source(test_path, source_config, field_names, task):
         # Cannot easily specify a single data source for multitask
         assert not test_path
         data_source = None
-    elif test_path and hasattr(source_config, "test_filename"):
-        source_config.test_filename = test_path
+    elif test_path and (
+        hasattr(source_config, "test_filename") or hasattr(source_config, "test_path")
+    ):
+        if hasattr(source_config, "test_filename"):
+            source_config.test_filename = test_path
+        elif hasattr(source_config, "test_path"):
+            source_config.test_path = test_path
+
         if field_names and hasattr(source_config, "field_names"):
             source_config.field_names = field_names
         data_source = create_component(
