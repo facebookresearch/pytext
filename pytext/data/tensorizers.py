@@ -521,13 +521,66 @@ class LabelListTensorizer(LabelTensorizer):
         return row[1]
 
 
-class UidTensorizer(LabelTensorizer):
-    """Numberize user IDs which are read as strings."""
+class UidTensorizer(Tensorizer):
+    """Numberize user IDs which can be either strings or tensors."""
 
-    class Config(LabelTensorizer.Config):
+    class Config(Tensorizer.Config):
         column: str = "uid"
         # Allow unknown users during prediction.
         allow_unknown: bool = True
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column, config.allow_unknown)
+
+    def __init__(self, uid_column: str = "uid", allow_unknown: bool = True):
+        self.uid_column = uid_column
+        self.vocab_builder = VocabBuilder()
+        # User IDs should have the same lengths so need not to use padding.
+        self.vocab_builder.use_pad = False
+        self.vocab_builder.use_unk = allow_unknown
+        self.vocab = None
+        self.pad_idx = -1
+
+    @property
+    def column_schema(self):
+        return [(self.uid_column, str)]
+
+    def _get_row_value_as_str(self, row) -> str:
+        """Handle the case that the row value is not a string."""
+        row_value = row[self.uid_column]
+        if isinstance(row_value, torch.Tensor):
+            assert (
+                row_value.dim() == 0 or len(row_value) == 1
+            ), "Cannot get the value of multi-dimensional tensors."
+            row_value = str(row_value.item())
+        return row_value
+
+    def initialize(self):
+        """
+        Look through the dataset for all uids and create a vocab map for them.
+        """
+        if self.vocab:
+            return
+        try:
+            while True:
+                row = yield
+                uids = self._get_row_value_as_str(row)
+                self.vocab_builder.add_all(uids)
+        except GeneratorExit:
+            self.vocab, self.pad_idx = self._create_vocab()
+
+    def _create_vocab(self):
+        vocab = self.vocab_builder.make_vocab()
+        pad_idx = Padding.DEFAULT_LABEL_PAD_IDX
+        return vocab, pad_idx
+
+    def numberize(self, row):
+        """Numberize uids."""
+        return self.vocab.lookup_all(self._get_row_value_as_str(row))
+
+    def tensorize(self, batch):
+        return pad_and_tensorize(batch, self.pad_idx)
 
 
 class SoftLabelTensorizer(LabelTensorizer):

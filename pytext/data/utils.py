@@ -16,7 +16,7 @@ def should_iter(i):
     return (
         hasattr(i, "__iter__")
         and not isinstance(i, str)
-        and not (isinstance(i, torch.Tensor) and len(i) == 0)
+        and not (isinstance(i, torch.Tensor) and (i.dim() == 0 or len(i) == 0))
     )
 
 
