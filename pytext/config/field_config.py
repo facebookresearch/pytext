@@ -39,6 +39,7 @@ class WordFeatConfig(ModuleConfig):
     lowercase_tokens: bool = True
     min_freq: int = 1
     mlp_layer_dims: Optional[List[int]] = []
+    padding_idx: Optional[int] = None
 
 
 class DictFeatConfig(ModuleConfig):
