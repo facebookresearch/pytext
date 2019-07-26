@@ -5,7 +5,11 @@ import unittest
 from typing import List
 
 from pytext.data.sources.data_source import SafeFileWrapper
-from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
+from pytext.data.sources.tsv import (
+    BlockShardedTSVDataSource,
+    SessionTSVDataSource,
+    TSVDataSource,
+)
 from pytext.utils.test import import_tests_module
 
 
@@ -151,3 +155,44 @@ class SessionTSVDataSourceTest(unittest.TestCase):
         self.assertEqual(["int31", "int32", "int33"], example["intent"])
         self.assertEqual(["g31", "g32", "g33"], example["goals"])
         self.assertEqual(["0", "1", "1"], example["label"])
+
+
+class BlockShardedTSVDataSourceTest(unittest.TestCase):
+    def test_quoting(self):
+        """
+        The text column of the first row of this file opens a quote but
+        does not close it.
+        """
+        data_source = BlockShardedTSVDataSource(
+            train_file=SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            test_file=None,
+            eval_file=None,
+            field_names=["label", "text"],
+            schema={"text": str, "label": str},
+        )
+
+        data = list(data_source.train_unsharded)
+        self.assertEqual(4, len(data))
+
+        data = list(data_source.train)
+        self.assertEqual(4, len(data))
+
+    def test_bad_quoting(self):
+        """
+        The text column of the first row of this file opens a quote but
+        does not close it.
+        """
+        data_source = BlockShardedTSVDataSource(
+            train_file=SafeFileWrapper(tests_module.test_file("test_tsv_quoting.tsv")),
+            test_file=None,
+            eval_file=None,
+            field_names=["label", "text"],
+            schema={"text": str, "label": str},
+            quoted=True,
+        )
+
+        data = list(data_source.train_unsharded)
+        self.assertEqual(1, len(data))
+
+        data = list(data_source.train)
+        self.assertEqual(1, len(data))

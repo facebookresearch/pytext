@@ -202,11 +202,18 @@ class BlockShardedTSV:
     """
 
     def __init__(
-        self, file, field_names=None, delimiter="\t", block_id=0, num_blocks=1
+        self,
+        file,
+        field_names=None,
+        delimiter="\t",
+        quoted=False,
+        block_id=0,
+        num_blocks=1,
     ):
         self.file = file
         self.field_names = field_names
         self.delimiter = delimiter
+        self.quoted = quoted
         self.block_id = block_id
         self.num_blocks = num_blocks
         csv.field_size_limit(sys.maxsize)
@@ -226,7 +233,7 @@ class BlockShardedTSV:
             (line.replace("\0", "") for line in iter(self.file.readline, "")),
             fieldnames=self.field_names,
             delimiter=self.delimiter,
-            quoting=csv.QUOTE_NONE,
+            quoting=csv.QUOTE_MINIMAL if self.quoted else csv.QUOTE_NONE,
         )
         # iterate until we're at the end of segment
         for line in reader:
@@ -244,7 +251,9 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
         # weird python syntax to call init of ShardedDataSource
         super(TSVDataSource, self).__init__(schema=self.schema)
 
-    def _init_tsv(self, field_names, delimiter, train_file, test_file, eval_file):
+    def _init_tsv(
+        self, field_names, delimiter, train_file, test_file, eval_file, quoted
+    ):
         def make_tsv(file, rank=0, world_size=1):
             return BlockShardedTSV(
                 file,
@@ -252,6 +261,7 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
                 delimiter=delimiter,
                 block_id=rank,
                 num_blocks=world_size,
+                quoted=quoted,
             )
 
         self._train_tsv = (
@@ -260,7 +270,7 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
         self._test_tsv = make_tsv(test_file) if test_file else []
         self._eval_tsv = make_tsv(eval_file) if eval_file else []
         self._train_unsharded = (
-            TSV(train_file, field_names=field_names, delimiter=delimiter)
+            TSV(train_file, field_names=field_names, delimiter=delimiter, quoted=quoted)
             if train_file
             else []
         )
