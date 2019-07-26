@@ -92,6 +92,7 @@ class WordEmbedding(EmbeddingBase):
             init_range=config.embedding_init_range,
             unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
+            padding_idx=config.padding_idx,
         )
 
     def __init__(
@@ -102,13 +103,17 @@ class WordEmbedding(EmbeddingBase):
         init_range: Optional[List[int]] = None,
         unk_token_idx: int = 0,
         mlp_layer_dims: List[int] = (),
+        padding_idx: Optional[int] = None,
     ) -> None:
         output_embedding_dim = mlp_layer_dims[-1] if mlp_layer_dims else embedding_dim
         EmbeddingBase.__init__(self, embedding_dim=output_embedding_dim)
 
         # Create word embedding
         self.word_embedding = nn.Embedding(
-            num_embeddings, embedding_dim, _weight=embeddings_weight
+            num_embeddings,
+            embedding_dim,
+            _weight=embeddings_weight,
+            padding_idx=padding_idx,
         )
         if embeddings_weight is None and init_range:
             self.word_embedding.weight.data.uniform_(init_range[0], init_range[1])
