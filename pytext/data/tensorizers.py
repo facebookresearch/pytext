@@ -324,6 +324,9 @@ class ByteTokenTensorizer(Tensorizer):
         max_byte_len: int = 15
         #: Offset to add to all non-padding bytes
         offset_for_non_padding: int = 0
+        add_bos_token: bool = False
+        add_eos_token: bool = False
+        use_eos_token_for_bos: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
@@ -334,6 +337,9 @@ class ByteTokenTensorizer(Tensorizer):
             max_seq_len=config.max_seq_len,
             max_byte_len=config.max_byte_len,
             offset_for_non_padding=config.offset_for_non_padding,
+            add_bos_token=config.add_bos_token,
+            add_eos_token=config.add_eos_token,
+            use_eos_token_for_bos=config.use_eos_token_for_bos,
         )
 
     def __init__(
@@ -343,12 +349,18 @@ class ByteTokenTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         max_byte_len=Config.max_byte_len,
         offset_for_non_padding=Config.offset_for_non_padding,
+        add_bos_token=Config.add_bos_token,
+        add_eos_token=Config.add_eos_token,
+        use_eos_token_for_bos=Config.use_eos_token_for_bos,
     ):
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
         self.max_byte_len = max_byte_len
         self.offset_for_non_padding = offset_for_non_padding
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
 
     @property
     def column_schema(self):
@@ -357,6 +369,11 @@ class ByteTokenTensorizer(Tensorizer):
     def numberize(self, row):
         """Convert text to bytes, pad batch."""
         tokens = self.tokenizer.tokenize(row[self.text_column])[: self.max_seq_len]
+        if self.add_bos_token:
+            bos = EOS if self.use_eos_token_for_bos else BOS
+            tokens = [Token(bos, -1, -1)] + tokens
+        if self.add_eos_token:
+            tokens.append(Token(EOS, -1, -1))
         if not tokens:
             tokens = [Token(PAD, -1, -1)]
         bytes = [self._numberize_token(token)[: self.max_byte_len] for token in tokens]
