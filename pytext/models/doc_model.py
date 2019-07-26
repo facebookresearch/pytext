@@ -13,15 +13,25 @@ from pytext.data.tensorizers import (
     NumericLabelTensorizer,
     Tensorizer,
     TokenTensorizer,
+    UidTensorizer,
 )
 from pytext.data.utils import PAD, UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
-from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.embeddings import CharacterEmbedding, EmbeddingList, WordEmbedding
+from pytext.models.decoders.mlp_decoder import DecoderBase, MLPDecoder
+from pytext.models.embeddings import (
+    CharacterEmbedding,
+    EmbeddingBase,
+    EmbeddingList,
+    WordEmbedding,
+)
 from pytext.models.model import Model
 from pytext.models.module import create_module
-from pytext.models.output_layers import ClassificationOutputLayer, RegressionOutputLayer
+from pytext.models.output_layers import (
+    ClassificationOutputLayer,
+    OutputLayerBase,
+    RegressionOutputLayer,
+)
 from pytext.models.output_layers.doc_classification_output_layer import (
     BinaryClassificationOutputLayer,
     MulticlassOutputLayer,
@@ -30,6 +40,7 @@ from pytext.models.output_layers.doc_classification_output_layer import (
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
+from pytext.models.representations.representation_base import RepresentationBase
 from pytext.utils.torch import (
     Vocabulary,
     make_byte_inputs,
@@ -341,3 +352,111 @@ class DocRegressionModel(DocModel):
         )
         output_layer = RegressionOutputLayer.from_config(config.output_layer)
         return cls(embedding, representation, decoder, output_layer)
+
+
+class PersonalizedDocModel(DocModel):
+    """
+    DocModel that includes a user embedding which learns user features to produce
+    personalized prediction. In this class, user-embedding is fed directly to
+    the decoder (i.e., does not go through the encoders).
+    """
+
+    class Config(DocModel.Config):
+        class PersonalizedModelInput(DocModel.Config.ModelInput):
+            uid: Optional[UidTensorizer.Config] = UidTensorizer.Config()
+
+        inputs: PersonalizedModelInput = PersonalizedModelInput()
+        # user_embedding is a representation for a user and is jointly trained
+        # with the model. Consider user ids as "words" to reuse WordEmbedding class.
+        user_embedding: WordEmbedding.Config = WordEmbedding.Config()
+
+    @classmethod
+    def from_config(cls, config, tensorizers: Dict[str, Tensorizer]):
+        model = super().from_config(config, tensorizers)
+
+        user_embedding = create_module(
+            config.user_embedding,
+            tensorizer=tensorizers["uid"],
+            init_from_saved_state=config.init_from_saved_state,
+        )
+        # Init user embeddings to be a same vector because we assume user features
+        # are not too different from each other.
+        emb_shape = user_embedding.word_embedding.weight.data.shape
+        with torch.no_grad():
+            user_embedding.word_embedding.weight.copy_(
+                torch.rand(emb_shape[1]).repeat(emb_shape[0], 1)
+            )
+
+        labels = tensorizers["labels"].vocab
+        decoder = cls.create_decoder(
+            config,
+            model.representation.representation_dim + user_embedding.embedding_dim,
+            len(labels),
+        )
+
+        return cls(
+            model.embedding,
+            model.representation,
+            decoder,
+            model.output_layer,
+            user_embedding,
+        )
+
+    def __init__(
+        self,
+        embedding: EmbeddingBase,
+        representation: RepresentationBase,
+        decoder: DecoderBase,
+        output_layer: OutputLayerBase,
+        user_embedding: Optional[EmbeddingBase] = None,
+    ):
+        super().__init__(embedding, representation, decoder, output_layer)
+        self.user_embedding = user_embedding
+
+    def arrange_model_inputs(self, tensor_dict):
+        model_inputs = super().arrange_model_inputs(tensor_dict)
+        model_inputs += (tensor_dict["uid"],)
+        return model_inputs
+
+    def vocab_to_export(self, tensorizers):
+        export_vocab = super().vocab_to_export(tensorizers)
+        export_vocab["uid"] = list(tensorizers["uid"].vocab)
+        return export_vocab
+
+    def get_export_input_names(self, tensorizers):
+        export_inputs_names = super().get_export_input_names(tensorizers)
+        export_inputs_names += ["uid"]
+        return export_inputs_names
+
+    def torchscriptify(self, tensorizers, traced_model):
+        raise NotImplementedError("This model is not jittable yet.")
+
+    def forward(self, *inputs) -> List[torch.Tensor]:
+        # Override forward() to include user_embedding layer explictily to the
+        # computation of the forward propagation.
+        embedding_input = inputs[: self.embedding.num_emb_modules]
+        token_emb = self.embedding(*embedding_input)
+
+        inputs, user_ids = inputs[:-1], inputs[-1]
+        other_input = inputs[
+            self.embedding.num_emb_modules : len(inputs)
+            - self.decoder.num_decoder_modules
+        ]
+        input_representation = self.representation(token_emb, *other_input)
+
+        # Some LSTM-based representations return states as (h0, c0).
+        if isinstance(input_representation[-1], tuple):
+            input_representation = input_representation[0]
+
+        user_embeddings = self.user_embedding(user_ids)
+        # Reduce dim from (batch_size, 1, emb_dim) to (batch_size, emb_dim).
+        if user_embeddings.dim() == 3:
+            user_embeddings = user_embeddings.squeeze(dim=1)
+
+        decoder_inputs: tuple = ()
+        if self.decoder.num_decoder_modules:
+            decoder_inputs = inputs[-self.decoder.num_decoder_modules :]
+
+        return self.decoder(
+            input_representation, user_embeddings, *decoder_inputs
+        )  # Return Tensor's dim = (batch_size, num_classes).
