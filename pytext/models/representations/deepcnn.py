@@ -4,8 +4,9 @@ import math
 
 import torch
 import torch.nn as nn
-from pytext.config.module_config import CNNParams
+from pytext.config.module_config import Activation, CNNParams
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.optimizer.activations import get_activation
 
 
 class Trim1d(nn.Module):
@@ -40,6 +41,7 @@ class DeepCNNRepresentation(RepresentationBase):
     class Config(RepresentationBase.Config):
         cnn: CNNParams = CNNParams()
         dropout: float = 0.3
+        activation: Activation = Activation.GLU
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
@@ -49,6 +51,7 @@ class DeepCNNRepresentation(RepresentationBase):
         weight_norm = config.cnn.weight_norm
         dilated = config.cnn.dilated
         causal = config.cnn.causal
+        activation = config.activation
 
         conv_layers = []
         trim_layers = []
@@ -69,7 +72,11 @@ class DeepCNNRepresentation(RepresentationBase):
             padding = (k - 1) * dilation if causal else ((k - 1) // 2) * dilation
 
             single_conv = nn.Conv1d(
-                in_channels, 2 * out_channels, k, padding=padding, dilation=dilation
+                in_channels,
+                (out_channels * 2 if activation == Activation.GLU else out_channels),
+                k,
+                padding=padding,
+                dilation=dilation,
             )
             single_conv = (
                 nn.utils.weight_norm(single_conv) if weight_norm else single_conv
@@ -84,7 +91,7 @@ class DeepCNNRepresentation(RepresentationBase):
         self.convs = nn.ModuleList(conv_layers)
         self.trims = nn.ModuleList(trim_layers)
         self.projections = nn.ModuleList(linear_layers)
-        self.glu = nn.GLU(dim=1)
+        self.activation = get_activation(activation)
 
         self.representation_dim = out_channels
         self.dropout = nn.Dropout(p=config.dropout)
@@ -102,6 +109,6 @@ class DeepCNNRepresentation(RepresentationBase):
             words = conv(words)
             if trim:
                 words = trim(words)
-            words = self.glu(words)
+            words = self.activation(words)
             words = (words + residual) * math.sqrt(0.5)
         return words.permute(0, 2, 1)
