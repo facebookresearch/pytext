@@ -4,10 +4,10 @@ from typing import Dict, List
 
 import numpy as np
 import torch
+from fairseq import distributed_utils
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.metrics import RealtimeMetrics
 from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
 
@@ -195,10 +195,6 @@ class MetricReporter(Component):
         metrics = self.calculate_metric()
         model_select_metric = self.get_model_select_metric(metrics)
 
-        # print_to_channels is true only on gpu 0, but we need all gpus to sync
-        # metric
-        self.report_realtime_metric(stage)
-
         if print_to_channels:
             for channel in self.channels:
                 if stage in channel.stages:
@@ -221,27 +217,66 @@ class MetricReporter(Component):
             self._reset_realtime()
         return metrics
 
-    def report_realtime_metric(self, stage):
+    def report_logging(self, stage, trainer_logging):
         if stage != Stage.TRAIN:
             return
 
-        samples_total = self.n_batches + 1
-        tps_total = self.realtime_meters["tps"].n
-        ups_total = self.realtime_meters["ups"].n
-        elapsed_time = self.realtime_meters["tps"].elapsed_time
-
+        metric_logging = self.get_metric_logging()
         if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-            tensor = torch.cuda.IntTensor([samples_total, tps_total, ups_total])
-            torch.distributed.all_reduce(tensor)
-            [samples_total, tps_total, ups_total] = tensor.data.tolist()[:]
+            metric_logging, trainer_logging = zip(
+                *distributed_utils.all_gather_list([metric_logging, trainer_logging])
+            )
+            metric_logging = list(metric_logging)
+            trainer_logging = list(trainer_logging)
+        else:
+            metric_logging = [metric_logging]
+            trainer_logging = [trainer_logging]
 
-        tps = tps_total / elapsed_time
-        ups = ups_total / elapsed_time
+        output_logging = self.aggregate_logging(metric_logging, trainer_logging)
 
-        if not tps or not ups:
-            return
-        metrics = RealtimeMetrics(samples=samples_total, tps=tps, ups=ups)
-        print(metrics, flush=True)
+        def format_logging(output_logging):
+            return ", ".join(
+                [
+                    f"{key}: {val:.2f}" if isinstance(val, float) else f"{key}: {val}"
+                    for key, val in output_logging.items()
+                ]
+            )
+
+        print(format_logging(output_logging), flush=True)
+
+    def get_metric_logging(self):
+        # specific logging per metric reporter.
+        metric_logging = {}
+
+        tps = self.realtime_meters["tps"].avg
+        if tps:
+            metric_logging["tps"] = tps
+        ups = self.realtime_meters["ups"].avg
+        if ups:
+            metric_logging["ups"] = ups
+
+        return metric_logging
+
+    def aggregate_logging(self, metric_logging_list, trainer_logging_list):
+        output_logging = {}
+
+        n_updates = min(log.get("n_batches", 0) for log in trainer_logging_list)
+        if n_updates:
+            output_logging["n_updates"] = n_updates
+
+        n_batches = sum(log.get("n_batches", 0) for log in trainer_logging_list)
+        if n_batches:
+            output_logging["n_batches"] = n_batches
+
+        tps = sum(log.get("tps", 0) for log in metric_logging_list)
+        if tps:
+            output_logging["tps"] = round(tps, 2)
+
+        ups = sum(log.get("ups", 0) for log in metric_logging_list)
+        if ups:
+            output_logging["ups"] = round(ups, 2)
+
+        return output_logging
 
     def get_model_select_metric(self, metrics):
         """

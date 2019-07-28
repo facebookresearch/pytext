@@ -4,7 +4,7 @@
 import itertools
 import time
 from contextlib import ExitStack as contextlib_ExitStack
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -71,6 +71,7 @@ class TrainingState:
     epochs_since_last_improvement: int = 0
     best_model_state: Any = None
     best_model_metric: Any = None
+    logging: Dict = None
 
     def __init__(self, **kwargs):
         unknown_keys = kwargs.keys() - TrainingState.__annotations__.keys()
@@ -163,6 +164,8 @@ class Trainer(TrainerBase):
                 broadcast_buffers=False,
                 find_unused_parameters=state.model.find_unused_parameters,
             )
+
+        state.logging = {"n_batches": 0, "n_updates": 0}
         state.start_time = time.time()
 
         if self.config.num_batches_per_epoch:
@@ -184,6 +187,7 @@ class Trainer(TrainerBase):
 
         with timing.time("loss.backward"):
             precision.backward(state.optimizer, loss)
+            state.logging["n_batches"] += 1
 
     @timing.time("optimizer")
     def optimizer_step(self, state):
@@ -201,6 +205,7 @@ class Trainer(TrainerBase):
 
         with timing.time("optimizer.step"):
             state.optimizer.step()
+            state.logging["n_updates"] += 1
         # grad_norm could be used to check grads sync in distributed training
         return grad_norm
 
@@ -427,6 +432,7 @@ class Trainer(TrainerBase):
         metrics = None
         if report_metric:
             with timing.time("report metrics"):
+                metric_reporter.report_logging(state.stage, state.logging)
                 metrics = metric_reporter.report_metric(
                     model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
                 )
@@ -533,7 +539,7 @@ class TaskTrainer(Trainer):
                         **metric_reporter.batch_context(raw_batch, batch),
                     )
                 if batch_id % self.config.num_samples_to_log_progress == 0:
-                    metric_reporter.report_realtime_metric(state.stage)
+                    metric_reporter.report_logging(state.stage, state.logging)
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
 
