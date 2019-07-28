@@ -7,6 +7,7 @@ from contextlib import ExitStack as contextlib_ExitStack
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
+from pytext.common import QueueChannel
 from pytext.common.constants import BatchContext, Stage
 from pytext.config import PyTextConfig
 from pytext.config.component import (
@@ -72,6 +73,7 @@ class TrainingState:
     best_model_state: Any = None
     best_model_metric: Any = None
     logging: Dict = None
+    queue_channel: QueueChannel = QueueChannel()
 
     def __init__(self, **kwargs):
         unknown_keys = kwargs.keys() - TrainingState.__annotations__.keys()
@@ -294,6 +296,7 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
         rank: int = 0,
+        queue_channel: QueueChannel = None,
     ) -> Tuple[torch.nn.Module, Any]:
         """
         Train and eval a model, the model states will be modified. This function
@@ -320,7 +323,11 @@ class Trainer(TrainerBase):
             model, best_metric: the trained model together with the best metric
         """
         state = TrainingState(
-            model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
+            model=model,
+            optimizer=self.optimizer,
+            scheduler=self.scheduler,
+            rank=rank,
+            queue_channel=queue_channel,
         )
         training_data = self.set_up_training(state, training_data)
         trainable_params = sum(

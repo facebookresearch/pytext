@@ -3,6 +3,7 @@
 
 from typing import Dict, Optional, Type, Union
 
+from pytext.common import QueueChannel
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
@@ -169,7 +170,13 @@ class _NewTask(TaskBase):
         )
         self.trainer = trainer or TaskTrainer()
 
-    def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
+    def train(
+        self,
+        config: PyTextConfig,
+        rank: int = 0,
+        world_size: int = 1,
+        queue_channel: QueueChannel = None,
+    ):
         # TODO: move dist_init back to prepare_task in pytext/workflow.py
         # when processing time between dist_init and first loss.backward() is short
         return self.trainer.train(
@@ -179,6 +186,7 @@ class _NewTask(TaskBase):
             self.metric_reporter,
             config,
             rank=rank,
+            queue_channel=queue_channel,
         )
 
     def test(self, data_source):
