@@ -217,7 +217,7 @@ class MetricReporter(Component):
             self._reset_realtime()
         return metrics
 
-    def report_logging(self, stage, trainer_logging):
+    def report_logging(self, stage, trainer_logging, logging_queue=None):
         if stage != Stage.TRAIN:
             return
 
@@ -243,6 +243,9 @@ class MetricReporter(Component):
             )
 
         print(format_logging(output_logging), flush=True)
+
+        if logging_queue:
+            logging_queue.put_nowait(output_logging)
 
     def get_metric_logging(self):
         # specific logging per metric reporter.

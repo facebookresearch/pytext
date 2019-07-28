@@ -105,6 +105,6 @@ class DisjointMultitaskMetricReporter(MetricReporter):
 
         return metric
 
-    def report_logging(self, stage, trainer_logging):
+    def report_logging(self, stage, trainer_logging, logging_queue=None):
         for _, reporter in self.reporters.items():
-            reporter.report_logging(stage, trainer_logging)
+            reporter.report_logging(stage, trainer_logging, logging_queue=logging_queue)

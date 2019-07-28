@@ -439,7 +439,15 @@ class Trainer(TrainerBase):
         metrics = None
         if report_metric:
             with timing.time("report metrics"):
-                metric_reporter.report_logging(state.stage, state.logging)
+                metric_reporter.report_logging(
+                    state.stage,
+                    state.logging,
+                    logging_queue=(
+                        state.queue_channel.logging_queue
+                        if state.queue_channel
+                        else None
+                    ),
+                )
                 metrics = metric_reporter.report_metric(
                     model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
                 )
