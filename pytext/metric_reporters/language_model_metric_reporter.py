@@ -3,6 +3,7 @@
 import math
 import operator
 import time
+from statistics import mean
 
 import torch
 import torch.nn.functional as F
@@ -177,18 +178,37 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         # realtime stats
         total_tokens = float(targets[2].sum())
         self.realtime_meters["tps"].update(total_tokens)
-
-        if not n_batches % 1000:
-            tps = self.realtime_meters["tps"].avg
-            print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
-                f"batch ppl: {math.exp(loss.item()):.2f}, "
-                f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
-                f"number of batches: {n_batches}, "
-                f"accumulated tokens/s: {tps:.0f}",
-                flush=True,
-            )
+        self.last_batch_tps = total_tokens / (now - self.time)
+        self.last_loss = loss.item()
         self.time = now
+
+    def get_metric_logging(self):
+        metric_logging = super().get_metric_logging()
+        metric_logging.update(
+            {
+                "ppl": math.exp(self.calculate_loss()),
+                "batch_ppl": math.exp(self.last_loss),
+                "batch_tps": self.last_batch_tps,
+            }
+        )
+        return metric_logging
+
+    def aggregate_logging(self, metric_logging_list, trainer_logging_list):
+        output_logging = super().aggregate_logging(
+            metric_logging_list, trainer_logging_list
+        )
+        output_logging.update(
+            {
+                "ppl": round(mean(log.get("ppl", 0) for log in metric_logging_list), 2),
+                "batch_ppl": round(
+                    mean(log.get("batch_ppl", 0) for log in metric_logging_list), 2
+                ),
+                "batch_tps": round(
+                    sum(log.get("batch_tps", 0) for log in metric_logging_list), 2
+                ),
+            }
+        )
+        return output_logging
 
     def calculate_loss(self) -> float:
         return self.aggregate_loss / float(self.total_num_tokens)
@@ -197,4 +217,9 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         super()._reset()
         self.aggregate_loss = 0.0
         self.total_num_tokens = 0
+
+    def _reset_realtime(self):
+        super()._reset_realtime()
+        self.last_batch_tps = 0
+        self.last_loss = 0
         self.time = time.time()
