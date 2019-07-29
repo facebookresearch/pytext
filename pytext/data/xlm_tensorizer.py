@@ -160,7 +160,8 @@ class XLMTensorizer(BERTTensorizer):
             lang_id = self.lang2id[lang]
             return lang_id
         else:
-            return 0
+            # use En as default
+            return self.lang2id.get("en", 0)
 
     def numberize(self, row: Dict) -> Tuple[Any, ...]:
         """
