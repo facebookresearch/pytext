@@ -13,14 +13,12 @@
         }
       },
       "model": {
-        "LMLSTM": {
-          "tied_weights": true,
-          "stateful": true,
-          "decoder": {
-            "hidden_dims": [
-              100
-            ]
-          }
+        "tied_weights": true,
+        "stateful": true,
+        "decoder": {
+          "hidden_dims": [
+            10
+          ]
         }
       }
     }

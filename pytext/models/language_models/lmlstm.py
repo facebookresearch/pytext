@@ -6,11 +6,12 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 from pytext.config import ConfigBase
 from pytext.data import CommonMetadata
-from pytext.data.tensorizers import ByteTokenTensorizer, Tensorizer, TokenTensorizer
+from pytext.data.tensorizers import Tensorizer, TokenTensorizer
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
-from pytext.models.embeddings import CharacterEmbedding, EmbeddingBase, WordEmbedding
+from pytext.models.embeddings import EmbeddingBase
+from pytext.models.embeddings.word_embedding import WordEmbedding
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import OutputLayerBase
@@ -95,6 +96,8 @@ class LMLSTM_Deprecated(Model):
                 feat_config.word_feat.embed_dim
                 != model.representation.representation_dim
             ):
+                print(feat_config.word_feat.embed_dim)
+                print(model.representation.representation_dim)
                 raise ValueError(
                     "Embedding dimension must be same as representation "
                     "dimensions when using tied weights"
@@ -157,8 +160,6 @@ class LMLSTM(BaseModel):
 
     """
 
-    __EXPANSIBLE__ = True
-
     class Config(BaseModel.Config):
         class ModelInput(Model.Config.ModelInput):
             tokens: TokenTensorizer.Config = TokenTensorizer.Config(
@@ -176,12 +177,8 @@ class LMLSTM(BaseModel):
         stateful: bool = False
 
     @classmethod
-    def create_embedding(cls, config, tensorizers):
-        return create_module(config.embedding, tensorizer=tensorizers["tokens"])
-
-    @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        embedding = cls.create_embedding(config, tensorizers)
+        embedding = create_module(config.embedding, tensorizer=tensorizers["tokens"])
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
         )
@@ -301,45 +298,3 @@ class LMLSTM(BaseModel):
             weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
             weight.new_zeros(bsz, num_layers, rnn_hidden_dim),
         )
-
-
-class LMLSTMLiteModel(LMLSTM):
-    """
-    `LMLSTMLiteModel` implements a word-level language model that uses LSTMs to
-    represent the document and token_bytes as input.
-
-    """
-
-    class Config(LMLSTM.Config):
-        class ModelInput(LMLSTM.Config.ModelInput):
-            token_bytes: ByteTokenTensorizer.Config = ByteTokenTensorizer.Config(
-                add_bos_token=True, add_eos_token=True
-            )
-            tokens: TokenTensorizer.Config = TokenTensorizer.Config(
-                add_bos_token=True, add_eos_token=True
-            )
-
-        inputs: ModelInput = ModelInput()
-        embedding: CharacterEmbedding.Config = CharacterEmbedding.Config()
-        tied_weights: bool = False
-
-    @classmethod
-    def create_embedding(cls, config, tensorizers):
-        return CharacterEmbedding(
-            tensorizers["token_bytes"].NUM_BYTES,
-            config.embedding.embed_dim,
-            config.embedding.cnn.kernel_num,
-            config.embedding.cnn.kernel_sizes,
-            config.embedding.highway_layers,
-            config.embedding.projection_dim,
-        )
-
-    def vocab_to_export(self, tensorizers):
-        return {}
-
-    def get_export_input_names(self, tensorizers):
-        return ["token_bytes", "token_lens"]
-
-    def arrange_model_inputs(self, tensor_dict):
-        token_bytes, tokens_lens, _ = tensor_dict["token_bytes"]
-        return (token_bytes[:, 0:-1].contiguous(), tokens_lens - 1)
