@@ -23,6 +23,7 @@ class TestFileName(Enum):
     TEST_PERSONALIZATION_OPPOSITE_INPUTS_TSV = (
         "test_personalization_opposite_inputs.tsv"
     )
+    TEST_PERSONALIZATION_SAME_INPUTS_TSV = "test_personalization_same_inputs.tsv"
     TEST_PERSONALIZATION_SINGLE_USER_TSV = "test_personalization_single_user.tsv"
 
 
@@ -43,6 +44,13 @@ TEST_FILE_NAME_TO_METADATA = {
     ),
     TestFileName.TEST_PERSONALIZATION_OPPOSITE_INPUTS_TSV: TestFileMetadata(
         filename=test_file(str(TestFileName.TEST_PERSONALIZATION_OPPOSITE_INPUTS_TSV)),
+        field_names=["label", "text", "dense_features", "uid"],
+        dense_col_name="dense_features",
+        dense_feat_dim=10,
+        uid_col_name="uid",
+    ),
+    TestFileName.TEST_PERSONALIZATION_SAME_INPUTS_TSV: TestFileMetadata(
+        filename=test_file(str(TestFileName.TEST_PERSONALIZATION_SAME_INPUTS_TSV)),
         field_names=["label", "text", "dense_features", "uid"],
         dense_col_name="dense_features",
         dense_feat_dim=10,
