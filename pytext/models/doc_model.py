@@ -168,7 +168,7 @@ class DocModel(Model):
                 logits = self.model(
                     torch.tensor(word_ids),
                     torch.tensor(seq_lens),
-                    torch.tensor(dense_feat),
+                    torch.tensor(dense_feat, dtype=torch.float),
                 )
                 return self.output_layer(logits)
 
@@ -320,7 +320,7 @@ class ByteTokensDocumentModel(DocModel):
                     torch.tensor(word_ids),
                     token_bytes,
                     torch.tensor(seq_lens),
-                    torch.tensor(dense_feat),
+                    torch.tensor(dense_feat, dtype=torch.float),
                 )
                 return self.output_layer(logits)
 
