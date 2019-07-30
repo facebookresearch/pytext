@@ -6,10 +6,12 @@
           "representation": {
             "BiLSTMDocSlotAttention": {
               "lstm": {
-                "dropout": 0.5,
-                "lstm_dim": 366,
-                "num_layers": 2,
-                "bidirectional": true
+                "BiLSTM": {
+                  "dropout": 0.5,
+                  "lstm_dim": 366,
+                  "num_layers": 2,
+                  "bidirectional": true
+                }
               },
               "pooling": {
                 "SelfAttention": {

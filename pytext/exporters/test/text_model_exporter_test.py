@@ -43,8 +43,10 @@ JOINT_CONFIG = """
     "representation": {
       "BiLSTMDocSlotAttention": {
         "lstm": {
-          "lstm_dim": 30,
-          "num_layers": 1
+          "BiLSTM": {
+             "lstm_dim": 30,
+             "num_layers": 1
+          }
         },
         "pooling": {
           "SelfAttention": {
