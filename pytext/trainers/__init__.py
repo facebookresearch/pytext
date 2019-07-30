@@ -2,7 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from .ensemble_trainer import EnsembleTrainer, EnsembleTrainer_Deprecated
 from .hogwild_trainer import HogwildTrainer, HogwildTrainer_Deprecated
-from .trainer import TaskTrainer, Trainer, TrainingState
+from .trainer import TaskTrainer, Trainer
+from .training_state import TrainingState
 
 
 __all__ = [
