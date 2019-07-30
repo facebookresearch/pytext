@@ -20,6 +20,7 @@ from pytext.config.serialize import (
     parse_config,
     pytext_config_from_json,
 )
+from pytext.config.utils import find_param, replace_param
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.task import load
@@ -129,28 +130,45 @@ def gen_config_impl(task_name, options):
     task_class = next(iter(task_class_set))
     task_config = getattr(task_class, "example_config", task_class.Config)
     root = PyTextConfig(task=task_config(), version=LATEST_VERSION)
+    eprint("INFO - Applying task option:", task_class.__name__)
 
     # Use components listed in options instead of defaults
     for opt in options:
-        replace_class_set = find_config_class(opt)
-        if not replace_class_set:
-            raise Exception(f"Not a component class: {opt}")
-        elif len(replace_class_set) > 1:
-            raise Exception(f"Multiple component named {opt}: {replace_class_set}")
-        replace_class = next(iter(replace_class_set))
-        found = replace_components(root, opt, get_subclasses(replace_class))
-        if found:
-            eprint("INFO - Applying option:", "->".join(reversed(found)), "=", opt)
-            obj = root
-            for k in reversed(found[1:]):
-                obj = getattr(obj, k)
-            if hasattr(replace_class, "Config"):
-                setattr(obj, found[0], replace_class.Config())
+        if "=" in opt:
+            param_path, value = opt.split("=", 1)
+            found = find_param(root, "." + param_path)
+            if len(found) == 1:
+                eprint("INFO - Applying parameter option to", found[0], ":", opt)
+                replace_param(root, found[0].split("."), value)
+            elif not found:
+                raise Exception(f"Unknown parameter option: {opt}")
             else:
-                setattr(obj, found[0], replace_class())
+                raise Exception(f"Multiple possibilities for {opt}: {', '.join(found)}")
         else:
-            raise Exception(f"Unknown option: {opt}")
-    return config_to_json(PyTextConfig, root)
+            replace_class_set = find_config_class(opt)
+            if not replace_class_set:
+                raise Exception(f"Not a component class: {opt}")
+            elif len(replace_class_set) > 1:
+                raise Exception(f"Multiple component named {opt}: {replace_class_set}")
+            replace_class = next(iter(replace_class_set))
+            found = replace_components(root, opt, get_subclasses(replace_class))
+            if found:
+                eprint(
+                    "INFO - Applying class option:",
+                    "->".join(reversed(found)),
+                    "=",
+                    opt,
+                )
+                obj = root
+                for k in reversed(found[1:]):
+                    obj = getattr(obj, k)
+                if hasattr(replace_class, "Config"):
+                    setattr(obj, found[0], replace_class.Config())
+                else:
+                    setattr(obj, found[0], replace_class())
+            else:
+                raise Exception(f"Unknown class option: {opt}")
+    return root
 
 
 @click.group()
@@ -234,7 +252,8 @@ def gen_default_config(context, task_name, options):
             ex,
         )
         sys.exit(-1)
-    print(json.dumps(cfg, sort_keys=True, indent=2))
+    cfg_json = config_to_json(PyTextConfig, cfg)
+    print(json.dumps(cfg_json, sort_keys=True, indent=2))
 
 
 @main.command(help="Update a config JSON file to lastest version.")

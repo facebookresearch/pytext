@@ -53,10 +53,13 @@ def get_config_fields(obj):
         if k not in members:
             members[k] = None
     if issubclass(obj.__class__, Enum):
-        opt = members["_member_names_"]
-        typing = obj.__name__
-        ret[typing] = (opt[0], typing, set(opt))
-        return ret
+        opt = members.get("_member_names_")
+        if opt is not None:
+            typing = obj.__name__
+            ret[typing] = (opt[0], typing, set(opt))
+            return ret
+        else:
+            return obj
 
     for k, v in sorted(members.items()):
         if k.startswith("_"):
@@ -88,7 +91,7 @@ def pretty_print_config_class(obj):
     else:
         print(f"=== {obj.__module__}.{obj.__name__} ===")
     if obj.__doc__:
-        print(f'"""{obj.__doc__.strip()}"""')
+        print(f'"""\n{obj.__doc__.strip()}\n"""')
 
     config_help = get_config_fields(obj)
     if issubclass(obj, Enum):
