@@ -3,10 +3,10 @@
 
 import caffe2.python.predictor.predictor_exporter as pe
 import numpy as np
-import onnx
 import torch
 from caffe2.python import core, workspace
 from caffe2.python.onnx import backend as caffe2_backend
+from torch.onnx import ExportTypes, OperatorExportTypes
 
 
 CAFFE2_DB_TYPE = "minidb"
@@ -33,25 +33,25 @@ def pytorch_to_caffe2(
     all_input_names = external_input_names[:]
     for name, _ in model.named_parameters():
         all_input_names.append(name)
-    # # export the pytorch model to ONNX
+    # export the pytorch model to ONNX
     if export_onnx_path:
         print(f"Saving onnx model to: {export_onnx_path}")
     else:
         export_onnx_path = export_path
     model.eval()
     with torch.no_grad():
-        torch.onnx.export(
+        torch.onnx._export(
             model,
             export_input,
             export_onnx_path,
             input_names=all_input_names,
             output_names=output_names,
             export_params=True,
+            operator_export_type=OperatorExportTypes.ONNX_ATEN_FALLBACK,
+            export_type=ExportTypes.ZIP_ARCHIVE,
         )
-    onnx_model = onnx.load(export_onnx_path)
-    onnx.checker.check_model(onnx_model)
     # Convert the ONNX model to a caffe2 net
-    c2_prepared = caffe2_backend.prepare(onnx_model)
+    c2_prepared = caffe2_backend.prepare_zip_archive(export_onnx_path)
     return c2_prepared
 
 
