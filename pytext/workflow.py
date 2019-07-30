@@ -13,8 +13,8 @@ from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import NewTask, Task_Deprecated, create_task, load, save
-from pytext.trainers import TrainingState
 from pytext.task.disjoint_multitask import NewDisjointMultitask
+from pytext.trainers import TrainingState
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
 
 
