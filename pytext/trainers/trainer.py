@@ -22,6 +22,8 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.scheduler import Scheduler
+from pytext.task.serialize import save
+from pytext.trainers.training_state import TrainingState
 from pytext.utils import cuda, precision, timing
 
 
@@ -58,25 +60,6 @@ def maybe_accumulate_gradients(exit_stack, model, index, sample_size):
         and only unscale to FP32 parameters after the last backward pass.
         """
         exit_stack.enter_context(precision.delay_unscale())
-
-
-class TrainingState:
-    model: Model
-    optimizer: Optimizer
-    scheduler: Scheduler
-    start_time: float
-    epoch: int = 0
-    rank: int = 0
-    stage: Stage = Stage.TRAIN
-    epochs_since_last_improvement: int = 0
-    best_model_state: Any = None
-    best_model_metric: Any = None
-
-    def __init__(self, **kwargs):
-        unknown_keys = kwargs.keys() - TrainingState.__annotations__.keys()
-        if unknown_keys:
-            raise TypeError(f"TrainingState unexpected attributes {unknown_keys}")
-        vars(self).update(kwargs)
 
 
 class Trainer(TrainerBase):
@@ -261,6 +244,11 @@ class Trainer(TrainerBase):
                 model_state[key] = parameter.cpu()
         state.best_model_state = model_state
 
+    # generate per epoch checkpoint save path
+    # TODO: refactor to move to new checkpointManager class next
+    def generate_checkpoint_path(self, config: PyTextConfig, epoch: int):
+        return "{}-checkpoint-{}".format(config.save_snapshot_path, epoch)
+
     @timing.time("save checkpoint")
     def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig):
         # Only one worker should save checkpoints
@@ -271,6 +259,21 @@ class Trainer(TrainerBase):
             state.model.save_modules(
                 base_path=train_config.modules_save_dir, suffix=f"-ep{state.epoch}"
             )
+        # TODO: add new config and implementation of frequency on checkpointing
+        if train_config.save_all_checkpoints:
+            per_epoch_save_path = self.generate_checkpoint_path(
+                train_config, state.epoch
+            )
+            with open(per_epoch_save_path, "wb") as checkpoint_stream:
+                print("Saving checkpoint to ", per_epoch_save_path)
+                save(
+                    config=train_config,
+                    model=state.model,
+                    meta=None,
+                    tensorizers=None,
+                    training_state=state,
+                    f=checkpoint_stream,
+                )
 
     def load_best_model(self, state: TrainingState):
         if cuda.CUDA_ENABLED:
@@ -280,7 +283,6 @@ class Trainer(TrainerBase):
         else:
             state.model.load_state_dict(state.best_model_state)
 
-    @timing.time("Trainer.train")
     def train(
         self,
         training_data: BatchIterator,
@@ -291,14 +293,7 @@ class Trainer(TrainerBase):
         rank: int = 0,
     ) -> Tuple[torch.nn.Module, Any]:
         """
-        Train and eval a model, the model states will be modified. This function
-        iterates epochs specified in config, and for each epoch do:
-
-            1. Train model using training data, aggregate and report training results
-            2. Adjust learning rate if scheduler is specified
-            3. Evaluate model using evaluation data
-            4. Calculate metrics based on evaluation results and select best model
-
+        Train and eval a model, the model states will be modified.
         Args:
             train_iter (BatchIterator): batch iterator of training data
             eval_iter (BatchIterator): batch iterator of evaluation data
@@ -317,7 +312,44 @@ class Trainer(TrainerBase):
         state = TrainingState(
             model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
         )
+        return self.train_from_state(
+            state, training_data, eval_data, metric_reporter, train_config
+        )
+
+    @timing.time("Trainer.train_from_state")
+    def train_from_state(
+        self,
+        state: TrainingState,
+        training_data: BatchIterator,
+        eval_data: BatchIterator,
+        metric_reporter: MetricReporter,
+        train_config: PyTextConfig,
+    ) -> Tuple[torch.nn.Module, Any]:
+        """
+        Train and eval a model from a given training state will be modified.
+        This function iterates epochs specified in config, and for each epoch do:
+
+            1. Train model using training data, aggregate and report training results
+            2. Adjust learning rate if scheduler is specified
+            3. Evaluate model using evaluation data
+            4. Calculate metrics based on evaluation results and select best model
+
+        Args:
+            training_state (TrainingState): contrains stateful information to be
+            able to restore a training job
+            train_iter (BatchIterator): batch iterator of training data
+            eval_iter (BatchIterator): batch iterator of evaluation data
+            model (Model): model to be trained
+            metric_reporter (MetricReporter): compute metric based on training
+                output and report results to console, file.. etc
+            train_config (PyTextConfig): training config
+
+        Returns:
+            model, best_metric: the trained model together with the best metric
+        """
         training_data = self.set_up_training(state, training_data)
+        model = state.model
+        rank = state.rank
         trainable_params = sum(
             p.numel() for p in state.model.parameters() if p.requires_grad
         )

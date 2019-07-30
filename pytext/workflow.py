@@ -14,6 +14,7 @@ from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
+from pytext.trainers import TrainingState
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
 
 
@@ -84,10 +85,10 @@ def train_model(
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Tuple:
-    task = prepare_task(
+    task, training_state = prepare_task(
         config, dist_init_url, device_id, rank, world_size, metric_channels, metadata
     )
-    trained_model, best_metric = task.train(config, rank, world_size)
+    trained_model, best_metric = task.train(config, rank, world_size, training_state)
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
         save_and_export(config, task, metric_channels)
@@ -104,7 +105,7 @@ def prepare_task(
     world_size: int = 1,
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
-) -> Task_Deprecated:
+) -> Tuple[Task_Deprecated, TrainingState]:
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
@@ -114,8 +115,11 @@ def prepare_task(
     if config.random_seed is not None:
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
 
+    training_state = None
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task, _ = load(config.load_snapshot_path)
+        task, _config, training_state = load(config.load_snapshot_path)
+        if training_state and training_state.model is None and task.model:
+            training_state.model = task.model
     else:
         task = create_task(
             config.task, metadata=metadata, rank=rank, world_size=world_size
@@ -124,7 +128,7 @@ def prepare_task(
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
 
-    return task
+    return task, training_state
 
 
 def save_and_export(
@@ -156,7 +160,7 @@ def save_and_export(
 def export_saved_model_to_caffe2(
     saved_model_path: str, export_caffe2_path: str, output_onnx_path: str = None
 ) -> None:
-    task, train_config = load(saved_model_path)
+    task, train_config, _training_state = load(saved_model_path)
     if hasattr(task, "exporter") and task.exporter is None:
         TaskType = type(train_config.task)
         ExporterConfigType = get_type_hints(TaskType)["exporter"].__args__[0]
@@ -172,7 +176,7 @@ def export_saved_model_to_caffe2(
 def export_saved_model_to_torchscript(
     saved_model_path: str, path: str, quantize: bool = False
 ) -> None:
-    task, train_config = load(saved_model_path)
+    task, train_config, _training_state = load(saved_model_path)
     task.torchscript_export(task.model, path, quantize)
 
 
@@ -200,7 +204,7 @@ def test_model_from_snapshot_path(
     field_names: Optional[List[str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
-    task, train_config = load(snapshot_path)
+    task, train_config, _training_state = load(snapshot_path)
 
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
@@ -262,7 +266,7 @@ def get_logits(
     field_names: Optional[List[str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
-    task, train_config = load(snapshot_path)
+    task, train_config, _traing_state = load(snapshot_path)
     print(f"Successfully loaded model from {snapshot_path}")
     print(f"Model on GPU? {next(task.model.parameters()).is_cuda}")
     if isinstance(task, NewTask):
@@ -298,5 +302,5 @@ def get_logits(
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
-    task, train_config = load(model_file)
+    task, train_config, _training_state = load(model_file)
     return task.predict(examples)
