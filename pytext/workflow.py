@@ -115,7 +115,7 @@ def prepare_task(
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
 
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task, _ = load(config.load_snapshot_path)
+        task, _, _ = load(config.load_snapshot_path)
     else:
         task = create_task(
             config.task, metadata=metadata, rank=rank, world_size=world_size
@@ -156,7 +156,7 @@ def save_and_export(
 def export_saved_model_to_caffe2(
     saved_model_path: str, export_caffe2_path: str, output_onnx_path: str = None
 ) -> None:
-    task, train_config = load(saved_model_path)
+    task, train_config, _training_state = load(saved_model_path)
     if hasattr(task, "exporter") and task.exporter is None:
         TaskType = type(train_config.task)
         ExporterConfigType = get_type_hints(TaskType)["exporter"].__args__[0]
@@ -172,7 +172,7 @@ def export_saved_model_to_caffe2(
 def export_saved_model_to_torchscript(
     saved_model_path: str, path: str, quantize: bool = False
 ) -> None:
-    task, train_config = load(saved_model_path)
+    task, train_config, _training_state = load(saved_model_path)
     task.torchscript_export(task.model, path, quantize)
 
 
@@ -200,7 +200,7 @@ def test_model_from_snapshot_path(
     field_names: Optional[List[str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
-    task, train_config = load(snapshot_path)
+    task, train_config, _training_state = load(snapshot_path)
 
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
@@ -262,7 +262,7 @@ def get_logits(
     field_names: Optional[List[str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
-    task, train_config = load(snapshot_path)
+    task, train_config, _traing_state = load(snapshot_path)
     print(f"Successfully loaded model from {snapshot_path}")
     print(f"Model on GPU? {next(task.model.parameters()).is_cuda}")
     if isinstance(task, NewTask):
@@ -298,5 +298,5 @@ def get_logits(
 
 
 def batch_predict(model_file: str, examples: List[Dict[str, Any]]):
-    task, train_config = load(model_file)
+    task, train_config, _training_state = load(model_file)
     return task.predict(examples)
