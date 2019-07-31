@@ -41,10 +41,12 @@ class MetricReporter(Component):
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
+        pep_format: bool = False
 
-    def __init__(self, channels) -> None:
+    def __init__(self, channels, pep_format=False) -> None:
         self._reset()
         self.channels = channels
+        self.pep_format = pep_format
         self._reset_realtime()
 
     def _reset(self):
