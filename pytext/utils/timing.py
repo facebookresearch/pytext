@@ -80,34 +80,14 @@ class Snapshot:
 
         def print_pep(results, snapshot_total):
             for key, times in sorted(self.times.items()):
-                info = {
-                    "type": path(key),
-                    "metric": "latency",
-                    "unit": "ms",
-                    "value": f"{times.sum * 1000:.1f}",
-                }
-                if times.sum < 0.001:
-                    info["unit"] = "ns"
-                    info["value"] = f"{times.sum * 1000000:.1f}"
-                if times.count > 1:
-                    info["info_string"] = " ".join(
-                        [
-                            "Count",
-                            str(times.count),
-                            "Average",
-                            f"{times.average * 1000:.1f}",
-                            "Max",
-                            f"{times.max * 1000:.1f}",
-                        ]
-                    )
-                print("PyTorchObserver " + json_dumps(info))
-            info = {
-                "type": "NET",
-                "metric": "latency",
-                "unit": "ms",
-                "value": f"{snapshot_total * 1000:.1f}",
-            }
-            print("PyTorchObserver " + json_dumps(info))
+                if path(key) == "evaluate -> pytorch eval once":
+                    info = {
+                        "type": path(key),
+                        "metric": "latency",
+                        "unit": "ms",
+                        "value": f"{times.average * 1000:.1f}",
+                    }
+                    print("PyTorchObserver " + json_dumps(info))
 
         results = [
             {
