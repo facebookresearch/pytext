@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import json
 import math
 import operator
 import time
@@ -61,12 +62,19 @@ class LanguageModelMetricReporter(MetricReporter):
             tensorizers,
             config.aggregate_metrics,
             config.perplexity_type,
+            config.pep_format,
         )
 
     def __init__(
-        self, channels, metadata, tensorizers, aggregate_metrics, perplexity_type
+        self,
+        channels,
+        metadata,
+        tensorizers,
+        aggregate_metrics,
+        perplexity_type,
+        pep_format,
     ):
-        super().__init__(channels)
+        super().__init__(channels, pep_format=pep_format)
         self.metadata = metadata
         self.tensorizers = tensorizers
         self.aggregate_metrics = aggregate_metrics
@@ -163,6 +171,7 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
             tensorizers,
             config.aggregate_metrics,
             config.perplexity_type,
+            config.pep_format,
         )
 
     def add_batch_stats(
@@ -189,6 +198,26 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
                 flush=True,
             )
         self.time = now
+
+    def report_realtime_metric(self, stage):
+        if stage != Stage.TRAIN:
+            return
+
+        if self.pep_format:
+            # used for pep regression benchmark
+            tps = self.realtime_meters["tps"].avg
+            print(
+                "PyTorchObserver "
+                + json.dumps(
+                    {
+                        "type": "MLM",
+                        "metric": "tps",
+                        "unit": "token/sec",
+                        "value": f"{tps:.0f}",
+                    }
+                ),
+                flush=True,
+            )
 
     def calculate_loss(self) -> float:
         return self.aggregate_loss / float(self.total_num_tokens)
