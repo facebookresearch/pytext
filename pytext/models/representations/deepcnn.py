@@ -8,6 +8,22 @@ from pytext.config.module_config import CNNParams
 from pytext.models.representations.representation_base import RepresentationBase
 
 
+class Trim1d(nn.Module):
+    """
+    Trims a 1d convolutional output. Used to implement history-padding
+    by removing excess padding from the right.
+
+    """
+
+    def __init__(self, trim):
+        super(Trim1d, self).__init__()
+
+        self.trim = trim
+
+    def forward(self, x):
+        return x[:, :, : -self.trim].contiguous()
+
+
 class DeepCNNRepresentation(RepresentationBase):
     """
     `DeepCNNRepresentation` implements CNN representation layer
@@ -32,8 +48,10 @@ class DeepCNNRepresentation(RepresentationBase):
         kernel_sizes = config.cnn.kernel_sizes
         weight_norm = config.cnn.weight_norm
         dilated = config.cnn.dilated
+        causal = config.cnn.causal
 
         conv_layers = []
+        trim_layers = []
         linear_layers = []
         in_channels = embed_dim
 
@@ -48,7 +66,7 @@ class DeepCNNRepresentation(RepresentationBase):
             linear_layers.append(proj)
 
             dilation = 2 ** i if dilated else 1
-            padding = ((k - 1) // 2) * dilation
+            padding = (k - 1) * dilation if causal else ((k - 1) // 2) * dilation
 
             single_conv = nn.Conv1d(
                 in_channels, 2 * out_channels, k, padding=padding, dilation=dilation
@@ -58,9 +76,18 @@ class DeepCNNRepresentation(RepresentationBase):
             )
             conv_layers.append(single_conv)
 
+            # Non-causal convolutions are centered, so they will consume
+            # ((k - 1) // 2) * d padding on both the left and the right of the sequence.
+            # Causal convolutions are shifted to the left (to account for temporal
+            # ordering), so they will only consume padding from the left. Therefore,
+            # we pad this side with the full amount (k - 1) * d.
+            trim = Trim1d(padding) if causal else None
+            trim_layers.append(trim)
+
             in_channels = out_channels
 
         self.convs = nn.ModuleList(conv_layers)
+        self.trims = nn.ModuleList(trim_layers)
         self.projections = nn.ModuleList(linear_layers)
         self.glu = nn.GLU(dim=1)
 
@@ -71,13 +98,15 @@ class DeepCNNRepresentation(RepresentationBase):
         inputs = self.dropout(inputs)
         # bsz * seq_len * embed_dim -> bsz * embed_dim * seq_len
         words = inputs.permute(0, 2, 1)
-        for conv, proj in zip(self.convs, self.projections):
-            if proj is None:
-                residual = words
-            else:
+        for conv, trim, proj in zip(self.convs, self.trims, self.projections):
+            if proj:
                 tranposed = words.permute(0, 2, 1)
                 residual = proj(tranposed).permute(0, 2, 1)
+            else:
+                residual = words
             words = conv(words)
+            if trim:
+                words = trim(words)
             words = self.glu(words)
             words = (words + residual) * math.sqrt(0.5)
         return words.permute(0, 2, 1)
