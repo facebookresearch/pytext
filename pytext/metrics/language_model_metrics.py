@@ -25,4 +25,8 @@ class LanguageModelMetric(NamedTuple):
 
 
 def compute_language_model_metric(loss_per_word: float) -> LanguageModelMetric:
-    return LanguageModelMetric(perplexity_per_word=math.exp(loss_per_word))
+    try:
+        ppl = math.exp(loss_per_word)
+    except OverflowError:
+        ppl = float("inf")
+    return LanguageModelMetric(perplexity_per_word=ppl)

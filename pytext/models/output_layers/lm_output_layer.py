@@ -125,4 +125,8 @@ class LMOutputLayer(OutputLayerBase):
 
     @staticmethod
     def calculate_perplexity(sequence_loss: torch.Tensor) -> torch.Tensor:
-        return torch.exp(sequence_loss)
+        try:
+            ppl = torch.exp(sequence_loss)
+        except OverflowError:
+            ppl = float("inf")
+        return ppl
