@@ -30,6 +30,7 @@ class DeepCNNRepresentation(RepresentationBase):
 
         out_channels = config.cnn.kernel_num
         kernel_sizes = config.cnn.kernel_sizes
+        weight_norm = config.cnn.weight_norm
 
         conv_layers = []
         linear_layers = []
@@ -45,6 +46,9 @@ class DeepCNNRepresentation(RepresentationBase):
             linear_layers.append(proj)
             single_conv = nn.Conv1d(
                 in_channels, 2 * out_channels, k, padding=int((k - 1) / 2)
+            )
+            single_conv = (
+                nn.utils.weight_norm(single_conv) if weight_norm else single_conv
             )
             conv_layers.append(single_conv)
             in_channels = out_channels
