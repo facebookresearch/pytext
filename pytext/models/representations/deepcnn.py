@@ -31,26 +31,33 @@ class DeepCNNRepresentation(RepresentationBase):
         out_channels = config.cnn.kernel_num
         kernel_sizes = config.cnn.kernel_sizes
         weight_norm = config.cnn.weight_norm
+        dilated = config.cnn.dilated
 
         conv_layers = []
         linear_layers = []
         in_channels = embed_dim
 
-        for k in kernel_sizes:
+        for i, k in enumerate(kernel_sizes):
             assert (k - 1) % 2 == 0
+
             proj = (
                 nn.Linear(in_channels, out_channels)
                 if in_channels != out_channels
                 else None
             )
             linear_layers.append(proj)
+
+            dilation = 2 ** i if dilated else 1
+            padding = ((k - 1) // 2) * dilation
+
             single_conv = nn.Conv1d(
-                in_channels, 2 * out_channels, k, padding=int((k - 1) / 2)
+                in_channels, 2 * out_channels, k, padding=padding, dilation=dilation
             )
             single_conv = (
                 nn.utils.weight_norm(single_conv) if weight_norm else single_conv
             )
             conv_layers.append(single_conv)
+
             in_channels = out_channels
 
         self.convs = nn.ModuleList(conv_layers)
