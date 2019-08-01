@@ -277,6 +277,8 @@ class Trainer(TrainerBase):
 
     def load_best_model(self, state: TrainingState):
         if cuda.CUDA_ENABLED:
+            # Move current model to CPU to avoid multiple models in GPU memory
+            state.model.cpu()
             state.model.load_state_dict(
                 {k: v.cuda() for k, v in state.best_model_state.items()}
             )
