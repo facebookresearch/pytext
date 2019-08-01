@@ -24,6 +24,8 @@ class CNNParams(ConfigBase):
     kernel_sizes: List[int] = [3, 4]
     # Use weight norm in convolution
     weight_norm: bool = False
+    # Enables dilated convolutions
+    dilated: bool = False
 
 
 class PoolingType(Enum):
