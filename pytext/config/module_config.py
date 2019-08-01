@@ -48,3 +48,11 @@ class PerplexityType(Enum):
     MEAN = "mean"
     MEDIAN = "median"
     EOS = "eos"
+
+
+class Activation(Enum):
+    RELU = "relu"
+    LEAKYRELU = "leakyrelu"
+    TANH = "tanh"
+    GELU = "gelu"
+    GLU = "glu"
