@@ -5,6 +5,8 @@ from typing import List, Optional
 
 import torch
 import torch.nn as nn
+from pytext.config.module_config import Activation
+from pytext.optimizer import get_activation
 
 from .decoder_base import DecoderBase
 
@@ -38,6 +40,7 @@ class MLPDecoder(DecoderBase):
         out_dim: Optional[int] = None
         layer_norm: bool = False
         dropout: float = 0.0
+        activation: Activation = Activation.RELU
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -45,7 +48,7 @@ class MLPDecoder(DecoderBase):
         layers = []
         for dim in config.hidden_dims or []:
             layers.append(nn.Linear(in_dim, dim))
-            layers.append(nn.ReLU())
+            layers.append(get_activation(config.activation))
             if config.layer_norm:
                 layers.append(nn.LayerNorm(dim))
             if config.dropout > 0:
