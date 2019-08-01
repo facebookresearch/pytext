@@ -4,6 +4,7 @@
 import itertools
 import time
 from contextlib import ExitStack as contextlib_ExitStack
+from os import path
 from typing import Any, Iterable, List, Optional, Tuple
 
 import torch
@@ -247,7 +248,8 @@ class Trainer(TrainerBase):
     # generate per epoch checkpoint save path
     # TODO: refactor to move to new checkpointManager class next
     def generate_checkpoint_path(self, config: PyTextConfig, epoch: int):
-        return "{}-checkpoint-{}".format(config.save_snapshot_path, epoch)
+        dir_name = path.dirname(config.save_snapshot_path)
+        return "{}/checkpoint-{}".format(dir_name, epoch)
 
     @timing.time("save checkpoint")
     def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig):
@@ -283,7 +285,6 @@ class Trainer(TrainerBase):
         else:
             state.model.load_state_dict(state.best_model_state)
 
-    @timing.time("Trainer.train")
     def train(
         self,
         training_data: BatchIterator,
@@ -294,14 +295,7 @@ class Trainer(TrainerBase):
         rank: int = 0,
     ) -> Tuple[torch.nn.Module, Any]:
         """
-        Train and eval a model, the model states will be modified. This function
-        iterates epochs specified in config, and for each epoch do:
-
-            1. Train model using training data, aggregate and report training results
-            2. Adjust learning rate if scheduler is specified
-            3. Evaluate model using evaluation data
-            4. Calculate metrics based on evaluation results and select best model
-
+        Train and eval a model, the model states will be modified.
         Args:
             train_iter (BatchIterator): batch iterator of training data
             eval_iter (BatchIterator): batch iterator of evaluation data
@@ -320,7 +314,44 @@ class Trainer(TrainerBase):
         state = TrainingState(
             model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
         )
+        return self.train_from_state(
+            state, training_data, eval_data, metric_reporter, train_config
+        )
+
+    @timing.time("Trainer.train_from_state")
+    def train_from_state(
+        self,
+        state: TrainingState,
+        training_data: BatchIterator,
+        eval_data: BatchIterator,
+        metric_reporter: MetricReporter,
+        train_config: PyTextConfig,
+    ) -> Tuple[torch.nn.Module, Any]:
+        """
+        Train and eval a model from a given training state will be modified.
+        This function iterates epochs specified in config, and for each epoch do:
+
+            1. Train model using training data, aggregate and report training results
+            2. Adjust learning rate if scheduler is specified
+            3. Evaluate model using evaluation data
+            4. Calculate metrics based on evaluation results and select best model
+
+        Args:
+            training_state (TrainingState): contrains stateful information to be
+            able to restore a training job
+            train_iter (BatchIterator): batch iterator of training data
+            eval_iter (BatchIterator): batch iterator of evaluation data
+            model (Model): model to be trained
+            metric_reporter (MetricReporter): compute metric based on training
+                output and report results to console, file.. etc
+            train_config (PyTextConfig): training config
+
+        Returns:
+            model, best_metric: the trained model together with the best metric
+        """
         training_data = self.set_up_training(state, training_data)
+        model = state.model
+        rank = state.rank
         trainable_params = sum(
             p.numel() for p in state.model.parameters() if p.requires_grad
         )
