@@ -26,6 +26,8 @@ class CNNParams(ConfigBase):
     weight_norm: bool = False
     # Enables dilated convolutions
     dilated: bool = False
+    # Enables causal convolutions
+    causal: bool = False
 
 
 class PoolingType(Enum):
