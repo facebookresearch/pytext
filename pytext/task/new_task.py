@@ -11,7 +11,7 @@ from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
-from pytext.trainers import TaskTrainer
+from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, precision
 from torch import jit
 
@@ -169,9 +169,23 @@ class _NewTask(TaskBase):
         )
         self.trainer = trainer or TaskTrainer()
 
-    def train(self, config: PyTextConfig, rank: int = 0, world_size: int = 1):
-        # TODO: move dist_init back to prepare_task in pytext/workflow.py
+    def train(
+        self,
+        config: PyTextConfig,
+        rank: int = 0,
+        world_size: int = 1,
+        training_state: TrainingState = None,
+    ):
+        # next to move dist_init back to prepare_task in pytext/workflow.py
         # when processing time between dist_init and first loss.backward() is short
+        if training_state:
+            return self.trainer.train_from_state(
+                training_state,
+                self.data.batches(Stage.TRAIN),
+                self.data.batches(Stage.EVAL),
+                self.metric_reporter,
+                config,
+            )
         return self.trainer.train(
             self.data.batches(Stage.TRAIN),
             self.data.batches(Stage.EVAL),

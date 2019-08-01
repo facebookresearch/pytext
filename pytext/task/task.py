@@ -144,7 +144,7 @@ class TaskBase(Component):
         self.metric_reporter: MetricReporter = metric_reporter
         self.exporter = exporter
 
-    def train(self, train_config, rank=0, world_size=1):
+    def train(self, train_config, rank=0, world_size=1, training_state=None):
         """
         Wrapper method to train the model using :class:`~Trainer` object.
 
@@ -154,14 +154,23 @@ class TaskBase(Component):
             world_size (int): for distributed training only, total gpu to use, default
                 is 1
         """
-        result = self.trainer.train(
-            self.data_handler.get_train_iter(rank, world_size),
-            self.data_handler.get_eval_iter(),
-            self.model,
-            self.metric_reporter,
-            train_config,
-            rank=rank,
-        )
+        if training_state:
+            result = self.trainer.train_from_state(
+                training_state,
+                self.data_handler.get_train_iter(rank, world_size),
+                self.data_handler.get_eval_iter(),
+                self.metric_reporter,
+                train_config,
+            )
+        else:
+            result = self.trainer.train(
+                self.data_handler.get_train_iter(rank, world_size),
+                self.data_handler.get_eval_iter(),
+                self.model,
+                self.metric_reporter,
+                train_config,
+                rank=rank,
+            )
         return result
 
     def test(self, test_path):

@@ -128,8 +128,11 @@ def load_v2(state):
 def load_v3(state):
     config = pytext_config_from_json(state[CONFIG_JSON])
     model_state = state[MODEL_STATE]
-    tensorizers = state[TENSORIZERS]
     training_state = state[TRAINING_STATE]
+    if training_state and training_state.tensorizers:
+        tensorizers = training_state.tensorizers
+    else:
+        tensorizers = state[TENSORIZERS]
     # importing in file level generates circular import/dependency failures,
     # that need refator later to fix
     from .task import create_task

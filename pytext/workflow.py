@@ -14,6 +14,7 @@ from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
+from pytext.trainers import TrainingState
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
 
 
@@ -84,10 +85,10 @@ def train_model(
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Tuple:
-    task = prepare_task(
+    task, training_state = prepare_task(
         config, dist_init_url, device_id, rank, world_size, metric_channels, metadata
     )
-    trained_model, best_metric = task.train(config, rank, world_size)
+    trained_model, best_metric = task.train(config, rank, world_size, training_state)
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
         save_and_export(config, task, metric_channels)
@@ -104,7 +105,7 @@ def prepare_task(
     world_size: int = 1,
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
-) -> Task_Deprecated:
+) -> Tuple[Task_Deprecated, TrainingState]:
 
     print("\nParameters: {}\n".format(config))
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
@@ -114,8 +115,11 @@ def prepare_task(
     if config.random_seed is not None:
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
 
+    training_state = None
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task, _, _ = load(config.load_snapshot_path)
+        task, _config, training_state = load(config.load_snapshot_path)
+        if training_state and training_state.model is None and task.model:
+            training_state.model = task.model
     else:
         task = create_task(
             config.task, metadata=metadata, rank=rank, world_size=world_size
@@ -124,7 +128,7 @@ def prepare_task(
     for mc in metric_channels or []:
         task.metric_reporter.add_channel(mc)
 
-    return task
+    return task, training_state
 
 
 def save_and_export(
