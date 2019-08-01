@@ -22,6 +22,8 @@ class CNNParams(ConfigBase):
     kernel_num: int = 100
     # Kernel sizes to use in convolution
     kernel_sizes: List[int] = [3, 4]
+    # Use weight norm in convolution
+    weight_norm: bool = False
 
 
 class PoolingType(Enum):
