@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -25,6 +26,47 @@ class Trim1d(nn.Module):
         return x[:, :, : -self.trim].contiguous()
 
 
+class SeparableConv1d(nn.Module):
+    """
+    Implements a 1d depthwise separable convolutional layer. In regular convolutional
+    layers, the input channels are mixed with each other to produce each output channel.
+    Depthwise separable convolutions decompose this process into two smaller
+    convolutions -- a depthwise and pointwise convolution.
+
+    The depthwise convolution spatially convolves each input channel separately,
+    then the pointwise convolution projects thie result into a new channel space.
+    This process reduces the number of FLOPS used to compute a convolution and also
+    exhibits a regularization effect. The general behavior -- including the input
+    parameters -- is equivalent to `nn.Conv1d`.
+
+    """
+
+    def __init__(
+        self,
+        input_channels: int,
+        output_channels: int,
+        kernel_size: int,
+        padding: Optional[int],
+        dilation: Optional[int],
+    ):
+        super(SeparableConv1d, self).__init__()
+
+        self.conv = nn.Sequential(
+            nn.Conv1d(
+                input_channels,
+                input_channels,
+                kernel_size,
+                padding=padding,
+                dilation=dilation,
+                groups=input_channels,
+            ),
+            nn.Conv1d(input_channels, output_channels, 1),
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
+
 class DeepCNNRepresentation(RepresentationBase):
     """
     `DeepCNNRepresentation` implements CNN representation layer
@@ -42,6 +84,7 @@ class DeepCNNRepresentation(RepresentationBase):
         cnn: CNNParams = CNNParams()
         dropout: float = 0.3
         activation: Activation = Activation.GLU
+        separable: bool = False
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
@@ -51,7 +94,9 @@ class DeepCNNRepresentation(RepresentationBase):
         weight_norm = config.cnn.weight_norm
         dilated = config.cnn.dilated
         causal = config.cnn.causal
+
         activation = config.activation
+        separable = config.separable
 
         conv_layers = []
         trim_layers = []
@@ -70,8 +115,9 @@ class DeepCNNRepresentation(RepresentationBase):
 
             dilation = 2 ** i if dilated else 1
             padding = (k - 1) * dilation if causal else ((k - 1) // 2) * dilation
+            conv_layer = SeparableConv1d if separable else nn.Conv1d
 
-            single_conv = nn.Conv1d(
+            single_conv = conv_layer(
                 in_channels,
                 (out_channels * 2 if activation == Activation.GLU else out_channels),
                 k,
