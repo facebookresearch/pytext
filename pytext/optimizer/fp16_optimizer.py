@@ -87,11 +87,15 @@ class DynamicLossScaler(object):
     def unscale(self, grad):
         grad.div_(self.scale)
 
+    def unscale_grads(self, param_groups):
+        for p in generate_params(param_groups):
+            self.unscale(p.grad)
+
     def check_overflow(self, master_params):
         self.is_overflow = False
         for p in generate_params(master_params):
             if p.grad is not None:
-                cpu_sum = float(p.grad.sum())
+                cpu_sum = float(p.grad.float().sum())
                 if (
                     cpu_sum == float("inf")
                     or cpu_sum == -float("inf")
@@ -200,14 +204,14 @@ class FP16Optimizer(object):
     def state_dict(self):
         state_dict = {}
         state_dict["loss_scale"] = self.loss_scaler.scale
-        state_dict["overflow"] = self.loss_scaler.overflow
+        state_dict["overflow"] = self.loss_scaler.is_overflow
         state_dict["param_groups"] = self.param_groups
         state_dict["optimizer_state_dict"] = self.inner_optimizer.state_dict()
         return state_dict
 
     def load_state_dict(self, state_dict):
         self.loss_scaler.scale = state_dict["loss_scale"]
-        self.loss_scaler.overflow = state_dict["overflow"]
+        self.loss_scaler.is_overflow = state_dict["overflow"]
         self.optimizer.load_state_dict(state_dict["optimizer_state_dict"])
         for model_param, state_param in zip(
             generate_params(self.param_groups),
@@ -219,21 +223,28 @@ class FP16Optimizer(object):
         return self.inner_optimizer.finalize()
 
     def __getstate__(self):
-        raise RuntimeError("FP16_Optimizer should be serialized using state_dict().")
+        return self.state_dict()
 
     def __setstate__(self, state):
-        raise RuntimeError(
-            "FP16_Optimizer should be deserialized using load_state_dict()."
-        )
+        self.load_state_dict(state)
 
 
 def initialize(
-    model, optimizer, opt_level, init_scale=2 ** 16, scale_factor=2.0, scale_window=2000
+    model,
+    optimizer,
+    opt_level,
+    init_scale=2 ** 16,
+    scale_factor=2.0,
+    scale_window=2000,
+    memory_efficient=False,
 ):
-    return (
-        model.half(),
-        FP16Optimizer(optimizer, init_scale, scale_factor, scale_window),
+    optimizer = (
+        FP16Optimizer(optimizer, init_scale, scale_factor, scale_window)
+        if not memory_efficient
+        else PureFP16Optimizer(optimizer, init_scale, scale_factor, scale_window)
     )
+
+    return (model.half(), optimizer)
 
 
 @contextlib.contextmanager
@@ -249,3 +260,117 @@ def generate_params(param_groups):
     for group in param_groups:
         for p in group["params"]:
             yield p
+
+
+"""Memory efficient fp16 optimizer
+No maintenance of fp32 weights.
+
+Internally maintain the chain:
+
+loss.backward()          float()          step()               half()
+==============>fp16 grads------>fp32 grads======> fp32 weights -----> fp16 weights
+"""
+
+
+class PureFP16Optimizer(object):
+    def __init__(
+        self, init_optimizer, init_scale=2.0 ** 16, scale_factor=2, scale_window=2000
+    ):
+        """
+        = input: init_optimizer(initialized already), init_scale, scale_factor,
+                    scale_window
+        = effects: initialize the optimizer & loss scaling tools
+        = modifies:
+            - initialized the scaler
+            - initialized state
+        """
+        self.inner_optimizer = init_optimizer
+        self.param_groups = self.inner_optimizer.param_groups
+        self.loss_scaler = DynamicLossScaler(init_scale, scale_factor, scale_window)
+        self.state = self.inner_optimizer.state
+        self.is_scaled = False
+        print("==================Memory Efficient Optimizer===================")
+
+    def zero_grad(self):
+        for p in generate_params(self.param_groups):
+            if p.grad is not None:
+                p.grad.detach_()
+                p.grad.zero_()
+
+    def scale_loss(self, loss):
+        """
+        = input: loss
+        = effects: do loss scaling
+        = modifies:
+            - upscale grads
+        """
+        self.is_scaled = True
+        return self.loss_scaler.upscale(loss)
+
+    def step(self):
+        """
+        = effects:
+        - if support memory efficient:
+            = check overflow
+            = unscale then call advanced step
+        - if not:
+            - float weights and grads
+            - check whether grads are overflow
+                - if not overflow: unscale grads and call inner optimizer's step
+                - if overflow: nothing, wait to the end to call half
+            - half weights and grads (grads will be eliminated in zero_grad)
+        """
+        support = getattr(self.inner_optimizer, "supports_memory_efficient_fp16", False)
+
+        if not support:
+            self._fp16_to_fp32()
+
+        self.loss_scaler.check_overflow(self.param_groups)
+        if not self.loss_scaler.is_overflow:
+            self._unscale()
+            self.inner_optimizer.step()
+
+        if not support:
+            self._fp32_to_fp16()
+
+        self.loss_scaler.update_scale()
+
+    def _unscale(self):
+        if self.is_scaled:
+            self.loss_scaler.unscale_grads(self.param_groups)
+            self.is_scaled = False
+
+    def _fp16_to_fp32(self):
+        for p in generate_params(self.param_groups):
+            p.data = p.data.float()
+            if p.grad is not None:
+                p.grad.data = p.grad.data.float()
+
+    def _fp32_to_fp16(self):
+        for p in generate_params(self.param_groups):
+            p.data = p.data.half()
+            if p.grad is not None:
+                p.grad.data = p.grad.data.half()
+
+    def state_dict(self):
+        state_dict = {}
+        state_dict["loss_scale"] = self.loss_scaler.scale
+        state_dict["overflow"] = self.loss_scaler.is_overflow
+        state_dict["param_groups"] = self.param_groups
+        state_dict["optimizer_state_dict"] = self.inner_optimizer.state_dict()
+        return state_dict
+
+    def load_state_dict(self, state_dict):
+        self.loss_scaler.scale = state_dict["loss_scale"]
+        self.loss_scaler.is_overflow = state_dict["overflow"]
+        self.param_groups = state_dict["param_groups"]
+        self.optimizer.load_state_dict(state_dict["optimizer_state_dict"])
+
+    def finalize(self):
+        return self.inner_optimizer.finalize()
+
+    def __getstate__(self):
+        return self.state_dict()
+
+    def __setstate__(self, state):
+        self.load_state_dict(state)
