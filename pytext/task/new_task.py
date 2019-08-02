@@ -215,7 +215,6 @@ class _NewTask(TaskBase):
             for mc in metric_channels:
                 mc.export(model, model.arrange_model_inputs(batch))
 
-        print(f"Saving caffe2 model to: {export_path}")
         return model.caffe2_export(
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )

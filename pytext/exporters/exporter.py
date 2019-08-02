@@ -173,6 +173,9 @@ class ModelExporter(Component):
         Returns:
             final_output_names: list of caffe2 model output names
         """
+
+        print(f"Saving caffe2 model to: {export_path}")
+
         c2_prepared = onnx.pytorch_to_caffe2(
             model,
             self.dummy_model_input,
