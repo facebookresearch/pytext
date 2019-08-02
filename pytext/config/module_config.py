@@ -56,3 +56,8 @@ class Activation(Enum):
     TANH = "tanh"
     GELU = "gelu"
     GLU = "glu"
+
+
+class ExporterType(Enum):
+    PREDICTOR = "predictor"
+    INIT_PREDICT = "init_predict"

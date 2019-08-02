@@ -5,8 +5,10 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from pytext.config import ConfigBase
+from pytext.config.module_config import ExporterType
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
+from pytext.exporters.custom_exporters import get_exporter
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -175,6 +177,7 @@ class LMLSTM(BaseModel):
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         tied_weights: bool = False
         stateful: bool = False
+        caffe2_format: ExporterType = ExporterType.PREDICTOR
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -196,12 +199,14 @@ class LMLSTM(BaseModel):
                 )
             decoder.get_decoder()[0][-1].weight = embedding.weight
         output_layer = create_module(config.output_layer, labels=labels)
+        exporter = get_exporter(config.caffe2_format)
         return cls(
             embedding=embedding,
             representation=representation,
             decoder=decoder,
             output_layer=output_layer,
             stateful=config.stateful,
+            exporter=exporter,
         )
 
     def __init__(
@@ -211,6 +216,7 @@ class LMLSTM(BaseModel):
         decoder: DecoderBase = Config.decoder,
         output_layer: OutputLayerBase = Config.output_layer,
         stateful: bool = Config.stateful,
+        exporter: object = ModelExporter,
     ) -> None:
         super().__init__()
         self.embedding = embedding
@@ -220,6 +226,7 @@ class LMLSTM(BaseModel):
         self.stateful = stateful
         self.module_list = [embedding, representation, decoder]
         self._states: Optional[Tuple] = None
+        self.exporter = exporter
 
     def cpu(self):
         if self.stateful and self._states:
@@ -246,8 +253,8 @@ class LMLSTM(BaseModel):
         return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
-        exporter = ModelExporter(
-            ModelExporter.Config(),
+        exporter = self.exporter(
+            self.exporter.Config(),
             self.get_export_input_names(tensorizers),
             self.arrange_model_inputs(tensor_dict),
             self.vocab_to_export(tensorizers),
