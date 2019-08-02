@@ -107,7 +107,6 @@ class NewBertModel(BaseModel):
         super().__init__(stage=stage)
         self.encoder = encoder
         self.decoder = decoder
-        self.module_list = [encoder, decoder]
         self.output_layer = output_layer
         self.stage = stage
         self.module_list = [encoder, decoder]
