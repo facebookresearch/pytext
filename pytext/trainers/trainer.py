@@ -303,12 +303,12 @@ class Trainer(TrainerBase):
             eval_iter (BatchIterator): batch iterator of evaluation data
             model (Model): model to be trained
             metric_reporter (MetricReporter): compute metric based on training
-                output and report results to console, file.. etc
+            output and report results to console, file.. etc
             train_config (PyTextConfig): training config
             training_result (Optional): only meaningful for Hogwild training. default
-                is None
+            is None
             rank (int): only used in distributed training, the rank of the current
-                training thread, evaluation will only be done in rank 0
+            training thread, evaluation will only be done in rank 0
 
         Returns:
             model, best_metric: the trained model together with the best metric
