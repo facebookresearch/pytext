@@ -7,7 +7,7 @@ import torch
 
 """fp16 optimizer wraps torch.optim to support mixed precision training
 
-structure of fp16Optimzier:
+structure of fp16Optimizer:
                                       property
         fp16_optimizer.param_groups ----------> inner_optimizer.param_groups
                         |                                   |
@@ -27,48 +27,44 @@ usage:
 7    optim.step()         ---- fp32 weights and grads
 
 class FP16_Optimizer:
-= Properties:
-    - inner_optimizer:
-        = type: Torch.optim
-        = contents: optimizer in pytext (eg. Adam)
+Properties:
+    inner_optimizer:
+        type: Torch.optim
+        contents: optimizer in pytext (eg. Adam)
                     which is initialized with fp16 params already
-    - param_groups:
-        = type: list of dictionaries where key is string and value is a list.
-        = contents: eg. [{'params':[]}]
-    - temp_fp32_params
-        = types: same as param_groups
-        = purpose: to support accumulating grads calculation
-        = contents: contain the temp fp32 grads from backward()
+    param_groups:
+        type: list of dictionaries where key is string and value is a list.
+        contents: eg. [{'params':[]}]
+    temp_fp32_params
+        types: same as param_groups
+        purpose: to support accumulating grads calculation
+        contents: contain the temp fp32 grads from backward()
                     and will be unscaled and added to inner optimizer
-    - scaler:
-    - flags: BOOLEAN
-        = weights_update_needed: whether need to copy weights from master to model
-        = grads_update_needed: whether need to copy grads from model to master
-= Methods:
-    - __init__()
-    - zero_grad
-        = effects: clear the grads in self.param_groups(fp16)
-    - backward()
-    - post_process()
-    - step():
-        = effects:
-            - update the grads from model to master
-            - check whether model grads whether are overflow
-            - call inner optimizer's step
-            - copy back the weights from inner optimizer to model
+    scaler:
+    flags: BOOLEAN
+        weights_update_needed: whether need to copy weights from master to model
+        grads_update_needed: whether need to copy grads from model to master
+Methods:
+__init__()
+zero_grad
+effects: clear the grads in self.param_groups(fp16)
+step()
 
 class DynamicLossScaler:
-= properties:
-    - init_scale: the beginning scale number
-    - scale_factor: the step length that we use to increase the scale
-    - scale_window: the upper bound of iterations among which no overflow is triggered
-    - is_overflow
-    - is_scaled: whether grads are scaled
-= Methods:
-    - check_overflow
-    - upscale
-    - unscale
-    - update_scale
+ properties:
+    init_scale: the beginning scale number
+    scale_factor: the step length that we use to increase the scale
+    scale_window: the upper bound of iterations among which no overflow is triggered
+    is_overflow
+    is_scaled: whether grads are scaled
+Methods:
+    check_overflow
+    upscale
+    unscale
+    update_scale:
+        effects:
+        if last overflow is far from now, it's time to increase scale
+        if more overflow happens than we expected, it's time to decrease the scale
 """
 
 
@@ -105,11 +101,6 @@ class DynamicLossScaler(object):
                     break
 
     def update_scale(self):
-        """
-        = effects:
-            - if last overflow is far from now, it's time to increase scale
-            - if more overflow happens than we expected, it's time to decrease the scale
-        """
         self._iter += 1
         if self.is_overflow:
             self._last_overflow_iter = self._iter
@@ -124,15 +115,13 @@ class DynamicLossScaler(object):
 class FP16Optimizer(object):
     def __init__(self, init_optimizer, init_scale, scale_factor, scale_window):
         """
-        = input: init_optimizer(initialized already), init_scale, scale_factor,
-                    scale_window, tolerance, threshold
-        = effects: initialize the optimizer and create master and loss scaling tools
-        = modifies:
-            - record the reference of model params (fp16)
-            - change the inner optimizer's params to fp32 with
-              torch.optim inner method
-            - initialized the scaler
-            - initialized state, default
+        input:
+        init_optimizer(initialized already), init_scale, scale_factor, scale_window
+        effects:
+        initialize the optimizer, create master and loss scaling tools
+        modifies:
+        record the reference of model params (fp16), change the inner optimizer's
+        params to fp32, initialized the scaler, state and default
         """
         self.inner_optimizer = init_optimizer
         self.param_groups = []
@@ -172,6 +161,13 @@ class FP16Optimizer(object):
         return self.loss_scaler.upscale(loss)
 
     def step(self):
+        """
+        effects:
+        update the grads from model to master
+        check whether model grads are overflow
+        call inner optimizer's step()
+        copy back the weights from inner optimizer to model
+        """
         self._grads_from_model_to_master()
         self.loss_scaler.check_overflow(self.inner_optimizer.param_groups)
         if not self.loss_scaler.is_overflow:
@@ -262,13 +258,14 @@ def generate_params(param_groups):
             yield p
 
 
-"""Memory efficient fp16 optimizer
+"""PureFP16Optimizer
 No maintenance of fp32 weights.
 
 Internally maintain the chain:
 
 loss.backward()          float()          step()               half()
-==============>fp16 grads------>fp32 grads======> fp32 weights -----> fp16 weights
+----------------->fp16 grads------>fp32 grads------> fp32 weights -----> fp16 weights
+
 """
 
 
@@ -277,12 +274,11 @@ class PureFP16Optimizer(object):
         self, init_optimizer, init_scale=2.0 ** 16, scale_factor=2, scale_window=2000
     ):
         """
-        = input: init_optimizer(initialized already), init_scale, scale_factor,
-                    scale_window
-        = effects: initialize the optimizer & loss scaling tools
-        = modifies:
-            - initialized the scaler
-            - initialized state
+        input:
+        init_optimizer(initialized already), init_scale, scale_factor, scale_window
+        effects:
+        initialize this optimizer wrapper and loss scaling tools,
+        initialized the scaler and state
         """
         self.inner_optimizer = init_optimizer
         self.param_groups = self.inner_optimizer.param_groups
@@ -298,27 +294,18 @@ class PureFP16Optimizer(object):
                 p.grad.zero_()
 
     def scale_loss(self, loss):
-        """
-        = input: loss
-        = effects: do loss scaling
-        = modifies:
-            - upscale grads
-        """
         self.is_scaled = True
         return self.loss_scaler.upscale(loss)
 
     def step(self):
         """
-        = effects:
-        - if support memory efficient:
-            = check overflow
-            = unscale then call advanced step
-        - if not:
-            - float weights and grads
-            - check whether grads are overflow
-                - if not overflow: unscale grads and call inner optimizer's step
-                - if overflow: nothing, wait to the end to call half
-            - half weights and grads (grads will be eliminated in zero_grad)
+        effects:
+        if inner optimizer supports memory efficient, check overflow,
+        unscale and call advanced step
+        otherwise, float weights and grads, check whether grads are overflow
+        if not overflow,unscale grads and call inner optimizer's step
+        Otherwise, do nothing, wait to the end to call half
+        half weights and grads (grads will be eliminated in zero_grad)
         """
         support = getattr(self.inner_optimizer, "supports_memory_efficient_fp16", False)
 
