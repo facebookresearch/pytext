@@ -58,6 +58,7 @@ class DictFeatConfig(ModuleConfig):
 
 class CharFeatConfig(ModuleConfig):
     embed_dim: int = 100
+    mid_dim: int = 0
     sparse: bool = False
     cnn: CNNParams = CNNParams()
     highway_layers: int = 0
