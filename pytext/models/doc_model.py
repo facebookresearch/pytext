@@ -38,6 +38,7 @@ from pytext.models.output_layers.doc_classification_output_layer import (
     MultiLabelOutputLayer,
 )
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
+from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
 from pytext.models.representations.representation_base import RepresentationBase
@@ -68,6 +69,7 @@ class DocModel_Deprecated(Model):
             PureDocAttention.Config,
             BiLSTMDocAttention.Config,
             DocNNRepresentation.Config,
+            DeepCNNRepresentation.Config,
         ] = BiLSTMDocAttention.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: ClassificationOutputLayer.Config = (
@@ -93,6 +95,7 @@ class DocModel(Model):
             PureDocAttention.Config,
             BiLSTMDocAttention.Config,
             DocNNRepresentation.Config,
+            DeepCNNRepresentation.Config,
         ] = BiLSTMDocAttention.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: ClassificationOutputLayer.Config = (

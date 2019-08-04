@@ -4,7 +4,7 @@ import math
 
 import torch
 import torch.nn as nn
-from pytext.config.module_config import Activation, CNNParams
+from pytext.config.module_config import Activation, CNNParams, PoolingType
 from pytext.models.representations.representation_base import RepresentationBase
 from pytext.optimizer import get_activation
 
@@ -210,6 +210,7 @@ class DeepCNNRepresentation(RepresentationBase):
         activation: Activation = Activation.GLU
         separable: bool = False
         bottleneck: int = 0
+        pooling_type: PoolingType = PoolingType.NONE
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
@@ -221,6 +222,7 @@ class DeepCNNRepresentation(RepresentationBase):
         causal = config.cnn.causal
 
         activation = config.activation
+        pooling_type = config.pooling_type
         separable = config.separable
         bottleneck = config.bottleneck
 
@@ -257,9 +259,21 @@ class DeepCNNRepresentation(RepresentationBase):
         self.convs = nn.ModuleList(conv_layers)
         self.projections = nn.ModuleList(linear_layers)
         self.activation = get_activation(activation)
+        self.pooling_type = pooling_type
 
         self.representation_dim = out_channels
         self.dropout = nn.Dropout(p=config.dropout)
+
+    def pool(self, words):
+        # input dims: bsz * seq_len * num_filters
+        if self.pooling_type == PoolingType.MEAN:
+            return words.mean(dim=1)
+        elif self.pooling_type == PoolingType.MAX:
+            return words.max(dim=1)[0]
+        elif self.pooling_type == PoolingType.NONE:
+            return words
+        else:
+            return NotImplementedError
 
     def forward(self, inputs: torch.Tensor, *args) -> torch.Tensor:
         inputs = self.dropout(inputs)
@@ -274,4 +288,5 @@ class DeepCNNRepresentation(RepresentationBase):
             words = conv(words)
             words = self.activation(words)
             words = (words + residual) * math.sqrt(0.5)
-        return words.permute(0, 2, 1)
+        words = words.permute(0, 2, 1)
+        return self.pool(words)
