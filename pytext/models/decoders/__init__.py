@@ -3,7 +3,7 @@
 
 from .decoder_base import DecoderBase
 from .intent_slot_model_decoder import IntentSlotModelDecoder
-from .mlp_decoder import MLPDecoder
+from .mlp_decoder import DecompMLPDecoder, MLPDecoder
 
 
-__all__ = ["DecoderBase", "MLPDecoder", "IntentSlotModelDecoder"]
+__all__ = ["DecoderBase", "MLPDecoder", "DecompMLPDecoder", "IntentSlotModelDecoder"]
