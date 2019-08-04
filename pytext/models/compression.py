@@ -9,6 +9,67 @@ import torch.nn.functional as F
 import torch.nn.modules.module as module
 
 
+class DecompEmbedding(module.Module):
+    """
+    Variant of `torch.nn.Embedding` that decomposes the weight matrix into two
+    learnable sub-weights. The original weight of shape (num_embeddings, embedding_dim)
+    is split with a middle dimension mid_dim. As a result, the two sub-weights have
+    shapes (num_embeddings, mid_dim) and (mid_dim, embedding_dim), respectively.
+    Non-weight-related parameters (e.g., max_norm) assume their default values as
+    specified in `torch.nn.Embedding`. The input and output behavior of this module
+    is the same as `torch.nn.Embedding`.
+
+    Args:
+        num_embeddings (int): size of the dictionary of the embeddings
+        mid_dim (int): size of intermediate weight dimension
+        embedding_dim (int): the size of each embedding vector
+
+    """
+
+    __constants__ = [
+        "num_embeddings",
+        "mid_dim",
+        "embedding_dim",
+        "padding_idx",
+        "max_norm",
+        "norm_type",
+        "scale_grad_by_freq",
+        "sparse",
+        "_weight",
+    ]
+
+    def __init__(self, num_embeddings, mid_dim, embedding_dim):
+        super(DecompEmbedding, self).__init__()
+        self.num_embeddings = num_embeddings
+        self.mid_dim = mid_dim
+        self.embedding_dim = embedding_dim
+        self.w_a = nn.Parameter(torch.Tensor(self.num_embeddings, self.mid_dim))
+        self.w_b = nn.Parameter(torch.Tensor(self.embedding_dim, self.mid_dim))
+        self.b1 = nn.Parameter(torch.Tensor(self.embedding_dim))
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.normal_(self.w_a)
+        nn.init.normal_(self.w_b)
+        nn.init.constant_(self.b1, 0.0)
+
+    def forward(self, input):
+        return F.embedding(
+            input=input,
+            weight=F.linear(self.w_a, self.w_b, self.b1),
+            padding_idx=None,
+            max_norm=None,
+            norm_type=2.0,
+            scale_grad_by_freq=False,
+            sparse=False,
+        )
+
+    def extra_repr(self):
+        return "{}, {}, {}".format(
+            self.num_embeddings, self.mid_dim, self.embedding_dim
+        )
+
+
 class DecompLinear(module.Module):
     """
     Variant of `torch.nn.Linear` that decomposes the weight matrix into two learnable

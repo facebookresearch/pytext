@@ -12,7 +12,7 @@ from pytext.exporters.custom_exporters import get_exporter
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders import DecoderBase
 from pytext.models.decoders.mlp_decoder import DecompMLPDecoder, MLPDecoder
-from pytext.models.embeddings import EmbeddingBase, WordEmbedding
+from pytext.models.embeddings import DecompWordEmbedding, EmbeddingBase, WordEmbedding
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
 from pytext.models.output_layers import OutputLayerBase
@@ -168,7 +168,9 @@ class LMLSTM(BaseModel):
             )
 
         inputs: ModelInput = ModelInput()
-        embedding: WordEmbedding.Config = WordEmbedding.Config()
+        embedding: Union[
+            WordEmbedding.Config, DecompWordEmbedding.Config
+        ] = WordEmbedding.Config()
         representation: Union[BiLSTM.Config, CNN.Config] = BiLSTM.Config(
             bidirectional=False
         )
