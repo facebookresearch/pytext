@@ -284,6 +284,8 @@ class Trainer(TrainerBase):
             state.model.load_state_dict(
                 {k: v.cuda() for k, v in state.best_model_state.items()}
             )
+            # Move model back to GPU
+            state.model.cuda()
         else:
             state.model.load_state_dict(state.best_model_state)
 
