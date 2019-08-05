@@ -412,7 +412,9 @@ class TensorizersTest(unittest.TestCase):
             )
 
     def test_create_float_list_tensor(self):
-        tensorizer = FloatListTensorizer(column="dense", dim=2, error_check=True)
+        tensorizer = FloatListTensorizer(
+            column="dense", dim=2, error_check=True, normalize=False
+        )
         tests = [
             ("[0.1,0.2]", [0.1, 0.2]),  # comma
             ("[0.1, 0.2]", [0.1, 0.2]),  # comma with single space
@@ -427,6 +429,111 @@ class TensorizersTest(unittest.TestCase):
             row = {"dense": load_float_list(raw)}
             numberized = tensorizer.numberize(row)
             self.assertEqual(expected, numberized)
+
+    def test_create_normalized_float_list_tensor(self):
+        def round_list(l):
+            return [float("%.4f" % n) for n in l]
+
+        data = TSVDataSource(
+            SafeFileWrapper(tests_module.test_file("train_dense_features_tiny.tsv")),
+            eval_file=None,
+            field_names=["label", "slots", "text", "dense_feat"],
+            schema={"text": str, "label": str, "dense_feat": List[float]},
+        )
+        tensorizer = FloatListTensorizer(
+            column="dense_feat", dim=10, error_check=True, normalize=True
+        )
+        self._initialize_tensorizer(tensorizer, data)
+        self.assertEqual(10, tensorizer.normalizer.num_rows)
+        self.assertEqual(
+            round_list(
+                [
+                    7.56409,
+                    8.2388,
+                    0.5531,
+                    0.2403,
+                    1.03130,
+                    6.2888,
+                    3.1595,
+                    0.1538,
+                    0.2403,
+                    5.3463,
+                ]
+            ),
+            round_list(tensorizer.normalizer.feature_sums),
+        )
+        self.assertEqual(
+            round_list(
+                [
+                    5.80172,
+                    7.57586,
+                    0.30591,
+                    0.05774,
+                    0.52762,
+                    5.22811,
+                    2.51727,
+                    0.02365,
+                    0.05774,
+                    4.48798,
+                ]
+            ),
+            round_list(tensorizer.normalizer.feature_squared_sums),
+        )
+        self.assertEqual(
+            round_list(
+                [
+                    0.75640,
+                    0.82388,
+                    0.05531,
+                    0.02403,
+                    0.10313,
+                    0.62888,
+                    0.31595,
+                    0.01538,
+                    0.02403,
+                    0.53463,
+                ]
+            ),
+            round_list(tensorizer.normalizer.feature_avgs),
+        )
+        self.assertEqual(
+            round_list(
+                [
+                    0.08953,
+                    0.28072,
+                    0.16593,
+                    0.07209,
+                    0.20524,
+                    0.35682,
+                    0.38974,
+                    0.04614,
+                    0.07209,
+                    0.40369,
+                ]
+            ),
+            round_list(tensorizer.normalizer.feature_stddevs),
+        )
+
+        row = [0.64840776, 0.7575, 0.5531, 0.2403, 0, 0.9481, 0, 0.1538, 0.2403, 0.3564]
+        output = tensorizer.numberize({"dense_feat": row})
+
+        self.assertEqual(
+            round_list(
+                [
+                    -1.20619,
+                    -0.23646,
+                    2.99999,
+                    3.0,
+                    -0.50246,
+                    0.89462,
+                    -0.81066,
+                    2.99999,
+                    3.0,
+                    -0.44149,
+                ]
+            ),
+            round_list(output),
+        )
 
     def test_annotation_num(self):
         data = TSVDataSource(

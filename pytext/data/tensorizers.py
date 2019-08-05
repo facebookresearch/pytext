@@ -20,7 +20,7 @@ from pytext.data.data_structures.annotation import (
 )
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
-from pytext.utils import cuda
+from pytext.utils import cuda, torch as utils_torch
 from pytext.utils.data import Slot
 
 from .utils import (
@@ -698,20 +698,37 @@ class FloatListTensorizer(Tensorizer):
         column: str
         error_check: bool = False
         dim: Optional[int] = None
+        # If you wish to normalize the training data here, you probably also
+        # want to normalize the inference data. This is currently supported with
+        # TorchScript models (see DocModel). See T48207828 for progress on
+        # supporting Caffe2 models.
+        normalize: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.error_check, config.dim)
+        return cls(config.column, config.error_check, config.dim, config.normalize)
 
-    def __init__(self, column: str, error_check: bool, dim: Optional[int]):
+    def __init__(
+        self, column: str, error_check: bool, dim: Optional[int], normalize: bool
+    ):
         self.column = column
         self.error_check = error_check
         self.dim = dim
+        self.normalizer = utils_torch.VectorNormalizer(dim, normalize)
         assert not self.error_check or self.dim is not None, "Error check requires dim"
 
     @property
     def column_schema(self):
         return [(self.column, List[float])]
+
+    def initialize(self):
+        try:
+            while True:
+                row = yield
+                res = row[self.column]
+                self.normalizer.update_meta_data(res)
+        except GeneratorExit:
+            self.normalizer.calculate_feature_stats()
 
     def numberize(self, row):
         dense = row[self.column]
@@ -719,7 +736,7 @@ class FloatListTensorizer(Tensorizer):
             assert (
                 len(dense) == self.dim
             ), f"Dense feature didn't match expected dimension {self.dim}: {dense}"
-        return dense
+        return self.normalizer.normalize([dense])[0]
 
     def tensorize(self, batch):
         return pad_and_tensorize(batch, dtype=torch.float)

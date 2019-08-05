@@ -156,6 +156,7 @@ class DocModel(Model):
             def __init__(self):
                 super().__init__()
                 self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.normalizer = tensorizers["dense"].normalizer
                 self.model = traced_model
                 self.output_layer = output_layer
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
@@ -165,6 +166,7 @@ class DocModel(Model):
                 seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
+                dense_feat = self.normalizer.normalize(dense_feat)
                 logits = self.model(
                     torch.tensor(word_ids),
                     torch.tensor(seq_lens),
