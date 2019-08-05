@@ -27,16 +27,21 @@ class Node:
         children (:obj:`set` of :obj:`Node`): Children of the node.
     """
 
-    __slots__ = "label", "span", "children"
+    __slots__ = "label", "span", "children", "text"
 
     def __init__(
-        self, label: str, span: Span, children: Optional[AbstractSet["Node"]] = None
+        self,
+        label: str,
+        span: Span,
+        children: Optional[AbstractSet["Node"]] = None,
+        text: str = None,
     ) -> None:
         object.__setattr__(self, "label", label)
         object.__setattr__(self, "span", span)
         object.__setattr__(
             self, "children", children if children is not None else set()
         )
+        object.__setattr__(self, "text", text)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Node):

@@ -42,12 +42,19 @@ class Node(NodeBase):
         span (Span): Span of the node.
         children (:obj:`frozenset` of :obj:`Node`): frozenset of the node's children,
             left empty when computing bracketing metrics.
+        text (str): Text the node covers (=utterance[span.start:span.end])
     """
 
     def __init__(
-        self, label: str, span: Span, children: Optional[AbstractSet["Node"]] = None
+        self,
+        label: str,
+        span: Span,
+        children: Optional[AbstractSet["Node"]] = None,
+        text: str = None,
     ) -> None:
-        super().__init__(label, span, frozenset(children) if children else frozenset())
+        super().__init__(
+            label, span, frozenset(children) if children else frozenset(), text
+        )
 
     def __setattr__(self, name: str, value: Any) -> None:
         raise AttributeError("Node class is immutable.")
@@ -214,7 +221,7 @@ def _get_intents_and_slots(frame: Node, tree_based: bool) -> IntentsAndSlots:
         for child in node.children:
             process_node(child, not is_intent)
         if not tree_based:
-            node = Node(node.label, deepcopy(node.span))
+            node = type(node)(node.label, deepcopy(node.span), text=node.text)
         if is_intent:
             intents[node] += 1
         else:
