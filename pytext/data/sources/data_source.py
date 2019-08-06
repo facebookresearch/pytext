@@ -194,19 +194,36 @@ class RootDataSource(DataSource):
         #: to not map directly to the column names in the schema. This mapping will
         #: remap names from the raw data source to names in the schema.
         column_mapping: Dict[str, str] = {}
+        #: An optional additional_colname (such as post_id, page_id, page_url)
+        #: to be read into context so that it can be included in model output
+        #: file with other saving results
+        additional_colnames: List[str] = []
 
-    def __init__(self, schema: Schema, column_mapping: Dict[str, str] = ()):
+    def __init__(
+        self,
+        schema: Schema,
+        column_mapping: Dict[str, str] = (),
+        additional_colnames: List[str] = (),
+    ):
         super().__init__(schema)
         self.column_mapping = dict(column_mapping)
+        self.additional_colnames = list(additional_colnames)
 
     def _read_example(self, row):
         example = RawExample()
         for column_name, value in row.items():
             name = self.column_mapping.get(column_name, column_name)
-            if name not in self.schema:
-                continue
-            example[name] = self.load(value, self.schema[name])
-        if len(example) != len(self.schema):
+            if name in self.schema:
+                example[name] = self.load(value, self.schema[name])
+            else:
+                if name in self.additional_colnames:
+                    # default data type for additional_colname is string
+                    example[name] = self.load(value, str)
+                else:
+                    continue
+        if len(example) != len(self.schema) and not set(
+            self.additional_colnames
+        ).issubset(set(example)):
             # We might need to re-evaluate this for multi-task training
             logging.warning(
                 "Skipping row missing values: row {} -> schema {}".format(
