@@ -15,6 +15,7 @@ from pytext.config.component import (
     ComponentType,
     create_optimizer,
     create_scheduler,
+    create_sparsifier,
 )
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.data_handler import BatchIterator
@@ -23,6 +24,7 @@ from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.scheduler import Scheduler
+from pytext.optimizer.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import cuda, precision, timing
@@ -108,6 +110,7 @@ class Trainer(TrainerBase):
         #: config for optimizer, used in parameter update
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
+        sparsifier: Optional[Sparsifier.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
         optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
@@ -115,6 +118,9 @@ class Trainer(TrainerBase):
             create_scheduler(config.scheduler, optimizer)
             if config.scheduler
             else Scheduler()
+        )
+        self.sparsifier: Sparsifier = (
+            create_sparsifier(config.sparsifier) if config.sparsifier else Sparsifier()
         )
         model, self.optimizer = precision.initialize(model, optimizer)
         self.config = config
@@ -185,8 +191,27 @@ class Trainer(TrainerBase):
 
         with timing.time("optimizer.step"):
             state.optimizer.step()
+
+        state.step_counter += 1
         # grad_norm could be used to check grads sync in distributed training
         return grad_norm
+
+    @timing.time("sparsifier")
+    def sparsification_step(self, state):
+        # sparsification only if sparifier is used
+        if not self.config.sparsifier:
+            return
+
+        if state.stage != Stage.TRAIN:
+            return
+
+        if state.epoch >= state.sparsifier.starting_epoch:
+            if state.step_counter % state.sparsifier.frequency == 0:
+                state.sparsifier.sparsify(state.model)
+
+        if state.rank == 0:
+            current_sparsity = state.sparsifier.get_current_sparsity(state.model)
+            print(f"sparsity in the model: {current_sparsity}", flush=True)
 
     def continue_training(self, state: TrainingState) -> bool:
         # Are we done?
@@ -316,7 +341,11 @@ class Trainer(TrainerBase):
             model, best_metric: the trained model together with the best metric
         """
         state = TrainingState(
-            model=model, optimizer=self.optimizer, scheduler=self.scheduler, rank=rank
+            model=model,
+            optimizer=self.optimizer,
+            scheduler=self.scheduler,
+            sparsifier=self.sparsifier,
+            rank=rank,
         )
         return self.train_from_state(
             state, training_data, eval_data, metric_reporter, train_config
@@ -525,6 +554,7 @@ class Trainer(TrainerBase):
                 )
         # update gradients after len(samples) forward & backward
         self.optimizer_step(state)
+        self.sparsification_step(state)
 
 
 class TaskTrainer(Trainer):
@@ -574,6 +604,7 @@ class TaskTrainer(Trainer):
                     metric_reporter.report_realtime_metric(state.stage)
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
+        self.sparsification_step(state)
 
     def _prepare_scheduler(self, training_batches, scheduler=None):
         """Batch based schedulers require knowing the number of batches in

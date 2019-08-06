@@ -30,6 +30,7 @@ class ComponentType(enum.Enum):
     PREDICTOR = "predictor"
     EXPORTER = "exporter"
     METRIC_REPORTER = "metric_reporter"
+    SPARSIFIER = "sparsifier"
 
 
 class RegistryError(Exception):
@@ -186,6 +187,12 @@ def create_optimizer(optimizer_config, model: torch.nn.Module, *args, **kwargs):
 def create_scheduler(scheduler_config, optimizer, *args, **kwargs):
     return create_component(
         ComponentType.SCHEDULER, scheduler_config, optimizer, *args, **kwargs
+    )
+
+
+def create_sparsifier(sparsifier_config, *args, **kwargs):
+    return create_component(
+        ComponentType.SPARSIFIER, sparsifier_config, *args, **kwargs
     )
 
 
