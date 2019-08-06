@@ -101,17 +101,18 @@ class TaskLoadSaveTest(unittest.TestCase):
                     epochs_since_last_improvement=0,
                     best_model_state=None,
                     best_model_metric=None,
-                    tensorizers=None,
+                    tensorizers=task.data.tensorizers,
                 )
 
                 checkpoint_path = checkpoint_file.name
+
                 save(
                     config,
                     model,
                     None,
                     task.data.tensorizers,
                     training_state,
-                    checkpoint_file,
+                    "epoch-1",
                 )
                 task_restored, config_restored, training_state_restored = load(
                     checkpoint_path
