@@ -60,7 +60,7 @@ class WordEmbedding(EmbeddingBase):
         if tensorizer is not None:
             if config.vocab_from_pretrained_embeddings:
                 raise ValueError(
-                    "In new data design, to adda tokens from a pretrained embeddings "
+                    "In new data design, to add tokens from a pretrained embeddings "
                     "file to the vocab, specify `vocab_file` in the token tensorizer."
                 )
 
