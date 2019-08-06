@@ -15,6 +15,7 @@ from .data_source import (
     ShardedDataSource,
     generator_property,
 )
+from .session import SessionDataSource
 
 
 class TSV:
@@ -280,14 +281,7 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
         return iter(self._train_unsharded)
 
 
-class SessionTSVDataSource(TSVDataSource):
-    """
-    Data source for session based data, the input data is organized in sessions,
-    each session may have multiple rows. The first column is always the session id.
-    Raw input rows are consolidated by session id and returned as one session
-    per example
-    """
-
+class SessionTSVDataSource(TSVDataSource, SessionDataSource):
     def __init__(
         self,
         train_file=None,
@@ -296,49 +290,16 @@ class SessionTSVDataSource(TSVDataSource):
         field_names=None,
         **kwargs,
     ):
-        super().__init__(train_file, test_file, eval_file, field_names, **kwargs)
-
-        self.field_names = field_names
         # requires first column to be the session id
         assert len(field_names) >= 2, "should specify at least 2 columns"
-        self.id_col = field_names[0]
-        self.current_id = None
-        self.current_session = []
-        self._validate_schema()
-
-    def _validate_schema(self):
-        """Make sure the input schema are all list type, which is the return value
-        type, and convert it to the actual type (e.g List[T] -> T) when reading the
-        raw data from file.
-        """
-        for k, v in self.schema.items():
-            assert _get_class_type(v) is list, f"{k} is not a list type!"
-            self.schema[k] = v.__args__[0]
+        super().__init__(
+            train_file=train_file,
+            test_file=test_file,
+            eval_file=eval_file,
+            field_names=field_names,
+            id_col=field_names[0],
+            **kwargs,
+        )
         self.schema[self.id_col] = str
-
-    def merge_session(self, session):
-        res = {self.id_col: session[0][self.id_col]}
-        for k, v in chain.from_iterable([s.items() for s in session]):
-            if k != self.id_col:
-                res[k] = res.get(k, [])
-                res[k].append(v)
-        return res
-
-    def _convert_raw_source(self, source):
-        for row in source:
-            example = self._read_example(row)
-            if example is None:
-                continue
-            if example[self.id_col] == self.current_id:
-                self.current_session.append(example)
-            else:
-                self.current_id = example[self.id_col]
-                session = self.current_session
-                self.current_session = [example]
-                if session:
-                    yield self.merge_session(session)
-        self.current_id = None
-        session = self.current_session
-        self.current_session = []
-        if session:
-            yield self.merge_session(session)
+        self.field_names = field_names
+        self._validate_schema()
