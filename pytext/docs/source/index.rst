@@ -77,6 +77,7 @@ If you want to use PyText as a library and build your own models, please check t
   tensorizer
   dense
   create_new_model
+  hacking_pytext
 
 .. toctree::
   :maxdepth: 2
