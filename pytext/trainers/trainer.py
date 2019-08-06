@@ -4,7 +4,6 @@
 import itertools
 import time
 from contextlib import ExitStack as contextlib_ExitStack
-from os import path
 from typing import Any, Iterable, List, Optional, Tuple
 
 import torch
@@ -270,14 +269,8 @@ class Trainer(TrainerBase):
                 model_state[key] = parameter.cpu()
         state.best_model_state = model_state
 
-    # generate per epoch checkpoint save path
-    # TODO: refactor to move to new checkpointManager class next
-    def generate_checkpoint_path(self, config: PyTextConfig, epoch: int):
-        dir_name = path.dirname(config.save_snapshot_path)
-        return "{}/checkpoint-{}".format(dir_name, epoch)
-
     @timing.time("save checkpoint")
-    def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig):
+    def save_checkpoint(self, state: TrainingState, train_config: PyTextConfig) -> str:
         # Only one worker should save checkpoints
         if state.rank != 0:
             return
@@ -286,21 +279,16 @@ class Trainer(TrainerBase):
             state.model.save_modules(
                 base_path=train_config.modules_save_dir, suffix=f"-ep{state.epoch}"
             )
-        # TODO: add new config and implementation of frequency on checkpointing
+        # next to add new config and implementation of frequency on checkpointing
         if train_config.save_all_checkpoints:
-            per_epoch_save_path = self.generate_checkpoint_path(
-                train_config, state.epoch
+            return save(
+                config=train_config,
+                model=state.model,
+                meta=None,
+                tensorizers=None,
+                training_state=state,
+                identifier=str(state.epoch),
             )
-            with open(per_epoch_save_path, "wb") as checkpoint_stream:
-                print("Saving checkpoint to ", per_epoch_save_path)
-                save(
-                    config=train_config,
-                    model=state.model,
-                    meta=None,
-                    tensorizers=None,
-                    training_state=state,
-                    f=checkpoint_stream,
-                )
 
     def load_best_model(self, state: TrainingState):
         if cuda.CUDA_ENABLED:
