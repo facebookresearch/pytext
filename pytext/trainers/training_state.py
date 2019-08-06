@@ -9,14 +9,19 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.models.model import Model
 from pytext.optimizer import Optimizer
 from pytext.optimizer.scheduler import Scheduler
+from pytext.optimizer.sparsifier import Sparsifier
 
 
 class TrainingState:
     model: Model
     optimizer: Optimizer
     scheduler: Scheduler
+    sparsifier: Sparsifier
     start_time: float
+    # epoch counter
     epoch: int = 0
+    # step counter: each optimizer.step() increments step_counter
+    step_counter: int = 0
     rank: int = 0
     stage: Stage = Stage.TRAIN
     epochs_since_last_improvement: int = 0
