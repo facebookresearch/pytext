@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import json
 import unicodedata
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 
 def simple_tokenize(s: str) -> List[str]:
@@ -11,6 +11,32 @@ def simple_tokenize(s: str) -> List[str]:
 
 def no_tokenize(s: Any) -> Any:
     return s
+
+
+def get_substring_from_offsets(
+    text: str, start: Optional[int], end: Optional[int], byte_offset: bool = True
+) -> str:
+    """
+    Access substring of a text using byte offset, if the switch is turned on.
+    Otherwise return substring as the usual text[start:end]
+    """
+    text = text.encode("utf8") if byte_offset else text
+    out = text[start:end]
+    return out.decode("utf8") if byte_offset else out
+
+
+def byte_length(text: str) -> int:
+    """
+    Return the string length in term of byte offset
+    """
+    return len(text.encode("utf8"))
+
+
+def char_offset_to_byte_offset(text: str, char_offset: int) -> int:
+    """
+    Convert a char offset to byte offset
+    """
+    return byte_length(text[:char_offset])
 
 
 class Slot:
