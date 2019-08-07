@@ -42,12 +42,7 @@ from pytext.metric_reporters.language_model_metric_reporter import (
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
-from pytext.models.ensembles import (
-    BaggingDocEnsemble_Deprecated,
-    BaggingDocEnsembleModel,
-    BaggingIntentSlotEnsemble_Deprecated,
-    EnsembleModel,
-)
+from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
 from pytext.models.joint_model import IntentSlotModel, JointModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.masked_lm import MaskedLanguageModel
@@ -73,7 +68,6 @@ from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
 from pytext.trainers import (
     EnsembleTrainer,
-    EnsembleTrainer_Deprecated,
     HogwildTrainer,
     HogwildTrainer_Deprecated,
     Trainer,
@@ -105,40 +99,6 @@ class QueryDocumentPairwiseRankingTask(NewTask):
         )
         metric_reporter: PairwiseRankingMetricReporter.Config = (
             PairwiseRankingMetricReporter.Config()
-        )
-
-
-# TODO better to have separate Task for different ensemble model
-class EnsembleTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        model: Union[
-            BaggingDocEnsemble_Deprecated.Config,
-            BaggingIntentSlotEnsemble_Deprecated.Config,
-        ]
-        trainer: EnsembleTrainer_Deprecated.Config = EnsembleTrainer_Deprecated.Config()
-        labels: List[TargetConfigBase]
-        metric_reporter: Union[
-            ClassificationMetricReporter.Config, IntentSlotMetricReporter.Config
-        ] = ClassificationMetricReporter.Config()
-        data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
-
-    def train_single_model(self, train_config, model_id, rank=0, world_size=1):
-        assert model_id >= 0 and model_id < len(self.model.models)
-        return self.trainer.train_single_model(
-            self.data_handler.get_train_iter(rank, world_size),
-            self.data_handler.get_eval_iter(),
-            self.model.models[model_id],
-            self.metric_reporter,
-            train_config,
-        )
-
-    @classmethod
-    def example_config(cls):
-        return cls.Config(
-            labels=[DocLabelConfig(), WordLabelConfig()],
-            model=BaggingDocEnsemble_Deprecated.Config(
-                models=[DocModel_Deprecated.Config()]
-            ),
         )
 
 
