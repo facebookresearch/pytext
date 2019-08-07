@@ -73,9 +73,9 @@ To get our feet wet, let's run one of the demo configurations included with PyTe
           "source": {
             "TSVDataSource": {
               "field_names": ["label", "slots", "text"],
-              "train_filename": "pytext/tests/data/train_data_tiny.tsv",
-              "test_filename": "pytext/tests/data/test_data_tiny.tsv",
-              "eval_filename": "pytext/tests/data/test_data_tiny.tsv"
+              "train_filename": "tests/data/train_data_tiny.tsv",
+              "test_filename": "tests/data/test_data_tiny.tsv",
+              "eval_filename": "tests/data/test_data_tiny.tsv"
             }
           }
         },

@@ -54,7 +54,7 @@ Now you can export your model as a caffe2 net:
 You can use the exported caffe2 model to predict the class of raw utterances like this:
 
 ```
-  (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"raw_text": "create an alarm for 1:30 pm"}'
+  (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"text": "create an alarm for 1:30 pm"}'
 ```
 
 More examples and tutorials can be found in [Full Documentation](https://pytext.readthedocs.io/en/master/).
