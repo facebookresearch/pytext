@@ -125,8 +125,10 @@ class _NewTask(TaskBase):
                 column: str for column in config.metric_reporter.text_column_names
             }
 
-        if not tensorizers:
+        init_tensorizers = not tensorizers
+        if init_tensorizers:
             tensorizers = create_tensorizers(config.model.inputs)
+
         schema = create_schema(tensorizers, extra_schema)
 
         # This initializes the tensorizers
@@ -137,6 +139,7 @@ class _NewTask(TaskBase):
             tensorizers,
             rank=rank,
             world_size=world_size,
+            init_tensorizers=init_tensorizers,
         )
         return tensorizers, data
 

@@ -34,6 +34,7 @@ class PackedLMData(Data):
         language: Optional[str] = None,
         rank: int = 0,
         world_size: int = 1,
+        init_tensorizers: Optional[bool] = True,
     ):
         return super(PackedLMData, cls).from_config(
             config,
@@ -43,6 +44,7 @@ class PackedLMData(Data):
             world_size,
             language=language,
             max_seq_len=config.max_seq_len,
+            init_tensorizers=init_tensorizers,
         )
 
     def __init__(
@@ -55,8 +57,11 @@ class PackedLMData(Data):
         # language is used in cross-lingual LM training
         language: Optional[str] = None,
         in_memory: Optional[bool] = False,
+        init_tensorizers: Optional[bool] = True,
     ):
-        super().__init__(data_source, tensorizers, batcher, sort_key, in_memory)
+        super().__init__(
+            data_source, tensorizers, batcher, sort_key, in_memory, init_tensorizers
+        )
         assert len(list(self.tensorizers.items())) == 1
         self.tensorizer_name, self.tensorizer = list(self.tensorizers.items())[0]
         self.remainder: Dict[str, List[int]] = {"tokens": [], "segment_labels": []}

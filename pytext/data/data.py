@@ -211,6 +211,7 @@ class Data(Component):
         tensorizers: Dict[str, Tensorizer],
         rank=0,
         world_size=1,
+        init_tensorizers=True,
         **kwargs,
     ):
         data_source_cls = Registry.get(ComponentType.DATA_SOURCE, type(config.source))
@@ -238,6 +239,7 @@ class Data(Component):
             batcher=batcher,
             sort_key=config.sort_key,
             in_memory=config.in_memory,
+            init_tensorizers=init_tensorizers,
             **kwargs,
         )
 
@@ -248,6 +250,7 @@ class Data(Component):
         batcher: Batcher = None,
         sort_key: Optional[str] = None,
         in_memory: Optional[bool] = False,
+        init_tensorizers: Optional[bool] = True,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
@@ -263,7 +266,13 @@ class Data(Component):
             if isinstance(data_source, ShardedDataSource)
             else data_source.train
         )
-        initialize_tensorizers(self.tensorizers, full_train_data)
+        if init_tensorizers:
+            initialize_tensorizers(self.tensorizers, full_train_data)
+        else:
+            print(
+                "Skipped initializing tensorizers since they are loaded from a "
+                "previously saved state."
+            )
 
     def numberize_rows(self, rows):
         for row in rows:
