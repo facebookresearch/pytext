@@ -14,7 +14,7 @@ from pytext.data.sources import TSVDataSource
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.task import create_task
-from pytext.task.serialize import load, save
+from pytext.task.serialize import CheckpointManager, load, save
 from pytext.task.tasks import DocumentClassificationTask
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import test
@@ -68,6 +68,36 @@ class TaskLoadSaveTest(unittest.TestCase):
             for key_1, val_1 in optim_1.state_dict().items():
                 self.assertEqualt(val_1, state_dict_2[key_1], msg)
 
+        def assertCheckpointEqual(
+            self,
+            model,
+            config,
+            training_state,
+            model_restored,
+            config_restored,
+            training_state_restored,
+        ):
+            optimizer_restored = training_state_restored.optimizer
+            scheduler_restored = training_state_restored.scheduler
+            self.assertOptimizerEqual(training_state.optimizer, optimizer_restored)
+            self.assertEqual(
+                training_state.start_time, training_state_restored.start_time
+            )
+            self.assertEqual(training_state.epoch, training_state_restored.epoch)
+            self.assertEqual(training_state.rank, training_state_restored.rank)
+            self.assertEqual(training_state.stage, training_state_restored.stage)
+            self.assertEqual(
+                training_state.epochs_since_last_improvement,
+                training_state_restored.epochs_since_last_improvement,
+            )
+            self.assertNotNone(scheduler_restored)
+            self.assertEqual(config, config_restored)
+            self.assertModulesEqual(model, model_restored)
+            model.eval()
+            model_restored.eval()
+            inputs = torch.LongTensor([[1, 2, 3]]), torch.LongTensor([3])
+            self.assertEqual(model(*inputs).tolist(), model_restored(*inputs).tolist())
+
         def test_load_checkpoint(self):
             with tempfile.NamedTemporaryFile() as checkpoint_file:
                 train_data = tests_module.test_file("train_data_tiny.tsv")
@@ -104,29 +134,20 @@ class TaskLoadSaveTest(unittest.TestCase):
                     tensorizers=task.data.tensorizers,
                 )
 
-                checkpoint_path = checkpoint_file.name
-
-                save(
-                    config,
-                    model,
-                    None,
-                    task.data.tensorizers,
-                    training_state,
-                    "epoch-1",
+                checkpoint_path = CheckpointManager().generate_checkpoint_path(
+                    config, id
                 )
+                id = "epoch-1"
+                save(config, model, None, task.data.tensorizers, training_state, id)
+
                 task_restored, config_restored, training_state_restored = load(
                     checkpoint_path
                 )
-                optimizer_restored = training_state_restored.optimizer
-                scheduler_restored = training_state_restored.scheduler
-                self.assertOptimizerEqual(optimizer, optimizer_restored)
-                self.assertNotNone(scheduler_restored)
-                self.assertEqual(config, config_restored)
-                self.assertModulesEqual(model, task_restored.model)
-                model.eval()
-                task_restored.model.eval()
-
-                inputs = torch.LongTensor([[1, 2, 3]]), torch.LongTensor([3])
-                self.assertEqual(
-                    model(*inputs).tolist(), task_restored.model(*inputs).tolist()
+                self.assertCheckpointEqual(
+                    model,
+                    config,
+                    training_state,
+                    task_restored.model,
+                    config_restored,
+                    training_state_restored,
                 )
