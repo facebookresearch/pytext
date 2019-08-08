@@ -39,6 +39,12 @@ class TestIntentSlotMetricReporter(TestCase):
                 "at [SL:DATE_TIME 3:15 pm today ]. ]",
             ),
             ('["Fine"]', "cu:other", "", r'[cu:other \["Fine"\] ]'),
+            (  # Example in byte offset.
+                "establece el escándalo a 7",
+                "IN:SET_VOLUME",
+                "26:27:SL:PRECISE_AMOUNT",
+                "[IN:SET_VOLUME establece el escándalo a [SL:PRECISE_AMOUNT 7 ] ]",
+            ),
         ]
         for (
             utterance,

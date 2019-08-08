@@ -17,7 +17,12 @@ from pytext.metrics.intent_slot_metrics import (
     Span,
     compute_all_metrics,
 )
-from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string
+from pytext.utils.data import (
+    byte_length,
+    get_substring_from_offsets,
+    merge_token_labels_to_slot,
+    parse_slot_string,
+)
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -65,17 +70,25 @@ class IntentSlotChannel(FileChannel):
         slots = parse_slot_string(slots_label)
         cur_index = 0
         for slot in sorted(slots, key=lambda slot: slot.start):
-            annotation_str += escape_brackets(utterance[cur_index : slot.start])
+            annotation_str += escape_brackets(
+                get_substring_from_offsets(utterance, cur_index, slot.start)
+            )
             annotation_str += (
                 OPEN
                 + escape_brackets(slot.label)
                 + " "
-                + escape_brackets(utterance[slot.start : slot.end])
+                + escape_brackets(
+                    get_substring_from_offsets(utterance, slot.start, slot.end)
+                )
                 + " "
                 + CLOSE
             )
             cur_index = slot.end
-        annotation_str += escape_brackets(utterance[cur_index:]) + " " + CLOSE
+        annotation_str += (
+            escape_brackets(get_substring_from_offsets(utterance, cur_index, None))
+            + " "
+            + CLOSE
+        )
 
         return annotation_str
 
@@ -83,7 +96,7 @@ class IntentSlotChannel(FileChannel):
 def create_frame(intent_label, slot_names_str, utterance):
     frame = Node(
         label=intent_label,
-        span=Span(0, len(utterance)),
+        span=Span(0, byte_length(utterance)),
         children={
             Node(label=slot.label, span=Span(slot.start, slot.end))
             for slot in parse_slot_string(slot_names_str)
