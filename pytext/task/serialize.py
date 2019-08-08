@@ -3,7 +3,7 @@
 
 import io
 import os
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import torch
 from pytext.config import PyTextConfig, config_to_json, pytext_config_from_json
@@ -126,12 +126,29 @@ def save_checkpoint(
             training_state.model = model_in_training_state
 
 
+def get_latest_checkpoint_path() -> str:
+    """
+    Return most recent saved checkpoint path in str
+    Returns: checkpoint_path (str)
+    """
+    return _CHECKPOINT_MANAGER.get_latest_checkpoint_path()
+
+
+def get_post_training_snapshot_path() -> str:
+    return _CHECKPOINT_MANAGER.get_post_training_snapshot_path()
+
+
 class CheckpointManager:
     """
         CheckpointManager is class abstraction to manage training job's
         checkpoints with different IO and storage, using two functions:
         save() and load().
     """
+
+    def __init__(self):
+        # keep a list of saved checkpoint path
+        self._saved_paths: List[str] = []
+        self._post_training_snapshot_path = None
 
     # generate per epoch checkpoint save path
     def generate_checkpoint_path(self, config: PyTextConfig, identifier: str):
@@ -162,9 +179,13 @@ class CheckpointManager:
             print(f"Saving pytorch model to: {save_path}")
 
         with open(save_path, "wb") as checkpoint_f:
-            save_checkpoint(
+            saved_path = save_checkpoint(
                 checkpoint_f, config, model, meta, tensorizers, training_state
             )
+            if identifier:
+                self._saved_paths.append(saved_path)
+            else:
+                self._post_training_snapshot_path = saved_path
         return save_path
 
     def load(self, load_path: str):
@@ -179,6 +200,24 @@ class CheckpointManager:
         print(f"Loading model from {load_path}...")
         with open(load_path, "rb") as checkpoint_f:
             return load_checkpoint(checkpoint_f)
+
+    def list(self) -> List[str]:
+        """
+        Return all existing checkpoint path in str
+        Returns: checkpoint_path_list (List[str]), list elements are in the same
+        order of checkpoint saving
+        """
+        return self._saved_paths
+
+    def get_latest_checkpoint_path(self) -> str:
+        """
+        Return most recent saved checkpoint path in str
+        Returns: checkpoint_path (str)
+        """
+        return self._saved_paths[-1] if len(self._saved_paths) > 0 else None
+
+    def get_post_training_snapshot_path(self) -> str:
+        return self._post_training_snapshot_path
 
 
 _CHECKPOINT_MANAGER = CheckpointManager()

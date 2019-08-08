@@ -14,7 +14,12 @@ from pytext.data.sources import TSVDataSource
 from pytext.optimizer import Adam, Optimizer
 from pytext.optimizer.scheduler import Scheduler
 from pytext.task import create_task
-from pytext.task.serialize import CheckpointManager, load, save
+from pytext.task.serialize import (
+    CheckpointManager,
+    get_latest_checkpoint_path,
+    load,
+    save,
+)
 from pytext.task.tasks import DocumentClassificationTask
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import test
@@ -134,14 +139,13 @@ class TaskLoadSaveTest(unittest.TestCase):
                     tensorizers=task.data.tensorizers,
                 )
 
-                checkpoint_path = CheckpointManager().generate_checkpoint_path(
-                    config, id
-                )
                 id = "epoch-1"
-                save(config, model, None, task.data.tensorizers, training_state, id)
-
+                saved_path = save(
+                    config, model, None, task.data.tensorizers, training_state, id
+                )
+                self.assertEqual(saved_path, get_latest_checkpoint_path())
                 task_restored, config_restored, training_state_restored = load(
-                    checkpoint_path
+                    saved_path
                 )
                 self.assertCheckpointEqual(
                     model,
