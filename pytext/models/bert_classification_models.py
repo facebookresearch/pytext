@@ -148,6 +148,7 @@ class BertPairwiseModel(BasePairwiseModel):
         super().__init__(decoder, output_layer, encode_relations)
         self.encoder1 = encoder1
         self.encoder2 = encoder2
+        self.encoders = [encoder1, encoder2]
 
     @classmethod
     def _create_encoder(
