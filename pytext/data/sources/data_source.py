@@ -323,6 +323,8 @@ JSONString = TypeVar("JSONString", str, bytes)
 @RootDataSource.register_type(List[str])
 @RootDataSource.register_type(List[int])
 def load_json(s):
+    if isinstance(s, List) and all(isinstance(x, (str, int)) for x in s):
+        return s
     return json.loads(s)
 
 
