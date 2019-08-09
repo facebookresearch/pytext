@@ -7,11 +7,6 @@ from typing import Callable, Mapping, Optional
 import numpy as np
 from caffe2.python import workspace
 from caffe2.python.predictor import predictor_exporter
-from pytext.data.tensorizers import (
-    FloatListTensorizer,
-    GazetteerTensorizer,
-    TokenTensorizer,
-)
 from pytext.task.new_task import NewTask
 
 from .builtin_task import register_builtin_tasks
@@ -28,7 +23,8 @@ Predictor = Callable[[Mapping[str, str]], Mapping[str, np.array]]
 def _predict(workspace_id, predict_net, model, tensorizers, input):
     workspace.SwitchWorkspace(workspace_id)
     tensor_dict = {
-        name: tensorizer.numberize(input) for name, tensorizer in tensorizers.items()
+        name: tensorizer.prepare_input(input)
+        for name, tensorizer in tensorizers.items()
     }
     model_inputs = model.arrange_model_inputs(tensor_dict)
     model_input_names = model.get_export_input_names(tensorizers)
@@ -67,16 +63,11 @@ def create_predictor(
         filename=model_file or config.export_caffe2_path, db_type=CAFFE2_DB_TYPE
     )
 
-    supportedInputTensorizers = [
-        FloatListTensorizer,
-        GazetteerTensorizer,
-        TokenTensorizer,
-    ]
     new_task = NewTask.from_config(config.task)
     input_tensorizers = {
         name: tensorizer
         for name, tensorizer in new_task.data.tensorizers.items()
-        if any(isinstance(tensorizer, t) for t in supportedInputTensorizers)
+        if tensorizer.is_input
     }
 
     return lambda input: _predict(

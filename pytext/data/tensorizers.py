@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import json
-import os
-import re
-from typing import List, Optional, Set, Tuple, Type
+from typing import List, Optional
 
 import torch
 from pytext.common import Padding
@@ -55,6 +52,9 @@ class Tensorizer(Component):
     class Config(Component.Config):
         pass
 
+    # Indicate if it can be used to generate input Tensors for prediction
+    is_input = True
+
     @property
     def column_schema(self):
         """Generic types don't pickle well pre-3.7, so we don't actually want
@@ -64,6 +64,10 @@ class Tensorizer(Component):
 
     def numberize(self, row):
         raise NotImplementedError
+
+    def prepare_input(self, row):
+        """ Return preprocessed input tensors/blob for caffe2 prediction net."""
+        self.numberize(row)
 
     def sort_key(self, row):
         raise NotImplementedError
@@ -175,7 +179,7 @@ class TokenTensorizer(Tensorizer):
     def column_schema(self):
         return [(self.text_column, str)]
 
-    def _lookup_tokens(self, text=None, pre_tokenized=None):
+    def _tokenize(self, text=None, pre_tokenized=None):
         tokenized = pre_tokenized or self.tokenizer.tokenize(text)[: self.max_seq_len]
         if self.add_bos_token:
             bos = EOS if self.use_eos_token_for_bos else BOS
@@ -188,6 +192,10 @@ class TokenTensorizer(Tensorizer):
         tokenized_texts, start_idx, end_idx = zip(
             *((t.value, t.start, t.end) for t in tokenized)
         )
+        return tokenized_texts, start_idx, end_idx
+
+    def _lookup_tokens(self, text=None, pre_tokenized=None):
+        tokenized_texts, start_idx, end_idx = self._tokenize(text, pre_tokenized)
         tokens = self.vocab.lookup_all(tokenized_texts)
         return tokens, start_idx, end_idx
 
@@ -244,6 +252,12 @@ class TokenTensorizer(Tensorizer):
         tokens, start_idx, end_idx = self._lookup_tokens(row[self.text_column])
         token_ranges = list(zip(start_idx, end_idx))
         return tokens, len(tokens), token_ranges
+
+    def prepare_input(self, row):
+        """Tokenize, look up in vocabulary, return tokenized_texts in raw text"""
+        tokenized_texts, start_idx, end_idx = self._tokenize(row[self.text_column])
+        token_ranges = list(zip(start_idx, end_idx))
+        return tokenized_texts, len(tokenized_texts), token_ranges
 
     def tensorize(self, batch):
         tokens, seq_lens, token_ranges = zip(*batch)
@@ -436,6 +450,8 @@ class LabelTensorizer(Tensorizer):
         pad_in_vocab: bool = False
         #: The label values, if known. Will skip initialization step if provided.
         label_vocab: Optional[List[str]] = None
+
+    is_input = False
 
     @classmethod
     def from_config(cls, config: Config):
@@ -658,6 +674,8 @@ class NumericLabelTensorizer(Tensorizer):
         #: label values to be within [0, 1].
         rescale_range: Optional[List[float]] = None
 
+    is_input = False
+
     @classmethod
     def from_config(cls, config: Config):
         return cls(config.column, config.rescale_range)
@@ -761,6 +779,8 @@ class SlotLabelTensorizer(Tensorizer):
         tokenizer: Tokenizer.Config = Tokenizer.Config()
         #: Whether to allow for unknown labels at test/prediction time
         allow_unknown: bool = False
+
+    is_input = False
 
     @classmethod
     def from_config(cls, config: Component.Config):
@@ -1094,6 +1114,7 @@ class SeqTokenTensorizer(Tensorizer):
             self.vocab = vocab_builder.make_vocab()
 
     _lookup_tokens = TokenTensorizer._lookup_tokens
+    _tokenize = TokenTensorizer._tokenize
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
@@ -1214,6 +1235,8 @@ class MetricTensorizer(Tensorizer):
     class Config(Tensorizer.Config):
         names: List[str]
         indexes: List[int]
+
+    is_input = False
 
     @classmethod
     def from_config(cls, config: Config):
