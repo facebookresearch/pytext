@@ -328,6 +328,8 @@ def load_json(s):
 
 @RootDataSource.register_type(List[float])
 def load_float_list(s):
+    if isinstance(s, List) and all(isinstance(x, float) for x in s):
+        return s
     # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
     processed = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", s)
     # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
