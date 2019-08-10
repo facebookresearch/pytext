@@ -43,6 +43,7 @@ class DisjointMultitaskData(Data):
         task_key: str = BatchContext.TASK_NAME,
         rank=0,
         world_size=1,
+        init_tensorizers=True,
     ):
         samplers = {
             Stage.TRAIN: create_component(ComponentType.BATCH_SAMPLER, config.sampler),
