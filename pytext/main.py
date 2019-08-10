@@ -419,7 +419,7 @@ def predict_py(context, model_file):
     Example is in json format with names being the same with column_to_read
     in model training config
     """
-    task, train_config = load(model_file)
+    task, train_config, _training_state = load(model_file)
     while True:
         try:
             line = input(
