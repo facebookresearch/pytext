@@ -3,19 +3,16 @@
 
 from enum import Enum
 from inspect import getmembers, isclass, isfunction
-from sys import modules, stderr
+from sys import modules
 from typing import Union
 
+from pytext.common.utils import eprint
 from pytext.config.component import Component, get_component_name
 from pytext.config.pytext_config import ConfigBase
 from pytext.models.module import Module
 
 
 ROOT_CONFIG = "PyTextConfig"
-
-
-def eprint(*args, **kwargs):
-    print(file=stderr, *args, **kwargs)
 
 
 def get_class_members_recursive(obj):

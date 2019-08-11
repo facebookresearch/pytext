@@ -25,6 +25,8 @@ class ConfigAdapterTest(unittest.TestCase):
             self.assertEqual(i, v, f"Missing adapter for version {i}")
 
     def test_upgrade_one_version(self):
+        # Always show the full diff, easier to debug when getting a failed log
+        self.maxDiff = None
         for p in glob.iglob(
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
         ):

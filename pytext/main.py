@@ -13,6 +13,7 @@ import click
 import torch
 from pytext import create_predictor
 from pytext.builtin_task import add_include
+from pytext.common.utils import eprint
 from pytext.config import LATEST_VERSION, PyTextConfig
 from pytext.config.component import register_tasks
 from pytext.config.serialize import (
@@ -26,7 +27,6 @@ from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.task import load
 from pytext.utils.documentation import (
     ROOT_CONFIG,
-    eprint,
     find_config_class,
     get_subclasses,
     pretty_print_config_class,
@@ -208,7 +208,7 @@ def main(context, config_file, config_json, config_module, include):
                 elif config_json:
                     config = json.loads(config_json)
                 else:
-                    click.echo("No config file specified, reading from stdin")
+                    eprint("No config file specified, reading from stdin")
                     config = json.load(sys.stdin)
                 context.obj.config = parse_config(config)
         return context.obj.config
