@@ -193,7 +193,7 @@ class TestFp16Optimizer(unittest.TestCase):
         )
 
     def _test_master_maintain_logic_baseline(self):
-        for _t in range(100):
+        for _t in range(10):
             self.optimizer.zero_grad()
             for pair in self.data_set:
                 y_pred = (
@@ -230,7 +230,7 @@ class TestFp16Optimizer(unittest.TestCase):
                 self.fake_fp16_optim.loss_scaler.update_scale()
 
     def _test_master_maintain_logic_experiment(self):
-        for _t in range(100):
+        for _t in range(10):
             self.ffp16_optim.zero_grad()
             for pair in self.data_set:
                 yy_pred = (
@@ -330,7 +330,7 @@ class TestFp16Optimizer(unittest.TestCase):
         self.fp16_optim.loss_scaler.update_scale()
 
     def _test_memory_efficient_logic_baseline(self):
-        for _t in range(100):
+        for _t in range(10):
             self.optimizer_c.zero_grad()
             for pair in self.data_set:
                 y_pred_copy = (
@@ -352,7 +352,7 @@ class TestFp16Optimizer(unittest.TestCase):
                 self.optimizer_c.step()
 
     def _test_memory_efficient_logic_exp(self):
-        for _t in range(100):
+        for _t in range(10):
             self.MEoptim.zero_grad()
             for pair in self.data_set:
                 y_pred = (
