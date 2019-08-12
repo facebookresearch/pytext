@@ -226,8 +226,7 @@ class ClassificationMetrics(NamedTuple):
     loss: float
 
     def print_metrics(self, report_pep=False) -> None:
-        print(f"Accuracy: {self.accuracy * 100:.2f}\n")
-        print("Macro P/R/F1 Scores:")
+        print(f"Accuracy: {self.accuracy * 100:.2f}")
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
             soft_scores = [

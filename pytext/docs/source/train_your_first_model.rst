@@ -110,28 +110,35 @@ Let's train the model!
   ... [snip]
 
   Stage.TEST
-  loss: 2.072155
-  Accuracy: 20.00
-
-  Macro P/R/F1 Scores:
-	  Label                   Precision       Recall          F1              Support
-
-	  reminder/set_reminder   20.00           100.00          33.33           1
-	  alarm/time_left_on_alarm        0.00            0.00            0.00            1
-	  alarm/show_alarms       0.00            0.00            0.00            1
-	  alarm/set_alarm         0.00            0.00            0.00            2
-	  Overall macro scores    5.00            25.00           8.33
+  Epoch:1
+  loss: 1.646484
+  Accuracy: 50.00
 
   Soft Metrics:
-	  Label           Average precision
-	  alarm/set_alarm 40.00
-	  alarm/time_left_on_alarm        100.00
-	  reminder/set_reminder   25.00
-	  alarm/show_alarms       25.00
-	  weather/find    nan
-	  alarm/modify_alarm      nan
-	  alarm/snooze_alarm      nan
-	  reminder/show_reminders nan
+  +--------------------------+-------------------+---------+
+  | Label                    | Average precision | ROC AUC |
+  +--------------------------+-------------------+---------+
+  |       alarm/modify_alarm |               nan |   0.000 |
+  |          alarm/set_alarm |             1.000 |   1.000 |
+  |       alarm/snooze_alarm |               nan |   0.000 |
+  | alarm/time_left_on_alarm |             0.333 |   0.333 |
+  |    reminder/set_reminder |             1.000 |   1.000 |
+  |  reminder/show_reminders |               nan |   0.000 |
+  |             weather/find |               nan |   0.000 |
+  +--------------------------+-------------------+---------+
+
+  Recall at Precision
+  +--------------------------+---------+---------+---------+---------+---------+
+  | Label                    | R@P 0.2 | R@P 0.4 | R@P 0.6 | R@P 0.8 | R@P 0.9 |
+  +--------------------------+---------+---------+---------+---------+---------+
+  | alarm/modify_alarm       |   0.000 |   0.000 |   0.000 |   0.000 |   0.000 |
+  | alarm/set_alarm          |   1.000 |   1.000 |   1.000 |   1.000 |   1.000 |
+  | alarm/snooze_alarm       |   0.000 |   0.000 |   0.000 |   0.000 |   0.000 |
+  | alarm/time_left_on_alarm |   1.000 |   0.000 |   0.000 |   0.000 |   0.000 |
+  | reminder/set_reminder    |   1.000 |   1.000 |   1.000 |   1.000 |   1.000 |
+  | reminder/show_reminders  |   0.000 |   0.000 |   0.000 |   0.000 |   0.000 |
+  | weather/find             |   0.000 |   0.000 |   0.000 |   0.000 |   0.000 |
+  +--------------------------+---------+---------+---------+---------+---------+
   saving result to file /tmp/test_out.txt
 
 The model ran over the training set 10 times. This output is the result of evaluating the model on the test set, and tracking how well it did. If you're not familiar with these accuracy measurements,
