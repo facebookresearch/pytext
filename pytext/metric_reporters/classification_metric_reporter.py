@@ -22,17 +22,17 @@ META_LABEL_NAMES = "label_names"
 
 
 class IntentModelChannel(FileChannel):
-    def __init__(self, stages, file_path, additional_colnames) -> None:
+    def __init__(self, stages, file_path, additional_column_names) -> None:
         super().__init__(stages, file_path)
         #: This list of additional columns can be included in the run_model
         #: output file with other saving results
-        self.additional_colnames = additional_colnames
+        self.additional_column_names = additional_column_names
 
     def get_title(self):
         title = ("predicted", "actual", "scores_str", "text")
         # if there are additional colnames, append them to title
-        if len(self.additional_colnames) > 0:
-            title = title + tuple(self.additional_colnames)
+        if len(self.additional_column_names) > 0:
+            title = title + tuple(self.additional_column_names)
         return title
 
     def gen_content(self, metrics, loss, preds, targets, scores, contexts):
@@ -44,8 +44,8 @@ class IntentModelChannel(FileChannel):
                 contexts["utterance"][i],
             ]
             # if there are additional colnames, append their contexts to res
-            if len(self.additional_colnames) > 0:
-                for additional_colname in self.additional_colnames:
+            if len(self.additional_column_names) > 0:
+                for additional_colname in self.additional_column_names:
                     res.append(contexts[additional_colname][i])
             yield res
 
@@ -74,9 +74,10 @@ class ClassificationMetricReporter(MetricReporter):
         #: columns (usually just 1 column) will be concatenated and output in
         #: the IntentModelChannel as an evaluation tsv.
         text_column_names: List[str] = ["text"]
-        #: This list of additional columns can be included in the context and run_model
-        #: output file with other saving results
-        additional_colnames: List[str] = []
+        #: These column names correspond to raw input data columns, that
+        #: will be read by data_source into context, and included in the
+        #: run_model output file along with other saving results.
+        additional_column_names: List[str] = []
         recall_at_precision_thresholds: List[float] = RECALL_AT_PRECISION_THRESHOLDS
 
     def __init__(
@@ -88,7 +89,7 @@ class ClassificationMetricReporter(MetricReporter):
         ),
         target_label: Optional[str] = None,
         text_column_names: List[str] = Config.text_column_names,
-        additional_colnames: List[str] = Config.additional_colnames,
+        additional_column_names: List[str] = Config.additional_column_names,
         recall_at_precision_thresholds: List[float] = (
             Config.recall_at_precision_thresholds
         ),
@@ -98,7 +99,7 @@ class ClassificationMetricReporter(MetricReporter):
         self.model_select_metric = model_select_metric
         self.target_label = target_label
         self.text_column_names = text_column_names
-        self.additional_colnames = additional_colnames
+        self.additional_column_names = additional_column_names
         self.recall_at_precision_thresholds = recall_at_precision_thresholds
 
     @classmethod
@@ -132,13 +133,13 @@ class ClassificationMetricReporter(MetricReporter):
                 IntentModelChannel(
                     stages=(Stage.TEST,),
                     file_path=config.output_path,
-                    additional_colnames=config.additional_colnames,
+                    additional_column_names=config.additional_column_names,
                 ),
             ],
             config.model_select_metric,
             config.target_label,
             config.text_column_names,
-            config.additional_colnames,
+            config.additional_column_names,
             config.recall_at_precision_thresholds,
         )
 
@@ -149,8 +150,8 @@ class ClassificationMetricReporter(MetricReporter):
             for row in raw_batch
         ]
         # if there are additional colnames, read their contexts into batch
-        if len(self.additional_colnames) > 0:
-            for additional_colname in self.additional_colnames:
+        if len(self.additional_column_names) > 0:
+            for additional_colname in self.additional_column_names:
                 context[additional_colname] = [
                     row[additional_colname] for row in raw_batch
                 ]

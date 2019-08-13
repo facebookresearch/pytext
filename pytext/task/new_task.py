@@ -119,11 +119,12 @@ class _NewTask(TaskBase):
 
     @classmethod
     def _init_tensorizers(cls, config: Config, tensorizers=None, rank=0, world_size=1):
-        extra_schema = {}
-        if hasattr(config.metric_reporter, "text_column_names"):
-            extra_schema = {
-                column: str for column in config.metric_reporter.text_column_names
-            }
+        # Pull extra columns from the metric reporter config to pass into
+        # the data source schema.
+        extra_columns = list(
+            getattr(config.metric_reporter, "text_column_names", ())
+        ) + list(getattr(config.metric_reporter, "additional_column_names", ()))
+        extra_schema = {column: str for column in extra_columns}
 
         init_tensorizers = not tensorizers
         if init_tensorizers:
