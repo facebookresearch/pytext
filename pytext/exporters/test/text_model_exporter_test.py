@@ -16,6 +16,7 @@ from hypothesis import given
 from pytext.builtin_task import (
     ContextualIntentSlotTask_Deprecated,
     DocClassificationTask_Deprecated,
+    IntentSlotTask,
     JointTextTask_Deprecated,
     SeqNNTask_Deprecated,
     WordTaggingTask_Deprecated,
@@ -25,6 +26,8 @@ from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
 from pytext.data.joint_data_handler import SEQ_LENS
+from pytext.data.utils import UNK, Vocabulary
+from pytext.exporters.exporter import ModelExporter
 from pytext.fields import (
     CharFeatureField,
     DictFeatureField,
@@ -33,6 +36,7 @@ from pytext.fields import (
     SeqFeatureField,
     TextFeatureField,
 )
+from pytext.task.new_task import _NewTask
 from pytext.utils.onnx import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
@@ -317,45 +321,34 @@ SEQ_NN_CONFIG = """
 }
 """
 
+
 CONTEXTUAL_INTENT_SLOT_CONFIG = """
- {
+{
+    "trainer": {
+      "epochs": 1
+    },
+    "metric_reporter": {
+      "IntentSlotMetricReporter": {}
+    },
     "model": {
-      "representation": {
-      }
-    },
-    "features": {
-      "word_feat": {},
-      "dict_feat": {},
-      "char_feat": {
-        "embed_dim": 5,
-        "cnn": {
-          "kernel_num": 2,
-          "kernel_sizes": [2, 3]
-        }
-      },
-      "seq_word_feat": {
-        "export_input_names": ["seq_tokens_vals"]
-      },
-      "dense_feat": {
-        "dim":10
-      }
-    },
-    "labels": [
-      {
-        "DocLabelConfig": {}
-      },
-      {
-        "WordLabelConfig": {
-          "use_bio_labels": true
+      "ContextualIntentSlotModel": {
+        "inputs": {
+          "tokens": {
+          },
+          "seq_tokens": {}
+        },
+        "word_embedding": {
+          "embed_dim": 10
+        },
+        "seq_embedding": {
+          "embed_dim": 10
         }
       }
-    ],
-    "featurizer": {
-      "SimpleFeaturizer": {}
-    },
-    "exporter": {}
-  }
+    }
+}
 """
+CONTEXT_VOCAB = [UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
+
 
 W_VOCAB_SIZE = 10
 UNK_IDX = 0
@@ -712,37 +705,66 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 py_outs.view(-1).detach().numpy(), np.array(c2_out).flatten()
             )
 
+    def _get_rand_input_contextual_intent_slot(
+        self, batch_size, w_vocab_size, num_words, num_seq=1
+    ):
+
+        text = torch.from_numpy(
+            np.random.randint(w_vocab_size, size=(batch_size, num_words)).astype(
+                np.int64
+            )
+        )
+        lengths = torch.from_numpy(
+            np.random.randint(num_words, num_words + 1, size=(batch_size)).astype(
+                np.int64
+            )
+        )
+        inputs = [text]
+        inputs.append(
+            torch.from_numpy(
+                np.random.randint(
+                    w_vocab_size, size=(batch_size, num_seq, num_words)
+                ).astype(np.int64)
+            )
+        )
+        inputs.append(lengths)
+        inputs.append(
+            torch.from_numpy(
+                np.random.randint(num_seq, num_seq + 1, size=(batch_size)).astype(
+                    np.int64
+                )
+            )
+        )
+        return tuple(inputs)
+
     @given(
-        export_num_words=st.integers(1, 5),
-        export_num_dict_feat=st.integers(1, 6),
-        num_doc_classes=st.integers(2, 5),
-        num_word_classes=st.integers(2, 4),
         test_num_words=st.integers(1, 7),
-        test_num_dict_feat=st.integers(1, 8),
         num_predictions=st.integers(1, 5),
-        test_num_chars=st.integers(1, 7),
         test_num_seq=st.integers(1, 7),
     )
     def test_contextual_intent_slot_export_to_caffe2(
-        self,
-        export_num_words,
-        export_num_dict_feat,
-        num_doc_classes,
-        num_word_classes,
-        test_num_words,
-        test_num_dict_feat,
-        num_predictions,
-        test_num_chars,
-        test_num_seq,
+        self, test_num_words, num_predictions, test_num_seq
     ):
-        config = self._get_config(
-            ContextualIntentSlotTask_Deprecated.Config, CONTEXTUAL_INTENT_SLOT_CONFIG
+        config = self._get_config(IntentSlotTask.Config, CONTEXTUAL_INTENT_SLOT_CONFIG)
+        tensorizers, data = _NewTask._init_tensorizers(config)
+        doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
+        word_labels = ["__UNKNOWN__", "NoLabel", "person"]
+        tensorizers["word_labels"].vocab = Vocabulary(word_labels)
+        tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
+        tensorizers["tokens"].vocab = Vocabulary(CONTEXT_VOCAB)
+        tensorizers["seq_tokens"].vocab = Vocabulary(CONTEXT_VOCAB)
+        py_model = _NewTask._init_model(config.model, tensorizers)
+        dummy_test_input = self._get_rand_input_contextual_intent_slot(
+            BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
         )
-        metadata = self._get_metadata(num_doc_classes, num_word_classes)
-        py_model = create_model(config.model, config.features, metadata)
-        exporter = create_exporter(
-            config.exporter, config.features, config.labels, metadata
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            py_model.get_export_input_names(tensorizers),
+            dummy_test_input,
+            py_model.vocab_to_export(tensorizers),
+            py_model.get_export_output_names(tensorizers),
         )
+
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".{}".format(".predictor")
         ) as pred_file:
@@ -752,30 +774,19 @@ class ModelExporterTest(hu.HypothesisTestCase):
 
         pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
         for _i in range(num_predictions):
-            test_inputs = self._get_rand_input(
-                config.features,
-                BATCH_SIZE,
-                W_VOCAB_SIZE,
-                DICT_VOCAB_SIZE,
-                CHAR_VOCAB_SIZE,
-                test_num_words,
-                test_num_dict_feat,
-                test_num_chars,
-                test_num_seq,
+            test_inputs = self._get_rand_input_contextual_intent_slot(
+                BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
             )
             self._feed_c2_input(
-                workspace, test_inputs, exporter.input_names, metadata.feature_itos_map
+                workspace, test_inputs, exporter.input_names, exporter.vocab_map
             )
             workspace.RunNetOnce(pred_net)
             doc_output_names = [
-                "{}:{}".format("doc_scores", class_name)
-                for class_name in metadata.label_names[0]
+                "{}:{}".format("doc_scores", class_name) for class_name in doc_labels
             ]
             word_output_names = [
-                "{}:{}".format("word_scores", class_name)
-                for class_name in metadata.label_names[1]
+                "{}:{}".format("word_scores", class_name) for class_name in word_labels
             ]
-
             py_model.eval()
             logits = py_model(*test_inputs)
             context = {SEQ_LENS: test_inputs[-1]}
@@ -787,13 +798,13 @@ class ModelExporterTest(hu.HypothesisTestCase):
             c2_doc_out = []
             for o_name in doc_output_names:
                 c2_doc_out.extend(list(workspace.FetchBlob(o_name)))
-            np.testing.assert_array_almost_equal(
-                d_score.view(-1).detach().numpy(), np.array(c2_doc_out).flatten()
-            )
-
             c2_word_out = []
             for o_name in word_output_names:
                 c2_word_out.extend(list(workspace.FetchBlob(o_name)))
+
+            np.testing.assert_array_almost_equal(
+                d_score.view(-1).detach().numpy(), np.array(c2_doc_out).flatten()
+            )
 
             np.testing.assert_array_almost_equal(
                 torch.transpose(w_score, 1, 2).contiguous().view(-1).detach().numpy(),
