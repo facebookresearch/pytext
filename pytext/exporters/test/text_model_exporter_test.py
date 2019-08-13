@@ -16,7 +16,6 @@ from hypothesis import given
 from pytext.builtin_task import (
     DocClassificationTask_Deprecated,
     IntentSlotTask,
-    JointTextTask_Deprecated,
     SeqNNTask_Deprecated,
     WordTaggingTask_Deprecated,
 )
@@ -72,32 +71,7 @@ JOINT_CONFIG = """
         "CRFOutputLayer": {}
       }
     }
-  },
-  "features": {
-    "word_feat": {},
-    "dict_feat": {},
-    "char_feat": {
-      "embed_dim": 5,
-      "cnn": {
-        "kernel_num": 2,
-        "kernel_sizes": [2, 3]
-        }
-      }
-  },
-  "labels": [
-    {
-      "DocLabelConfig": {}
-    },
-    {
-      "WordLabelConfig": {
-        "use_bio_labels": true
-      }
-    }
-  ],
-  "featurizer": {
-    "SimpleFeaturizer": {}
-  },
-  "exporter": {}
+  }
 }
 """
 
@@ -346,7 +320,7 @@ CONTEXTUAL_INTENT_SLOT_CONFIG = """
     }
 }
 """
-CONTEXT_VOCAB = [UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
+WORD_VOCAB = [UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
 
 
 W_VOCAB_SIZE = 10
@@ -558,6 +532,40 @@ class ModelExporterTest(hu.HypothesisTestCase):
                     np.array(c2_out).flatten(),
                 )
 
+    def _get_rand_input_intent_slot(
+        self, batch_size, w_vocab_size, num_words, num_seq=0
+    ):
+
+        text = torch.from_numpy(
+            np.random.randint(w_vocab_size, size=(batch_size, num_words)).astype(
+                np.int64
+            )
+        )
+        lengths = torch.from_numpy(
+            np.random.randint(num_words, num_words + 1, size=(batch_size)).astype(
+                np.int64
+            )
+        )
+        inputs = [text]
+        if num_seq > 0:
+            inputs.append(
+                torch.from_numpy(
+                    np.random.randint(
+                        w_vocab_size, size=(batch_size, num_seq, num_words)
+                    ).astype(np.int64)
+                )
+            )
+        inputs.append(lengths)
+        if num_seq > 0:
+            inputs.append(
+                torch.from_numpy(
+                    np.random.randint(num_seq, num_seq + 1, size=(batch_size)).astype(
+                        np.int64
+                    )
+                )
+            )
+        return tuple(inputs)
+
     @given(
         export_num_words=st.integers(1, 5),
         export_num_dict_feat=st.integers(1, 6),
@@ -579,12 +587,25 @@ class ModelExporterTest(hu.HypothesisTestCase):
         num_predictions,
         test_num_chars,
     ):
-        config = self._get_config(JointTextTask_Deprecated.Config, JOINT_CONFIG)
-        metadata = self._get_metadata(num_doc_classes, num_word_classes)
-        py_model = create_model(config.model, config.features, metadata)
-        exporter = create_exporter(
-            config.exporter, config.features, config.labels, metadata
+        config = self._get_config(IntentSlotTask.Config, JOINT_CONFIG)
+        tensorizers, data = _NewTask._init_tensorizers(config)
+        doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
+        word_labels = ["__UNKNOWN__", "NoLabel", "person"]
+        tensorizers["word_labels"].vocab = Vocabulary(word_labels)
+        tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
+        tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
+        py_model = _NewTask._init_model(config.model, tensorizers)
+        dummy_test_input = self._get_rand_input_intent_slot(
+            BATCH_SIZE, W_VOCAB_SIZE, test_num_words
         )
+        exporter = ModelExporter(
+            ModelExporter.Config(),
+            py_model.get_export_input_names(tensorizers),
+            dummy_test_input,
+            py_model.vocab_to_export(tensorizers),
+            py_model.get_export_output_names(tensorizers),
+        )
+
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".{}".format(".predictor")
         ) as pred_file:
@@ -594,27 +615,18 @@ class ModelExporterTest(hu.HypothesisTestCase):
         pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
 
         for _i in range(num_predictions):
-            test_inputs = self._get_rand_input(
-                config.features,
-                BATCH_SIZE,
-                W_VOCAB_SIZE,
-                DICT_VOCAB_SIZE,
-                CHAR_VOCAB_SIZE,
-                test_num_words,
-                test_num_dict_feat,
-                test_num_chars,
+            test_inputs = self._get_rand_input_intent_slot(
+                BATCH_SIZE, W_VOCAB_SIZE, test_num_words
             )
             self._feed_c2_input(
-                workspace, test_inputs, exporter.input_names, metadata.feature_itos_map
+                workspace, test_inputs, exporter.input_names, exporter.vocab_map
             )
             workspace.RunNetOnce(pred_net)
             doc_output_names = [
-                "{}:{}".format("doc_scores", class_name)
-                for class_name in metadata.label_names[0]
+                "{}:{}".format("doc_scores", class_name) for class_name in doc_labels
             ]
             word_output_names = [
-                "{}:{}".format("word_scores", class_name)
-                for class_name in metadata.label_names[1]
+                "{}:{}".format("word_scores", class_name) for class_name in word_labels
             ]
 
             py_model.eval()
@@ -704,38 +716,6 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 py_outs.view(-1).detach().numpy(), np.array(c2_out).flatten()
             )
 
-    def _get_rand_input_contextual_intent_slot(
-        self, batch_size, w_vocab_size, num_words, num_seq=1
-    ):
-
-        text = torch.from_numpy(
-            np.random.randint(w_vocab_size, size=(batch_size, num_words)).astype(
-                np.int64
-            )
-        )
-        lengths = torch.from_numpy(
-            np.random.randint(num_words, num_words + 1, size=(batch_size)).astype(
-                np.int64
-            )
-        )
-        inputs = [text]
-        inputs.append(
-            torch.from_numpy(
-                np.random.randint(
-                    w_vocab_size, size=(batch_size, num_seq, num_words)
-                ).astype(np.int64)
-            )
-        )
-        inputs.append(lengths)
-        inputs.append(
-            torch.from_numpy(
-                np.random.randint(num_seq, num_seq + 1, size=(batch_size)).astype(
-                    np.int64
-                )
-            )
-        )
-        return tuple(inputs)
-
     @given(
         test_num_words=st.integers(1, 7),
         num_predictions=st.integers(1, 5),
@@ -750,10 +730,10 @@ class ModelExporterTest(hu.HypothesisTestCase):
         word_labels = ["__UNKNOWN__", "NoLabel", "person"]
         tensorizers["word_labels"].vocab = Vocabulary(word_labels)
         tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
-        tensorizers["tokens"].vocab = Vocabulary(CONTEXT_VOCAB)
-        tensorizers["seq_tokens"].vocab = Vocabulary(CONTEXT_VOCAB)
+        tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
+        tensorizers["seq_tokens"].vocab = Vocabulary(WORD_VOCAB)
         py_model = _NewTask._init_model(config.model, tensorizers)
-        dummy_test_input = self._get_rand_input_contextual_intent_slot(
+        dummy_test_input = self._get_rand_input_intent_slot(
             BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
         )
         exporter = ModelExporter(
@@ -773,7 +753,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
 
         pred_net = pe.prepare_prediction_net(pred_file.name, CAFFE2_DB_TYPE)
         for _i in range(num_predictions):
-            test_inputs = self._get_rand_input_contextual_intent_slot(
+            test_inputs = self._get_rand_input_intent_slot(
                 BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
             )
             self._feed_c2_input(

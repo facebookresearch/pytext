@@ -7,7 +7,6 @@ import torch
 from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
 from pytext.data.utils import Vocabulary
-from pytext.fields import FieldMeta
 from pytext.models.module import create_module
 
 from .doc_classification_output_layer import ClassificationOutputLayer
@@ -49,21 +48,13 @@ class IntentSlotOutputLayer(OutputLayerBase):
     def from_config(
         cls,
         config: Config,
-        doc_meta: Optional[FieldMeta] = None,
-        word_meta: Optional[FieldMeta] = None,
         doc_labels: Optional[Vocabulary] = None,
         word_labels: Optional[Vocabulary] = None,
     ):
-        if word_labels and doc_labels:
-            return cls(
-                create_module(config.doc_output, labels=doc_labels),
-                create_module(config.word_output, labels=word_labels),
-            )
-        else:
-            return cls(
-                create_module(config.doc_output, metadata=doc_meta),
-                create_module(config.word_output, metadata=word_meta),
-            )
+        return cls(
+            create_module(config.doc_output, labels=doc_labels),
+            create_module(config.word_output, labels=word_labels),
+        )
 
     def __init__(
         self, doc_output: ClassificationOutputLayer, word_output: WordTaggingOutputLayer

@@ -9,7 +9,6 @@ from pytext.common.constants import (
     RawExampleFieldName,
     Stage,
 )
-from pytext.data import CommonMetadata
 from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
@@ -126,34 +125,14 @@ class IntentSlotMetricReporter(MetricReporter):
         pass
 
     @classmethod
-    def from_config(
-        cls,
-        config,
-        meta: Optional[CommonMetadata] = None,
-        tensorizers: Optional[Dict] = None,
-    ):
-        if meta:
-            doc_label_meta, word_label_meta = meta.target
-            return cls(
-                doc_label_meta.vocab.itos,
-                word_label_meta.vocab.itos,
-                word_label_meta.use_bio_labels,
-                [
-                    ConsoleChannel(),
-                    IntentSlotChannel((Stage.TEST,), config.output_path),
-                ],
-            )
-        else:
-            return cls(
-                tensorizers["doc_labels"].vocab,
-                tensorizers["word_labels"].vocab,
-                getattr(tensorizers["word_labels"], "use_bio_labels", False),
-                [
-                    ConsoleChannel(),
-                    IntentSlotChannel((Stage.TEST,), config.output_path),
-                ],
-                tensorizers["word_labels"].slot_column,
-            )
+    def from_config(cls, config, tensorizers: Optional[Dict] = None):
+        return cls(
+            tensorizers["doc_labels"].vocab,
+            tensorizers["word_labels"].vocab,
+            getattr(tensorizers["word_labels"], "use_bio_labels", False),
+            [ConsoleChannel(), IntentSlotChannel((Stage.TEST,), config.output_path)],
+            tensorizers["word_labels"].slot_column,
+        )
 
     def _reset(self):
         self.all_doc_preds: List = []

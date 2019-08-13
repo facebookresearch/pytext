@@ -48,7 +48,35 @@ To train a PyText model, you need to pick the right task and model architecture,
     {
       "config": {
         "task": {
-          "JointTextTask": {
+          "IntentSlotTask": {
+            "data": {
+              "Data": {
+                "source": {
+                  "TSVDataSource": {
+                    "field_names": [
+                      "label",
+                      "slots",
+                      "text",
+                      "doc_weight",
+                      "word_weight"
+                    ],
+                    "train_filename": "demo/atis_joint_model/atis.processed.train.csv",
+                    "eval_filename": "demo/atis_joint_model/atis.processed.val.csv",
+                    "test_filename": "demo/atis_joint_model/atis.processed.test.csv"
+                  }
+                },
+                "batcher": {
+                  "PoolingBatcher": {
+                    "train_batch_size": 128,
+                    "eval_batch_size": 128,
+                    "test_batch_size": 128,
+                    "pool_num_batches": 10000
+                  }
+                },
+                "sort_key": "tokens",
+                "in_memory": true
+              }
+            },
             "model": {
               "representation": {
                 "BiLSTMDocSlotAttention": {
@@ -66,36 +94,19 @@ To train a PyText model, you need to pick the right task and model architecture,
                 "word_output": {
                   "CRFOutputLayer": {}
                 }
-              }
-            },
-            "features": {
-              "word_feat": {
+              },
+              "word_embedding": {
                 "embed_dim": 100,
                 "pretrained_embeddings_path": "demo/atis_joint_model/glove.6B.100d.txt"
               }
             },
-            "optimizer": {
-              "type": "adam",
-              "lr": "0.001"
-            },
             "trainer": {
-              "epochs": 20
-            },
-            "featurizer": {
-              "SimpleFeaturizer": {}
-            },
-	    "labels": [
-              {
-                "DocLabelConfig": {}
-              },
-              {
-                "WordLabelConfig": {}
+              "epochs": 20,
+              "optimizer": {
+                "Adam": {
+                  "lr": 0.001
+                }
               }
-            ],
-            "data_handler": {
-              "train_path": "demo/atis_joint_model/atis.processed.train.csv",
-              "eval_path": "demo/atis_joint_model/atis.processed.val.csv",
-              "test_path": "demo/atis_joint_model/atis.processed.test.csv"
             }
           }
         }
@@ -104,12 +115,11 @@ To train a PyText model, you need to pick the right task and model architecture,
 
 We explain some of the parameters involved:
 
-- :class:`~JointTextTask` trains a joint model for document classification and word tagging.
+- :class:`~IntentSlotTask` trains a joint model for document classification and word tagging.
 - The :class:`~Model` has multiple layers -
   - We use BiLSTM model with attention as the representation layer. The pooling attribute decides the attention technique used.
   - We use different loss functions for document classification (Cross Entropy Loss) and slot filling (CRF layer)
-- Pre-trained word embeddings are provided within the `word_feat` attribute inside `features`.
-- The `featurizer` (:class:`~SimpleFeaturizer`) splits the utterance into tokens on whitespace.
+- Pre-trained word embeddings are provided within the `word_embedding` attribute.
 
 To train the PyText model,
 

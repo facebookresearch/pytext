@@ -282,7 +282,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "FederatedLearningTaskBase")
     deprecate(json_config, "FLDocClassificationTask")
     deprecate(json_config, "FLQueryDocumentPairwiseRankingTask")
-    deprecate(json_config, "JointTextTask")
     deprecate(json_config, "KDDocClassificationTask")
     deprecate(json_config, "LMTask")
     deprecate(json_config, "NLGSeq2SeqTask")
@@ -525,6 +524,18 @@ def rename_tensorizer_vocab_params(json_config):
     else:
         update_model_config(model)
 
+    return json_config
+
+
+@register_adapter(from_version=14)
+def flatten_deprecated_ensemble_config(json_config):
+    [(task_name, task)] = json_config["task"].items()
+    if task_name != "EnsembleTask_Deprecated":
+        return json_config
+
+    # Joint ensemble model is deleted, so we no longer have a union type, hence
+    # we flatten the config.
+    task["model"] = task["model"]["BaggingDocEnsemble_Deprecated"]
     return json_config
 
 
