@@ -9,7 +9,6 @@ from .batch_sampler import (
     RoundRobinBatchSampler,
 )
 from .compositional_data_handler import CompositionalDataHandler
-from .contextual_intent_slot_data_handler import ContextualIntentSlotModelDataHandler
 from .data import Batcher, Data, PoolingBatcher, generator_iterator
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data import DisjointMultitaskData
@@ -31,7 +30,6 @@ __all__ = [
     "BatchIterator",
     "CommonMetadata",
     "CompositionalDataHandler",
-    "ContextualIntentSlotModelDataHandler",
     "Data",
     "DataHandler",
     "DisjointMultitaskData",

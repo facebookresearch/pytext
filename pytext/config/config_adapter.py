@@ -275,7 +275,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "COLMClassifyTask")
     deprecate(json_config, "ContextSCLSTMCompositionalTask")
     deprecate(json_config, "ContextSeq2SeqTask")
-    deprecate(json_config, "ContextualIntentSlotTask")
     deprecate(json_config, "DocClassificationTask")
     deprecate(json_config, "ElmoDocClassificationTask")
     deprecate(json_config, "ElmoFineTunePairwiseClassificationTask")
