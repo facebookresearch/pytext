@@ -126,26 +126,38 @@ def save_checkpoint(
             training_state.model = model_in_training_state
 
 
-def get_latest_checkpoint_path() -> str:
-    """
-    Return most recent saved checkpoint path in str
-    Returns: checkpoint_path (str)
-    """
-    return _CHECKPOINT_MANAGER.get_latest_checkpoint_path()
+CHECKPOINT_MANAGER_REGISTRY = {}
+DEFAULT_REGISTER_KEY = "default"
+_CHECKPOINT_MANAGERS = {}
 
 
-def get_post_training_snapshot_path() -> str:
-    return _CHECKPOINT_MANAGER.get_post_training_snapshot_path()
+class CheckpointManagerMeta(type):
+    def __new__(
+        metacls,
+        name,
+        bases,
+        dct,
+        registry_key=DEFAULT_REGISTER_KEY,
+        registry_dict=CHECKPOINT_MANAGER_REGISTRY,
+    ):
+        new_cls = super().__new__(metacls, name, bases, dct)
+        if isinstance(registry_dict, dict):
+            registry_dict[registry_key] = new_cls
+        return new_cls
 
 
-class CheckpointManager:
+class CheckpointManager(
+    metaclass=CheckpointManagerMeta,
+    registry_key=DEFAULT_REGISTER_KEY,
+    registry_dict=CHECKPOINT_MANAGER_REGISTRY,
+):
     """
         CheckpointManager is class abstraction to manage training job's
         checkpoints with different IO and storage, using two functions:
         save() and load().
     """
 
-    def __init__(self):
+    def __init__(self, name, bases, dict):
         # keep a list of saved checkpoint path
         self._saved_paths: List[str] = []
         self._post_training_snapshot_path = None
@@ -220,12 +232,35 @@ class CheckpointManager:
         return self._post_training_snapshot_path
 
 
-_CHECKPOINT_MANAGER = CheckpointManager()
+def get_checkpoint_manager(path_str: Optional[str]) -> CheckpointManager:
+    """
+    Get the corrrect checkpoint manager to use based on the path to process
+    """
+    registry_key = DEFAULT_REGISTER_KEY
+    if path_str:
+        registry_key = path_str.split("://")[0]
+    if registry_key not in CHECKPOINT_MANAGER_REGISTRY:
+        registry_key = DEFAULT_REGISTER_KEY
+
+    global _CHECKPOINT_MANAGERS
+    if registry_key not in _CHECKPOINT_MANAGERS:
+        checkpoint_manager_cls = CHECKPOINT_MANAGER_REGISTRY[registry_key]
+        _CHECKPOINT_MANAGERS[registry_key] = checkpoint_manager_cls()
+    return _CHECKPOINT_MANAGERS[registry_key]
 
 
-def set_checkpoint_manager(manager: CheckpointManager) -> None:
-    global _CHECKPOINT_MANAGER
-    _CHECKPOINT_MANAGER = manager
+def get_latest_checkpoint_path() -> str:
+    """
+    Return most recent saved checkpoint path in str
+    Returns: checkpoint_path (str)
+    """
+    checkpoint_manager = get_checkpoint_manager()
+    return checkpoint_manager.get_latest_checkpoint_path()
+
+
+def get_post_training_snapshot_path() -> str:
+    checkpoint_manager = get_checkpoint_manager()
+    return checkpoint_manager.get_post_training_snapshot_path()
 
 
 def save(
@@ -253,7 +288,8 @@ def save(
     if specified, will be used to save checkpoint during training,
     identifier is used to identify checkpoints in the same training
     """
-    return _CHECKPOINT_MANAGER.save(
+    checkpoint_manager = get_checkpoint_manager(config.save_snapshot_path)
+    return checkpoint_manager.save(
         config, model, meta, tensorizers, training_state, identifier
     )
 
@@ -263,4 +299,5 @@ def load(load_path: str):
     Load task, config and training state from a saved snapshot, will construct
     the task using the saved config then load metadata and model state.
     """
-    return _CHECKPOINT_MANAGER.load(load_path)
+    checkpoint_manager = get_checkpoint_manager(load_path)
+    return checkpoint_manager.load(load_path)
