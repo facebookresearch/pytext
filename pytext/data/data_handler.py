@@ -484,7 +484,12 @@ class DataHandler(Component):
             if label.use_vocab:
                 if not hasattr(label, "vocab"):  # Don't rebuild vocab
                     print("Building vocab for label {}".format(name))
-                    label.build_vocab(train_data, eval_data, test_data)
+                    label.build_vocab(
+                        train_data,
+                        eval_data,
+                        test_data,
+                        min_freq=getattr(label, "min_freq", 1),
+                    )
                 else:
                     print(f"Vocab for label {name} has been built. Not rebuilding.")
                 print(
