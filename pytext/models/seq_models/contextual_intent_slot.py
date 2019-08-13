@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import Optional
 
-from pytext.config.contextual_intent_slot import ModelInput
-from pytext.models.embeddings import EmbeddingList
-from pytext.models.joint_model import JointModel
+from pytext.data.tensorizers import SeqTokenTensorizer
+from pytext.models.embeddings import EmbeddingList, WordEmbedding
+from pytext.models.joint_model import IntentSlotModel
+from pytext.models.module import create_module
 from pytext.models.representations.contextual_intent_slot_rep import (
     ContextualIntentSlotRepresentation,
 )
 
 
-class ContextualIntentSlotModel(JointModel):
+class ContextualIntentSlotModel(IntentSlotModel):
     """
     Joint Model for Intent classification and slot tagging with inputs of contextual
     information (sequence of utterances) and dictionary feature of the last utterance.
@@ -35,37 +37,45 @@ class ContextualIntentSlotModel(JointModel):
 
     """
 
-    class Config(JointModel.Config):
+    class Config(IntentSlotModel.Config):
+        class ModelInput(IntentSlotModel.Config.ModelInput):
+
+            seq_tokens: Optional[
+                SeqTokenTensorizer.Config
+            ] = SeqTokenTensorizer.Config()
+
+        inputs: ModelInput = ModelInput()
+        seq_embedding: Optional[WordEmbedding.Config] = WordEmbedding.Config()
         representation: ContextualIntentSlotRepresentation.Config = ContextualIntentSlotRepresentation.Config()
 
     @classmethod
-    def compose_embedding(cls, sub_embs, metadata):
-        """Compose embedding list for ContextualIntentSlot model training.
-        The first is the word embedding of the last utterance concatenated with the
-        word level dictionary feature. The second is the word embedding of a
-        sequence of utterances (includes the last utterance). Two embeddings are
-        not concatenated and passed to the model individually.
-
-        Args:
-            sub_embs (type): sub-embeddings.
-
-        Returns:
-            type: EmbeddingList object contains embedding of the last utterance with
-                dictionary feature and embedding of the sequence of utterances.
-
-        """
-        return EmbeddingList(
-            embeddings=[
-                EmbeddingList(
-                    embeddings=[
-                        sub_embs.get(ModelInput.TEXT),
-                        sub_embs.get(ModelInput.DICT),
-                        sub_embs.get(ModelInput.CHAR),
-                        sub_embs.get(ModelInput.CONTEXTUAL_TOKEN_EMBEDDING),
-                    ],
-                    concat=True,
-                ),
-                sub_embs.get(ModelInput.SEQ),
-            ],
-            concat=False,
+    def create_embedding(cls, config, tensorizers):
+        word_emb = create_module(
+            config.word_embedding,
+            tensorizer=tensorizers["tokens"],
+            init_from_saved_state=config.init_from_saved_state,
         )
+
+        seq_emb_tensorizer = tensorizers["seq_tokens"]
+        seq_emb = create_module(config.seq_embedding, tensorizer=seq_emb_tensorizer)
+        return EmbeddingList(
+            [EmbeddingList([word_emb], concat=True), seq_emb], concat=False
+        )
+
+    def vocab_to_export(self, tensorizers):
+        return {
+            "tokens_vals": list(tensorizers["tokens"].vocab),
+            "seq_tokens_vals": list(tensorizers["seq_tokens"].vocab),
+        }
+
+    def get_export_input_names(self, tensorizers):
+        return ["tokens_vals", "seq_tokens_vals", "tokens_lens", "seq_tokens_lens"]
+
+    def arrange_model_inputs(self, tensor_dict):
+        tokens, seq_lens, _ = tensor_dict["tokens"]
+        arranged_inputs = [tokens]
+        seq_emb_inputs, seq_word_lens = tensor_dict.get("seq_tokens")
+        arranged_inputs.append(seq_emb_inputs)
+        arranged_inputs.append(seq_lens)
+        arranged_inputs.append(seq_word_lens)
+        return tuple(arranged_inputs)
