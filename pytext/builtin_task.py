@@ -6,6 +6,7 @@ import importlib
 import inspect
 import os
 
+from pytext.common.utils import eprint
 from pytext.config.component import register_tasks
 from pytext.task.disjoint_multitask import DisjointMultitask, NewDisjointMultitask
 from pytext.task.new_task import NewTask
@@ -35,7 +36,6 @@ from pytext.task.tasks import (
     WordTaggingTask,
     WordTaggingTask_Deprecated,
 )
-from pytext.utils.documentation import eprint
 
 
 USER_TASKS_DIR = "user_tasks"
