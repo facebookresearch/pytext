@@ -3,7 +3,7 @@
 
 import io
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext.config import PyTextConfig, config_to_json, pytext_config_from_json
@@ -103,7 +103,7 @@ def save_checkpoint(
     meta: Optional[CommonMetadata],
     tensorizers: Dict[str, Tensorizer],
     training_state: Optional[TrainingState] = None,
-) -> str:
+):
     # Currently torch.save() has error pickling certain models when not saving
     # by model.state_dict(), thus currently overriding the model in
     # training_state with None, and put back saving
@@ -155,6 +155,21 @@ class CheckpointManager:
         dir_name = os.path.dirname(config.save_snapshot_path)
         return "{}/checkpoint-{}".format(dir_name, identifier)
 
+    def get_customized_opener(self, path: str, flags: str) -> Tuple[callable, str]:
+        """
+        Enable cutomized opener to be used in self.save() function, this method
+        should return a callable. Opener must return an open file descriptor.
+        Args:
+        path (str): path to use for opener
+        flags (str): read/write flags
+        Returns:
+        opener (callable): The underlying file descriptor for IO stream
+        is then obtained by calling opener with (file, flags).
+        saved_path (str): path that actually used to write/read, default to be
+        the same as input path, can be different if there are mapping logics
+        """
+        return None, path
+
     def save(
         self,
         config: PyTextConfig,
@@ -178,15 +193,16 @@ class CheckpointManager:
             save_path = config.save_snapshot_path
             print(f"Saving pytorch model to: {save_path}")
 
-        with open(save_path, "wb") as checkpoint_f:
-            saved_path = save_checkpoint(
+        cutomized_opener, saved_path = self.get_customized_opener(save_path, "wb")
+        with open(saved_path, "wb", opener=cutomized_opener) as checkpoint_f:
+            save_checkpoint(
                 checkpoint_f, config, model, meta, tensorizers, training_state
             )
             if identifier:
                 self._saved_paths.append(saved_path)
             else:
                 self._post_training_snapshot_path = saved_path
-        return save_path
+        return saved_path
 
     def load(self, load_path: str):
         """
@@ -198,7 +214,8 @@ class CheckpointManager:
         if not (load_path and os.path.isfile(load_path)):
             raise ValueError(f"Invalid snapshot path{load_path}")
         print(f"Loading model from {load_path}...")
-        with open(load_path, "rb") as checkpoint_f:
+        opener, _load_path = self.get_customized_opener(load_path, "rb")
+        with open(load_path, "rb", opener=opener) as checkpoint_f:
             return load_checkpoint(checkpoint_f)
 
     def list(self) -> List[str]:
