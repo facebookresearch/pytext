@@ -283,8 +283,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "FederatedLearningTaskBase")
     deprecate(json_config, "FLDocClassificationTask")
     deprecate(json_config, "FLQueryDocumentPairwiseRankingTask")
-    deprecate(json_config, "I18NDocClassificationTask")
-    deprecate(json_config, "I18NJointTextTask")
     deprecate(json_config, "JointTextTask")
     deprecate(json_config, "KDDocClassificationTask")
     deprecate(json_config, "LMTask")
