@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Union
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.config import (
-    contextual_intent_slot as ContextualIntentSlot,
     doc_classification as DocClassification,
     query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
 )
@@ -12,7 +11,6 @@ from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLab
 from pytext.config.pytext_config import PlaceHolder
 from pytext.data import (
     CompositionalDataHandler,
-    ContextualIntentSlotModelDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
     LanguageModelDataHandler,
@@ -347,27 +345,6 @@ class SquadQATask(NewTask):
     class Config(NewTask.Config):
         model: Union[BertSquadQAModel.Config, DrQAModel.Config] = DrQAModel.Config()
         metric_reporter: SquadMetricReporter.Config = SquadMetricReporter.Config()
-
-
-class ContextualIntentSlotTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        labels: ContextualIntentSlot.TargetConfig
-        features: ContextualIntentSlot.ModelInputConfig = (
-            ContextualIntentSlot.ModelInputConfig()
-        )
-        model: ContextualIntentSlotModel.Config = ContextualIntentSlotModel.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        data_handler: ContextualIntentSlotModelDataHandler.Config = (
-            ContextualIntentSlotModelDataHandler.Config()
-        )
-        metric_reporter: IntentSlotMetricReporter.Config = (
-            IntentSlotMetricReporter.Config()
-        )
-        exporter: Optional[DenseFeatureExporter.Config] = None
-
-    @classmethod
-    def example_config(cls):
-        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
 class SemanticParsingTask_Deprecated(Task_Deprecated):
