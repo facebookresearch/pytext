@@ -1,5 +1,5 @@
 click
-fairseq @ git+https://github.com/pytorch/fairseq.git@master#egg=fairseq-0
+fairseq
 future
 hypothesis<4.0
 joblib
