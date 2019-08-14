@@ -14,7 +14,6 @@ import torch.nn.functional as F
 from caffe2.python import workspace
 from hypothesis import given
 from pytext.builtin_task import (
-    ContextualIntentSlotTask_Deprecated,
     DocClassificationTask_Deprecated,
     IntentSlotTask,
     JointTextTask_Deprecated,
