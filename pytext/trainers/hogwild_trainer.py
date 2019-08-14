@@ -63,7 +63,7 @@ class HogwildTrainer_Deprecated(Trainer):
         return training_data
 
 
-class HogwildTrainer(TaskTrainer):
+class HogwildTrainer(Trainer):
     class Config(ConfigBase):
         real_trainer: TaskTrainer.Config = TaskTrainer.Config()
         num_workers: int = 1
