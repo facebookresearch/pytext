@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.2.1
+## v0.2.2
 
 *Note:* this is the last release with _Deprecated classes. Those classes will be removed in the next release.
 
@@ -74,6 +74,11 @@
 - Fix issue with some tensorizers still re-initializing vocab when loaded from saved state (#848)
 - fixed overflow error in lm reporting (#831)
 - fix BlockShardedTSVDataSource (#832)
+
+
+## v0.2.1
+
+(skipped because of packaging issues)
 
 
 ## v0.2.0
