@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from pytext.common.utils import eprint
+
 from .pytext_config import LATEST_VERSION
 
 
@@ -545,6 +547,10 @@ def upgrade_one_version(json_config):
     if not adapter:
         raise Exception(f"no adapter found for version {current_version}")
     json_config = adapter(json_config)
+    eprint(
+        f"WARNING - Applying old config adapter for version={current_version}. "
+        "Please consider migrating your old configs to the latest version."
+    )
     json_config["version"] = current_version + 1
     return json_config
 

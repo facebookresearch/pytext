@@ -4,6 +4,8 @@
 from enum import Enum
 from typing import Dict, List, Tuple, Union
 
+from pytext.common.utils import eprint
+
 from .component import Registry
 from .config_adapter import upgrade_to_latest
 from .pytext_config import PyTextConfig
@@ -67,9 +69,9 @@ def _union_from_json(subclasses, json_obj):
         json_obj = next(iter(json_obj.values()))
     else:
         type_name = next(iter(subclasses_dict))
-        print(
-            f"can not find class type in json, trying with first class "
-            + f"{type_name} in the union"
+        eprint(
+            "WARNING - Can not find class type in json: "
+            f"trying with first class {type_name} in the union."
         )
     try:
         return _value_from_json(subclasses_dict[type_name], json_obj)
