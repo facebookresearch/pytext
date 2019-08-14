@@ -41,7 +41,7 @@ from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
-from pytext.models.joint_model import IntentSlotModel, JointModel
+from pytext.models.joint_model import IntentSlotModel
 from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
 from pytext.models.masked_lm import MaskedLanguageModel
 from pytext.models.model import BaseModel
@@ -240,37 +240,6 @@ class WordTaggingTask(NewTask):
         return SequenceTaggingMetricReporter.from_config(
             config.metric_reporter, tensorizers["labels"]
         )
-
-
-class JointTextTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        labels: List[TargetConfigBase]
-        model: JointModel.Config = JointModel.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
-        metric_reporter: IntentSlotMetricReporter.Config = (
-            IntentSlotMetricReporter.Config()
-        )
-
-    @classmethod
-    def format_prediction(cls, predictions, scores, context, target_meta):
-        doc_preds, word_preds = predictions
-        doc_scores, word_scores = scores
-        doc_target_meta, word_target_meta = target_meta
-
-        for intent, slot in zip(
-            DocClassificationTask_Deprecated.format_prediction(
-                doc_preds, doc_scores, context, doc_target_meta
-            ),
-            WordTaggingTask_Deprecated.format_prediction(
-                word_preds, word_scores, context, word_target_meta
-            ),
-        ):
-            yield {"intent": intent, "slot": slot}
-
-    @classmethod
-    def example_config(cls):
-        return cls.Config(labels=[DocLabelConfig(), WordLabelConfig()])
 
 
 class IntentSlotTask(NewTask):
