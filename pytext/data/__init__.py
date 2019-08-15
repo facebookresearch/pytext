@@ -15,7 +15,6 @@ from .disjoint_multitask_data import DisjointMultitaskData
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
 from .doc_classification_data_handler import DocClassificationDataHandler, RawData
 from .joint_data_handler import JointModelDataHandler
-from .language_model_data_handler import LanguageModelDataHandler
 from .query_document_pairwise_ranking_data_handler import (
     QueryDocumentPairwiseRankingDataHandler,
 )
@@ -38,7 +37,6 @@ __all__ = [
     "EvalBatchSampler",
     "generator_iterator",
     "JointModelDataHandler",
-    "LanguageModelDataHandler",
     "PoolingBatcher",
     "RandomizedBatchSampler",
     "QueryDocumentPairwiseRankingDataHandler",

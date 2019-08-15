@@ -1,0 +1,91 @@
+[
+  {
+    "original": {
+      "task": {
+        "LMTask_Deprecated": {
+          "features": {
+            "shared_module_key": "SHARED_EMBEDDING",
+            "word_feat": {
+              "vocab_file": "base_dir/SST-2/sst_vocab.txt",
+              "vocab_size": 15000,
+              "vocab_from_train_data": false
+            }
+          },
+          "data_handler": {
+            "LanguageModelDataHandler": {
+              "train_path": "base_dir/wikitext2/train.txt",
+              "eval_path": "base_dir/wikitext2/valid.txt",
+              "test_path": "base_dir/wikitext2/test.txt",
+              "train_batch_size": 16,
+              "eval_batch_size": 16,
+              "test_batch_size": 16
+            }
+          },
+          "model": {
+            "representation": {
+              "shared_module_key": "SHARED_LSTM"
+            },
+            "decoder": {
+              "hidden_dims": [
+                10
+              ]
+            }
+          }
+        }
+      },
+      "version": 15
+    },
+    "adapted": {
+      "task": {
+        "LMTask": {
+          "data": {
+            "source": {
+              "TSVDataSource": {
+                "field_names": ["text"],
+                "train_filename": "base_dir/wikitext2/train.txt",
+                "test_filename": "base_dir/wikitext2/test.txt",
+                "eval_filename": "base_dir/wikitext2/valid.txt"
+              }
+            },
+            "batcher": {
+              "PoolingBatcher": {
+                "eval_batch_size": 16,
+                "test_batch_size": 16,
+                "train_batch_size": 16
+              }
+            }
+          },
+          "model": {
+            "embedding": {
+              "shared_module_key": "SHARED_EMBEDDING"
+            },
+            "inputs": {
+              "tokens": {
+                "vocab": {
+                  "build_from_data": false,
+                  "size_from_data": 15000,
+                  "vocab_files": [
+                    {
+                      "filepath": "base_dir/SST-2/sst_vocab.txt"
+                    }
+                  ]
+                }
+              }
+            },
+            "representation": {
+              "shared_module_key": "SHARED_LSTM"
+            },
+            "decoder": {
+              "hidden_dims": [
+                10
+              ]
+            }
+          }
+        }
+      },
+      "version": 16
+    }
+  }
+]
+
+
