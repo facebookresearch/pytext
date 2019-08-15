@@ -546,6 +546,8 @@ class Trainer(TrainerBase):
 
 
 class TaskTrainer(Trainer):
+    __EXPANSIBLE__ = True
+
     class Config(Trainer.Config):
         """Make mypy happy"""
 
