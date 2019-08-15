@@ -6,6 +6,7 @@ from .pytext_config import LATEST_VERSION
 
 
 ADAPTERS = {}
+NOT_THERE = (None, None, None)
 
 
 def register_adapter(from_version):
@@ -49,7 +50,51 @@ def is_type_specifier(json_dict):
     return key[0] == key[0].upper()
 
 
-def rename_parameter(config, old_path, new_path):
+def find_parameter(config, path_str):
+    # Recursively find path elements, skipping into type specifiers.
+    # Return the value and its container so the value can be deleted.
+
+    path = path_str.split(".")
+    value = config
+    container = None
+    for segment in path:
+        while is_type_specifier(value):
+            container, value = value, next(iter(value.values()))
+        if segment not in value:
+            return NOT_THERE
+        container, value = value, value[segment]
+    return path[-1], container, value
+
+
+def _create_path(config, path):
+    # Recursively find path elements, skipping into type specifiers.
+    # If any container isn't there, create a new empty object for it.
+    # This will only be created if the
+    value = config
+    for segment in path:
+        while is_type_specifier(value):
+            value = next(iter(value.values()))
+        if segment not in value:
+            value[segment] = {}
+        value = value[segment]
+    while is_type_specifier(value):
+        value = next(iter(value.values()))
+    return value
+
+
+def create_parameter(config, path_str, value):
+    *path, param = path_str.split(".")
+    new_container = _create_path(config, path)
+    new_container[param] = value
+
+
+def delete_parameter(config, path_str):
+    param_name, container, _ = find_parameter(config, path_str)
+    if container:
+        container.pop(param_name, None)
+
+
+def rename_parameter(config, old_path, new_path, transform=lambda x: x):
     """A powerful tool for writing config adapters, this allows you to specify
     a JSON-style path for an old and new config parameter. For instance
 
@@ -60,47 +105,13 @@ def rename_parameter(config, old_path, new_path):
     set it in task.trainer.num_batches_per_epoch instead, creating trainer as an empty
     dictionary if necessary."""
 
-    old_path = old_path.split(".")
-    new_path = new_path.split(".")
-
-    NOT_THERE = object()
-
-    def find_path(config, path):
-        # Recursively find path elements, skipping into type specifiers.
-        # Return the value and its container so the value can be deleted.
-        value = config
-        container = None
-        for segment in path:
-            while is_type_specifier(value):
-                container, value = value, next(iter(value.values()))
-            if segment not in value:
-                return NOT_THERE
-            container, value = value, value[segment]
-        return container, value
-
-    def create_path(config, path):
-        # Recursively find path elements, skipping into type specifiers.
-        # If any container isn't there, create a new empty object for it.
-        # This will only be created if the
-        value = config
-        for segment in path:
-            while is_type_specifier(value):
-                value = next(iter(value.values()))
-            if segment not in value:
-                value[segment] = {}
-            value = value[segment]
-        while is_type_specifier(value):
-            value = next(iter(value.values()))
-        return value
-
-    found = find_path(config, old_path)
+    found = find_parameter(config, old_path)
     if found is not NOT_THERE:
-        container, old_value = found
+        param_name, container, old_value = found
         # Delete old value
-        container.pop(old_path[-1])
+        container.pop(param_name)
         # Update new value
-        new_container = create_path(config, new_path[:-1])
-        new_container[new_path[-1]] = old_value
+        create_parameter(config, new_path, transform(old_value))
 
     return config
 
