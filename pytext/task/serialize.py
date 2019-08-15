@@ -151,8 +151,8 @@ class CheckpointManager:
         self._post_training_snapshot_path = None
 
     # generate per epoch checkpoint save path
-    def generate_checkpoint_path(self, config: PyTextConfig, identifier: str):
-        dir_name = os.path.dirname(config.save_snapshot_path)
+    def generate_checkpoint_path(self, path: str, identifier: str):
+        dir_name = os.path.dirname(path)
         return "{}/checkpoint-{}".format(dir_name, identifier)
 
     def save(
@@ -171,21 +171,23 @@ class CheckpointManager:
         """
         if identifier:
             # saving during-training checkpoints
-            save_path = self.generate_checkpoint_path(config, identifier)
-            print("Saving checkpoint to ", save_path)
+            save_path = self.generate_checkpoint_path(
+                config.save_snapshot_path, identifier
+            )
         else:
             # saving post-training snapshot if no identifer given
             save_path = config.save_snapshot_path
-            print(f"Saving pytorch model to: {save_path}")
 
         with open(save_path, "wb") as checkpoint_f:
-            saved_path = save_checkpoint(
+            save_checkpoint(
                 checkpoint_f, config, model, meta, tensorizers, training_state
             )
             if identifier:
-                self._saved_paths.append(saved_path)
+                self._saved_paths.append(save_path)
+                print("Saving checkpoint to ", save_path)
             else:
-                self._post_training_snapshot_path = saved_path
+                self._post_training_snapshot_path = save_path
+                print(f"Saving pytorch model to: {save_path}")
         return save_path
 
     def load(self, load_path: str):
