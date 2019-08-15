@@ -144,6 +144,8 @@ Whether you want to add documentation for your feature in code, or just change t
 
 Then you can build the documentation
 
+.. code-block:: console
+
   $ cd pytext/docs
   $ make html
 
