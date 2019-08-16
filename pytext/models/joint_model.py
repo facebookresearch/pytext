@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Union
+from typing import Optional, Union
 
+import pytext.utils.cuda as cuda_util
+import torch
 from pytext.data.tensorizers import (
     FloatTensorizer,
     LabelTensorizer,
@@ -47,12 +49,8 @@ class IntentSlotModel(Model):
             doc_labels: LabelTensorizer.Config = LabelTensorizer.Config(
                 allow_unknown=True
             )
-            doc_weight: FloatTensorizer.Config = FloatTensorizer.Config(
-                column="doc_weight"
-            )
-            word_weight: FloatTensorizer.Config = FloatTensorizer.Config(
-                column="word_weight"
-            )
+            doc_weight: Optional[FloatTensorizer.Config] = None
+            word_weight: Optional[FloatTensorizer.Config] = None
 
         inputs: ModelInput = ModelInput()
         word_embedding: WordEmbedding.Config = WordEmbedding.Config()
@@ -67,7 +65,9 @@ class IntentSlotModel(Model):
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, default_doc_loss_weight, default_word_loss_weight, *args, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         # CRF module has parameters and it's forward function is not called in
         # model's forward function because of ONNX compatibility issue. This will
@@ -75,6 +75,8 @@ class IntentSlotModel(Model):
         # around, can be removed once DDP support params not used in model forward
         # function
         self.find_unused_parameters = False
+        self.default_doc_loss_weight = default_doc_loss_weight
+        self.default_word_loss_weight = default_word_loss_weight
 
     @classmethod
     def create_embedding(cls, config, tensorizers):
@@ -106,7 +108,14 @@ class IntentSlotModel(Model):
             config.output_layer, doc_labels=doc_labels, word_labels=word_labels
         )
 
-        return cls(embedding, representation, decoder, output_layer)
+        return cls(
+            config.default_doc_loss_weight,
+            config.default_word_loss_weight,
+            embedding,
+            representation,
+            decoder,
+            output_layer,
+        )
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]
@@ -127,10 +136,21 @@ class IntentSlotModel(Model):
         return ["doc_scores", "word_scores"]
 
     def arrange_model_context(self, tensor_dict):
+        context = self.get_weights_context(tensor_dict)
+        context["seq_lens"] = tensor_dict["tokens"][1]
+        return context
+
+    def get_weights_context(self, tensor_dict):
+        batch_size = tensor_dict["doc_labels"].size()[0]
         return {
-            "doc_weight": tensor_dict["doc_weight"],
-            "word_weight": tensor_dict["word_weight"],
-            "seq_lens": tensor_dict["tokens"][1],
+            "doc_weight": tensor_dict.get("doc_weight")
+            or cuda_util.tensor(
+                [self.default_doc_loss_weight] * batch_size, dtype=torch.float
+            ),
+            "word_weight": tensor_dict.get("word_weight")
+            or cuda_util.tensor(
+                [self.default_word_loss_weight] * batch_size, dtype=torch.float
+            ),
         }
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
