@@ -276,9 +276,16 @@ class Trainer(TrainerBase):
             return
 
         if train_config.save_module_checkpoints or train_config.save_all_checkpoints:
+            # saves per-epoch sub-modules when save_all_checkpoints or
+            # save_module_checkpoints is enabled
             state.model.save_modules(
                 base_path=train_config.modules_save_dir, suffix=f"-ep{state.epoch}"
             )
+        if state.epochs_since_last_improvement == 0:
+            # state.epochs_since_last_improvement == 0 means found a better
+            # model in current epoch, thus update best model's sub-modules
+            state.model.save_modules(base_path=train_config.modules_save_dir)
+
         # next to add new config and implementation of frequency on checkpointing
         if train_config.save_all_checkpoints:
             return save(
