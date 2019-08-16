@@ -6,6 +6,7 @@ from inspect import getmembers, isclass, isfunction
 from sys import modules
 from typing import Union
 
+import torch
 from pytext.config.component import Component, get_component_name
 from pytext.config.pytext_config import ConfigBase
 from pytext.models.module import Module
@@ -129,7 +130,9 @@ def pretty_print_config_class(obj):
             print(f"    {k} = null")
 
 
-def get_subclasses(klass, stop_classes=(Module, Component)):
+def get_subclasses(
+    klass, stop_classes=(Module, Component, torch.nn.modules.module.Module)
+):
     ret = set()
 
     def add_subclasses(k):
