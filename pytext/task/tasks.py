@@ -13,7 +13,6 @@ from pytext.data import (
     CompositionalDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
-    LanguageModelDataHandler,
     QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
@@ -42,7 +41,7 @@ from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
 from pytext.models.joint_model import IntentSlotModel
-from pytext.models.language_models.lmlstm import LMLSTM, LMLSTM_Deprecated
+from pytext.models.language_models.lmlstm import LMLSTM
 from pytext.models.masked_lm import MaskedLanguageModel
 from pytext.models.model import BaseModel
 from pytext.models.pair_classification_model import BasePairwiseModel, PairwiseModel
@@ -247,21 +246,6 @@ class IntentSlotTask(NewTask):
         model: IntentSlotModel.Config = IntentSlotModel.Config()
         metric_reporter: IntentSlotMetricReporter.Config = (
             IntentSlotMetricReporter.Config()
-        )
-
-
-class LMTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        # Have PlaceHolder to keep it as Union so we don't have to write config adapter
-        # for it, this class should be removed soon
-        data_handler: Union[
-            LanguageModelDataHandler.Config, PlaceHolder
-        ] = LanguageModelDataHandler.Config()
-        model: LMLSTM_Deprecated.Config = LMLSTM_Deprecated.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        labels: Optional[WordLabelConfig] = None
-        metric_reporter: LanguageModelMetricReporter.Config = (
-            LanguageModelMetricReporter.Config()
         )
 
 
