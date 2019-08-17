@@ -28,6 +28,7 @@ from pytext.metric_reporters import (
     LanguageModelMetricReporter,
     MultiLabelClassificationMetricReporter,
     PairwiseRankingMetricReporter,
+    PureLossMetricReporter,
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
     SquadMetricReporter,
@@ -153,9 +154,9 @@ class DocClassificationTask_Deprecated(Task_Deprecated):
 class DocumentClassificationTask(NewTask):
     class Config(NewTask.Config):
         model: BaseModel.Config = DocModel.Config()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
+        metric_reporter: Union[
+            ClassificationMetricReporter.Config, PureLossMetricReporter.Config
+        ] = (ClassificationMetricReporter.Config())
         #   for multi-label classification task,
         #   choose MultiLabelClassificationMetricReporter
 

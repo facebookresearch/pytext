@@ -11,6 +11,8 @@ from pytext.metrics import RealtimeMetrics
 from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
 
+from .channel import ConsoleChannel
+
 
 class MetricReporter(Component):
     """
@@ -268,3 +270,14 @@ class MetricReporter(Component):
         if new == old:
             return False
         return (new < old) == self.lower_is_better
+
+
+class PureLossMetricReporter(MetricReporter):
+    lower_is_better = True
+
+    @classmethod
+    def from_config(cls, config, *args, **kwargs):
+        return cls([ConsoleChannel()], config.pep_format)
+
+    def calculate_metric(self):
+        return self.calculate_loss()
