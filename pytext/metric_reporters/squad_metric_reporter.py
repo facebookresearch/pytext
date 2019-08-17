@@ -13,7 +13,7 @@ from pytext.metrics.squad_metrics import SquadMetrics
 
 
 class SquadFileChannel(FileChannel):
-    def get_title(self):
+    def get_title(self, context_keys=()):
         return (
             "index",
             "ques",
@@ -153,12 +153,12 @@ class SquadMetricReporter(MetricReporter):
         )
         self._add_decoded_answer_batch_stats(m_input, preds, **contexts)
 
-    def aggregate_preds(self, new_batch):
+    def aggregate_preds(self, new_batch, context=None):
         self.aggregate_data(self.all_start_pos_preds, new_batch[0])
         self.aggregate_data(self.all_end_pos_preds, new_batch[1])
         self.aggregate_data(self.all_has_answer_preds, new_batch[2])
 
-    def aggregate_targets(self, new_batch):
+    def aggregate_targets(self, new_batch, context=None):
         self.aggregate_data(self.all_start_pos_targets, new_batch[0])
         self.aggregate_data(self.all_end_pos_targets, new_batch[1])
         self.aggregate_data(self.all_has_answer_targets, new_batch[2])

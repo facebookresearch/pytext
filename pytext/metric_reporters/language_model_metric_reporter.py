@@ -36,7 +36,7 @@ def get_perplexity_func(perplexity_type):
 
 
 class LanguageModelChannel(FileChannel):
-    def get_title(self):
+    def get_title(self, context_keys=()):
         return ("text", "perplexity")
 
     def gen_content(self, metrics, loss, preds, targets, scores, contexts):

@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-from pytext.common.constants import (
-    BatchContext,
-    DatasetFieldName,
-    RawExampleFieldName,
-    Stage,
-)
+from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
@@ -30,78 +25,44 @@ from .metric_reporter import MetricReporter
 DOC_LABEL_NAMES = "doc_label_names"
 
 
-class IntentSlotChannel(FileChannel):
-    def get_title(self):
-        return ("doc_index", "text", "predicted_annotation", "actual_annotation")
-
-    def gen_content(self, metrics, loss, preds, targets, scores, context):
-        for (
-            index,
-            utterance,
-            intent_pred,
-            intent_target,
-            slots_pred_label,
-            slots_target_label,
-        ) in zip(
-            context[BatchContext.INDEX],
-            context[DatasetFieldName.UTTERANCE_FIELD],
-            preds[0],
-            targets[0],
-            context["slots_prediction"],
-            context[DatasetFieldName.RAW_WORD_LABEL],
-        ):
-            yield (
-                index,
-                utterance,
-                self.create_annotation(
-                    utterance, context[DOC_LABEL_NAMES][intent_pred], slots_pred_label
-                ),
-                self.create_annotation(
-                    utterance,
-                    context[DOC_LABEL_NAMES][intent_target],
-                    slots_target_label,
-                ),
-            )
-
-    @staticmethod
-    def create_annotation(utterance: str, intent_label: str, slots_label: str) -> str:
-        annotation_str = OPEN + escape_brackets(intent_label) + " "
-        slots = parse_slot_string(slots_label)
-        cur_index = 0
-        for slot in sorted(slots, key=lambda slot: slot.start):
-            annotation_str += escape_brackets(
-                get_substring_from_offsets(utterance, cur_index, slot.start)
-            )
-            annotation_str += (
-                OPEN
-                + escape_brackets(slot.label)
-                + " "
-                + escape_brackets(
-                    get_substring_from_offsets(utterance, slot.start, slot.end)
-                )
-                + " "
-                + CLOSE
-            )
-            cur_index = slot.end
-        annotation_str += (
-            escape_brackets(get_substring_from_offsets(utterance, cur_index, None))
-            + " "
-            + CLOSE
-        )
-
-        return annotation_str
-
-
-def create_frame(intent_label, slot_names_str, utterance):
+def create_frame(text, intent_label, slot_names_str, byte_len):
     frame = Node(
         label=intent_label,
-        span=Span(0, byte_length(utterance)),
+        span=Span(0, byte_len),
         children={
             Node(label=slot.label, span=Span(slot.start, slot.end))
             for slot in parse_slot_string(slot_names_str)
         },
+        text=text,
     )
     return frame
+
+
+def frame_to_str(frame: Node):
+    annotation_str = OPEN + escape_brackets(frame.label) + " "
+    cur_index = 0
+    for slot in sorted(frame.children, key=lambda slot: slot.span.start):
+        annotation_str += escape_brackets(
+            get_substring_from_offsets(frame.text, cur_index, slot.span.start)
+        )
+        annotation_str += (
+            OPEN
+            + escape_brackets(slot.label)
+            + " "
+            + escape_brackets(
+                get_substring_from_offsets(frame.text, slot.span.start, slot.span.end)
+            )
+            + " "
+            + CLOSE
+        )
+        cur_index = slot.span.end
+    annotation_str += (
+        escape_brackets(get_substring_from_offsets(frame.text, cur_index, None))
+        + " "
+        + CLOSE
+    )
+
+    return annotation_str
 
 
 class IntentSlotMetricReporter(MetricReporter):
@@ -114,109 +75,128 @@ class IntentSlotMetricReporter(MetricReporter):
         use_bio_labels: bool,
         channels: List[Channel],
         slot_column_name: str = "slots",
+        text_column_name: str = "text",
+        token_tensorizer_name: str = "tokens",
     ) -> None:
         super().__init__(channels)
         self.doc_label_names = doc_label_names
         self.word_label_names = word_label_names
         self.use_bio_labels = use_bio_labels
         self.slot_column_name = slot_column_name
+        self.text_column_name = text_column_name
+        self.token_tensorizer_name = token_tensorizer_name
 
     class Config(MetricReporter.Config):
         pass
 
     @classmethod
     def from_config(cls, config, tensorizers: Optional[Dict] = None):
+        # TODO this part should be handled more elegantly
+        for name in ["text_feats", "tokens"]:
+            if name in tensorizers:
+                token_tensorizer_name = name
+                break
         return cls(
             tensorizers["doc_labels"].vocab,
             tensorizers["word_labels"].vocab,
             getattr(tensorizers["word_labels"], "use_bio_labels", False),
-            [ConsoleChannel(), IntentSlotChannel((Stage.TEST,), config.output_path)],
+            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
             tensorizers["word_labels"].slot_column,
+            tensorizers[token_tensorizer_name].text_column,
+            token_tensorizer_name,
         )
 
-    def _reset(self):
-        self.all_doc_preds: List = []
-        self.all_doc_targets: List = []
-        self.all_doc_scores: List = []
-        self.all_word_preds: List = []
-        self.all_word_targets: List = []
-        self.all_word_scores: List = []
+    def aggregate_preds(self, batch_preds, batch_context):
+        intent_preds, word_preds = batch_preds
+        self.all_preds.extend(
+            [
+                create_frame(
+                    text,
+                    self.doc_label_names[intent_pred],
+                    merge_token_labels_to_slot(
+                        token_range[0:seq_len],
+                        [self.word_label_names[p] for p in word_pred[0:seq_len]],
+                        self.use_bio_labels,
+                    ),
+                    byte_length(text),
+                )
+                for text, intent_pred, word_pred, seq_len, token_range in zip(
+                    batch_context[self.text_column_name],
+                    intent_preds,
+                    word_preds,
+                    batch_context[DatasetFieldName.SEQ_LENS],
+                    batch_context[DatasetFieldName.TOKEN_RANGE],
+                )
+            ]
+        )
 
-        self.all_preds: Tuple = (self.all_doc_preds, self.all_word_preds)
-        self.all_targets: Tuple = (self.all_doc_targets, self.all_word_targets)
-        self.all_scores: Tuple = (self.all_doc_scores, self.all_word_scores)
-        self.all_context: Dict = {}
-        self.all_loss: List = []
-        self.n_batches = 0
-        self.batch_size: List = []
+    def aggregate_targets(self, batch_targets, batch_context):
+        intent_targets = batch_targets[0]
+        self.all_targets.extend(
+            [
+                create_frame(
+                    text,
+                    self.doc_label_names[intent_target],
+                    raw_slot_label,
+                    byte_length(text),
+                )
+                for text, intent_target, raw_slot_label, seq_len in zip(
+                    batch_context[self.text_column_name],
+                    intent_targets,
+                    batch_context[DatasetFieldName.RAW_WORD_LABEL],
+                    batch_context[DatasetFieldName.SEQ_LENS],
+                )
+            ]
+        )
 
-    def aggregate_preds(self, new_batch):
-        self.aggregate_data(self.all_doc_preds, new_batch[0])
-        self.aggregate_data(self.all_word_preds, new_batch[1])
+    def get_raw_slot_str(self, raw_data_row):
+        return ",".join([str(x) for x in raw_data_row[self.slot_column_name]])
 
-    def aggregate_targets(self, new_batch):
-        self.aggregate_data(self.all_doc_targets, new_batch[0])
-        self.aggregate_data(self.all_word_targets, new_batch[1])
+    def aggregate_scores(self, batch_scores):
+        intent_scores, slot_scores = batch_scores
+        self.all_scores.extend(
+            (intent_score, slot_score)
+            for intent_score, slot_score in zip(
+                intent_scores.tolist(), slot_scores.tolist()
+            )
+        )
 
-    def aggregate_scores(self, new_batch):
-        self.aggregate_data(self.all_doc_scores, new_batch[0])
-        self.aggregate_data(self.all_word_scores, new_batch[1])
-
-    def process_pred(self, pred: List[int]) -> List[str]:
-        """pred is a list of token label index
+    def predictions_to_report(self):
         """
-        return [self.word_label_names[p] for p in pred]
+        Generate human readable predictions
+        """
+        return [frame_to_str(frame) for frame in self.all_preds]
 
-    def gen_extra_context(self):
-        self.all_context["slots_prediction"] = [
-            merge_token_labels_to_slot(
-                token_range[0:seq_len],
-                self.process_pred(word_pred[0:seq_len]),
-                self.use_bio_labels,
-            )
-            for word_pred, seq_len, token_range in zip(
-                self.all_word_preds,
-                self.all_context[DatasetFieldName.SEQ_LENS],
-                self.all_context[DatasetFieldName.TOKEN_RANGE],
-            )
-        ]
-        self.all_context[DOC_LABEL_NAMES] = self.doc_label_names
+    def targets_to_report(self):
+        """
+        Generate human readable targets
+        """
+        return [frame_to_str(frame) for frame in self.all_targets]
 
     def calculate_metric(self):
         return compute_all_metrics(
             [
-                FramePredictionPair(
-                    create_frame(
-                        self.doc_label_names[intent_pred], slots_pred, utterance
-                    ),
-                    create_frame(
-                        self.doc_label_names[intent_target], slots_label, utterance
-                    ),
-                )
-                for intent_pred, intent_target, slots_pred, slots_label, utterance in zip(
-                    self.all_doc_preds,
-                    self.all_doc_targets,
-                    self.all_context["slots_prediction"],
-                    self.all_context[DatasetFieldName.RAW_WORD_LABEL],
-                    self.all_context[DatasetFieldName.UTTERANCE_FIELD],
-                )
+                FramePredictionPair(pred_frame, target_frame)
+                for pred_frame, target_frame in zip(self.all_preds, self.all_targets)
             ],
             frame_accuracy=True,
         )
 
     def batch_context(self, raw_batch, batch):
-        return {
-            DatasetFieldName.UTTERANCE_FIELD: [row["text"] for row in raw_batch],
-            DatasetFieldName.SEQ_LENS: batch["tokens"][1],
-            DatasetFieldName.TOKEN_RANGE: batch["tokens"][2],
-            DatasetFieldName.RAW_WORD_LABEL: [
-                ",".join([str(x) for x in row[self.slot_column_name]])
-                for row in raw_batch
-            ],
-            BatchContext.INDEX: [
-                row[RawExampleFieldName.ROW_INDEX] for row in raw_batch
-            ],
-        }
+        context = super().batch_context(raw_batch, batch)
+        context[self.text_column_name] = [
+            row[self.text_column_name] for row in raw_batch
+        ]
+        context[DatasetFieldName.SEQ_LENS] = batch[self.token_tensorizer_name][
+            1
+        ].tolist()
+        context[DatasetFieldName.TOKEN_RANGE] = batch[self.token_tensorizer_name][
+            2
+        ].tolist()
+        context[DatasetFieldName.RAW_WORD_LABEL] = [
+            self.get_raw_slot_str(raw_data_row) for raw_data_row in raw_batch
+        ]
+        return context
 
     def get_model_select_metric(self, metrics):
         return metrics.frame_accuracy

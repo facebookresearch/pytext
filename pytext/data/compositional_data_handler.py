@@ -86,7 +86,7 @@ class CompositionalDataHandler(DataHandler):
 
         extra_fields: Dict[str, Field] = {
             DatasetFieldName.TOKENS: RawField(),
-            DatasetFieldName.UTTERANCE_FIELD: RawField(),
+            "text": RawField(),
         }
 
         return cls(
@@ -221,6 +221,6 @@ class CompositionalDataHandler(DataHandler):
             ACTION_FEATURE_FIELD: actions,
             ACTION_LABEL_FIELD: copy.deepcopy(actions),
             DatasetFieldName.TOKENS: features.tokens,
-            DatasetFieldName.UTTERANCE_FIELD: utterance,
+            "text": utterance,
             DatasetFieldName.CONTEXTUAL_TOKEN_EMBEDDING: contextual_token_embedding,
         }

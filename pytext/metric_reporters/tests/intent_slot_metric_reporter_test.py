@@ -4,12 +4,14 @@
 from unittest import TestCase
 
 from pytext.metric_reporters.intent_slot_detection_metric_reporter import (
-    IntentSlotChannel,
+    create_frame,
+    frame_to_str,
 )
+from pytext.utils.data import byte_length
 
 
 class TestIntentSlotMetricReporter(TestCase):
-    def test_create_annotation(self):
+    def test_create_node(self):
         TEXT_EXAMPLES = [
             ("exit", "device/close_app", "", "[device/close_app exit ]"),
             (
@@ -52,7 +54,7 @@ class TestIntentSlotMetricReporter(TestCase):
             slot_names_str,
             expected_annotation_str,
         ) in TEXT_EXAMPLES:
-            annotation_str = IntentSlotChannel.create_annotation(
-                utterance, intent_label, slot_names_str
+            frame = create_frame(
+                utterance, intent_label, slot_names_str, byte_length(utterance)
             )
-            self.assertEqual(annotation_str, expected_annotation_str)
+            self.assertEqual(frame_to_str(frame), expected_annotation_str)

@@ -76,7 +76,7 @@ class VocabMeta:
 
 class BatchContext:
     IGNORE_LOSS = "ignore_loss"
-    INDEX = "index"
+    INDEX = "row_index"
     TASK_NAME = "task_name"
 
 

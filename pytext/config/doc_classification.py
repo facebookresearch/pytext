@@ -35,4 +35,4 @@ class ModelInput:
 
 
 class ExtraField:
-    RAW_TEXT = "utterance"
+    RAW_TEXT = "text"

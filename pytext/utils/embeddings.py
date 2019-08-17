@@ -164,7 +164,10 @@ class PretrainedEmbedding(object):
             )
 
         assert self.embedding_vectors is not None and self.embed_vocab is not None
-        assert pretrained_embeds_weight.shape[-1] == self.embedding_vectors.shape[-1]
+        assert (
+            pretrained_embeds_weight.shape[-1] == self.embedding_vectors.shape[-1]
+        ), f"shape of pretrained_embeds_weight {pretrained_embeds_weight.shape[-1]} \
+        and embedding_vectors {self.embedding_vectors.shape[-1]} doesn't match!"
         unk_idx = str_to_idx[unk]
         oov_count = 0
         for word, idx in str_to_idx.items():

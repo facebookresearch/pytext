@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import csv
-import json
 import sys
 import traceback
 from typing import Tuple
@@ -36,7 +35,6 @@ class Channel:
         targets,
         scores,
         context,
-        meta,
         *args,
     ):
         """
@@ -53,7 +51,6 @@ class Channel:
             scores (List[Any]): list of scores
             context (Dict[str, List[Any]]): dict of any additional context data,
                 each context is a list of data that maps to each example
-            meta (Dict[str, Any]): global metadata, such as target names
         """
         raise NotImplementedError()
 
@@ -80,7 +77,6 @@ class ConsoleChannel(Channel):
         targets,
         scores,
         context,
-        meta,
         *args,
     ):
         print(f"\n\n{stage}")
@@ -113,19 +109,10 @@ class FileChannel(Channel):
         targets,
         scores,
         context,
-        meta,
         *args,
     ):
-
         print(f"saving result to file {self.file_path}")
         with open(self.file_path, "w", encoding="utf-8") as of:
-            for metadata in meta.values():
-                # TODO the # prefix is quite ad-hoc, we should think of a better
-                # way to handle it
-                of.write("#")
-                of.write(json.dumps(metadata))
-                of.write("\n")
-
             tsv_writer = csv.writer(
                 of,
                 delimiter="\t",
@@ -135,16 +122,19 @@ class FileChannel(Channel):
                 quoting=csv.QUOTE_MINIMAL,
             )
 
-            tsv_writer.writerow(self.get_title())
+            tsv_writer.writerow(self.get_title(tuple(context.keys())))
             for row in self.gen_content(metrics, loss, preds, targets, scores, context):
                 tsv_writer.writerow(row)
 
-    def get_title(self):
-        return ("prediction", "target", "score")
+    def get_title(self, context_keys=()):
+        return ("prediction", "target", "score") + context_keys
 
-    def gen_content(self, metrics, loss, preds, targets, scores, contexts):
+    def gen_content(self, metrics, loss, preds, targets, scores, context):
+        context_values = context.values()
         for i in range(len(preds)):
-            yield [preds[i], targets[i], scores[i]]
+            res = [preds[i], targets[i], scores[i]]
+            res.extend([v_list[i] for v_list in context_values])
+            yield res
 
 
 class TensorBoardChannel(Channel):
