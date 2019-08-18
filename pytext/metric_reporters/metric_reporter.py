@@ -4,7 +4,12 @@ from typing import Dict, List
 
 import numpy as np
 import torch
-from pytext.common.constants import DatasetFieldName, Stage
+from pytext.common.constants import (
+    BatchContext,
+    DatasetFieldName,
+    RawExampleFieldName,
+    Stage,
+)
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.metrics import RealtimeMetrics
@@ -84,8 +89,8 @@ class MetricReporter(Component):
                 for the batch
         """
         self.n_batches = n_batches
-        self.aggregate_preds(preds)
-        self.aggregate_targets(targets)
+        self.aggregate_preds(preds, context)
+        self.aggregate_targets(targets, context)
         self.aggregate_scores(scores)
         for key, val in context.items():
             if not (isinstance(val, torch.Tensor) or isinstance(val, List)):
@@ -103,14 +108,14 @@ class MetricReporter(Component):
             self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
             self.realtime_meters["ups"].update(1)
 
-    def aggregate_preds(self, new_batch):
-        self.aggregate_data(self.all_preds, new_batch)
+    def aggregate_preds(self, batch_preds, batch_context=None):
+        self.aggregate_data(self.all_preds, batch_preds)
 
-    def aggregate_targets(self, new_batch):
-        self.aggregate_data(self.all_targets, new_batch)
+    def aggregate_targets(self, batch_targets, batch_context=None):
+        self.aggregate_data(self.all_targets, batch_targets)
 
-    def aggregate_scores(self, new_batch):
-        self.aggregate_data(self.all_scores, new_batch)
+    def aggregate_scores(self, batch_scores):
+        self.aggregate_data(self.all_scores, batch_scores)
 
     @classmethod
     def aggregate_data(cls, all_data, new_batch):
@@ -150,11 +155,16 @@ class MetricReporter(Component):
         self.channels.append(channel)
 
     def batch_context(self, raw_batch, batch):
-        context = {}
+        context = {
+            BatchContext.INDEX: [
+                row[RawExampleFieldName.ROW_INDEX] for row in raw_batch
+            ]
+        }
         if DatasetFieldName.NUM_TOKENS in batch:
             context.update(
                 {DatasetFieldName.NUM_TOKENS: batch[DatasetFieldName.NUM_TOKENS]}
             )
+
         return context
 
     def calculate_loss(self):
@@ -169,6 +179,19 @@ class MetricReporter(Component):
         """
         raise NotImplementedError()
 
+    def predictions_to_report(self):
+        """
+        Generate human readable predictions
+        """
+        return self.all_preds
+
+    def targets_to_report(self):
+        """
+        Generate human readable targets
+        """
+        return self.all_targets
+
+    # TODO this function can be merged with batch_context once data migration is done
     def gen_extra_context(self):
         """
         Generate any extra intermediate context data for metric calculation
@@ -212,8 +235,8 @@ class MetricReporter(Component):
                         metrics,
                         model_select_metric,
                         self.total_loss,
-                        self.all_preds,
-                        self.all_targets,
+                        self.predictions_to_report(),
+                        self.targets_to_report(),
                         self.all_scores,
                         self.all_context,
                         self.get_meta(),

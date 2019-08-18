@@ -595,6 +595,8 @@ class TaskTrainer(Trainer):
                     metric_reporter.add_batch_stats(
                         batch_id,
                         *metric_data,
+                        # TODO merge this step into add_batch_stats once all data
+                        # migration is done
                         **metric_reporter.batch_context(raw_batch, batch),
                     )
                 if batch_id % self.config.num_samples_to_log_progress == 0:

@@ -27,21 +27,7 @@ from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
 
 
-PRED_TARGET_TREES = "pred_target_trees"
 ALL_PRED_FRAMES = "all_pred_frames"
-
-
-class CompositionalFileChannel(FileChannel):
-    def get_title(self):
-        return ("doc_index", "text", "predicted_annotation", "actual_annotation")
-
-    def gen_content(self, metrics, loss, preds, targets, scores, context):
-        for index, utterance, (pred_tree, target_tree) in zip(
-            context[BatchContext.INDEX],
-            context[DatasetFieldName.UTTERANCE_FIELD],
-            context[PRED_TARGET_TREES],
-        ):
-            yield (index, utterance, pred_tree.flat_str(), target_tree.flat_str())
 
 
 class CompositionalMetricReporter(MetricReporter):
@@ -59,6 +45,7 @@ class CompositionalMetricReporter(MetricReporter):
         self.actions_vocab = actions_vocab
         self.text_column_name = text_column_name
         self.tokenizer = tokenizer or Tokenizer()
+        self.pred_target_trees = None
 
     @classmethod
     def from_config(
@@ -70,21 +57,19 @@ class CompositionalMetricReporter(MetricReporter):
         if tensorizers is not None:
             return cls(
                 tensorizers["actions"].vocab,
-                [
-                    ConsoleChannel(),
-                    CompositionalFileChannel((Stage.TEST,), config.output_path),
-                ],
+                [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
                 config.text_column_name,
                 tensorizers["tokens"].tokenizer,
             )
         actions_vocab = metadata.actions_vocab.itos
         return cls(
             actions_vocab,
-            [
-                ConsoleChannel(),
-                CompositionalFileChannel((Stage.TEST,), config.output_path),
-            ],
+            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
         )
+
+    def _reset(self):
+        super()._reset()
+        self.pred_target_trees = None
 
     def gen_extra_context(self):
         # check if all_preds contains top K results or only 1 result
@@ -108,8 +93,20 @@ class CompositionalMetricReporter(MetricReporter):
                     )
                     pred_target_trees.append((pred_tree, target_tree))
             all_pred_trees.append(topk_pred_trees)
-        self.all_context[PRED_TARGET_TREES] = pred_target_trees
+        self.pred_target_trees = pred_target_trees
         self.all_context[ALL_PRED_FRAMES] = all_pred_trees
+
+    def predictions_to_report(self):
+        """
+        Generate human readable predictions
+        """
+        return [t[0].flat_str() for t in self.pred_target_trees]
+
+    def targets_to_report(self):
+        """
+        Generate human readable targets
+        """
+        return [t[1].flat_str() for t in self.pred_target_trees]
 
     # CREATE NODES
     def calculate_metric(self):
@@ -125,7 +122,7 @@ class CompositionalMetricReporter(MetricReporter):
                 CompositionalMetricReporter.tree_to_metric_node(pred_tree),
                 CompositionalMetricReporter.tree_to_metric_node(target_tree),
             )
-            for pred_tree, target_tree in self.all_context[PRED_TARGET_TREES]
+            for pred_tree, target_tree in self.pred_target_trees
         ]
 
     def get_model_select_metric(self, metrics):
@@ -141,7 +138,7 @@ class CompositionalMetricReporter(MetricReporter):
             for row in raw_batch
         ]
         context[BatchContext.INDEX] = [1]
-        context[DatasetFieldName.UTTERANCE_FIELD] = [
+        context[self.text_column_name] = [
             row[self.text_column_name] for row in raw_batch
         ]
 

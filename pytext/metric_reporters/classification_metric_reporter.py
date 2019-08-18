@@ -21,35 +21,6 @@ from .metric_reporter import MetricReporter
 META_LABEL_NAMES = "label_names"
 
 
-class IntentModelChannel(FileChannel):
-    def __init__(self, stages, file_path, additional_column_names) -> None:
-        super().__init__(stages, file_path)
-        #: This list of additional columns can be included in the run_model
-        #: output file with other saving results
-        self.additional_column_names = additional_column_names
-
-    def get_title(self):
-        title = ("predicted", "actual", "scores_str", "text")
-        # if there are additional colnames, append them to title
-        if len(self.additional_column_names) > 0:
-            title = title + tuple(self.additional_column_names)
-        return title
-
-    def gen_content(self, metrics, loss, preds, targets, scores, contexts):
-        for i in range(len(preds)):
-            res = [
-                preds[i],
-                targets[i],
-                ",".join([f"{s:.2f}" for s in scores[i]]),
-                contexts["utterance"][i],
-            ]
-            # if there are additional colnames, append their contexts to res
-            if len(self.additional_column_names) > 0:
-                for additional_colname in self.additional_column_names:
-                    res.append(contexts[additional_colname][i])
-            yield res
-
-
 class ComparableClassificationMetric(Enum):
     ACCURACY = "accuracy"
     ROC_AUC = "roc_auc"
@@ -109,6 +80,7 @@ class ClassificationMetricReporter(MetricReporter):
             labels = list(tensorizers["labels"].vocab)
         else:
             labels = meta.target.vocab.itos
+            config.text_column_names = []
         return cls.from_config_and_label_names(config, labels)
 
     @classmethod
@@ -128,14 +100,7 @@ class ClassificationMetricReporter(MetricReporter):
 
         return cls(
             label_names,
-            [
-                ConsoleChannel(),
-                IntentModelChannel(
-                    stages=(Stage.TEST,),
-                    file_path=config.output_path,
-                    additional_column_names=config.additional_column_names,
-                ),
-            ],
+            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
             config.model_select_metric,
             config.target_label,
             config.text_column_names,
@@ -145,7 +110,7 @@ class ClassificationMetricReporter(MetricReporter):
 
     def batch_context(self, raw_batch, batch):
         context = super().batch_context(raw_batch, batch)
-        context["utterance"] = [
+        context["text"] = [
             " | ".join(str(row[column_name]) for column_name in self.text_column_names)
             for row in raw_batch
         ]
@@ -169,6 +134,18 @@ class ClassificationMetricReporter(MetricReporter):
             self.calculate_loss(),
             recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
+
+    def predictions_to_report(self):
+        """
+        Generate human readable predictions
+        """
+        return [self.label_names[pred] for pred in self.all_preds]
+
+    def targets_to_report(self):
+        """
+        Generate human readable targets
+        """
+        return [self.label_names[target] for target in self.all_targets]
 
     def get_meta(self):
         return {META_LABEL_NAMES: self.label_names}
