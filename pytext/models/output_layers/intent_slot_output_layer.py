@@ -88,6 +88,14 @@ class IntentSlotOutputLayer(OutputLayerBase):
 
         """
         d_logit, w_logit = logits
+        if DatasetFieldName.TOKEN_INDICES in context:
+            w_logit = torch.gather(
+                w_logit,
+                1,
+                context[DatasetFieldName.TOKEN_INDICES]
+                .unsqueeze(2)
+                .expand(-1, -1, w_logit.size(-1)),
+            )
         d_target, w_target = targets
         d_weight = context[DatasetFieldName.DOC_WEIGHT_FIELD]  # noqa
         w_weight = context[DatasetFieldName.WORD_WEIGHT_FIELD]  # noqa
@@ -128,6 +136,14 @@ class IntentSlotOutputLayer(OutputLayerBase):
 
         """
         d_logit, w_logit = logits
+        if DatasetFieldName.TOKEN_INDICES in context:
+            w_logit = torch.gather(
+                w_logit,
+                1,
+                context[DatasetFieldName.TOKEN_INDICES]
+                .unsqueeze(2)
+                .expand(-1, -1, w_logit.size(-1)),
+            )
         d_pred, d_score = self.doc_output.get_pred(d_logit, None, context)
         w_pred, w_score = self.word_output.get_pred(w_logit, None, context)
         return (d_pred, w_pred), (d_score, w_score)
