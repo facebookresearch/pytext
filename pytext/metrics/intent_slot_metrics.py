@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import (
     AbstractSet,
     Any,
+    Callable,
     Counter,
     Dict,
     List,
@@ -390,7 +391,7 @@ def compute_frame_accuracy(frame_pairs: Sequence[FramePredictionPair]) -> float:
 
 def compute_frame_accuracy_top_k(
     frame_pairs: List[FramePredictionPair], all_frames: List[List[Node]]
-) -> Tuple[float, int]:
+) -> float:
     num_samples = len(frame_pairs)
     num_correct = 0
     for i, top_k_predicted_frames in enumerate(all_frames):
@@ -400,6 +401,41 @@ def compute_frame_accuracy_top_k(
                 num_correct += 1
                 break
     return safe_division(num_correct, num_samples)
+
+
+def compute_metric_at_k(
+    references: List[Node],
+    hypothesis: List[List[Node]],
+    metric_fn: Callable[[Node, Node], bool] = lambda f1, f2: f1 == f2,
+) -> List[float]:
+    """
+    Computes a boolean metric at each position in the ranked list of hypothesis,
+    and returns an average for each position over all examples.
+    By default metric_fn is comparing if frames are equal.
+    """
+    num_samples = len(references)
+    # Position of the correct frame if present in the ranked list.
+    pos_correct = []
+    max_hyp_count = 0
+    # Iterate over ranked list of hypothesis and remember what was the position
+    # of the first correct frame.
+    for reference, hyp_list in zip(references, hypothesis):
+        correct_index = -1
+        for rank, predicted_frame in enumerate(hyp_list):
+            max_hyp_count = max(rank, max_hyp_count)
+            if metric_fn(predicted_frame, reference):
+                correct_index = rank
+                break
+        pos_correct.append(correct_index)
+
+    res = [0] * max_hyp_count
+    # Compute the number of correct frames per each position in the ranked list.
+    for pos in pos_correct:
+        if pos >= 0:
+            for i in range(pos, max_hyp_count):
+                res[i] += 1
+
+    return [safe_division(res_i, num_samples) for res_i in res]
 
 
 def compute_frame_accuracies_by_depth(
