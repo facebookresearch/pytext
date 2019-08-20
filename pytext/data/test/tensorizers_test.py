@@ -25,12 +25,42 @@ from pytext.data.tensorizers import (
     VocabConfig,
     VocabFileConfig,
     initialize_tensorizers,
+    lookup_tokens,
 )
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
+from pytext.data.utils import BOS, EOS, Vocabulary
 from pytext.utils.test import import_tests_module
 
 
 tests_module = import_tests_module()
+
+
+class LookupTokensTest(unittest.TestCase):
+    def test_lookup_tokens(self):
+        text = "let's tokenize this"
+        tokenizer = Tokenizer()
+        vocab = Vocabulary(text.split() + [BOS, EOS])
+        tokens, start_idx, end_idx = lookup_tokens(
+            text,
+            tokenizer=tokenizer,
+            vocab=vocab,
+            add_bos_token=False,
+            add_eos_token=False,
+        )
+        self.assertEqual(tokens, [0, 1, 2])
+        self.assertEqual(start_idx, (0, 6, 15))
+        self.assertEqual(end_idx, (5, 14, 19))
+
+        tokens, start_idx, end_idx = lookup_tokens(
+            text,
+            tokenizer=tokenizer,
+            vocab=vocab,
+            add_bos_token=True,
+            add_eos_token=True,
+        )
+        self.assertEqual(tokens, [3, 0, 1, 2, 4])
+        self.assertEqual(start_idx, (-1, 0, 6, 15, -1))
+        self.assertEqual(end_idx, (-1, 5, 14, 19, -1))
 
 
 class ListTensorizersTest(unittest.TestCase):
