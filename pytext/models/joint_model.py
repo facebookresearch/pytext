@@ -143,13 +143,17 @@ class IntentSlotModel(Model):
     def get_weights_context(self, tensor_dict):
         batch_size = tensor_dict["doc_labels"].size()[0]
         return {
-            "doc_weight": tensor_dict.get("doc_weight")
-            or cuda_util.tensor(
-                [self.default_doc_loss_weight] * batch_size, dtype=torch.float
+            "doc_weight": tensor_dict.get(
+                "doc_weight",
+                cuda_util.tensor(
+                    [self.default_doc_loss_weight] * batch_size, dtype=torch.float
+                ),
             ),
-            "word_weight": tensor_dict.get("word_weight")
-            or cuda_util.tensor(
-                [self.default_word_loss_weight] * batch_size, dtype=torch.float
+            "word_weight": tensor_dict.get(
+                "word_weight",
+                cuda_util.tensor(
+                    [self.default_word_loss_weight] * batch_size, dtype=torch.float
+                ),
             ),
         }
 
