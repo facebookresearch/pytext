@@ -8,6 +8,7 @@ import torch
 from fairseq.data.legacy.masked_lm_dictionary import MaskedLMDictionary
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.data.xlm_dictionary import Dictionary as XLMDictionary
@@ -137,16 +138,12 @@ class XLMTensorizer(BERTTensorizer):
             schema += [(column, str) for column in self.language_columns]
         return schema
 
-    def _lookup_tokens(self, text: str, seq_len: int) -> List[int]:
-        tokenized_text = [t.value for t in self.tokenizer.tokenize(text)]
-        truncated_text = tokenized_text[:seq_len]
-        tokens = self.vocab.lookup_all(truncated_text)
-        return tokens
-
     def _numberize_and_wrap(self, text: str, seq_len: int) -> List[List[int]]:
         sentence = (
             [self.special_token]
-            + self._lookup_tokens(text, seq_len)
+            + lookup_tokens(
+                text, tokenizer=self.tokenizer, vocab=self.vocab, max_seq_len=seq_len
+            )[0]
             + [self.special_token]
         )
         return [sentence]

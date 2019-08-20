@@ -6,7 +6,7 @@ from typing import List
 
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
-from pytext.data.tensorizers import TokenTensorizer
+from pytext.data.tensorizers import TokenTensorizer, lookup_tokens
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 
@@ -22,7 +22,7 @@ class BERTTensorizer(TokenTensorizer):
         #: The tokenizer to use to split input text into tokens.
         columns: List[str] = ["text"]
         tokenizer: Tokenizer.Config = WordPieceTokenizer.Config()
-        add_bos_token: bool = False
+        add_bos_token: bool = True
         add_eos_token: bool = True
         bos_token: str = "[CLS]"
         eos_token: str = "[SEP]"
@@ -71,10 +71,22 @@ class BERTTensorizer(TokenTensorizer):
     def column_schema(self):
         return [(column, str) for column in self.columns]
 
+    def _lookup_tokens(self, text):
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            add_bos_token=False,
+            add_eos_token=self.add_eos_token,
+            max_seq_len=self.max_seq_len,
+        )
+
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
         sentences = [self._lookup_tokens(row[column])[0] for column in self.columns]
-        sentences[0] = [self.vocab.idx[BOS]] + sentences[0]
+        if self.add_bos_token:
+            bos_token = EOS if self.use_eos_token_for_bos else BOS
+            sentences[0] = [self.vocab.idx[bos_token]] + sentences[0]
         seq_lens = (len(sentence) for sentence in sentences)
         segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
         tokens = list(itertools.chain(*sentences))
