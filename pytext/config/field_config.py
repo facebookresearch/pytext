@@ -42,6 +42,12 @@ class WordFeatConfig(ModuleConfig):
     padding_idx: Optional[int] = None
 
 
+class DecompWordFeatConfig(ModuleConfig):
+    embed_dim: int = 100
+    mid_dim: int = 100
+    export_input_names: List[str] = ["tokens_vals"]
+
+
 class DictFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
@@ -52,6 +58,7 @@ class DictFeatConfig(ModuleConfig):
 
 class CharFeatConfig(ModuleConfig):
     embed_dim: int = 100
+    mid_dim: int = 0
     sparse: bool = False
     cnn: CNNParams = CNNParams()
     highway_layers: int = 0

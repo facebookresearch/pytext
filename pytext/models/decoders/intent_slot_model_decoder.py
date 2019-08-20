@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from pytext.models.module import create_module
 
 from .decoder_base import DecoderBase
-from .mlp_decoder import MLPDecoder
+from .mlp_decoder import DecompMLPDecoder, MLPDecoder
 
 
 class IntentSlotModelDecoder(DecoderBase):
@@ -50,8 +50,12 @@ class IntentSlotModelDecoder(DecoderBase):
         """
 
         use_doc_probs_in_word: bool = False
-        doc_decoder: MLPDecoder.Config = MLPDecoder.Config()
-        word_decoder: MLPDecoder.Config = MLPDecoder.Config()
+        doc_decoder: Union[
+            DecompMLPDecoder.Config, MLPDecoder.Config
+        ] = MLPDecoder.Config()
+        word_decoder: Union[
+            DecompMLPDecoder.Config, MLPDecoder.Config
+        ] = MLPDecoder.Config()
 
     def __init__(
         self,

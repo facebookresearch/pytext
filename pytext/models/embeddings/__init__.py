@@ -5,13 +5,14 @@ from .contextual_token_embedding import ContextualTokenEmbedding
 from .dict_embedding import DictEmbedding
 from .embedding_base import EmbeddingBase
 from .embedding_list import EmbeddingList
-from .word_embedding import WordEmbedding
+from .word_embedding import DecompWordEmbedding, WordEmbedding
 
 
 __all__ = [
     "EmbeddingBase",
     "EmbeddingList",
     "WordEmbedding",
+    "DecompWordEmbedding",
     "DictEmbedding",
     "CharacterEmbedding",
     "ContextualTokenEmbedding",
