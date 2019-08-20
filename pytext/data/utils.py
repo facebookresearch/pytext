@@ -3,11 +3,9 @@
 
 import collections
 import itertools
-import re
 from typing import Dict, List, Tuple
 
 import torch
-from pytext.config.component import Component, ComponentType
 from pytext.utils import cuda, precision
 
 

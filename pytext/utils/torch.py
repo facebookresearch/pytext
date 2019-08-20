@@ -272,7 +272,7 @@ class BPE(torch.jit.ScriptModule):
             parts.pop()
         # The word consisted entirely of unknown characters
         if len(parts) == 0:
-            return parts
+            return [self.eow]
         parts[-1] += self.eow
 
         # Remove any other obscure characters not in the vocab.

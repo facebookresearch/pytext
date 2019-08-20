@@ -847,6 +847,13 @@ class SlotLabelTensorizer(Tensorizer):
         return pad_and_tensorize(batch, dtype=torch.long)
 
 
+class SlotLabelTensorizerExpansible(SlotLabelTensorizer):
+    """Create a base SlotLabelTensorizer to support selecting different
+       types in ModelInput."""
+
+    __EXPANSIBLE__ = True
+
+
 class GazetteerTensorizer(Tensorizer):
     """
     Create 3 tensors for dict features.

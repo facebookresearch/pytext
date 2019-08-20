@@ -18,6 +18,7 @@ class DatasetFieldName:
     DOC_WEIGHT_FIELD = "doc_weight"
     WORD_WEIGHT_FIELD = "word_weight"
     RAW_WORD_LABEL = "raw_word_label"
+    TOKEN_INDICES = "token_indices"
     TOKEN_RANGE = "token_range"
     TOKENS = "tokens"
     LANGUAGE_ID_FIELD = "lang"
