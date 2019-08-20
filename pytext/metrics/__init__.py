@@ -367,7 +367,7 @@ class PerLabelConfusions:
     def compute_metrics(self) -> MacroPRF1Metrics:
         per_label_scores: Dict[str, PRF1Scores] = {}
         precision_sum, recall_sum, f1_sum = 0.0, 0.0, 0.0
-        for label, confusions in self.label_confusions_map.items():
+        for label, confusions in sorted(self.label_confusions_map.items()):
             scores = confusions.compute_metrics()
             per_label_scores[label] = scores
             if confusions.TP + confusions.FN > 0:
