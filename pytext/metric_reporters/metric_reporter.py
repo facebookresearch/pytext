@@ -19,6 +19,9 @@ from pytext.utils.meter import TimeMeter
 from .channel import ConsoleChannel
 
 
+DEFAULT_OUTPUT_PATH = "/tmp/test_out.txt"
+
+
 class MetricReporter(Component):
     """
     MetricReporter is responsible of three things:
@@ -47,7 +50,7 @@ class MetricReporter(Component):
     lower_is_better: bool = False
 
     class Config(ConfigBase):
-        output_path: str = "/tmp/test_out.txt"
+        output_path: str = DEFAULT_OUTPUT_PATH
         pep_format: bool = False
 
     def __init__(self, channels, pep_format=False) -> None:
