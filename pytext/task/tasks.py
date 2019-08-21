@@ -3,17 +3,13 @@
 from typing import Dict, List, Optional, Union
 
 from pytext.common.constants import DatasetFieldName, Stage
-from pytext.config import (
-    doc_classification as DocClassification,
-    query_document_pairwise_ranking as QueryDocumentPairwiseRanking,
-)
+from pytext.config import doc_classification as DocClassification
 from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
 from pytext.config.pytext_config import PlaceHolder
 from pytext.data import (
     CompositionalDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
-    QueryDocumentPairwiseRankingDataHandler,
     SeqModelDataHandler,
 )
 from pytext.data.bert_tensorizer import BERTTensorizer
@@ -50,7 +46,6 @@ from pytext.models.qna.bert_squad_qa import BertSquadQAModel
 from pytext.models.qna.dr_qa import DrQAModel
 from pytext.models.query_document_pairwise_ranking_model import (
     QueryDocPairwiseRankingModel,
-    QueryDocumentPairwiseRankingModel_Deprecated,
 )
 from pytext.models.representations.sparse_transformer_sentence_encoder import (  # noqa f401
     SparseTransformerSentenceEncoder,
@@ -70,24 +65,6 @@ from pytext.trainers import (
     HogwildTrainer_Deprecated,
     Trainer,
 )
-
-
-class QueryDocumentPairwiseRankingTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        features: QueryDocumentPairwiseRanking.ModelInputConfig = (
-            QueryDocumentPairwiseRanking.ModelInputConfig()
-        )
-        model: QueryDocumentPairwiseRankingModel_Deprecated.Config = (
-            QueryDocumentPairwiseRankingModel_Deprecated.Config()
-        )
-        data_handler: QueryDocumentPairwiseRankingDataHandler.Config = (
-            QueryDocumentPairwiseRankingDataHandler.Config()
-        )
-        trainer: Trainer.Config = Trainer.Config()
-        labels: Optional[DocLabelConfig] = None
-        metric_reporter: PairwiseRankingMetricReporter.Config = (
-            PairwiseRankingMetricReporter.Config()
-        )
 
 
 class QueryDocumentPairwiseRankingTask(NewTask):

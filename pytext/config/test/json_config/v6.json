@@ -103,33 +103,6 @@
       "version": 6
     }
   },
-
-  {
-    "original": {
-      "task": {
-        "QueryDocumentPairwiseRankingTask": {
-          "data_handler": {
-            "train_path": "tests/data/train_data_tiny.tsv",
-            "eval_path": "tests/data/test_data_tiny.tsv",
-            "test_path": "tests/data/test_data_tiny.tsv"
-          }
-        }
-      },
-      "version": 5
-    },
-    "adapted": {
-      "task": {
-        "QueryDocumentPairwiseRankingTask_Deprecated": {
-          "data_handler": {
-            "train_path": "tests/data/train_data_tiny.tsv",
-            "eval_path": "tests/data/test_data_tiny.tsv",
-            "test_path": "tests/data/test_data_tiny.tsv"
-          }
-        }
-      },
-      "version": 6
-    }
-  },
   {
     "original": {
       "task": {
