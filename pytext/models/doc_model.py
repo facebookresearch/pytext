@@ -245,13 +245,8 @@ class ByteTokensDocumentModel(DocModel):
             tensorizer=tensorizers["tokens"],
             init_from_saved_state=config.init_from_saved_state,
         )
-        byte_embedding = CharacterEmbedding(
-            ByteTokenTensorizer.NUM_BYTES,
-            config.byte_embedding.embed_dim,
-            config.byte_embedding.cnn.kernel_num,
-            config.byte_embedding.cnn.kernel_sizes,
-            config.byte_embedding.highway_layers,
-            config.byte_embedding.projection_dim,
+        byte_embedding = create_module(
+            config.byte_embedding, vocab_size=ByteTokenTensorizer.NUM_BYTES
         )
         return EmbeddingList([word_embedding, byte_embedding], concat=True)
 
