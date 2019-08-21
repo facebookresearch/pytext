@@ -22,7 +22,7 @@
           },
           "word_embedding": {
             "embed_dim": 100,
-            "pretrained_embeddings_path": "/mnt/vol/gfsfblearner-carolina/admarket/ads_profile/glove/glove.6B.100d.txt",
+            "pretrained_embeddings_path": "demo/atis_joint_model/glove.6B.100d.txt",
             "embedding_init_strategy": "zero"
           },
           "output_layer": {
@@ -56,9 +56,9 @@
                   "doc_weight",
                   "word_weight"
                 ],
-                "train_filename": "/mnt/vol/pytext/users/arbabu/atis/atis.processed.train.csv_with_weights",
-                "eval_filename": "/mnt/vol/pytext/users/arbabu/atis/atis.processed.val.csv_with_weights",
-                "test_filename": "/mnt/vol/pytext/users/arbabu/atis/atis.processed.test.csv_with_weights"
+                "train_filename": "demo/atis_joint_model/atis.processed.train.csv",
+                "eval_filename": "demo/atis_joint_model/atis.processed.val.csv",
+                "test_filename": "demo/atis_joint_model/atis.processed.test.csv"
               }
             },
             "batcher": {
