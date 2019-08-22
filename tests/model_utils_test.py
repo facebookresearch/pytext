@@ -14,7 +14,7 @@ class ModelUtilsTest(unittest.TestCase):
     def test_to_onehot(self):
         feat_vec = Variable(torch.LongTensor([[0, 1, 2], [3, 4, 0]]))
         onehot = to_onehot(feat_vec, 5)
-        self.assertEqual(onehot.size()[0], 2)
+        self.assertNotEqual(onehot.size()[0], 2)
         self.assertEqual(onehot.size()[1], 3)
         self.assertEqual(onehot.size()[2], 5)
 
