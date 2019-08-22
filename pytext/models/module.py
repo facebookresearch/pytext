@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import zipfile
 from typing import Dict
 
 import torch
+import torch.jit
 import torch.nn as nn
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.config.module_config import ModuleConfig
@@ -39,20 +41,25 @@ def create_module(
     # SHARED_MODULE_REGISTRY.  The rest will reuse the saved module and thus
     # share parameters.
     shared_module_key = getattr(module_config, "shared_module_key", None)
-    try:
-        module = SHARED_MODULE_REGISTRY[(shared_module_key, type(module_config))]
-    except KeyError:
-        module = create_fn(module_config, *args, **kwargs)
+    typed_shared_module_key = (shared_module_key, type(module_config))
+    load_path = getattr(module_config, "load_path", None)
+    is_torchscript_load_path = load_path and zipfile.is_zipfile(load_path)
+    shared_module = SHARED_MODULE_REGISTRY.get(typed_shared_module_key)
+    if not shared_module:
+        if is_torchscript_load_path:
+            module = torch.jit.load(load_path)
+        else:
+            module = create_fn(module_config, *args, **kwargs)
 
     name = type(module).__name__
-    if getattr(module_config, "load_path", None):
-        print(f"Loading state of module {name} from {module_config.load_path} ...")
-        module.load_state_dict(torch.load(module_config.load_path, map_location="cpu"))
+    if load_path and not is_torchscript_load_path:
+        print(f"Loading state of module {name} from {load_path} ...")
+        module.load_state_dict(torch.load(load_path, map_location="cpu"))
     if getattr(module_config, "freeze", False):
         print(f"Freezing the parameters of module {name} ...")
         module.freeze()
     if shared_module_key:
-        SHARED_MODULE_REGISTRY[(shared_module_key, type(module_config))] = module
+        SHARED_MODULE_REGISTRY[typed_shared_module_key] = module
     return module
 
 
