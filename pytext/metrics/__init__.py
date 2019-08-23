@@ -17,8 +17,7 @@ from typing import (
 )
 
 import numpy as np
-from pytext.utils import cuda
-from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
+from pytext.utils.ascii_table import ascii_table
 
 
 RECALL_AT_PRECISION_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
@@ -452,32 +451,14 @@ class RegressionMetrics(NamedTuple):
         print(f"Mean squared error: {self.mse:.3f}")
 
 
-class RealtimeMetrics(NamedTuple):
+class RealtimeMetric(NamedTuple):
     """
-    Realtime Metrics for tracking training progress and performance.
-
-    Attributes:
-        samples (int): number of samples
-        tps (float): tokens per second
-        ups (float): updates per second
+    Realtime metric for tracking training progress and performance.
     """
 
-    samples: int
-    tps: float
-    ups: float
-
-    def _format(self, key, value):
-        if key in ("tps", "ups"):
-            return round(value)
-        return value
-
-    def __str__(self):
-        metrics = {"num_gpus": cuda.DISTRIBUTED_WORLD_SIZE}
-        for key, value in self._asdict().items():
-            if not value:
-                continue
-            metrics[key] = self._format(key, value)
-        return str(metrics)
+    n_batches: int
+    n_updates: int
+    tps: Optional[float] = None
 
 
 def safe_division(n: Union[int, float], d: int) -> float:
