@@ -1,5 +1,5 @@
 click
-fairseq
+fairseq @ git+https://github.com/pytorch/fairseq.git@fix_for_packaging_numpy_header_for_cython
 future
 hypothesis<4.0
 joblib
