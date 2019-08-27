@@ -173,6 +173,7 @@ class Trainer(TrainerBase):
 
         with timing.time("loss.backward"):
             precision.backward(state.optimizer, loss)
+            state.batch_counter += 1
 
     @timing.time("optimizer")
     def optimizer_step(self, state):
@@ -489,6 +490,7 @@ class Trainer(TrainerBase):
         metrics = None
         if report_metric:
             with timing.time("report metrics"):
+                metric_reporter.report_realtime_metric(state)
                 metrics = metric_reporter.report_metric(
                     model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
                 )
@@ -600,7 +602,7 @@ class TaskTrainer(Trainer):
                         **metric_reporter.batch_context(raw_batch, batch),
                     )
                 if batch_id % self.config.num_samples_to_log_progress == 0:
-                    metric_reporter.report_realtime_metric(state.stage)
+                    metric_reporter.report_realtime_metric(state)
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
         self.sparsification_step(state)

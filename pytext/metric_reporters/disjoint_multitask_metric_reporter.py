@@ -105,6 +105,6 @@ class DisjointMultitaskMetricReporter(MetricReporter):
 
         return metric
 
-    def report_realtime_metric(self, stage):
+    def report_realtime_metric(self, train_state):
         for _, reporter in self.reporters.items():
-            reporter.report_realtime_metric(stage)
+            reporter.report_realtime_metric(train_state)

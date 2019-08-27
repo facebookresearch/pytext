@@ -4,6 +4,7 @@ import json
 import math
 import operator
 import time
+from statistics import mean
 
 import torch
 import torch.nn.functional as F
@@ -12,6 +13,7 @@ from pytext.config.module_config import PerplexityType
 from pytext.data import CommonMetadata
 from pytext.metrics.language_model_metrics import (
     LanguageModelMetric,
+    LanguageModelRealtimeMetric,
     compute_language_model_metric,
 )
 
@@ -186,24 +188,14 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         # realtime stats
         total_tokens = float(targets[2].sum())
         self.realtime_meters["tps"].update(total_tokens)
-
-        if not n_batches % 1000:
-            tps = self.realtime_meters["tps"].avg
-            print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
-                f"batch ppl: {math.exp(loss.item()):.2f}, "
-                f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
-                f"number of batches: {n_batches}, "
-                f"accumulated tokens/s: {tps:.0f}",
-                flush=True,
-            )
+        self.last_batch_tps = total_tokens / (now - self.time)
+        self.last_loss = loss.item()
         self.time = now
 
-    def report_realtime_metric(self, stage):
-        if stage != Stage.TRAIN:
-            return
+    def report_realtime_metric(self, train_state):
+        super().report_realtime_metric(train_state)
 
-        if self.pep_format:
+        if train_state.stage == Stage.TRAIN and self.pep_format:
             # used for pep regression benchmark
             tps = self.realtime_meters["tps"].avg
             print(
@@ -219,6 +211,26 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
                 flush=True,
             )
 
+    def get_realtime_metric(self, train_state):
+        return LanguageModelRealtimeMetric(
+            n_batches=train_state.batch_counter,
+            n_updates=train_state.step_counter,
+            tps=self.realtime_meters["tps"].avg,
+            ppl=math.exp(self.calculate_loss()),
+            batch_ppl=math.exp(self.last_loss),
+            batch_tps=self.last_batch_tps,
+        )
+
+    def aggregate_realtime_metric(self, realtime_metric_list):
+        return LanguageModelRealtimeMetric(
+            n_updates=realtime_metric_list[0].n_updates,
+            n_batches=sum(m.n_batches for m in realtime_metric_list),
+            batch_ppl=round(mean(m.batch_ppl for m in realtime_metric_list), 2),
+            ppl=round(mean(m.ppl for m in realtime_metric_list), 2),
+            batch_tps=round(sum(m.batch_tps for m in realtime_metric_list), 2),
+            tps=round(sum(m.tps for m in realtime_metric_list), 2),
+        )
+
     def calculate_loss(self) -> float:
         return self.aggregate_loss / float(self.total_num_tokens)
 
@@ -226,4 +238,9 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         super()._reset()
         self.aggregate_loss = 0.0
         self.total_num_tokens = 0
+
+    def _reset_realtime(self):
+        super()._reset_realtime()
+        self.last_batch_tps = 0
+        self.last_loss = 0
         self.time = time.time()
