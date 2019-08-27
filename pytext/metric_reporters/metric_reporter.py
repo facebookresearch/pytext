@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import numpy as np
 import torch
+from fairseq import distributed_utils
 from pytext.common.constants import (
     BatchContext,
     DatasetFieldName,
@@ -12,7 +13,7 @@ from pytext.common.constants import (
 )
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
-from pytext.metrics import RealtimeMetrics
+from pytext.metrics import RealtimeMetric
 from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
 
@@ -222,10 +223,6 @@ class MetricReporter(Component):
         metrics = self.calculate_metric()
         model_select_metric = self.get_model_select_metric(metrics)
 
-        # print_to_channels is true only on gpu 0, but we need all gpus to sync
-        # metric
-        self.report_realtime_metric(stage)
-
         if print_to_channels:
             for channel in self.channels:
                 if stage in channel.stages:
@@ -248,27 +245,50 @@ class MetricReporter(Component):
             self._reset_realtime()
         return metrics
 
-    def report_realtime_metric(self, stage):
-        if stage != Stage.TRAIN:
+    def report_realtime_metric(self, train_state):
+        if train_state.stage != Stage.TRAIN:
             return
 
-        samples_total = self.n_batches + 1
-        tps_total = self.realtime_meters["tps"].n
-        ups_total = self.realtime_meters["ups"].n
-        elapsed_time = self.realtime_meters["tps"].elapsed_time
-
+        realtime_metric = self.get_realtime_metric(train_state)
         if cuda.DISTRIBUTED_WORLD_SIZE > 1:
-            tensor = torch.cuda.IntTensor([samples_total, tps_total, ups_total])
-            torch.distributed.all_reduce(tensor)
-            [samples_total, tps_total, ups_total] = tensor.data.tolist()[:]
+            # gather realtime metric from all gpus in distributed training
+            # realtime_metric_list = [gpu0_metric, gpu1_metric, ...]
+            realtime_metric_list = distributed_utils.all_gather_list(realtime_metric)
+        else:
+            realtime_metric_list = [realtime_metric]
 
-        tps = tps_total / elapsed_time
-        ups = ups_total / elapsed_time
+        realtime_metric = self.aggregate_realtime_metric(realtime_metric_list)
 
-        if not tps or not ups:
-            return
-        metrics = RealtimeMetrics(samples=samples_total, tps=tps, ups=ups)
-        print(metrics, flush=True)
+        def format_metric(realtime_metric):
+            metric = []
+            for key, value in realtime_metric._asdict().items():
+                if not value:
+                    continue
+                if isinstance(value, float):
+                    metric.append(f"{key}: {value:.2f}")
+                else:
+                    metric.append(f"{key}: {value}")
+            return ", ".join(metric)
+
+        print(format_metric(realtime_metric), flush=True)
+
+    def get_realtime_metric(self, train_state):
+        # Override for customized realtime metric
+        return RealtimeMetric(
+            n_batches=train_state.batch_counter,
+            n_updates=train_state.step_counter,
+            tps=self.realtime_meters["tps"].avg or None,
+        )
+
+    def aggregate_realtime_metric(self, realtime_metric_list):
+        # Override for aggregating customized realtime metric
+        return RealtimeMetric(
+            n_batches=realtime_metric_list[0].n_updates,
+            n_updates=sum(
+                log.n_batches for log in realtime_metric_list if log.n_batches
+            ),
+            tps=round(sum(log.tps for log in realtime_metric_list if log.tps), 2),
+        )
 
     def get_model_select_metric(self, metrics):
         """

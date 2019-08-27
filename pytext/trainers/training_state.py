@@ -22,6 +22,7 @@ class TrainingState:
     epoch: int = 0
     # step counter: each optimizer.step() increments step_counter
     step_counter: int = 0
+    batch_counter: int = 0
     rank: int = 0
     stage: Stage = Stage.TRAIN
     epochs_since_last_improvement: int = 0
