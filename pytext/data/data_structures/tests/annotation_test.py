@@ -60,10 +60,12 @@ class TestAnnotation(TestCase):
             # Extra brackets
             "[device/close_app please [] exit ]",
             # Missing closing bracket
-            ("[IN:CREATE_CALL call [SL:CONTACT mom ]"),
+            "[IN:CREATE_CALL call [SL:CONTACT mom ]",
             # Missing intent label
             "[IN:CREATE_REMINDER Remind me to [ [IN:CREATE_CALL [SL:METHOD_CALL call ] "
             "[SL:CONTACT John ] ] ] [SL:DATE_TIME at 6 pm tonight ] ]",
+            # No brackets
+            "hang on, it's marty's party, not mary's party",
         )
         for annotation_str in TEST_EXAMPLES:
             try:

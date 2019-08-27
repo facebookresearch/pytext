@@ -126,6 +126,8 @@ class Annotation:
                         node_stack.append(node)
                         expecting_label = False
                     else:
+                        if isinstance(parent, Root):
+                            raise ValueError("Root cannot have a Token as child.")
                         node = Token(word, token_count)
                         token_count += 1
                     parent.children.append(node)
