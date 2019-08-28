@@ -6,7 +6,7 @@ from typing import Dict, Optional, Type, Union
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
-from pytext.data.data import Data
+from pytext.data.data import Data, pad_and_tensorize_batches
 from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
@@ -205,6 +205,27 @@ class _NewTask(TaskBase):
             self.model,
             self.metric_reporter,
         )
+
+    def predict(self, examples):
+        """
+        Generates predictions using PyTorch model. The difference with `test()` is
+        that this should be used when the the examples do not have any true
+        label/target.
+
+        Args:
+            examples: json format examples, input names should match the names specified
+                in this task's features config
+        """
+        results = []
+        for row in examples:
+            self.model.eval()
+            numberized_rows = self.data.numberize_rows([row])
+            batches = self.data.batcher.batchify(numberized_rows)
+            _, inputs = next(pad_and_tensorize_batches(self.data.tensorizers, batches))
+            model_inputs = self.model.arrange_model_inputs(inputs)
+            predictions, scores = self.model.get_pred(self.model(*model_inputs))
+            results.append({"prediction": predictions, "score": scores})
+        return results
 
     def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
         # Make sure to put the model on CPU and disable CUDA before exporting to
