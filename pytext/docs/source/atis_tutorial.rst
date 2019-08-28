@@ -148,7 +148,7 @@ Lets make the model run on some sample utterances! You can input one by running
 .. code-block:: console
 
     (pytext) $ pytext --config-file demo/atis_joint_model/atis_joint_config.json \
-      predict --exported-model /tmp/atis_joint_model.c2 <<< '{"raw_text": "flights from colorado"}'
+      predict --exported-model /tmp/atis_joint_model.c2 <<< '{"text": "flights from colorado"}'
 
 The response from the model is log of probabilities for different intents and slots, with the correct intent and slot hopefully having the highest.
 
