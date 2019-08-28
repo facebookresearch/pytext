@@ -93,12 +93,8 @@ class SequenceTaggingMetricReporter(MetricReporter):
 
     @classmethod
     def from_config(cls, config, tensorizer):
-        print(
-            "WARNING - SequenceTaggingMetricReporter ignoring output_path:",
-            config.output_path,
-        )
         return SequenceTaggingMetricReporter(
-            channels=[ConsoleChannel()],
+            channels=[ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
             label_names=list(tensorizer.vocab),
             pad_idx=tensorizer.pad_idx,
         )
