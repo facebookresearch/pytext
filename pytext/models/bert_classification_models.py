@@ -80,9 +80,7 @@ class NewBertModel(BaseModel):
         labels = tensorizers["labels"].vocab
         vocab = tensorizers["tokens"].vocab
         encoder = create_module(
-            config.encoder,
-            padding_idx=vocab.get_pad_index(),
-            vocab_size=vocab.__len__(),
+            config.encoder, padding_idx=vocab.get_pad_index(), vocab_size=len(vocab)
         )
         dense_dim = tensorizers["dense"].dim if "dense" in tensorizers else 0
         decoder = create_module(

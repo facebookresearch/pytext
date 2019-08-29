@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Union
 
 import torch
+import torch.jit
 import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.config.component import Component, ComponentType
@@ -98,13 +99,19 @@ class BaseModel(nn.Module, Component):
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
         """Save each sub-module in separate files for reusing later."""
-        for module in self.module_list:
-            if module and getattr(module.config, "save_path", None):
-                path = module.config.save_path + suffix
-                if base_path:
-                    path = os.path.join(base_path, path)
+
+        def save(module):
+            save_path = getattr(module, "save_path", None)
+            if save_path:
+                path = os.path.join(base_path, module.save_path + suffix)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
-                torch.save(module.state_dict(), path)
+                if isinstance(module, torch.jit.ScriptModule):
+                    with open(path, "wb") as save_file:
+                        module.save(save_file)
+                else:
+                    torch.save(module.state_dict(), path)
+
+        self.apply(save)
 
     def prepare_for_onnx_export_(self, **kwargs):
         """Make model exportable via ONNX trace."""
@@ -299,7 +306,6 @@ class Model(BaseModel):
         self.representation = representation
         self.decoder = decoder
         self.output_layer = output_layer
-        self.module_list = [embedding, representation, decoder]
 
     @classmethod
     def create_sub_embs(
