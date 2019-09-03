@@ -41,22 +41,14 @@ class LookupTokensTest(unittest.TestCase):
         tokenizer = Tokenizer()
         vocab = Vocabulary(text.split() + [BOS, EOS])
         tokens, start_idx, end_idx = lookup_tokens(
-            text,
-            tokenizer=tokenizer,
-            vocab=vocab,
-            add_bos_token=False,
-            add_eos_token=False,
+            text, tokenizer=tokenizer, vocab=vocab, bos_token=None, eos_token=None
         )
         self.assertEqual(tokens, [0, 1, 2])
         self.assertEqual(start_idx, (0, 6, 15))
         self.assertEqual(end_idx, (5, 14, 19))
 
         tokens, start_idx, end_idx = lookup_tokens(
-            text,
-            tokenizer=tokenizer,
-            vocab=vocab,
-            add_bos_token=True,
-            add_eos_token=True,
+            text, tokenizer=tokenizer, vocab=vocab, bos_token=BOS, eos_token=EOS
         )
         self.assertEqual(tokens, [3, 0, 1, 2, 4])
         self.assertEqual(start_idx, (-1, 0, 6, 15, -1))

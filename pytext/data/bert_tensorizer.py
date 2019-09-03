@@ -76,8 +76,8 @@ class BERTTensorizer(TokenTensorizer):
             text,
             tokenizer=self.tokenizer,
             vocab=self.vocab,
-            add_bos_token=False,
-            add_eos_token=self.add_eos_token,
+            bos_token=None,
+            eos_token=EOS,
             max_seq_len=self.max_seq_len,
         )
 

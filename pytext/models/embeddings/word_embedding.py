@@ -7,7 +7,6 @@ from typing import List, Optional
 import torch
 from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
-from pytext.data.utils import UNK
 from pytext.fields import FieldMeta
 from pytext.utils.embeddings import PretrainedEmbedding
 from torch import nn
@@ -74,12 +73,12 @@ class WordEmbedding(EmbeddingBase):
                 )
                 embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
                     tensorizer.vocab.idx,
-                    UNK,
+                    tensorizer.vocab.unk_token,
                     config.embed_dim,
                     config.embedding_init_strategy,
                 )
             num_embeddings = len(tensorizer.vocab)
-            unk_token_idx = tensorizer.vocab.idx[UNK]
+            unk_token_idx = tensorizer.vocab.get_unk_index()
         else:  # This else condition should go away after metadata goes away.
             num_embeddings = metadata.vocab_size
             embeddings_weight = metadata.pretrained_embeds_weight
