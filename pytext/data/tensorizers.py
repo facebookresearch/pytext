@@ -22,9 +22,7 @@ from pytext.utils.data import Slot
 
 from .utils import (
     BOL,
-    BOS,
     EOL,
-    EOS,
     PAD,
     SpecialToken,
     VocabBuilder,
@@ -38,22 +36,26 @@ def tokenize(
     text: str = None,
     pre_tokenized: List[Token] = None,
     tokenizer: Tokenizer = None,
-    add_bos_token: bool = False,
-    add_eos_token: bool = False,
+    bos_token: Optional[str] = None,
+    eos_token: Optional[str] = None,
+    pad_token: str = PAD,
     use_eos_token_for_bos: bool = False,
     max_seq_len: int = 2 ** 30,
 ):
     tokenized = (
         pre_tokenized
-        or tokenizer.tokenize(text)[: max_seq_len - add_bos_token - add_eos_token]
+        or tokenizer.tokenize(text)[
+            : max_seq_len - (bos_token is not None) - (eos_token is not None)
+        ]
     )
-    if add_bos_token:
-        bos = EOS if use_eos_token_for_bos else BOS
-        tokenized = [Token(bos, -1, -1)] + tokenized
-    if add_eos_token:
-        tokenized.append(Token(EOS, -1, -1))
+    if bos_token:
+        if use_eos_token_for_bos:
+            bos_token = eos_token
+        tokenized = [Token(bos_token, -1, -1)] + tokenized
+    if eos_token:
+        tokenized.append(Token(eos_token, -1, -1))
     if not tokenized:
-        tokenized = [Token(PAD, -1, -1)]
+        tokenized = [Token(pad_token, -1, -1)]
 
     tokenized_texts, start_idx, end_idx = zip(
         *((t.value, t.start, t.end) for t in tokenized)
@@ -66,8 +68,9 @@ def lookup_tokens(
     pre_tokenized: List[Token] = None,
     tokenizer: Tokenizer = None,
     vocab: Vocabulary = None,
-    add_bos_token: bool = False,
-    add_eos_token: bool = False,
+    bos_token: Optional[str] = None,
+    eos_token: Optional[str] = None,
+    pad_token: str = PAD,
     use_eos_token_for_bos: bool = False,
     max_seq_len: int = 2 ** 30,
 ):
@@ -75,8 +78,9 @@ def lookup_tokens(
         text,
         pre_tokenized,
         tokenizer,
-        add_bos_token,
-        add_eos_token,
+        bos_token,
+        eos_token,
+        pad_token,
         use_eos_token_for_bos,
         max_seq_len,
     )
@@ -235,8 +239,9 @@ class TokenTensorizer(Tensorizer):
             text=text,
             pre_tokenized=pre_tokenized,
             tokenizer=self.tokenizer,
-            add_bos_token=self.add_bos_token,
-            add_eos_token=self.add_eos_token,
+            bos_token=self.vocab.bos_token if self.add_bos_token else None,
+            eos_token=self.vocab.eos_token if self.add_eos_token else None,
+            pad_token=self.vocab.pad_token,
             use_eos_token_for_bos=self.use_eos_token_for_bos,
             max_seq_len=self.max_seq_len,
         )
@@ -247,8 +252,9 @@ class TokenTensorizer(Tensorizer):
             pre_tokenized=pre_tokenized,
             tokenizer=self.tokenizer,
             vocab=self.vocab,
-            add_bos_token=self.add_bos_token,
-            add_eos_token=self.add_eos_token,
+            bos_token=self.vocab.bos_token if self.add_bos_token else None,
+            eos_token=self.vocab.eos_token if self.add_eos_token else None,
+            pad_token=self.vocab.pad_token,
             use_eos_token_for_bos=self.use_eos_token_for_bos,
             max_seq_len=self.max_seq_len,
         )

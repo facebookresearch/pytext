@@ -92,11 +92,23 @@ MASK = SpecialToken("__MASK__")
 class Vocabulary:
     """A mapping from indices to vocab elements."""
 
-    def __init__(self, vocab_list, counts=None, replacements=None, pad_token=PAD):
+    def __init__(
+        self,
+        vocab_list,
+        counts=None,
+        replacements=None,
+        unk_token=UNK,
+        pad_token=PAD,
+        bos_token=BOS,
+        eos_token=EOS,
+    ):
         self._vocab = vocab_list
         self.counts = counts
         self.idx = {word: i for i, word in enumerate(vocab_list)}
+        self.unk_token = unk_token
         self.pad_token = pad_token
+        self.bos_token = bos_token
+        self.eos_token = eos_token
         if replacements:
             self.replace_tokens(replacements)
         self.unk_token_counter = [0, 0]  # count of unk tokens, total tokens
@@ -142,12 +154,12 @@ class Vocabulary:
         """
 
         def lookup(value):
-            if UNK in self.idx:
-                unk_idx = self.idx[UNK]
+            if self.unk_token in self.idx:
+                unk_idx = self.get_unk_index()
                 v = self.idx.get(value, unk_idx)
                 return v, 1 if v == unk_idx else 0, 1
             else:
-                return self.idx.__getitem__(value), 0, 1
+                return self.idx[value], 0, 1
 
         def lookup_value(value):
             return (
@@ -167,8 +179,17 @@ class Vocabulary:
                 total += t
             return indices, unks, total
 
+    def get_unk_index(self):
+        return self.idx[self.unk_token]
+
     def get_pad_index(self):
         return self.idx[self.pad_token]
+
+    def get_bos_index(self):
+        return self.idx[self.bos_token]
+
+    def get_eos_index(self):
+        return self.idx[self.eos_token]
 
     def __getitem__(self, item):
         return self._vocab[item]
@@ -186,9 +207,6 @@ class VocabBuilder:
         self.unk_index = 0
         self.use_pad = True
         self.pad_index = 1
-        # Some tokenization libraries use special pad tokens, expose this so it
-        # can be configured
-        self.pad_token = PAD
         self.use_bos = False
         self.bos_index = 2
         self.use_eos = False
@@ -197,6 +215,13 @@ class VocabBuilder:
         self.bol_index = 4
         self.use_eol = False
         self.eol_index = 5
+
+        # Some tokenization libraries use special tokens, expose them so they
+        # can be configured
+        self.unk_token = UNK
+        self.pad_token = PAD
+        self.bos_token = BOS
+        self.eos_token = EOS
 
     def add_all(self, values) -> None:
         """Count a value or nested container of values in the vocabulary."""
@@ -231,17 +256,17 @@ class VocabBuilder:
         """Build a Vocabulary object from the values seen by the builder."""
         tokens_to_insert: List[Tuple[int, object]] = []
         if self.use_unk:
-            tokens_to_insert.append((self.unk_index, UNK))
-            del self._counter[UNK]
+            tokens_to_insert.append((self.unk_index, self.unk_token))
+            del self._counter[self.unk_token]
         if self.use_pad:
             tokens_to_insert.append((self.pad_index, self.pad_token))
             del self._counter[self.pad_token]
         if self.use_bos:
-            tokens_to_insert.append((self.bos_index, BOS))
-            del self._counter[BOS]
+            tokens_to_insert.append((self.bos_index, self.bos_token))
+            del self._counter[self.bos_token]
         if self.use_eos:
-            tokens_to_insert.append((self.eos_index, EOS))
-            del self._counter[EOS]
+            tokens_to_insert.append((self.eos_index, self.eos_token))
+            del self._counter[self.eos_token]
         if self.use_bol:
             tokens_to_insert.append((self.bol_index, BOL))
             del self._counter[BOL]
@@ -252,7 +277,14 @@ class VocabBuilder:
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
 
-        return Vocabulary(vocab_list, counts=self._counter, pad_token=self.pad_token)
+        return Vocabulary(
+            vocab_list,
+            counts=self._counter,
+            unk_token=self.unk_token,
+            pad_token=self.pad_token,
+            bos_token=self.bos_token,
+            eos_token=self.eos_token,
+        )
 
     def truncate_to_vocab_size(self, vocab_size) -> None:
         if len(self._counter) > vocab_size > 0:
