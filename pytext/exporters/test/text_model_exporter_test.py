@@ -16,6 +16,7 @@ from hypothesis import given
 from pytext.builtin_task import (
     DocClassificationTask_Deprecated,
     IntentSlotTask,
+    SeqNNTask_Deprecated,
     WordTaggingTask_Deprecated,
 )
 from pytext.common.constants import DatasetFieldName
@@ -663,8 +664,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars=st.integers(1, 7),
         test_num_seq=st.integers(1, 7),
     )
-    # TODO: migrate to SeqNNTask T48066205
-    def DISABLED_test_seq_nn_export_to_caffe2(
+    def test_seq_nn_export_to_caffe2(
         self,
         export_num_words,
         export_num_dict_feat,
@@ -676,8 +676,6 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_chars,
         test_num_seq,
     ):
-        # SeqNNTask_Deprecated is removed, set to None to fix lint
-        SeqNNTask_Deprecated = None
         config = self._get_config(SeqNNTask_Deprecated.Config, SEQ_NN_CONFIG)
         metadata = self._get_seq_metadata(num_doc_classes, 0)
         py_model = create_model(config.model, config.features, metadata)
