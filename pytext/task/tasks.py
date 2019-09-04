@@ -10,6 +10,7 @@ from pytext.data import (
     CompositionalDataHandler,
     DocClassificationDataHandler,
     JointModelDataHandler,
+    SeqModelDataHandler,
 )
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
@@ -54,7 +55,7 @@ from pytext.models.semantic_parsers.rnng.rnng_parser import (
     RNNGParser_Deprecated,
 )
 from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
-from pytext.models.seq_models.seqnn import SeqNNModel
+from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
@@ -249,6 +250,18 @@ class PairwiseClassificationTask(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
         )
+
+
+class SeqNNTask_Deprecated(Task_Deprecated):
+    class Config(Task_Deprecated.Config):
+        model: SeqNNModel_Deprecated.Config = SeqNNModel_Deprecated.Config()
+        trainer: Trainer.Config = Trainer.Config()
+        labels: DocLabelConfig = DocLabelConfig()
+        data_handler: SeqModelDataHandler.Config = SeqModelDataHandler.Config()
+        metric_reporter: ClassificationMetricReporter.Config = (
+            ClassificationMetricReporter.Config()
+        )
+        exporter: Optional[DenseFeatureExporter.Config] = None
 
 
 class SeqNNTask(NewTask):
