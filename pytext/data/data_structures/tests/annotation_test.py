@@ -66,6 +66,8 @@ class TestAnnotation(TestCase):
             "[SL:CONTACT John ] ] ] [SL:DATE_TIME at 6 pm tonight ] ]",
             # No brackets
             "hang on, it's marty's party, not mary's party",
+            # No text
+            "[IN:UNSUPPORTED_PEOPLE ]",
         )
         for annotation_str in TEST_EXAMPLES:
             try:

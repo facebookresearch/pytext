@@ -138,6 +138,12 @@ class Annotation:
                     if char == OPEN:
                         expecting_label = True
                     else:
+                        curr_node = node_stack[-1]
+                        if not curr_node.children:
+                            raise ValueError(
+                                f"Non-terminal node {curr_node.label} doesn't have "
+                                "a child."
+                            )
                         node_stack.pop()
             else:
                 if char == ESCAPE:
