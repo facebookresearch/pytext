@@ -9,4 +9,5 @@ from pytext.optimizer.optimizers import (
     Optimizer,
     learning_rates,
 )
+from pytext.optimizer.radam import RAdam
 from pytext.optimizer.swa import StochasticWeightAveraging
