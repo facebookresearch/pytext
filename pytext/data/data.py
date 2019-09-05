@@ -84,13 +84,17 @@ class Batcher(Component):
 
 class PoolingBatcher(Batcher):
     """
-    Batcher that looks at pools of data, and sorts, batches, and shuffles them, before
-    padding.
+    Batcher that loads a pool of data, sorts it, and batches it.
+
+    Shuffling is performed before pooling, by loading `num_shuffled_pools` worth
+    of data, shuffling, and then splitting that up into pools.
     """
 
     class Config(Batcher.Config):
-        #: Number of batches in a pool, to load at one time.
+        #: Size of a pool expressed in number of batches
         pool_num_batches: int = 10000
+        #: How many pool-sized chunks to load at a time for shuffling
+        num_shuffled_pools: int = 1
 
     @classmethod
     def from_config(cls, config: Config):
@@ -99,6 +103,7 @@ class PoolingBatcher(Batcher):
             config.eval_batch_size,
             config.test_batch_size,
             config.pool_num_batches,
+            config.num_shuffled_pools,
         )
 
     def __init__(
@@ -107,34 +112,42 @@ class PoolingBatcher(Batcher):
         eval_batch_size=Config.eval_batch_size,
         test_batch_size=Config.test_batch_size,
         pool_num_batches=Config.pool_num_batches,
+        num_shuffled_pools=Config.num_shuffled_pools,
     ):
         super().__init__(train_batch_size, eval_batch_size, test_batch_size)
-        self.pool_num_batches = pool_num_batches or 1
+        assert pool_num_batches >= 1 and num_shuffled_pools >= 1
+        self.pool_num_batches = pool_num_batches
+        self.num_shuffled_pools = num_shuffled_pools
 
     def batchify(
         self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
     ):
         """
-        From an iterable of dicts, yield dicts of lists, by
+        From an iterable of dicts, yield dicts of lists:
 
-        1. Load pool of batch_size * pool_num_batches examples.
-        2. Sort rows, if necessary.
-        3. Form batches with batch_size examples each.
-        4. Shuffle batches and yield all batches.
+        1. Load `num_shuffled_pools` pools of data, and shuffle them.
+        2. Load a pool (`batch_size * pool_num_batches` examples).
+        3. Sort rows, if necessary.
+        4. Shuffle the order in which the batches are returned, if necessary.
         """
         batch_size = self._batch_sizes[stage]
         pool_size = batch_size * self.pool_num_batches
+        super_pool_size = pool_size * self.num_shuffled_pools
 
-        for pool in self._group_iter(iterable, pool_size, sort_key):
-            batch_indices = list(range(math.ceil(len(pool) / batch_size)))
-            if sort_key:
-                random.shuffle(batch_indices)
-            else:
-                random.shuffle(pool)
-            for batch_index in batch_indices:
-                batch = pool[batch_size * batch_index : batch_size * (batch_index + 1)]
-                raw_batch, numberized_batch = zip(*batch)
-                yield BatchData(raw_batch, zip_dicts(numberized_batch))
+        for super_pool in self._group_iter(iterable, super_pool_size, None):
+            # No point in shuffling if we're loading a single pool which is then sorted.
+            if self.num_shuffled_pools > 1 or sort_key is None:
+                random.shuffle(super_pool)
+            for pool in self._group_iter(super_pool, pool_size, sort_key):
+                batch_indices = list(range(math.ceil(len(pool) / batch_size)))
+                if sort_key:
+                    random.shuffle(batch_indices)
+                for batch_index in batch_indices:
+                    batch = pool[
+                        batch_size * batch_index : batch_size * (batch_index + 1)
+                    ]
+                    raw_batch, numberized_batch = zip(*batch)
+                    yield BatchData(raw_batch, zip_dicts(numberized_batch))
 
 
 def pad_and_tensorize_batches(tensorizers, batches):
