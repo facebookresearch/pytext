@@ -118,7 +118,7 @@ class ClassificationScores(jit.ScriptModule):
             example_scores = example_scores.squeeze(dim=0)
             example_response = jit.annotate(Dict[str, float], {})
             for i in range(len(self.classes)):
-                example_response[self.classes[i]] = example_scores[i].item()
+                example_response[self.classes[i]] = float(example_scores[i].item())
             results.append(example_response)
         return results
 
