@@ -175,7 +175,10 @@ def config_from_json(cls, json_obj, ignore_fields=()):
         value = None
         is_optional = _is_optional(f_cls)
 
-        if field not in json_obj:
+        if (
+            field not in json_obj
+            or getattr(f_cls, "__name__", None) == "BaseModel.Config"
+        ):
             if field in cls._field_defaults:
                 # if using default value, no conversion is needed
                 value = cls._field_defaults.get(field)
