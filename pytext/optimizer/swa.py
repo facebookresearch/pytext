@@ -7,13 +7,15 @@ from typing import Union
 
 import torch
 from pytext.config.component import create_optimizer
-from pytext.optimizer.optimizers import SGD, Adam, Optimizer
+from pytext.optimizer.optimizers import SGD, Adagrad, Adam, AdamW, Optimizer
 from torch.optim import Optimizer as PT_Optimizer
 
 
 class StochasticWeightAveraging(Optimizer, PT_Optimizer):
     class Config(Optimizer.Config):
-        optimizer: Union[SGD.Config, Adam.Config] = SGD.Config()
+        optimizer: Union[
+            SGD.Config, Adam.Config, AdamW.Config, Adagrad.Config
+        ] = SGD.Config()
         start: int = 10
         frequency: int = 5
         swa_learning_rate: float = 0.05

@@ -57,6 +57,27 @@ class SGD(torch.optim.SGD, Optimizer):
         return cls(model.parameters(), config.lr, config.momentum)
 
 
+class AdamW(torch.optim.AdamW, Optimizer):
+    """Adds PyText support for
+       Decoupled Weight Decay Regularization for Adam as done in the paper:
+       https://arxiv.org/abs/1711.05101
+       for more information read the fast.ai blog on this optimization
+       method here: https://www.fast.ai/2018/07/02/adam-weight-decay/
+    """
+
+    class Config(Optimizer.Config):
+        lr: float = 0.001
+        weight_decay: float = 1e-2
+        eps: float = 1e-8
+
+    def __init__(self, parameters, lr, weight_decay, eps):
+        super().__init__(parameters, lr=lr, weight_decay=weight_decay, eps=eps)
+
+    @classmethod
+    def from_config(cls, config: Config, model: torch.nn.Module):
+        return cls(model.parameters(), config.lr, config.weight_decay, config.eps)
+
+
 def learning_rates(optimizer):
     for param_group in optimizer.param_groups:
         yield param_group["lr"]
