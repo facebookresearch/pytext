@@ -117,9 +117,18 @@ def prepare_task(
 
     training_state = None
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task, _config, training_state = load(config.load_snapshot_path)
-        if training_state and training_state.model is None and task.model:
-            training_state.model = task.model
+        loaded_task, _config, training_state = load(config.load_snapshot_path)
+        if training_state and training_state.model is None and loaded_task.model:
+            training_state.model = loaded_task.model
+        # Create task and initialize the model with the model loaded from the snapshot.
+        task = create_task(
+            config.task,
+            metadata=metadata,
+            rank=rank,
+            world_size=world_size,
+            tensorizers=loaded_task.data.tensorizers,
+            model_state=loaded_task.model.state_dict(),
+        )
     else:
         task = create_task(
             config.task, metadata=metadata, rank=rank, world_size=world_size
