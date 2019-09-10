@@ -123,7 +123,7 @@ class Vocabulary(torch.jit.ScriptModule):
 
     @torch.jit.script_method
     def lookup_word(self, idx: int, possible_unk_token: Optional[str] = None):
-        if idx < len(self.vocab):
+        if idx < len(self.vocab) and idx != self.unk_idx:
             return self.vocab[idx]
         else:
             return (
