@@ -46,7 +46,7 @@ def load_v1(state):
     task = create_task(
         config.task, metadata=state[DATA_STATE], model_state=state[MODEL_STATE]
     )
-    return task, config
+    return task, config, None
 
 
 @register_snapshot_loader(2)
@@ -64,7 +64,7 @@ def load_v2(state):
         model_state=model_state,
         tensorizers=tensorizers,
     )
-    return task, config
+    return task, config, None
 
 
 @register_snapshot_loader(3)
@@ -86,6 +86,33 @@ def load_v3(state):
         model_state=model_state,
         tensorizers=tensorizers,
     )
+
+    # TODO: T53664090 @stevenliu save & load state_dict() of optimizer and scheduler
+    if training_state:
+        if training_state.model is None and task.model:
+            training_state.model = task.model
+        if training_state.optimizer and task.trainer.optimizer:
+            """
+            https://pytorch.org/tutorials/beginner/saving_loading_models.html
+            Unpickling optimizer object from checkpoint could result in a
+            different parameter copy from model parameters. Especially in
+            mixied precision training, which optimizer param_groups maintains
+            master weights copy instead of the model parameters.
+
+            The suggested loading mechanism is
+
+            model = TheModelClass(*args, **kwargs)
+            optimizer = TheOptimizerClass(model.parameters(), *args, **kwargs)
+
+            checkpoint = torch.load(PATH)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            """
+
+            optimizer = task.trainer.optimizer
+            optimizer.load_state_dict(training_state.optimizer.state_dict())
+            training_state.optimizer = optimizer
+
     return task, config, training_state
 
 
