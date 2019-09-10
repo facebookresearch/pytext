@@ -127,7 +127,7 @@ class MaskedLanguageModel(BaseModel):
 
     def forward(self, *inputs) -> List[torch.Tensor]:
         encoded_layers, _ = self.encoder(inputs)
-        return self.decoder(encoded_layers[-1])
+        return self.decoder(encoded_layers[-1][self.mask.bool(), :])
 
     def _select_tokens_to_mask(
         self, tokens: torch.Tensor, mask_prob: float
@@ -165,4 +165,4 @@ class MaskedLanguageModel(BaseModel):
         return tokens * (1 - mask) + replacement * mask
 
     def _mask_output(self, tokens, mask):
-        return tokens * mask + self.vocab.get_pad_index() * (1 - mask)
+        return torch.masked_select(tokens, mask.bool())
