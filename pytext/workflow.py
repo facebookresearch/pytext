@@ -118,8 +118,8 @@ def prepare_task(
     training_state = None
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
         task, _config, training_state = load(config.load_snapshot_path)
-        if training_state and training_state.model is None and task.model:
-            training_state.model = task.model
+        if training_state:
+            training_state.rank = rank
     else:
         task = create_task(
             config.task, metadata=metadata, rank=rank, world_size=world_size
