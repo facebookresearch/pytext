@@ -106,8 +106,8 @@ def prepare_task(
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Tuple[Task_Deprecated, TrainingState]:
-
-    print("\nParameters: {}\n".format(config))
+    if rank == 0:
+        print("\nParameters: {}\n".format(config), flush=True)
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     _set_fp16(config.use_fp16)
     _set_distributed(rank, world_size, dist_init_url, device_id)
