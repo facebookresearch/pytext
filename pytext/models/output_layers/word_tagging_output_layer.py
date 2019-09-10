@@ -9,7 +9,6 @@ from caffe2.python import core
 from pytext.common import Padding
 from pytext.config.component import create_loss
 from pytext.config.serialize import MissingValueError
-from pytext.data.joint_data_handler import SEQ_LENS  # TODO move to constant
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import (
@@ -50,22 +49,10 @@ class WordTaggingOutputLayer(OutputLayerBase):
         ignore_pad_in_loss: Optional[bool] = True
 
     @classmethod
-    def from_config(
-        cls,
-        config: Config,
-        metadata: Optional[FieldMeta] = None,
-        labels: Optional[Vocabulary] = None,
-    ):
-        if labels is not None:
-            vocab = list(labels)
-            vocab_dict = labels.idx
-            pad_token_idx = labels.idx.get(
-                labels.pad_token, Padding.DEFAULT_LABEL_PAD_IDX
-            )
-        else:
-            vocab = metadata.vocab.itos
-            pad_token_idx = metadata.pad_token_idx
-            vocab_dict = metadata.vocab.stoi
+    def from_config(cls, config: Config, labels: Vocabulary):
+        vocab = list(labels)
+        vocab_dict = labels.idx
+        pad_token_idx = labels.idx.get(labels.pad_token, Padding.DEFAULT_LABEL_PAD_IDX)
         label_weights = (
             get_label_weights(vocab_dict, config.label_weights)
             if config.label_weights
@@ -95,8 +82,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
                 :class:`~pytext.models.word_model.WordTaggingModel`.
             targets (torch.Tensor): True document label/target.
             context (Dict[str, Any]): Context is a dictionary of items
-                that's passed as additional metadata by the
-                :class:`~pytext.data.JointModelDataHandler`. Defaults to None.
+                that's passed as additional metadata. Defaults to None.
             reduce (bool): Whether to reduce loss over the batch. Defaults to True.
 
         Returns:
@@ -166,23 +152,13 @@ class CRFOutputLayer(OutputLayerBase):
     __EXPANSIBLE__ = True
 
     @classmethod
-    def from_config(
-        cls,
-        config: OutputLayerBase.Config,
-        metadata: Optional[FieldMeta] = None,
-        labels: Optional[Vocabulary] = None,
-    ):
-        if labels is not None:
-            vocab = list(labels)
-            vocab_size = len(labels)
-        else:
-            vocab = metadata.vocab.itos
-            vocab_size = metadata.vocab_size
-        return cls(vocab_size, vocab)
+    def from_config(cls, config: OutputLayerBase.Config, labels: Vocabulary):
+        vocab_size = len(labels)
+        return cls(vocab_size, labels)
 
-    def __init__(self, num_tags, *args) -> None:
-        super().__init__(*args)
-        self.crf = CRF(num_tags)
+    def __init__(self, num_tags, labels: Vocabulary, *args) -> None:
+        super().__init__(list(labels), *args)
+        self.crf = CRF(num_tags, labels.get_pad_index(Padding.DEFAULT_LABEL_PAD_IDX))
 
     def get_loss(
         self,
@@ -198,8 +174,7 @@ class CRFOutputLayer(OutputLayerBase):
                 :class:`~pytext.models.WordTaggingModel`.
             targets (torch.Tensor): True document label/target.
             context (Dict[str, Any]): Context is a dictionary of items
-                that's passed as additional metadata by the
-                :class:`~pytext.data.JointModelDataHandler`. Defaults to None.
+                that's passed as additional metadata. Defaults to None.
             reduce (bool): Whether to reduce loss over the batch. Defaults to True.
 
         Returns:
@@ -230,8 +205,7 @@ class CRFOutputLayer(OutputLayerBase):
                 :class:`~pytext.models.WordTaggingModel`.
             target (torch.Tensor): Not applicable. Defaults to None.
             context (Optional[Dict[str, Any]]): Context is a dictionary of items
-                that's passed as additional metadata by the
-                :class:`~pytext.data.JointModelDataHandler`. Defaults to None.
+                that's passed as additional metadata. Defaults to None.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
@@ -239,7 +213,7 @@ class CRFOutputLayer(OutputLayerBase):
         """
         if not context:
             raise MissingValueError("Expected non-None context but got None.")
-        pred = self.crf.decode(logit, context[SEQ_LENS])
+        pred = self.crf.decode(logit, context["seq_lens"])
         logit_rearranged = _rearrange_output(logit, pred)
         scores = F.log_softmax(logit_rearranged, 2)
         return pred, scores

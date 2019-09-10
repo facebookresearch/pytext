@@ -46,10 +46,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
 
     @classmethod
     def from_config(
-        cls,
-        config: Config,
-        doc_labels: Optional[Vocabulary] = None,
-        word_labels: Optional[Vocabulary] = None,
+        cls, config: Config, doc_labels: Vocabulary, word_labels: Vocabulary
     ):
         return cls(
             create_module(config.doc_output, labels=doc_labels),
@@ -80,8 +77,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
             targets (Tuple[torch.Tensor, torch.Tensor]): Tuple of target Tensors
                 containing true document label/target and true word labels/targets.
             context (Dict[str, Any]): Context is a dictionary of items
-                that's passed as additional metadata by the
-                :class:`~pytext.data.JointModelDataHandler`. Defaults to None.
+                that's passed as additional metadata. Defaults to None.
 
         Returns:
             torch.Tensor: Averaged intent and slot loss.
@@ -128,8 +124,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
                 containing logits for intent classification and slot filling.
             targets (Optional[torch.Tensor]): Not applicable. Defaults to None.
             context (Optional[Dict[str, Any]]): Context is a dictionary of items
-                that's passed as additional metadata by the
-                :class:`~pytext.data.JointModelDataHandler`. Defaults to None.
+                that's passed as additional metadata. Defaults to None.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.

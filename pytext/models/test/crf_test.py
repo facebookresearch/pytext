@@ -6,6 +6,7 @@ import hypothesis.strategies as st
 import numpy as np
 import torch
 from hypothesis import given
+from pytext.common.constants import Padding
 from pytext.models.crf import CRF
 from scipy.special import logsumexp
 
@@ -19,7 +20,7 @@ class CRFTest(hu.HypothesisTestCase):
     )
     def test_crf_forward(self, num_tags, seq_lens):
 
-        crf_model = CRF(num_tags)
+        crf_model = CRF(num_tags, ignore_index=Padding.WORD_LABEL_PAD_IDX)
 
         total_manual_loss = 0
 

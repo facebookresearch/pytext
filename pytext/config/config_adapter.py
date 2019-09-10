@@ -315,7 +315,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "ShallowTaggingTask")
     deprecate(json_config, "SpanClassificationTask")
     deprecate(json_config, "TreeParserTask")
-    deprecate(json_config, "WordTaggingTask")
 
     return json_config
 
@@ -385,7 +384,6 @@ def new_tasks_rename(json_config):
         "QueryDocumentPairwiseRankingModel",
         "QueryDocumentPairwiseRankingModel_Deprecated",
     )
-    rename(json_config, "WordTaggingModel", "WordTaggingModel_Deprecated")
     # New
     rename(json_config, "NewDocModel", "DocModel")
     rename(json_config, "NewDocRegressionModel", "DocRegressionModel")
@@ -461,19 +459,15 @@ def v12_to_v13(json_config):
 
     [(task_name, task)] = json_config["task"].items()
     if task_name not in (
-        "EnsembleTask_Deprecated",
         "EnsembleTask",
         "DocClassificationTask_Deprecated",
         "DocumentClassificationTask",
         "PairwiseClassificationTask",
-        "SeqNNTask_Deprecated",
         "SeqNNTask",
         "ShallowClassificationTask_Deprecated",
         "KDDocClassificationTask_Deprecated",
-        "ElmoDocClassificationTask_Deprecated",
         "PairwiseAttentionClassificationTask_Deprecated",
         "ElmoFineTunePairwiseClassificationTask_Deprecated",
-        "ElmoKDClassificationTask_Deprecated",
         "XLMDocumentClassification",
         "XLMPairClassification",
         "NewBertClassificationTask",
@@ -542,13 +536,7 @@ def rename_tensorizer_vocab_params(json_config):
 
 @register_adapter(from_version=14)
 def flatten_deprecated_ensemble_config(json_config):
-    [(task_name, task)] = json_config["task"].items()
-    if task_name != "EnsembleTask_Deprecated":
-        return json_config
-
-    # Joint ensemble model is deleted, so we no longer have a union type, hence
-    # we flatten the config.
-    task["model"] = task["model"]["BaggingDocEnsemble_Deprecated"]
+    # Deprecated ensemble is removed from codebase, so this is now just a no-op
     return json_config
 
 

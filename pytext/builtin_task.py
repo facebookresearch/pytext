@@ -27,10 +27,8 @@ from pytext.task.tasks import (
     SemanticParsingTask,
     SemanticParsingTask_Deprecated,
     SeqNNTask,
-    SeqNNTask_Deprecated,
     SquadQATask,
     WordTaggingTask,
-    WordTaggingTask_Deprecated,
 )
 
 
@@ -84,9 +82,7 @@ def register_builtin_tasks():
             SemanticParsingTask,
             SemanticParsingTask_Deprecated,
             SeqNNTask,
-            SeqNNTask_Deprecated,
             SquadQATask,
             WordTaggingTask,
-            WordTaggingTask_Deprecated,
         )
     )

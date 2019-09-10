@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
@@ -24,18 +24,22 @@ def create_schema(
     schema: Dict[str, Type] = {}
 
     def add_to_schema(name, type):
-        if name in schema and type != schema[name]:
-            raise TypeError(
-                f"Unexpected different types for column {name}: "
-                f"{type} != {schema[name]}"
-            )
-        schema[name] = type
+        if name in schema:
+            if type != Any and type != schema[name]:
+                raise TypeError(
+                    f"Unexpected different types for column {name}: "
+                    f"{type} != {schema[name]}"
+                )
+        else:
+            schema[name] = type
 
     for tensorizer in tensorizers.values():
         for name, type in tensorizer.column_schema:
             add_to_schema(name, type)
 
     for name, type in (extra_schema or {}).items():
+        # Schema type check is not needed, ClassificationMetricReporter
+        # automatically casts data to string.
         add_to_schema(name, type)
 
     return schema
@@ -124,7 +128,7 @@ class _NewTask(TaskBase):
         extra_columns = list(
             getattr(config.metric_reporter, "text_column_names", ())
         ) + list(getattr(config.metric_reporter, "additional_column_names", ()))
-        extra_schema = {column: str for column in extra_columns}
+        extra_schema = {column: Any for column in extra_columns}
 
         init_tensorizers = not tensorizers
         if init_tensorizers:
