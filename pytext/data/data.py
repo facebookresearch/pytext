@@ -342,7 +342,7 @@ class Data(Component):
             if numberized_rows is None:
                 numberized_rows = self.cache(self.numberize_rows(indexed_rows), stage)
             else:
-                print(f"Get numberized rows from cache in stage: {stage}", flush=True)
+                print(f"Get numberized rows from cache in stage: {stage}")
         else:
             numberized_rows = self.numberize_rows(indexed_rows)
         sort_key = self.sort_key
