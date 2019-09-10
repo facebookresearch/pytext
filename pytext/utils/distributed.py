@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import pytext.utils.cuda as cuda
 import torch
 import torch.distributed as dist_c10d
 
@@ -46,6 +47,17 @@ def suppress_output():
             builtin_print(*args, **kwargs)
 
     __builtin__.print = print
+
+
+def force_print(*args, **kwargs):
+    if cuda.CUDA_ENABLED and cuda.DISTRIBUTED_WORLD_SIZE > 1:
+        try:
+            device_info = f" [device:{torch.cuda.current_device()}]"
+            print(*args, device_info, **kwargs, force=True)
+        except TypeError:
+            pass
+    else:
+        print(*args, **kwargs)
 
 
 def get_shard_range(dataset_size: int, rank: int, world_size: int):

@@ -11,6 +11,7 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
+from pytext.utils import distributed
 
 
 DATA_STATE = "data_state"
@@ -90,6 +91,7 @@ def load_v3(state):
 
 def load_checkpoint(f: io.IOBase):
     state = torch.load(f, map_location=lambda storage, loc: storage)
+    distributed.force_print(f"Loaded checkpoint...", flush=True)
     if SERIALIZE_VERSION_KEY not in state:
         return load_v1(state)
     else:
@@ -197,7 +199,7 @@ class CheckpointManager:
         """
         if not (load_path and os.path.isfile(load_path)):
             raise ValueError(f"Invalid snapshot path{load_path}")
-        print(f"Loading model from {load_path}...")
+        distributed.force_print(f"Loading model from {load_path}...", flush=True)
         with open(load_path, "rb") as checkpoint_f:
             return load_checkpoint(checkpoint_f)
 
