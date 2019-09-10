@@ -21,7 +21,7 @@ from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.pass_through import PassThroughRepresentation
 
 
-class WordTaggingModel_Deprecated(Model):
+class WordTaggingModel(Model):
     """
     Word tagging model. It can be used for any task that requires predicting the
     tag for a word/token. For example, the following tasks can be modeled as word
@@ -32,31 +32,6 @@ class WordTaggingModel_Deprecated(Model):
 
     It can be instantiated just like any other :class:`~Model`.
     """
-
-    class Config(Model.Config):
-        representation: Union[
-            BiLSTMSlotAttention.Config,
-            BSeqCNNRepresentation.Config,
-            PassThroughRepresentation.Config,
-            DeepCNNRepresentation.Config,
-        ] = BiLSTMSlotAttention.Config()
-        output_layer: Union[
-            WordTaggingOutputLayer.Config, CRFOutputLayer.Config
-        ] = WordTaggingOutputLayer.Config()
-        decoder: MLPDecoder.Config = MLPDecoder.Config()
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # CRF module has parameters and it's forward function is not called in
-        # model's forward function because of ONNX compatibility issue. This will
-        # not work with DDP, thus setting find_unused_parameters to False to work
-        # around, can be removed once DDP support params not used in model forward
-        # function
-        if isinstance(self.output_layer, CRFOutputLayer):
-            self.find_unused_parameters = False
-
-
-class WordTaggingModel(Model):
 
     __EXPANSIBLE__ = True
 
@@ -72,6 +47,7 @@ class WordTaggingModel(Model):
             BiLSTMSlotAttention.Config,  # TODO: make default when sorting solved
             BSeqCNNRepresentation.Config,
             PassThroughRepresentation.Config,
+            DeepCNNRepresentation.Config,
         ] = PassThroughRepresentation.Config()
         output_layer: Union[
             WordTaggingOutputLayer.Config, CRFOutputLayer.Config
@@ -126,6 +102,9 @@ class WordTaggingModel(Model):
     def vocab_to_export(self, tensorizers):
         return {"tokens_vals": list(tensorizers["tokens"].vocab)}
 
+    def arrange_model_context(self, tensor_dict):
+        return {"seq_lens": tensor_dict["tokens"][1]}
+
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         exporter = ModelExporter(
             ModelExporter.Config(),
@@ -177,3 +156,6 @@ class WordTaggingLiteModel(WordTaggingModel):
     def arrange_model_inputs(self, tensor_dict):
         token_bytes, tokens_lens, _ = tensor_dict["token_bytes"]
         return (token_bytes, tokens_lens)
+
+    def arrange_model_context(self, tensor_dict):
+        return {"seq_lens": tensor_dict["token_bytes"][1]}

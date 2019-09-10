@@ -17,7 +17,7 @@ class CRF(nn.Module):
         num_tags: The number of tags
     """
 
-    def __init__(self, num_tags: int) -> None:
+    def __init__(self, num_tags: int, ignore_index: int) -> None:
         if num_tags <= 0:
             raise ValueError(f"Invalid number of tags: {num_tags}")
         super().__init__()
@@ -28,8 +28,7 @@ class CRF(nn.Module):
         self.start_tag = num_tags
         self.end_tag = num_tags + 1
         self.reset_parameters()
-        # TODO Remove hardcoding to read from metadata
-        self.ignore_index = Padding.WORD_LABEL_PAD_IDX
+        self.ignore_index = ignore_index
 
     def reset_parameters(self) -> None:
         nn.init.uniform_(self.transitions, -0.1, 0.1)
@@ -43,11 +42,7 @@ class CRF(nn.Module):
         self.transitions.data = transitions
 
     def forward(
-        self,
-        emissions: torch.FloatTensor,
-        tags: torch.LongTensor,
-        ignore_index=Padding.WORD_LABEL_PAD_IDX,
-        reduce: bool = True,
+        self, emissions: torch.FloatTensor, tags: torch.LongTensor, reduce: bool = True
     ) -> Variable:
         """
         Compute log-likelihood of input.
@@ -59,7 +54,6 @@ class CRF(nn.Module):
             tags: Actual tags for each token in the input. Expected shape is
                 batch_size * seq_len
         """
-        self.ignore_index = ignore_index
         mask = self._make_mask_from_targets(tags)
 
         numerator = self._compute_joint_llh(emissions, tags, mask)
@@ -192,7 +186,11 @@ class CRF(nn.Module):
         _, max_indices_from_scores = torch.max(best_scores, 2)
 
         valid_index_tensor = GetTensor(torch.tensor(0)).long()
-        padding_tensor = GetTensor(torch.tensor(self.ignore_index)).long()
+        if self.ignore_index == Padding.DEFAULT_LABEL_PAD_IDX:
+            # No label for padding, so use 0 index.
+            padding_tensor = valid_index_tensor
+        else:
+            padding_tensor = GetTensor(torch.tensor(self.ignore_index)).long()
 
         # Label for the last position is always based on the index with max score
         # For illegal timesteps, we set as ignore_index

@@ -13,7 +13,6 @@ from pytext.config.field_config import (
     WordFeatConfig,
     WordLabelConfig,
 )
-from pytext.data import JointModelDataHandler
 from pytext.data.featurizer import SimpleFeaturizer
 from pytext.utils.embeddings import PretrainedEmbedding
 from pytext.utils.test import import_tests_module
@@ -141,53 +140,3 @@ class PretrainedEmbedsTest(unittest.TestCase):
             pretrained_embeds[2].numpy(),
             [-0.39153, -0.19803, 0.2573, -0.18617, 0.25551],
         )  # embedding vector for 'the-es_XX'
-
-    def test_intializing_embeds_from_config(self):
-        feature_config = FeatureConfig(
-            word_feat=WordFeatConfig(
-                embedding_init_strategy=EmbedInitStrategy.RANDOM,
-                embed_dim=5,
-                pretrained_embeddings_path=tests_module.TEST_BASE_DIR,
-            )
-        )
-        data_handler = JointModelDataHandler.from_config(
-            JointModelDataHandler.Config(),
-            feature_config,
-            [DocLabelConfig(), WordLabelConfig()],
-            featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), feature_config
-            ),
-        )
-
-        data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
-
-        pretrained_embeds = data_handler.metadata.features[
-            DatasetFieldName.TEXT_FIELD
-        ].pretrained_embeds_weight
-        # test random initialization (values should be non-0)
-        np.testing.assert_array_less(
-            [0, 0, 0, 0, 0], np.absolute(pretrained_embeds[11].numpy())
-        )
-
-        feature_config = FeatureConfig(
-            word_feat=WordFeatConfig(
-                embedding_init_strategy=EmbedInitStrategy.ZERO,
-                embed_dim=5,
-                pretrained_embeddings_path=tests_module.TEST_BASE_DIR,
-            )
-        )
-        data_handler = JointModelDataHandler.from_config(
-            JointModelDataHandler.Config(),
-            feature_config,
-            [DocLabelConfig(), WordLabelConfig()],
-            featurizer=SimpleFeaturizer.from_config(
-                SimpleFeaturizer.Config(), feature_config
-            ),
-        )
-        data_handler.init_metadata_from_path(TRAIN_FILE, EVAL_FILE, TEST_FILE)
-
-        pretrained_embeds = data_handler.metadata.features[
-            DatasetFieldName.TEXT_FIELD
-        ].pretrained_embeds_weight
-        # test zero initialization (values should all be 0)
-        np.testing.assert_array_equal([0, 0, 0, 0, 0], pretrained_embeds[11].numpy())

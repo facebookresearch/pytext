@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
-from pytext.common.constants import DatasetFieldName, Stage
+from pytext.common.constants import Stage
 from pytext.config import doc_classification as DocClassification
-from pytext.config.field_config import DocLabelConfig, TargetConfigBase, WordLabelConfig
-from pytext.config.pytext_config import PlaceHolder
-from pytext.data import (
-    CompositionalDataHandler,
-    DocClassificationDataHandler,
-    JointModelDataHandler,
-    SeqModelDataHandler,
-)
+from pytext.config.field_config import WordLabelConfig
+from pytext.data import CompositionalDataHandler, DocClassificationDataHandler
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
 from pytext.data.packed_lm_data import PackedLMData
@@ -22,13 +16,11 @@ from pytext.metric_reporters import (
     CompositionalMetricReporter,
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
-    MultiLabelClassificationMetricReporter,
     PairwiseRankingMetricReporter,
     PureLossMetricReporter,
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
     SquadMetricReporter,
-    WordTaggingMetricReporter,
 )
 from pytext.metric_reporters.language_model_metric_reporter import (
     MaskedLMMetricReporter,
@@ -54,9 +46,11 @@ from pytext.models.semantic_parsers.rnng.rnng_parser import (
     RNNGParser,
     RNNGParser_Deprecated,
 )
-from pytext.models.seq_models.contextual_intent_slot import ContextualIntentSlotModel
+from pytext.models.seq_models.contextual_intent_slot import (  # noqa
+    ContextualIntentSlotModel,
+)
 from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
-from pytext.models.word_model import WordTaggingModel, WordTaggingModel_Deprecated
+from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
 from pytext.trainers import (
@@ -179,38 +173,12 @@ class BertPairRegressionTask(DocumentRegressionTask):
         model: NewBertRegressionModel.Config = NewBertRegressionModel.Config()
 
 
-class WordTaggingTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        model: WordTaggingModel_Deprecated.Config = WordTaggingModel_Deprecated.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        labels: WordLabelConfig = WordLabelConfig()
-        data_handler: JointModelDataHandler.Config = JointModelDataHandler.Config()
-        metric_reporter: WordTaggingMetricReporter.Config = (
-            WordTaggingMetricReporter.Config()
-        )
-
-    @classmethod
-    def format_prediction(cls, predictions, scores, context, target_meta):
-        target_names = target_meta.vocab.itos
-        for prediction, score, token_ranges in zip(
-            predictions, scores, context[DatasetFieldName.TOKEN_RANGE]
-        ):
-            yield [
-                {
-                    "prediction": target_names[word_pred.data],
-                    "score": {n: s for n, s in zip(target_names, word_score.tolist())},
-                    "token_range": token_range,
-                }
-                for word_pred, word_score, token_range in zip(
-                    prediction, score, token_ranges
-                )
-            ]
-
-
 class WordTaggingTask(NewTask):
     class Config(NewTask.Config):
         model: WordTaggingModel.Config = WordTaggingModel.Config()
-        metric_reporter: SequenceTaggingMetricReporter.Config = SequenceTaggingMetricReporter.Config()
+        metric_reporter: SequenceTaggingMetricReporter.Config = (
+            SequenceTaggingMetricReporter.Config()
+        )
 
     @classmethod
     def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -252,18 +220,6 @@ class PairwiseClassificationTask(NewTask):
         )
 
 
-class SeqNNTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        model: SeqNNModel_Deprecated.Config = SeqNNModel_Deprecated.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        labels: DocLabelConfig = DocLabelConfig()
-        data_handler: SeqModelDataHandler.Config = SeqModelDataHandler.Config()
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
-        exporter: Optional[DenseFeatureExporter.Config] = None
-
-
 class SeqNNTask(NewTask):
     class Config(NewTask.Config):
         model: SeqNNModel.Config = SeqNNModel.Config()
@@ -282,16 +238,22 @@ class SemanticParsingTask_Deprecated(Task_Deprecated):
     class Config(Task_Deprecated.Config):
         model: RNNGParser_Deprecated.Config = RNNGParser_Deprecated.Config()
         trainer: HogwildTrainer_Deprecated.Config = HogwildTrainer_Deprecated.Config()
-        data_handler: CompositionalDataHandler.Config = CompositionalDataHandler.Config()
+        data_handler: CompositionalDataHandler.Config = (
+            CompositionalDataHandler.Config()
+        )
         labels: Optional[WordLabelConfig] = None
-        metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
+        metric_reporter: CompositionalMetricReporter.Config = (
+            CompositionalMetricReporter.Config()
+        )
 
 
 class SemanticParsingTask(NewTask):
     class Config(NewTask.Config):
         model: RNNGParser.Config = RNNGParser.Config()
         trainer: HogwildTrainer.Config = HogwildTrainer.Config()
-        metric_reporter: CompositionalMetricReporter.Config = CompositionalMetricReporter.Config()
+        metric_reporter: CompositionalMetricReporter.Config = (
+            CompositionalMetricReporter.Config()
+        )
 
     def __init__(
         self,
@@ -306,6 +268,7 @@ class SemanticParsingTask(NewTask):
             and (data.batcher.eval_batch_size == 1)
             and (data.batcher.test_batch_size == 1)
         ), "RNNGParser only supports batch size = 1"
-        assert (
-            trainer.config.report_train_metrics is False
-        ), "Disable report_train_metrics because trees are not necessarily valid during training"
+        assert trainer.config.report_train_metrics is False, (
+            "Disable report_train_metrics because trees are not necessarily "
+            "valid during training"
+        )

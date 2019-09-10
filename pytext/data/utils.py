@@ -179,11 +179,17 @@ class Vocabulary:
                 total += t
             return indices, unks, total
 
-    def get_unk_index(self):
-        return self.idx[self.unk_token]
+    def get_unk_index(self, value=None):
+        if value is None:
+            return self.idx[self.unk_token]
+        else:
+            return self.idx.get(self.unk_token, value)
 
-    def get_pad_index(self):
-        return self.idx[self.pad_token]
+    def get_pad_index(self, value=None):
+        if value is None:
+            return self.idx[self.pad_token]
+        else:
+            return self.idx.get(self.pad_token, value)
 
     def get_bos_index(self):
         return self.idx[self.bos_token]
