@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List, Tuple, Union
 
 import torch
 import torch.nn as nn
+from tensorboardX import SummaryWriter
 from torch.nn import ModuleList
 
 from .embedding_base import EmbeddingBase
@@ -113,3 +114,7 @@ class EmbeddingList(EmbeddingBase, ModuleList):
                     param_groups[i][param_name] = param
 
         return param_groups
+
+    def visualize(self, summary_writer: SummaryWriter):
+        for child in self:
+            child.visualize(summary_writer)

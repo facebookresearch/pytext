@@ -282,3 +282,12 @@ class TensorBoardChannel(Channel):
                 file=sys.stderr,
             )
             traceback.print_exc(file=sys.stderr)
+
+        try:
+            model.embedding.visualize(self.summary_writer)
+        except Exception:
+            print(
+                "WARNING: Unable to visualize embedding space in TensorBoard.",
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
