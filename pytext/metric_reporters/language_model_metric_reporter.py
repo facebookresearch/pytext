@@ -190,7 +190,7 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         if not n_batches % 1000:
             tps = self.realtime_meters["tps"].avg
             print(
-                f"Tokens/s: {total_tokens / (now - self.time):.0f}, "
+                f"Tokens/s: {total_tokens / ((now - self.time) + 0.000001):.0f}, "
                 f"batch ppl: {math.exp(loss.item()):.2f}, "
                 f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
                 f"number of batches: {n_batches}, "
