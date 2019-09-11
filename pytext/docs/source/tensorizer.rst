@@ -146,7 +146,7 @@ We can test our tensorizer with the following code that initializes the vocab, t
 
     # test again, this time also make the tensors
     numberized_rows = (tensorizer.numberize(r) for r in rows)
-    words_tensors, seq_len_tensors = tensorizer.tensorize(numberized_rows))
+    words_tensors, seq_len_tensors = tensorizer.tensorize(numberized_rows)
     # Notice the padding (1) of the 2nd tensor to match the dimension
     assert words_tensors.equal(torch.tensor([[2, 3, 4, 5], [6, 7, 8, 1]]))
     assert seq_len_tensors.equal(torch.tensor([4, 3]))
