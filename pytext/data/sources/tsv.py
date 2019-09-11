@@ -4,10 +4,7 @@
 import csv
 import sys
 import threading
-from itertools import chain
 from typing import Dict, List, Optional, Type
-
-from pytext.config.serialize import _get_class_type
 
 from .data_source import (
     RootDataSource,
@@ -19,11 +16,19 @@ from .session import SessionDataSource
 
 
 class TSV:
-    def __init__(self, file, field_names=None, delimiter="\t", quoted=False):
+    def __init__(
+        self,
+        file,
+        field_names=None,
+        delimiter="\t",
+        quoted=False,
+        drop_incomplete_rows=False,
+    ):
         self.file = file
         self.field_names = field_names
         self.delimiter = delimiter
         self.quoted = quoted
+        self.drop_incomplete_rows = drop_incomplete_rows
         self._access_lock = threading.Lock()
         csv.field_size_limit(sys.maxsize)
 
@@ -39,7 +44,13 @@ class TSV:
                 delimiter=self.delimiter,
                 quoting=csv.QUOTE_MINIMAL if self.quoted else csv.QUOTE_NONE,
             )
-            yield from reader
+            if self.drop_incomplete_rows:
+                for row in reader:
+                    if any(map(lambda v: v is None, row.values())):  # drop!
+                        continue
+                    yield row
+            else:
+                yield from reader
         finally:
             self._access_lock.release()
 
@@ -63,6 +74,10 @@ class TSVDataSource(RootDataSource):
         #: Rows with unclosed quotes will be merged with \n inside.
         #: Change to True for quoted csv.
         quoted: bool = False
+        # Flag to turn on dropping rows with columns less than the expected
+        # number of columns. This prevents passing None/null as column values
+        # down to the tensorizer.
+        drop_incomplete_rows: bool = False
 
     @classmethod
     def from_config(cls, config: Config, schema: Dict[str, Type], **kwargs):
@@ -102,17 +117,37 @@ class TSVDataSource(RootDataSource):
         field_names=None,
         delimiter=Config.delimiter,
         quoted=Config.quoted,
+        drop_incomplete_rows=Config.drop_incomplete_rows,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self._init_tsv(field_names, delimiter, train_file, test_file, eval_file, quoted)
+        self._init_tsv(
+            field_names,
+            delimiter,
+            train_file,
+            test_file,
+            eval_file,
+            quoted,
+            drop_incomplete_rows,
+        )
 
     def _init_tsv(
-        self, field_names, delimiter, train_file, test_file, eval_file, quoted
+        self,
+        field_names,
+        delimiter,
+        train_file,
+        test_file,
+        eval_file,
+        quoted,
+        drop_incomplete_rows,
     ):
         def make_tsv(file):
             return TSV(
-                file, field_names=field_names, delimiter=delimiter, quoted=quoted
+                file,
+                field_names=field_names,
+                delimiter=delimiter,
+                quoted=quoted,
+                drop_incomplete_rows=drop_incomplete_rows,
             )
 
         self._train_tsv = make_tsv(train_file) if train_file else []
@@ -210,6 +245,7 @@ class BlockShardedTSV:
         quoted=False,
         block_id=0,
         num_blocks=1,
+        drop_incomplete_rows=False,
     ):
         self.file = file
         self.field_names = field_names
@@ -217,6 +253,7 @@ class BlockShardedTSV:
         self.quoted = quoted
         self.block_id = block_id
         self.num_blocks = num_blocks
+        self.drop_incomplete_rows = drop_incomplete_rows
         csv.field_size_limit(sys.maxsize)
 
     def __iter__(self):
@@ -237,10 +274,13 @@ class BlockShardedTSV:
             quoting=csv.QUOTE_MINIMAL if self.quoted else csv.QUOTE_NONE,
         )
         # iterate until we're at the end of segment
-        for line in reader:
+        for row in reader:
             if self.file.tell() > self.end:
                 break
-            yield line
+            if self.drop_incomplete_rows:
+                if any(map(lambda v: v is None, row.values())):  # drop!
+                    continue
+            yield row
 
 
 class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
@@ -253,7 +293,14 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
         super(TSVDataSource, self).__init__(schema=self.schema)
 
     def _init_tsv(
-        self, field_names, delimiter, train_file, test_file, eval_file, quoted
+        self,
+        field_names,
+        delimiter,
+        train_file,
+        test_file,
+        eval_file,
+        quoted,
+        drop_incomplete_rows,
     ):
         def make_tsv(file, rank=0, world_size=1):
             return BlockShardedTSV(
@@ -263,6 +310,7 @@ class BlockShardedTSVDataSource(TSVDataSource, ShardedDataSource):
                 block_id=rank,
                 num_blocks=world_size,
                 quoted=quoted,
+                drop_incomplete_rows=drop_incomplete_rows,
             )
 
         self._train_tsv = (
