@@ -68,8 +68,15 @@ def load_v2(state):
 
 
 @register_snapshot_loader(3)
-def load_v3(state):
-    config = pytext_config_from_json(state[CONFIG_JSON])
+def load_v3(state, overwrite_config=None):
+    saved_config = pytext_config_from_json(state[CONFIG_JSON])
+    if overwrite_config:
+        config = overwrite_config
+        distributed.force_print(f"Use config from current task", flush=True)
+    else:
+        config = saved_config
+        distributed.force_print(f"Use config saved in snapshot", flush=True)
+
     model_state = state[MODEL_STATE]
     training_state = state[TRAINING_STATE]
     if training_state and training_state.tensorizers:
@@ -116,13 +123,13 @@ def load_v3(state):
     return task, config, training_state
 
 
-def load_checkpoint(f: io.IOBase):
+def load_checkpoint(f: io.IOBase, overwrite_config=None):
     state = torch.load(f, map_location=lambda storage, loc: storage)
     distributed.force_print(f"Loaded checkpoint...", flush=True)
     if SERIALIZE_VERSION_KEY not in state:
         return load_v1(state)
     else:
-        return LOADER_VERSION_MAP[state[SERIALIZE_VERSION_KEY]](state)
+        return LOADER_VERSION_MAP[state[SERIALIZE_VERSION_KEY]](state, overwrite_config)
 
 
 def save_checkpoint(
@@ -217,7 +224,7 @@ class CheckpointManager:
                 self._post_training_snapshot_path = saved_path
         return save_path
 
-    def load(self, load_path: str):
+    def load(self, load_path: str, overwrite_config=None):
         """
         Loads a checkpoint from disk.
         Args:
@@ -228,7 +235,7 @@ class CheckpointManager:
             raise ValueError(f"Invalid snapshot path{load_path}")
         distributed.force_print(f"Loading model from {load_path}...", flush=True)
         with open(load_path, "rb") as checkpoint_f:
-            return load_checkpoint(checkpoint_f)
+            return load_checkpoint(checkpoint_f, overwrite_config)
 
     def list(self) -> List[str]:
         """
@@ -287,9 +294,13 @@ def save(
     )
 
 
-def load(load_path: str):
+def load(load_path: str, overwrite_config=None):
     """
-    Load task, config and training state from a saved snapshot, will construct
-    the task using the saved config then load metadata and model state.
+    Load task, config and training state from a saved snapshot
+    by default, it will construct the task using the saved config then load
+    metadata and model state.
+
+    if overwrite_task is specified, it will construct the task using
+    overwrite_task then load metadata and model state.
     """
-    return _CHECKPOINT_MANAGER.load(load_path)
+    return _CHECKPOINT_MANAGER.load(load_path, overwrite_config)
