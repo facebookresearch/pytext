@@ -117,7 +117,12 @@ def prepare_task(
 
     training_state = None
     if config.load_snapshot_path and os.path.isfile(config.load_snapshot_path):
-        task, _config, training_state = load(config.load_snapshot_path)
+        if config.use_config_from_snapshot:
+            task, _, training_state = load(config.load_snapshot_path)
+        else:
+            task, _, training_state = load(
+                config.load_snapshot_path, overwrite_config=config
+            )
         if training_state:
             training_state.rank = rank
     else:

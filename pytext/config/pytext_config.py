@@ -95,6 +95,8 @@ class PyTextConfig(ConfigBase):
     load_snapshot_path: str = ""
     # Where to save the trained pytorch model
     save_snapshot_path: str = "/tmp/model.pt"
+    # True: use the config saved in snapshot. False: use config from current task
+    use_config_from_snapshot: bool = True
     # Exported caffe model will be stored here
     export_caffe2_path: Optional[str] = None
     # Exported onnx model will be stored here
