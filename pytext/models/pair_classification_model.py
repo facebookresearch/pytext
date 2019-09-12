@@ -76,8 +76,7 @@ class BasePairwiseModel(BaseModel):
         decoder = create_module(
             config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
         )
-        output_layer = create_module(config.output_layer, labels=labels)
-        return decoder, output_layer
+        return decoder
 
     @classmethod
     def _encode_relations(cls, encodings: List[torch.Tensor]) -> List[torch.Tensor]:
@@ -205,8 +204,9 @@ class PairwiseModel(BasePairwiseModel):
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         embeddings = cls._create_embeddings(config, tensorizers)
         representations = cls._create_representations(config, embeddings)
-        decoder, output_layer = cls._create_decoder(
-            config, representations, tensorizers
+        decoder = cls._create_decoder(config, representations, tensorizers)
+        output_layer = create_module(
+            config.output_layer, labels=tensorizers["labels"].vocab
         )
         return cls(
             embeddings, representations, decoder, output_layer, config.encode_relations
