@@ -9,7 +9,7 @@ from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.tensorizers import Tensorizer
-from pytext.data.utils import BOS, EOS, MASK, Vocabulary
+from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.masking_utils import (
     MaskingStrategy,
@@ -110,6 +110,17 @@ class MaskedLanguageModel(BaseModel):
         if self.masking_strategy == MaskingStrategy.FREQUENCY:
             self.token_sampling_weights = [x ** -0.5 for x in self.vocab.counts]
 
+            # Set probability of masking special tokens to be very low, since it doesn't
+            # make sense to use them for MLM (unless there are no other tokens in the
+            # the batch).
+            tokens_to_avoid_masking = [PAD, UNK, MASK]
+            if not self.mask_bos:
+                tokens_to_avoid_masking.extend([BOS, EOS])
+            for token in tokens_to_avoid_masking:
+                token_idx = self.vocab.idx.get(token)
+                if token_idx is not None:
+                    self.token_sampling_weights[token_idx] = 1e-20
+
     def arrange_model_inputs(self, tensor_dict):
         tokens, *other = tensor_dict["tokens"]
         self.mask, self.pad_mask, mask_mask, rand_mask = self._get_mask(tokens)
@@ -133,7 +144,15 @@ class MaskedLanguageModel(BaseModel):
         self, tokens: torch.Tensor, mask_prob: float
     ) -> torch.tensor:
         if self.masking_strategy == MaskingStrategy.RANDOM:
-            return random_masking(tokens, mask_prob)
+            mask = random_masking(tokens, mask_prob)
+            if not self.mask_bos:
+                bos_idx = (
+                    self.vocab.idx[EOS]
+                    if self.token_tensorizer.use_eos_token_for_bos
+                    else self.vocab.idx[BOS]
+                )
+                mask *= (tokens != bos_idx).long()
+            return mask
         elif self.masking_strategy == MaskingStrategy.FREQUENCY:
             return frequency_based_masking(
                 tokens, self.token_sampling_weights, mask_prob
@@ -147,15 +166,6 @@ class MaskedLanguageModel(BaseModel):
         mask = self._select_tokens_to_mask(tokens, self.mask_prob)
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
         mask *= pad_mask
-
-        if not self.mask_bos:
-            bos_idx = (
-                self.vocab.idx[EOS]
-                if self.token_tensorizer.use_eos_token_for_bos
-                else self.vocab.idx[BOS]
-            )
-            mask *= (tokens != bos_idx).long()
-
         probs = torch.rand_like(tokens, dtype=torch.float)
         rand_mask = (probs < 0.1).long() * mask
         mask_mask = (probs >= 0.2).long() * mask
