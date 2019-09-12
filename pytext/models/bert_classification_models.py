@@ -170,8 +170,9 @@ class BertPairwiseModel(BasePairwiseModel):
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         encoder1, encoder2 = cls._create_encoder(config, tensorizers)
-        decoder, output_layer = cls._create_decoder(
-            config, [encoder1, encoder2], tensorizers
+        decoder = cls._create_decoder(config, [encoder1, encoder2], tensorizers)
+        output_layer = create_module(
+            config.output_layer, labels=tensorizers["labels"].vocab
         )
         return cls(encoder1, encoder2, decoder, output_layer, config.encode_relations)
 
