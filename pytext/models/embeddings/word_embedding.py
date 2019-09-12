@@ -9,6 +9,7 @@ from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.fields import FieldMeta
 from pytext.utils.embeddings import PretrainedEmbedding
+from tensorboardX import SummaryWriter
 from torch import nn
 
 from .embedding_base import EmbeddingBase
@@ -79,10 +80,12 @@ class WordEmbedding(EmbeddingBase):
                 )
             num_embeddings = len(tensorizer.vocab)
             unk_token_idx = tensorizer.vocab.get_unk_index()
+            vocab = tensorizer.vocab
         else:  # This else condition should go away after metadata goes away.
             num_embeddings = metadata.vocab_size
             embeddings_weight = metadata.pretrained_embeds_weight
             unk_token_idx = metadata.unk_token_idx
+            vocab = metadata.vocab
 
         return cls(
             num_embeddings=num_embeddings,
@@ -92,6 +95,7 @@ class WordEmbedding(EmbeddingBase):
             unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
             padding_idx=config.padding_idx,
+            vocab=vocab,
         )
 
     def __init__(
@@ -103,6 +107,7 @@ class WordEmbedding(EmbeddingBase):
         unk_token_idx: int = 0,
         mlp_layer_dims: List[int] = (),
         padding_idx: Optional[int] = None,
+        vocab: Optional[List[str]] = None,
     ) -> None:
         output_embedding_dim = mlp_layer_dims[-1] if mlp_layer_dims else embedding_dim
         EmbeddingBase.__init__(self, embedding_dim=output_embedding_dim)
@@ -129,6 +134,7 @@ class WordEmbedding(EmbeddingBase):
                 for m, n in zip([embedding_dim] + list(mlp_layer_dims), mlp_layer_dims)
             )
         )
+        self.vocab = vocab
 
     def __getattr__(self, name):
         if name == "weight":
@@ -141,3 +147,9 @@ class WordEmbedding(EmbeddingBase):
     def freeze(self):
         for param in self.word_embedding.parameters():
             param.requires_grad = False
+
+    def visualize(self, summary_writer: SummaryWriter):
+        if self.vocab:
+            summary_writer.add_embedding(
+                self.word_embedding.weight, metadata=self.vocab
+            )

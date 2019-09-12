@@ -5,6 +5,7 @@ from typing import Dict, List
 
 import torch.nn as nn
 from pytext.models.module import Module
+from tensorboardX import SummaryWriter
 
 
 class EmbeddingBase(Module):
@@ -34,3 +35,10 @@ class EmbeddingBase(Module):
         and / or schedulers can have custom behavior per layer.
         """
         return [dict(self.named_parameters())]
+
+    def visualize(self, summary_writer: SummaryWriter):
+        """
+        Overridden in sub classes to implement Tensorboard visualization of
+        embedding space
+        """
+        pass
