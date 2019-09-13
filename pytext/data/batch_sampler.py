@@ -154,14 +154,14 @@ class RandomizedBatchSampler(BaseBatchSampler):
     """
     This sampler takes in a dictionary of iterators and returns batches according
     to the specified probabilities by `unnormalized_iterator_probs`. We cycle through
-    the iterators (restarting any that "run out") indefinitely.  Set epoch_size in
-    Data.Config.
+    the iterators (restarting any that "run out") indefinitely. Set batches_per_epoch
+    in Trainer.Config.
 
     Example:
 
         Iterator A: [A, B, C, D],  Iterator B: [a, b]
 
-        epoch_size = 3, unnormalized_iterator_probs = {"A": 0, "B": 1}
+        batches_per_epoch = 3, unnormalized_iterator_probs = {"A": 0, "B": 1}
         Epoch 1 = [a, b, a]
         Epoch 2 = [b, a, b]
 
