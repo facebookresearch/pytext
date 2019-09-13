@@ -59,11 +59,11 @@ class DisjointMultitaskData(Data):
         test_key: str = None,
         task_key: str = BatchContext.TASK_NAME,
     ) -> None:
-        test_key = test_key or list(data_dict)[0]
+        self.test_key = test_key or list(data_dict)[0]
         # currently the way training is set up is that, the data object needs
         # to specify a data_source which is used at test time. For multitask
         # this is set to the data_source associated with the test_key
-        self.data_source = data_dict[test_key].data_source
+        self.data_source = data_dict[self.test_key].data_source
         super().__init__(self.data_source, {})
         self.data_dict = data_dict
         self.samplers = samplers
@@ -74,11 +74,16 @@ class DisjointMultitaskData(Data):
         """Yield batches from each task, sampled according to a given sampler.
         This batcher additionally exposes a task name in the batch to allow the model
         to filter examples to the appropriate tasks."""
-        all_batches = {
-            name: task.batches(stage) for name, task in self.data_dict.items()
-        }
-        sampled_batches = self.samplers[stage].batchify(all_batches)
+        if data_source is not None:
+            # means being called in test workflow
+            for batch in self.data_dict[self.test_key].batches(stage, data_source):
+                yield batch
+        else:
+            all_batches = {
+                name: task.batches(stage) for name, task in self.data_dict.items()
+            }
+            sampled_batches = self.samplers[stage].batchify(all_batches)
 
-        for name, (raw_batch, batch) in sampled_batches:
-            batch[self.task_key] = name
-            yield BatchData(raw_batch, batch)
+            for name, (raw_batch, batch) in sampled_batches:
+                batch[self.task_key] = name
+                yield BatchData(raw_batch, batch)

@@ -133,7 +133,7 @@ class Tensorizer(Component):
         """Tensorizer knows how to pad and tensorize a batch of it's own output."""
         return batch
 
-    def initialize(self):
+    def initialize(self, from_scratch=True):
         """
         The initialize function is carefully designed to allow us to read through the
         training dataset only once, and not store it in memory. As such, it can't itself
@@ -264,9 +264,9 @@ class TokenTensorizer(Tensorizer):
     def _reverse_lookup(self, token_ids):
         return [self.vocab[id] for id in token_ids]
 
-    def initialize(self, vocab_builder=None):
+    def initialize(self, vocab_builder=None, from_scratch=True):
         """Build vocabulary based on training corpus."""
-        if self.vocab:
+        if self.vocab and from_scratch:
             if self.vocab_config.build_from_data or self.vocab_config.vocab_files:
                 print(
                     f"`{self.text_column}` column: vocab already provided, skipping "
@@ -279,10 +279,12 @@ class TokenTensorizer(Tensorizer):
                 f"To create token tensorizer for '{self.text_column}', either "
                 f"`build_from_data` or `vocab_files` must be set."
             )
-
-        self.vocab_builder = vocab_builder or VocabBuilder()
-        self.vocab_builder.use_bos = self.add_bos_token
-        self.vocab_builder.use_eos = self.add_eos_token
+        if not self.vocab_builder:
+            # else means not initialize from scratch, self.vocab_builder
+            # would be set already
+            self.vocab_builder = vocab_builder or VocabBuilder()
+            self.vocab_builder.use_bos = self.add_bos_token
+            self.vocab_builder.use_eos = self.add_eos_token
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
             self.vocab = self.vocab_builder.make_vocab()
@@ -561,11 +563,11 @@ class LabelTensorizer(Tensorizer):
     def column_schema(self):
         return [(self.label_column, str)]
 
-    def initialize(self):
+    def initialize(self, from_scratch=True):
         """
         Look through the dataset for all labels and create a vocab map for them.
         """
-        if self.vocab:
+        if self.vocab and from_scratch:
             return
         try:
             while True:
@@ -652,11 +654,11 @@ class UidTensorizer(Tensorizer):
             row_value = str(row_value.item())
         return row_value
 
-    def initialize(self):
+    def initialize(self, from_scratch=True):
         """
         Look through the dataset for all uids and create a vocab map for them.
         """
-        if self.vocab:
+        if self.vocab and from_scratch:
             return
         try:
             while True:
@@ -881,24 +883,27 @@ class SlotLabelTensorizer(Tensorizer):
         self.allow_unknown = allow_unknown
         self.tokenizer = tokenizer or Tokenizer()
         self.pad_idx = Padding.DEFAULT_LABEL_PAD_IDX
+        self.vocab_builder = VocabBuilder()
+        self.vocab_builder.add(NO_LABEL)
+        self.vocab_builder.use_pad = False
+        self.vocab_builder.use_unk = self.allow_unknown
+        self.vocab = None
 
     @property
     def column_schema(self):
         return [(self.text_column, str), (self.slot_column, List[Slot])]
 
-    def initialize(self):
+    def initialize(self, from_scratch=True):
         """Look through the dataset for all labels and create a vocab map for them."""
-        builder = VocabBuilder()
-        builder.add(NO_LABEL)
-        builder.use_pad = False
-        builder.use_unk = self.allow_unknown
+        if self.vocab and from_scratch:
+            return
         try:
             while True:
                 row = yield
                 slots = row[self.slot_column]
-                builder.add_all(s.label for s in slots)
+                self.vocab_builder.add_all(s.label for s in slots)
         except GeneratorExit:
-            self.vocab = builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
 
     def numberize(self, row):
         """
@@ -993,23 +998,26 @@ class GazetteerTensorizer(Tensorizer):
         self.text_column = text_column
         self.dict_column = dict_column
         self.tokenizer = tokenizer or Tokenizer()
+        self.vocab_builder = VocabBuilder()
+        self.vocab = None
 
     @property
     def column_schema(self):
         return [(self.text_column, str), (self.dict_column, Gazetteer)]
 
-    def initialize(self):
+    def initialize(self, from_scratch=True):
         """
         Look through the dataset for all dict features to create vocab.
         """
-        builder = VocabBuilder()
+        if self.vocab and from_scratch:
+            return
         try:
             while True:
                 row = yield
                 for token_dict in row[self.dict_column]:
-                    builder.add_all(token_dict["features"])
+                    self.vocab_builder.add_all(token_dict["features"])
         except GeneratorExit:
-            self.vocab = builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
 
     def numberize(self, row):
         """
@@ -1169,6 +1177,7 @@ class SeqTokenTensorizer(Tensorizer):
         self.column = column
         self.tokenizer = tokenizer or Tokenizer()
         self.vocab = vocab
+        self.vocab_builder = None
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
@@ -1181,24 +1190,25 @@ class SeqTokenTensorizer(Tensorizer):
     def column_schema(self):
         return [(self.column, List[str])]
 
-    def initialize(self, vocab_builder=None):
+    def initialize(self, vocab_builder=None, from_scratch=True):
         """Build vocabulary based on training corpus."""
-        if self.vocab:
+        if self.vocab and from_scratch:
             return
-        vocab_builder = vocab_builder or VocabBuilder()
-        vocab_builder.use_bos = self.add_bos_token
-        vocab_builder.use_eos = self.add_eos_token
-        vocab_builder.use_bol = self.add_bol_token
-        vocab_builder.use_eol = self.add_eol_token
+        if not self.vocab_builder:
+            self.vocab_builder = vocab_builder or VocabBuilder()
+            self.vocab_builder.use_bos = self.add_bos_token
+            self.vocab_builder.use_eos = self.add_eos_token
+            self.vocab_builder.use_bol = self.add_bol_token
+            self.vocab_builder.use_eol = self.add_eol_token
 
         try:
             while True:
                 row = yield
                 for raw_text in row[self.column]:
                     tokenized = self.tokenizer.tokenize(raw_text)
-                    vocab_builder.add_all([t.value for t in tokenized])
+                    self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
-            self.vocab = vocab_builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
 
     _lookup_tokens = TokenTensorizer._lookup_tokens
     _tokenize = TokenTensorizer._tokenize
@@ -1274,27 +1284,29 @@ class AnnotationNumberizer(Tensorizer):
     def __init__(self, column: str = Config.column, vocab=None):
         self.column = column
         self.vocab = vocab
+        self.vocab_builder = None
 
     @property
     def column_schema(self):
         return [(self.column, List[str])]
 
-    def initialize(self, vocab_builder=None):
+    def initialize(self, vocab_builder=None, from_scratch=True):
         """Build vocabulary based on training corpus."""
-        if self.vocab:
+        if self.vocab and from_scratch:
             return
-        vocab_builder = vocab_builder or VocabBuilder()
-        vocab_builder.use_unk = False
-        vocab_builder.use_pad = False
+        if not self.vocab_builder:
+            self.vocab_builder = vocab_builder or VocabBuilder()
+            self.vocab_builder.use_unk = False
+            self.vocab_builder.use_pad = False
 
         try:
             while True:
                 row = yield
                 annotation = Annotation(row[self.column])
                 actions = annotation.tree.to_actions()
-                vocab_builder.add_all(actions)
+                self.vocab_builder.add_all(actions)
         except GeneratorExit:
-            self.vocab = vocab_builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
             self.shift_idx = self.vocab.idx[SHIFT]
             self.reduce_idx = self.vocab.idx[REDUCE]
 
@@ -1378,11 +1390,16 @@ class FloatTensorizer(Tensorizer):
         return cuda.tensor(batch, torch.float)
 
 
-def initialize_tensorizers(tensorizers, data_source):
+def initialize_tensorizers(tensorizers, data_source, from_scratch=True):
     """A utility function to stream a data source to the initialize functions
     of a dict of tensorizers."""
     initializers = []
-    for init in [tensorizer.initialize() for tensorizer in tensorizers.values()]:
+    for init in [
+        tensorizer.initialize(from_scratch=from_scratch)
+        if hasattr(tensorizer, "vocab")
+        else tensorizer.initialize()
+        for tensorizer in tensorizers.values()
+    ]:
         try:
             init.send(None)  # kick
             initializers.append(init)

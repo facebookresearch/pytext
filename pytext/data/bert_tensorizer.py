@@ -67,6 +67,12 @@ class BERTTensorizer(TokenTensorizer):
         self.columns = columns
         # Manually initialize column_schema since we are sending None to TokenTensorizer
 
+    def initialize(self, vocab_builder=None, from_scratch=True):
+        # vocab for BERT is already set
+        return
+        # we need yield here to make this function a generator
+        yield
+
     @property
     def column_schema(self):
         return [(column, str) for column in self.columns]

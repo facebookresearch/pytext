@@ -264,6 +264,7 @@ class Data(Component):
         sort_key: Optional[str] = None,
         in_memory: Optional[bool] = False,
         init_tensorizers: Optional[bool] = True,
+        init_tensorizers_from_scratch: Optional[bool] = True,
     ):
         """This function should also initialize the passed in tensorizers with
         metadata they need for model construction."""
@@ -280,7 +281,9 @@ class Data(Component):
             else data_source.train
         )
         if init_tensorizers:
-            initialize_tensorizers(self.tensorizers, full_train_data)
+            initialize_tensorizers(
+                self.tensorizers, full_train_data, init_tensorizers_from_scratch
+            )
         else:
             print(
                 "Skipped initializing tensorizers since they are loaded from a "
