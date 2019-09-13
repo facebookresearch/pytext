@@ -96,8 +96,11 @@ class PersonalizationTrainerTest(unittest.TestCase):
 
         orig_p13n_model = copy.deepcopy(p13n_task.model)
 
-        baseline_model, baseline_metrics = baseline_task.train(baseline_config)
-        p13n_model, p13n_metrics = p13n_task.train(p13n_config)
+        baseline_training_state = baseline_task.train(baseline_config)
+        baseline_metrics = baseline_training_state.best_model_metric
+        p13n_training_state = p13n_task.train(p13n_config)
+        p13n_model = p13n_training_state.model
+        p13n_metrics = p13n_training_state.best_model_metric
 
         # Verify that the training changes the p13n_model.
         self.assertNotEqual(get_mismatched_param([orig_p13n_model, p13n_model]), "")
@@ -122,7 +125,8 @@ class PersonalizationTrainerTest(unittest.TestCase):
         orig_user_embedding_weights = copy.deepcopy(
             p13n_task.model.user_embedding.weight
         )
-        p13n_model, _ = p13n_task.train(pytext_config)
+        training_state = p13n_task.train(pytext_config)
+        p13n_model = training_state.model
         trained_user_embedding_weights = p13n_model.user_embedding.weight
 
         self.assertEqual(

@@ -3,13 +3,11 @@
 
 import io
 import os
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import torch
 from pytext.config import PyTextConfig, config_to_json, pytext_config_from_json
 from pytext.data import CommonMetadata
-from pytext.data.tensorizers import Tensorizer
-from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import distributed
 
@@ -17,12 +15,14 @@ from pytext.utils import distributed
 DATA_STATE = "data_state"
 CONFIG_JSON = "config_json"
 MODEL_STATE = "model_state"
+OPTIMIZER_STATE = "optimizer_state"
+SCHEDULER_STATE = "scheduler_state"
 SERIALIZE_VERSION_KEY = "pytext_serialization_version"
 TENSORIZERS = "tensorizers"
 TRAINING_STATE = "training_state"
 
 
-LATEST_SERIALIZE_VERSION = 3
+LATEST_SERIALIZE_VERSION = 4
 LOADER_VERSION_MAP = {}
 
 
@@ -123,6 +123,41 @@ def load_v3(state, overwrite_config=None):
     return task, config, training_state
 
 
+@register_snapshot_loader(4)
+def load_v4(state, overwrite_config=None):
+    saved_config = pytext_config_from_json(state[CONFIG_JSON])
+    if overwrite_config:
+        config = overwrite_config
+        distributed.force_print(f"Use config from current task", flush=True)
+    else:
+        config = saved_config
+        distributed.force_print(f"Use config saved in snapshot", flush=True)
+
+    model_state_dict = state[MODEL_STATE]
+    optimizer_state_dict = state[OPTIMIZER_STATE]
+    scheduler_state_dict = state[SCHEDULER_STATE]
+    training_state = state[TRAINING_STATE]
+
+    # importing in file level generates circular import/dependency failures,
+    # that need refator later to fix
+    from .task import create_task
+
+    task = create_task(
+        config.task,
+        metadata=state[DATA_STATE],
+        model_state=model_state_dict,
+        tensorizers=training_state.tensorizers,
+        optimizer_state_dict=optimizer_state_dict,
+        scheduler_state_dict=scheduler_state_dict,
+    )
+    training_state.optimizer = task.trainer.optimizer
+    # scheduler is optional in trainer
+    if task.trainer.scheduler:
+        training_state.scheduler = task.trainer.scheduler
+
+    return task, config, training_state
+
+
 def load_checkpoint(f: io.IOBase, overwrite_config=None):
     state = torch.load(f, map_location=lambda storage, loc: storage)
     distributed.force_print(f"Loaded checkpoint...", flush=True)
@@ -135,31 +170,45 @@ def load_checkpoint(f: io.IOBase, overwrite_config=None):
 def save_checkpoint(
     f: io.IOBase,
     config: PyTextConfig,
-    model: Model,
-    meta: Optional[CommonMetadata],
-    tensorizers: Dict[str, Tensorizer],
-    training_state: Optional[TrainingState] = None,
+    training_state: TrainingState,
+    meta: Optional[CommonMetadata] = None,
 ) -> str:
     # Currently torch.save() has error pickling certain models when not saving
     # by model.state_dict(), thus currently overriding the model in
     # training_state with None, and put back saving
+    # also applied to optimizer and scheduler
     # https://github.com/pytorch/pytorch/issues/15116
-    model_in_training_state = None
-    if training_state:
-        model_in_training_state, training_state.model = training_state.model, None
+    model = training_state.model
+    optimizer = training_state.optimizer
+    scheduler = training_state.scheduler
+    scheduler_dict = None
+    try:
+        # scheduler may not have state_dict()
+        scheduler_dict = scheduler.state_dict()
+    except AttributeError:
+        print(f"{scheduler.__class__()} doesn't have state_dict()")
+
+    # avoid duplicate saving by clearing model, optimizer and scheuler in
+    # training_state, they will be loaded with the state_dicts above
+    training_state.model = None
+    training_state.optimizer = None
+    training_state.scheduler = None
+
     try:
         state = {
             DATA_STATE: meta,
             CONFIG_JSON: config_to_json(PyTextConfig, config),
             MODEL_STATE: model.state_dict(),
+            OPTIMIZER_STATE: optimizer.state_dict(),
+            SCHEDULER_STATE: scheduler_dict,
             SERIALIZE_VERSION_KEY: LATEST_SERIALIZE_VERSION,
-            TENSORIZERS: tensorizers,
             TRAINING_STATE: training_state,
         }
         torch.save(state, f)
     finally:
-        if training_state:
-            training_state.model = model_in_training_state
+        training_state.model = model
+        training_state.optimizer = optimizer
+        training_state.scheduler = scheduler
 
 
 def get_latest_checkpoint_path() -> str:
@@ -194,11 +243,9 @@ class CheckpointManager:
     def save(
         self,
         config: PyTextConfig,
-        model: Model,
-        meta: Optional[CommonMetadata],
-        tensorizers: Dict[str, Tensorizer],
-        training_state: Optional[TrainingState] = None,
+        training_state: TrainingState,
         identifier: str = None,
+        meta: Optional[CommonMetadata] = None,
     ) -> str:
         """
         save a checkpoint to given path, config, model and training_state
@@ -215,9 +262,7 @@ class CheckpointManager:
             print(f"Saving pytorch model to: {save_path}")
 
         with open(save_path, "wb") as checkpoint_f:
-            saved_path = save_checkpoint(
-                checkpoint_f, config, model, meta, tensorizers, training_state
-            )
+            saved_path = save_checkpoint(checkpoint_f, config, training_state, meta)
             if identifier:
                 self._saved_paths.append(saved_path)
             else:
@@ -266,11 +311,9 @@ def set_checkpoint_manager(manager: CheckpointManager) -> None:
 
 def save(
     config: PyTextConfig,
-    model: Model,
-    meta: Optional[CommonMetadata],
-    tensorizers: Dict[str, Tensorizer],
-    training_state: Optional[TrainingState] = None,
+    training_state: TrainingState,
     identifier: Optional[str] = None,
+    meta: Optional[CommonMetadata] = None,
 ) -> str:
     """
     Save all stateful information of a training task to a specified file-like
@@ -289,9 +332,7 @@ def save(
     if specified, will be used to save checkpoint during training,
     identifier is used to identify checkpoints in the same training
     """
-    return _CHECKPOINT_MANAGER.save(
-        config, model, meta, tensorizers, training_state, identifier
-    )
+    return _CHECKPOINT_MANAGER.save(config, training_state, identifier, meta)
 
 
 def load(load_path: str, overwrite_config=None):

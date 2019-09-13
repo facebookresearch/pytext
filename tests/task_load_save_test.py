@@ -33,38 +33,6 @@ class TaskLoadSaveTest(unittest.TestCase):
         for p1, p2 in itertools.zip_longest(mod1.parameters(), mod2.parameters()):
             self.assertTrue(p1.equal(p2), message)
 
-    def test_load_saved_model(self):
-        with tempfile.NamedTemporaryFile() as snapshot_file:
-            train_data = tests_module.test_file("train_data_tiny.tsv")
-            eval_data = tests_module.test_file("test_data_tiny.tsv")
-            config = PyTextConfig(
-                task=DocumentClassificationTask.Config(
-                    data=Data.Config(
-                        source=TSVDataSource.Config(
-                            train_filename=train_data,
-                            eval_filename=eval_data,
-                            field_names=["label", "slots", "text"],
-                        )
-                    )
-                ),
-                version=LATEST_VERSION,
-                save_snapshot_path=snapshot_file.name,
-            )
-            task = create_task(config.task)
-            model = task.model
-
-            save(config, model, meta=None, tensorizers=task.data.tensorizers)
-            task2, config2, training_state_none = load(snapshot_file.name)
-
-            self.assertEqual(config, config2)
-            self.assertModulesEqual(model, task2.model)
-            self.assertIsNone(training_state_none)
-            model.eval()
-            task2.model.eval()
-
-            inputs = torch.LongTensor([[1, 2, 3]]), torch.LongTensor([3])
-            self.assertEqual(model(*inputs).tolist(), task2.model(*inputs).tolist())
-
     def assertOptimizerEqual(self, optim_1, optim_2, msg=None):
         self.assertTrue(type(optim_1) is Adam and type(optim_2) is Adam, msg)
         state_dict_1 = optim_1.state_dict()
@@ -141,7 +109,7 @@ class TaskLoadSaveTest(unittest.TestCase):
 
             id = "epoch-1"
             saved_path = save(
-                config, model, None, task.data.tensorizers, training_state, id
+                config=config, training_state=training_state, identifier=id
             )
             # TODO: fix get_latest_checkpoint_path T53664139
             # self.assertEqual(saved_path, get_latest_checkpoint_path())

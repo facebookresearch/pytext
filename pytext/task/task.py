@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pytext.common.constants import BatchContext
 from pytext.config import ConfigBase
@@ -27,7 +27,14 @@ from pytext.utils import cuda, precision
 
 
 def create_task(
-    task_config, metadata=None, model_state=None, tensorizers=None, rank=0, world_size=1
+    task_config,
+    metadata=None,
+    model_state=None,
+    tensorizers=None,
+    rank=0,
+    world_size=1,
+    optimizer_state_dict: Dict = None,
+    scheduler_state_dict: Dict = None,
 ):
     """
     Create a task by finding task class in registry and invoking the from_config
@@ -41,6 +48,8 @@ def create_task(
         tensorizers=tensorizers,
         rank=rank,
         world_size=world_size,
+        optimizer_state_dict=optimizer_state_dict,
+        scheduler_state_dict=scheduler_state_dict,
     )
 
 
@@ -69,6 +78,8 @@ class TaskBase(Component):
         tensorizers=None,
         rank=1,
         world_size=0,
+        optimizer_state_dict: Dict = None,
+        scheduler_state_dict: Dict = None,
     ):
         """
         Create the task from config, and optionally load metadata/model_state
@@ -123,7 +134,9 @@ class TaskBase(Component):
             else None
         )
         return cls(
-            trainer=create_trainer(task_config.trainer, model),
+            trainer=create_trainer(
+                task_config.trainer, model, optimizer_state_dict, scheduler_state_dict
+            ),
             data_handler=data_handler,
             model=model,
             metric_reporter=metric_reporter,

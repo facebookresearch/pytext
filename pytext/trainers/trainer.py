@@ -4,7 +4,7 @@
 import itertools
 import time
 from contextlib import ExitStack as contextlib_ExitStack
-from typing import Any, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import BatchContext, Stage
@@ -111,17 +111,29 @@ class Trainer(TrainerBase):
         scheduler: Optional[Scheduler.Config] = None
         sparsifier: Optional[Sparsifier.Config] = None
 
-    def __init__(self, config: Config, model: torch.nn.Module):
+    def __init__(
+        self,
+        config: Config,
+        model: torch.nn.Module,
+        optimizer_state_dict: Dict = None,
+        scheduler_state_dict: Dict = None,
+    ):
         optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
+
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, optimizer)
             if config.scheduler
             else Scheduler()
         )
+        if scheduler_state_dict:
+            self.scheduler.load_state_dict(scheduler_state_dict)
+
         self.sparsifier: Sparsifier = (
             create_sparsifier(config.sparsifier) if config.sparsifier else Sparsifier()
         )
         model, self.optimizer = precision.initialize(model, optimizer)
+        if optimizer_state_dict:
+            self.optimizer.load_state_dict(optimizer_state_dict)
         self.config = config
 
     @classmethod
@@ -289,12 +301,7 @@ class Trainer(TrainerBase):
         # next to add new config and implementation of frequency on checkpointing
         if train_config.save_all_checkpoints:
             return save(
-                config=train_config,
-                model=state.model,
-                meta=None,
-                tensorizers=None,
-                training_state=state,
-                identifier=str(state.epoch),
+                config=train_config, training_state=state, identifier=str(state.epoch)
             )
 
     def load_best_model(self, state: TrainingState):
@@ -317,7 +324,7 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
         rank: int = 0,
-    ) -> Tuple[torch.nn.Module, Any]:
+    ) -> Tuple[TrainingState]:
         """
         Train and eval a model, the model states will be modified.
         Args:
@@ -333,7 +340,8 @@ class Trainer(TrainerBase):
             training thread, evaluation will only be done in rank 0
 
         Returns:
-            model, best_metric: the trained model together with the best metric
+            state: it includes all the training states, e.g. model,
+            best_metrics, etc.
         """
         state = TrainingState(
             model=model,
@@ -354,7 +362,7 @@ class Trainer(TrainerBase):
         eval_data: BatchIterator,
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
-    ) -> Tuple[torch.nn.Module, Any]:
+    ) -> Tuple[TrainingState]:
         """
         Train and eval a model from a given training state will be modified.
         This function iterates epochs specified in config, and for each epoch do:
@@ -365,7 +373,7 @@ class Trainer(TrainerBase):
             4. Calculate metrics based on evaluation results and select best model
 
         Args:
-            training_state (TrainingState): contrains stateful information to be
+            state (TrainingState): contrains stateful information to be
             able to restore a training job
             train_iter (BatchIterator): batch iterator of training data
             eval_iter (BatchIterator): batch iterator of evaluation data
@@ -375,7 +383,7 @@ class Trainer(TrainerBase):
             train_config (PyTextConfig): training config
 
         Returns:
-            model, best_metric: the trained model together with the best metric
+            state: the updated state (TrainingState)
         """
         training_data = self.set_up_training(state, training_data)
         model = state.model
@@ -457,7 +465,7 @@ class Trainer(TrainerBase):
         if rank == 0 and state.best_model_state is not None:
             self.load_best_model(state)
 
-        return state.model, state.best_model_metric
+        return state
 
     @timing.report_snapshot
     def run_epoch(
