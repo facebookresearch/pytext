@@ -227,10 +227,7 @@ def test_model_from_snapshot_path(
 
     if isinstance(task, (NewTask, NewDisjointMultitask)):
         data_source = _get_data_source(
-            test_path,
-            getattr(train_config.task.data, "source", None),
-            field_names,
-            task,
+            test_path, train_config.task.data, field_names, task
         )
         test_results = task.test(data_source)
     else:
@@ -240,7 +237,16 @@ def test_model_from_snapshot_path(
     return test_results, test_out_path, metric_channels
 
 
-def _get_data_source(test_path, source_config, field_names, task):
+def _get_data_source(test_path, data_config, field_names, task):
+    if hasattr(data_config, "data_dict_config"):
+        # it's multiple data
+        if data_config.test_key:
+            source_config = data_config.data_dict_config[data_config.test_key].source
+        else:
+            source_config = next(iter(data_config.data_dict_config.values())).source
+    else:
+        source_config = getattr(data_config, "source", None)
+
     if isinstance(task, NewDisjointMultitask):
         # Cannot easily specify a single data source for multitask
         assert not test_path
@@ -277,10 +283,7 @@ def get_logits(
     if isinstance(task, NewTask):
         task.model.eval()
         data_source = _get_data_source(
-            test_path,
-            getattr(train_config.task.data, "source", None),
-            field_names,
-            task,
+            test_path, train_config.task.data, field_names, task
         )
         task.data.batcher = Batcher()
         task.data.sort_key = None

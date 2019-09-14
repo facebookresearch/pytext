@@ -96,27 +96,29 @@ class SquadTensorizer(TokenTensorizer):
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
 
-    def initialize(self, vocab_builder=None):
+    def initialize(self, vocab_builder=None, from_scratch=True):
         """Build vocabulary based on training corpus."""
-        if not self.vocab:
+        if isinstance(self.tokenizer, WordPieceTokenizer):
+            return
+        if not self.vocab_builder or from_scratch:
             self.vocab_builder = vocab_builder or VocabBuilder()
             self.vocab_builder.pad_index = 0
             self.vocab_builder.unk_index = 1
-            ques_initializer = self.ques_tensorizer.initialize(self.vocab_builder)
-            doc_initializer = self.doc_tensorizer.initialize(self.vocab_builder)
-            ques_initializer.send(None)
-            doc_initializer.send(None)
+        ques_initializer = self.ques_tensorizer.initialize(
+            self.vocab_builder, from_scratch
+        )
+        doc_initializer = self.doc_tensorizer.initialize(
+            self.vocab_builder, from_scratch
+        )
+        ques_initializer.send(None)
+        doc_initializer.send(None)
         try:
             while True:
-                if self.vocab:
-                    yield
-                else:
-                    row = yield
-                    ques_initializer.send(row)
-                    doc_initializer.send(row)
+                row = yield
+                ques_initializer.send(row)
+                doc_initializer.send(row)
         except GeneratorExit:
-            if not self.vocab:
-                self.vocab = self.vocab_builder.make_vocab()
+            self.vocab = self.vocab_builder.make_vocab()
 
     def _lookup_tokens(self, text, source_is_doc=True):
         # This is useful in SquadMetricReporter._unnumberize()
