@@ -42,3 +42,10 @@ class SeqNNModel(DocModel):
 
         inputs: ModelInput = ModelInput()
         representation: SeqRepresentation.Config = SeqRepresentation.Config()
+
+    def arrange_model_inputs(self, tensor_dict):
+        tokens, seq_lens = tensor_dict["tokens"]
+        model_inputs = (tokens, seq_lens)
+        if "dense" in tensor_dict:
+            model_inputs += (tensor_dict["dense"],)
+        return model_inputs
