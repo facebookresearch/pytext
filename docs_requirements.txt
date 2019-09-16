@@ -2,12 +2,9 @@ click
 fairseq
 future
 hypothesis<4.0
-joblib
+mock
 numpy
 onnx
-pandas
 pytorch-pretrained-bert
 requests
-scipy
 torchtext
-tensorboardX
