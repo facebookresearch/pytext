@@ -138,6 +138,10 @@ class BertPairwiseModel(BasePairwiseModel):
         encoder: TransformerSentenceEncoderBase.Config = (
             HuggingFaceBertSentenceEncoder.Config()
         )
+        # Decoder is a fully connected layer that expects concatenated encodings.
+        # So, if decoder is provided we will concatenate the encodings from the
+        # encoders and then pass to the decoder.
+        decoder: Optional[MLPDecoder.Config] = MLPDecoder.Config()
         shared_encoder: bool = True
 
     def __init__(
@@ -190,8 +194,7 @@ class BertPairwiseModel(BasePairwiseModel):
         encodings = [self.encoder1(input_tuple1)[0], self.encoder2(input_tuple2)[0]]
         if self.encode_relations:
             encodings = self._encode_relations(encodings)
-        encoding = torch.cat(encodings, -1)
-        return self.decoder(encoding)
+        return self.decoder(torch.cat(encodings, -1)) if self.decoder else encodings
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
         self._save_modules(self.encoders, base_path, suffix)

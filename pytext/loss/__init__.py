@@ -4,6 +4,7 @@
 from .loss import (
     AUCPRHingeLoss,
     BinaryCrossEntropyLoss,
+    CosineEmbeddingLoss,
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
@@ -20,6 +21,7 @@ __all__ = [
     "AUCPRHingeLoss",
     "Loss",
     "CrossEntropyLoss",
+    "CosineEmbeddingLoss",
     "BinaryCrossEntropyLoss",
     "MultiLabelSoftMarginLoss",
     "KLDivergenceBCELoss",

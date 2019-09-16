@@ -105,6 +105,17 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
             else None
         )
 
+    def load_state_dict(self, state_dict):
+        # "projection" must be be in sync with the name of member variable projection.
+        has_projection = any("projection" in key for key in state_dict.keys())
+        if self.projection is not None and not has_projection:
+            projection_temp = self.projection
+            self.projection = None
+            super().load_state_dict(state_dict)
+            self.projection = projection_temp
+        else:
+            super().load_state_dict(state_dict)
+
     def _encoder(
         self, input_tuple: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, ...]:

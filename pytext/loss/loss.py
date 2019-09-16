@@ -97,6 +97,31 @@ class BinaryCrossEntropyLoss(Loss):
         return loss.sum(1).mean() if reduce else loss.sum(1)
 
 
+class CosineEmbeddingLoss(Loss):
+    class Config(ConfigBase):
+        margin: float = 0.0
+
+    def __init__(self, config, *args, **kwargs):
+        self.margin = config.margin
+
+    def __call__(self, embeddings, targets, reduce=True):
+        if len(embeddings) != 2:
+            raise ValueError(
+                f"Number of embeddings must be 2. Found {len(embeddings)} embeddings."
+            )
+        # Replace label = 0 with -1 because we're using cosine_embedding_loss.
+        targets = targets.masked_fill(mask=(targets == 0), value=-1.0).to(
+            dtype=torch.float
+        )
+        return F.cosine_embedding_loss(
+            embeddings[0],
+            embeddings[1],
+            targets,
+            margin=self.margin,
+            reduction="mean" if reduce else "none",
+        )
+
+
 class MultiLabelSoftMarginLoss(Loss):
     def __call__(self, m_out, targets, reduce=True):
         """
