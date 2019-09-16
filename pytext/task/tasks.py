@@ -4,8 +4,7 @@ from typing import Dict, Optional, Union
 
 from pytext.common.constants import Stage
 from pytext.config import doc_classification as DocClassification
-from pytext.config.field_config import WordLabelConfig
-from pytext.data import CompositionalDataHandler, DocClassificationDataHandler
+from pytext.data import DocClassificationDataHandler
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
 from pytext.data.packed_lm_data import PackedLMData
@@ -42,10 +41,7 @@ from pytext.models.query_document_pairwise_ranking_model import (
 from pytext.models.representations.sparse_transformer_sentence_encoder import (  # noqa f401
     SparseTransformerSentenceEncoder,
 )
-from pytext.models.semantic_parsers.rnng.rnng_parser import (
-    RNNGParser,
-    RNNGParser_Deprecated,
-)
+from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
 )
@@ -53,12 +49,7 @@ from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
-from pytext.trainers import (
-    EnsembleTrainer,
-    HogwildTrainer,
-    HogwildTrainer_Deprecated,
-    Trainer,
-)
+from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
 
 
 class QueryDocumentPairwiseRankingTask(NewTask):
@@ -232,19 +223,6 @@ class SquadQATask(NewTask):
     class Config(NewTask.Config):
         model: Union[BertSquadQAModel.Config, DrQAModel.Config] = DrQAModel.Config()
         metric_reporter: SquadMetricReporter.Config = SquadMetricReporter.Config()
-
-
-class SemanticParsingTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        model: RNNGParser_Deprecated.Config = RNNGParser_Deprecated.Config()
-        trainer: HogwildTrainer_Deprecated.Config = HogwildTrainer_Deprecated.Config()
-        data_handler: CompositionalDataHandler.Config = (
-            CompositionalDataHandler.Config()
-        )
-        labels: Optional[WordLabelConfig] = None
-        metric_reporter: CompositionalMetricReporter.Config = (
-            CompositionalMetricReporter.Config()
-        )
 
 
 class SemanticParsingTask(NewTask):
