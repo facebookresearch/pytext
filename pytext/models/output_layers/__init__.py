@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from .distance_output_layer import PairwiseCosineDistanceOutputLayer
 from .doc_classification_output_layer import ClassificationOutputLayer
 from .doc_regression_output_layer import RegressionOutputLayer
 from .output_layer_base import OutputLayerBase
@@ -16,5 +17,6 @@ __all__ = [
     "RegressionOutputLayer",
     "WordTaggingOutputLayer",
     "PairwiseRankingOutputLayer",
+    "PairwiseCosineDistanceOutputLayer",
     "OutputLayerUtils",
 ]

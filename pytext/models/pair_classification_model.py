@@ -13,7 +13,11 @@ from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import EmbeddingBase, EmbeddingList, WordEmbedding
 from pytext.models.model import BaseModel
 from pytext.models.module import create_module
-from pytext.models.output_layers import ClassificationOutputLayer, OutputLayerBase
+from pytext.models.output_layers import (
+    ClassificationOutputLayer,
+    OutputLayerBase,
+    PairwiseCosineDistanceOutputLayer,
+)
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.representation_base import RepresentationBase
@@ -31,9 +35,9 @@ class BasePairwiseModel(BaseModel):
 
     class Config(BaseModel.Config):
         decoder: MLPDecoder.Config = MLPDecoder.Config()
-        output_layer: ClassificationOutputLayer.Config = (
-            ClassificationOutputLayer.Config()
-        )
+        output_layer: Union[
+            ClassificationOutputLayer.Config, PairwiseCosineDistanceOutputLayer.Config
+        ] = ClassificationOutputLayer.Config()
         encode_relations: bool = True
 
     def __init__(
@@ -46,6 +50,9 @@ class BasePairwiseModel(BaseModel):
         self.decoder = decoder
         self.output_layer = output_layer
         self.encode_relations = encode_relations
+        self.use_cosine_sim = isinstance(
+            output_layer, PairwiseCosineDistanceOutputLayer
+        )
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -62,20 +69,22 @@ class BasePairwiseModel(BaseModel):
     @classmethod
     def _create_decoder(
         cls,
-        config: Config,
+        config: MLPDecoder.Config,
         representations: nn.ModuleList,
         tensorizers: Dict[str, Tensorizer],
     ):
         labels = tensorizers["labels"].vocab
-        num_reps = len(representations)
-        rep_dim = representations[0].representation_dim
-        decoder_in_dim = num_reps * rep_dim
-        if config.encode_relations:
-            decoder_in_dim += 2 * comb(num_reps, 2, exact=True) * rep_dim
+        decoder = None
+        if config.decoder:
+            num_reps = len(representations)
+            rep_dim = representations[0].representation_dim
+            decoder_in_dim = num_reps * rep_dim
+            if config.encode_relations:
+                decoder_in_dim += 2 * comb(num_reps, 2, exact=True) * rep_dim
 
-        decoder = create_module(
-            config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
-        )
+            decoder = create_module(
+                config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
+            )
         return decoder
 
     @classmethod
