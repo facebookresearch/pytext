@@ -14,6 +14,7 @@ from pytext.metrics.language_model_metrics import (
     LanguageModelMetric,
     compute_language_model_metric,
 )
+from pytext.utils import cuda
 
 from .channel import ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -179,33 +180,73 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
     ):
         now = time.time()
 
-        num_words_in_batch = targets[1].sum().item()
-        self.aggregate_loss += loss.item() * num_words_in_batch
-        self.total_num_tokens += num_words_in_batch
+        total_masked_tokens = targets[1].sum().item()
+        self.aggregate_loss += loss.item() * total_masked_tokens
+        self.total_masked_tokens += total_masked_tokens
 
         # realtime stats
         total_tokens = float(targets[2].sum())
         self.realtime_meters["tps"].update(total_tokens)
-
-        if not n_batches % 1000:
-            tps = self.realtime_meters["tps"].avg
-            print(
-                f"Tokens/s: {total_tokens / ((now - self.time) + 0.000001):.0f}, "
-                f"batch ppl: {math.exp(loss.item()):.2f}, "
-                f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_num_tokens)):.2f}, "
-                f"number of batches: {n_batches}, "
-                f"accumulated tokens/s: {tps:.0f}",
-                flush=True,
-            )
+        self.last_batch_tps = total_tokens / (now - self.time + 1e-6)
+        self.last_batch_loss = loss.item()
+        self.total_batches = n_batches
         self.time = now
 
     def report_realtime_metric(self, stage):
         if stage != Stage.TRAIN:
             return
 
+        if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+            all_reduce_stats = cuda.tensor(
+                [
+                    self.last_batch_tps,
+                    self.last_batch_loss,
+                    self.aggregate_loss,
+                    self.total_masked_tokens,
+                    self.realtime_meters["tps"].n,
+                ],
+                dtype=torch.float32,
+            )
+            total_elapsed_time = self.realtime_meters["tps"].elapsed_time
+
+            torch.distributed.all_reduce(all_reduce_stats)
+            # average last_batch_loss by distributed_world_size
+            all_reduce_stats[1:2].div_(cuda.DISTRIBUTED_WORLD_SIZE)
+            [
+                last_batch_tps,
+                last_batch_loss,
+                aggregate_loss,
+                total_masked_tokens,
+                total_tokens,
+            ] = all_reduce_stats.tolist()
+            tps = total_tokens / total_elapsed_time
+        else:
+            last_batch_tps = self.last_batch_tps
+            last_batch_loss = self.last_batch_loss
+            aggregate_loss = self.aggregate_loss
+            total_masked_tokens = self.total_masked_tokens
+            tps = self.realtime_meters["tps"].avg
+
+        print(
+            f"Tokens/s: {last_batch_tps:.0f}, "
+            f"batch ppl: {math.exp(last_batch_loss):.2f}, "
+            f"agg ppl: {math.exp(aggregate_loss / float(total_masked_tokens)):.2f}, "
+            f"number of batches: {self.total_batches:.0f}, "
+            f"accumulated tokens/s: {tps:.0f}",
+            flush=True,
+        )
+        # TODO: remove GPU0 report
+        print(
+            f"GPU-0 tokens/s: {self.last_batch_tps:.0f}, "
+            f"batch ppl: {math.exp(self.last_batch_loss):.2f}, "
+            f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_masked_tokens)):.2f}, "
+            f"number of batches: {self.total_batches}, "
+            f"accumulated tokens/s: {self.realtime_meters['tps'].avg:.0f}",
+            flush=True,
+        )
+
         if self.pep_format:
             # used for pep regression benchmark
-            tps = self.realtime_meters["tps"].avg
             print(
                 "PyTorchObserver "
                 + json.dumps(
@@ -220,10 +261,16 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
             )
 
     def calculate_loss(self) -> float:
-        return self.aggregate_loss / float(self.total_num_tokens)
+        return self.aggregate_loss / float(self.total_masked_tokens)
 
     def _reset(self):
         super()._reset()
         self.aggregate_loss = 0.0
-        self.total_num_tokens = 0
+        self.total_masked_tokens = 0
+
+    def _reset_realtime(self):
+        super()._reset_realtime()
+        self.last_batch_tps = 0
+        self.last_batch_loss = 0
+        self.total_batches = 0
         self.time = time.time()
