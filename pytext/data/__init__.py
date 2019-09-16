@@ -8,7 +8,6 @@ from .batch_sampler import (
     RandomizedBatchSampler,
     RoundRobinBatchSampler,
 )
-from .compositional_data_handler import CompositionalDataHandler
 from .data import Batcher, Data, PoolingBatcher, generator_iterator
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data import DisjointMultitaskData
@@ -23,7 +22,6 @@ __all__ = [
     "BaseBatchSampler",
     "BatchIterator",
     "CommonMetadata",
-    "CompositionalDataHandler",
     "Data",
     "DataHandler",
     "DisjointMultitaskData",

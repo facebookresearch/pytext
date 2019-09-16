@@ -665,10 +665,6 @@ class RNNGParserBase(BaseModel):
         self.context = context
 
 
-class RNNGParser_Deprecated(RNNGParserBase):
-    pass
-
-
 class RNNGParser(RNNGParserBase):
     class Config(RNNGParserBase.Config):
         class ModelInput(BaseModel.Config.ModelInput):

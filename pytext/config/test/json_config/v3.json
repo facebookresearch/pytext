@@ -44,7 +44,7 @@
           }
         }
       },
-      "version" : 2
+      "version": 2
     },
     "adapted": {
       "task": {
@@ -80,12 +80,12 @@
           }
         }
       },
-      "version" : 2
+      "version": 2
     },
     "adapted": {
       "task": {
         "DocClassificationTask": {
-          "trainer" : {
+          "trainer": {
             "scheduler": {
               "LmFineTuning": {
                 "cut_frac": 0.1,
@@ -126,12 +126,12 @@
           }
         }
       },
-      "version" : 2
+      "version": 2
     },
     "adapted": {
       "task": {
         "DocClassificationTask": {
-          "trainer" : {
+          "trainer": {
             "optimizer": {
               "Adam": {
                 "lr": 0.05,
@@ -149,80 +149,6 @@
                 "last_epoch": -1
               }
             }
-          }
-        }
-      },
-      "version": 3
-    }
-  },
-  {
-    "original": {
-      "task": {
-        "SemanticParsingTask": {
-          "model": {
-            "ablation": {},
-            "constraints": {},
-            "lstm": {}
-          },
-          "features": {
-            "word_feat": {
-              "embed_dim": 100,
-              "min_freq": 2
-            },
-            "dict_feat": {
-              "embed_dim": 10
-            }
-          },
-          "optimizer": {
-            "Adam": {
-              "lr": 0.05,
-              "weight_decay": 0.00001
-            }
-          },
-          "trainer": {
-            "real_trainer": {
-              "epochs": 1,
-              "report_train_metrics": false
-            },
-            "num_workers": 4
-          },
-          "data_handler": {
-          }
-        }
-      },
-      "version": 2
-    },
-    "adapted": {
-      "task": {
-        "SemanticParsingTask": {
-          "model": {
-            "ablation": {},
-            "constraints": {},
-            "lstm": {}
-          },
-          "features": {
-            "word_feat": {
-              "embed_dim": 100,
-              "min_freq": 2
-            },
-            "dict_feat": {
-              "embed_dim": 10
-            }
-          },
-          "trainer": {
-            "real_trainer": {
-              "epochs": 1,
-              "report_train_metrics": false,
-              "optimizer": {
-                "Adam": {
-                  "lr": 0.05,
-                  "weight_decay": 0.00001
-                }
-              }
-            },
-            "num_workers": 4
-          },
-          "data_handler": {
           }
         }
       },
