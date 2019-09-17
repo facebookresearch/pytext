@@ -17,6 +17,7 @@
 import os
 import sys
 
+import mock
 from sphinx.domains.python import PythonDomain
 
 
@@ -111,6 +112,15 @@ html_static_path = ["_static"]
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+
+# Got this property from the official docs but doesn't seem to work
+# even in the latest version of Sphinx. Keeping for future compat.
+# autodoc_mock_imports = ['scipy', 'tensorboardX']
+
+# Manually mocking out the libraries to prevent requiring these modules
+MOCK_MODULES = ["scipy", "scipy.special", "tensorboardX"]
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
