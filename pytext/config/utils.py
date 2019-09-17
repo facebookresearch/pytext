@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Union
+from typing import Dict, List, Union
 
 
 def is_component_class(obj):
@@ -38,6 +38,8 @@ def resolve_optional(type_v):
 
 
 def cast_str(to_type, value):
+    if type(value) != str:
+        return value
     if to_type == int:
         return int(value)
     elif to_type == float:
@@ -51,9 +53,9 @@ def cast_str(to_type, value):
             return False
         else:
             raise Exception(f'Not a boolean value: "{value}"')
-    elif getattr(to_type, "__origin__", None) == list:
+    elif getattr(to_type, "__origin__", None) in (list, List):
         return [cast_str(to_type.__args__[0], v.strip()) for v in value.split(",")]
-    elif getattr(to_type, "__origin__", None) == dict:
+    elif getattr(to_type, "__origin__", None) in (dict, Dict):
         key_type, value_type = to_type.__args__
         ret = {}
         for entry in value.split(","):
