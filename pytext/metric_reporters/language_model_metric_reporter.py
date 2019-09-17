@@ -230,7 +230,7 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         print(
             f"Tokens/s: {last_batch_tps:.0f}, "
             f"batch ppl: {math.exp(last_batch_loss):.2f}, "
-            f"agg ppl: {math.exp(aggregate_loss / float(total_masked_tokens)):.2f}, "
+            f"agg ppl: {math.exp(self._calculate_loss(aggregate_loss, total_masked_tokens)):.2f}, "
             f"number of batches: {self.total_batches:.0f}, "
             f"accumulated tokens/s: {tps:.0f}",
             flush=True,
@@ -239,7 +239,7 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
         print(
             f"GPU-0 tokens/s: {self.last_batch_tps:.0f}, "
             f"batch ppl: {math.exp(self.last_batch_loss):.2f}, "
-            f"agg ppl: {math.exp(self.aggregate_loss / float(self.total_masked_tokens)):.2f}, "
+            f"agg ppl: {math.exp(self.calculate_loss()):.2f}, "
             f"number of batches: {self.total_batches}, "
             f"accumulated tokens/s: {self.realtime_meters['tps'].avg:.0f}",
             flush=True,
@@ -261,7 +261,10 @@ class MaskedLMMetricReporter(LanguageModelMetricReporter):
             )
 
     def calculate_loss(self) -> float:
-        return self.aggregate_loss / float(self.total_masked_tokens)
+        return self._calculate_loss(self.aggregate_loss, self.total_masked_tokens)
+
+    def _calculate_loss(self, aggregate_loss, total_masked_tokens) -> float:
+        return aggregate_loss / max(1, total_masked_tokens)
 
     def _reset(self):
         super()._reset()

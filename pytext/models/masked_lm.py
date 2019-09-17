@@ -166,6 +166,10 @@ class MaskedLanguageModel(BaseModel):
         mask = self._select_tokens_to_mask(tokens, self.mask_prob)
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
         mask *= pad_mask
+        if not mask.byte().any():
+            # Keep one masked token to avoid failure in the loss calculation.
+            mask[0, 0] = 1
+
         probs = torch.rand_like(tokens, dtype=torch.float)
         rand_mask = (probs < 0.1).long() * mask
         mask_mask = (probs >= 0.2).long() * mask
