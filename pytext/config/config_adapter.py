@@ -540,64 +540,75 @@ def flatten_deprecated_ensemble_config(json_config):
     return json_config
 
 
+def migrate_to_new_data_handler(task, columns):
+    create_parameter(task, "data.source", {"TSVDataSource": {}})
+    rename_parameter(task, "data_handler.eval_path", "data.source.eval_filename")
+    rename_parameter(task, "data_handler.test_path", "data.source.test_filename")
+    rename_parameter(task, "data_handler.train_path", "data.source.train_filename")
+    columns_to_read = next(find_dicts_containing_key(task, "columns_to_read"), None)
+    if columns_to_read:
+        rename_parameter(
+            task, "data_handler.columns_to_read", "data.source.field_names"
+        )
+    else:
+        create_parameter(task, "data.source.field_names", columns)
+
+    rename_parameter(
+        task, "data_handler.append_bos", "model.inputs.tokens.add_bos_token"
+    )
+    rename_parameter(
+        task, "data_handler.append_eos", "model.inputs.tokens.add_eos_token"
+    )
+    rename_parameter(
+        task, "data_handler.max_seq_len", "model.inputs.tokens.max_seq_len"
+    )
+
+    rename_parameter(
+        task, "features.shared_module_key", "model.embedding.shared_module_key"
+    )
+    rename_parameter(task, "features.word_feat.embed_dim", "model.embedding.embed_dim")
+    rename_parameter(task, "features.dense_feat", "model.inputs.dense")
+
+    create_parameter(task, "data.batcher", {"PoolingBatcher": {}})
+    rename_parameter(
+        task, "data_handler.eval_batch_size", "data.batcher.eval_batch_size"
+    )
+    rename_parameter(
+        task, "data_handler.test_batch_size", "data.batcher.test_batch_size"
+    )
+    rename_parameter(
+        task, "data_handler.train_batch_size", "data.batcher.train_batch_size"
+    )
+
+    rename_parameter(
+        task,
+        "features.word_feat.vocab_size",
+        "model.inputs.tokens.vocab.size_from_data",
+    )
+    rename_parameter(
+        task,
+        "features.word_feat.vocab_from_train_data",
+        "model.inputs.tokens.vocab.build_from_data",
+    )
+
+    rename_parameter(
+        task,
+        "features.word_feat.vocab_file",
+        "model.inputs.tokens.vocab.vocab_files",
+        lambda x: [{"filepath": x}],
+    )
+
+    delete_parameter(task, "data_handler")
+    delete_parameter(task, "exporter")
+    delete_parameter(task, "features")
+    delete_parameter(task, "featurizer")
+
+
 @register_adapter(from_version=15)
 def remove_lmtask_deprecated(json_config):
     for section in find_dicts_containing_key(json_config, "LMTask_Deprecated"):
         task = section.pop("LMTask_Deprecated")
-
-        create_parameter(task, "data.source", {"TSVDataSource": {}})
-        rename_parameter(task, "data_handler.eval_path", "data.source.eval_filename")
-        rename_parameter(task, "data_handler.test_path", "data.source.test_filename")
-        rename_parameter(task, "data_handler.train_path", "data.source.train_filename")
-        create_parameter(task, "data.source.field_names", ["text"])
-
-        rename_parameter(
-            task, "data_handler.append_bos", "model.inputs.tokens.add_bos_token"
-        )
-        rename_parameter(
-            task, "data_handler.append_eos", "model.inputs.tokens.add_eos_token"
-        )
-
-        rename_parameter(
-            task, "features.shared_module_key", "model.embedding.shared_module_key"
-        )
-        rename_parameter(
-            task, "features.word_feat.embed_dim", "model.embedding.embed_dim"
-        )
-
-        create_parameter(task, "data.batcher", {"PoolingBatcher": {}})
-        rename_parameter(
-            task, "data_handler.eval_batch_size", "data.batcher.eval_batch_size"
-        )
-        rename_parameter(
-            task, "data_handler.test_batch_size", "data.batcher.test_batch_size"
-        )
-        rename_parameter(
-            task, "data_handler.train_batch_size", "data.batcher.train_batch_size"
-        )
-
-        rename_parameter(
-            task,
-            "features.word_feat.vocab_size",
-            "model.inputs.tokens.vocab.size_from_data",
-        )
-        rename_parameter(
-            task,
-            "features.word_feat.vocab_from_train_data",
-            "model.inputs.tokens.vocab.build_from_data",
-        )
-
-        rename_parameter(
-            task,
-            "features.word_feat.vocab_file",
-            "model.inputs.tokens.vocab.vocab_files",
-            lambda x: [{"filepath": x}],
-        )
-
-        delete_parameter(task, "data_handler")
-        delete_parameter(task, "features")
-        delete_parameter(task, "featurizer")
-
+        migrate_to_new_data_handler(task, ["text"])
         section["LMTask"] = task
 
     return json_config
