@@ -45,7 +45,7 @@ def get_activation(name):
     elif name == Activation.LEAKYRELU:
         return nn.LeakyReLU()
     elif name == Activation.TANH:
-        return torch.tanh
+        return nn.Tanh()
     elif name == Activation.GELU:
         return GeLU()
     elif name == Activation.GLU:

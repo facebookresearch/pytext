@@ -54,7 +54,7 @@ class MLPDecoder(DecoderBase):
             if config.dropout > 0:
                 layers.append(nn.Dropout(config.dropout))
             in_dim = dim
-        if config.out_dim:
+        if config.out_dim is not None:
             out_dim = config.out_dim
         if out_dim > 0:
             layers.append(nn.Linear(in_dim, out_dim))

@@ -5,8 +5,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from caffe2.python import core
-from pytext.config.component import create_loss
-from pytext.fields import FieldMeta
 from pytext.loss import Loss
 from pytext.models.module import Module
 
