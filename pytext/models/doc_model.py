@@ -300,6 +300,7 @@ class ByteTokensDocumentModel(DocModel):
             def __init__(self):
                 super().__init__()
                 self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.normalizer = tensorizers["dense"].normalizer
                 self.max_byte_len = jit.Attribute(max_byte_len, int)
                 self.byte_offset_for_non_padding = jit.Attribute(
                     byte_offset_for_non_padding, int
@@ -316,6 +317,7 @@ class ByteTokensDocumentModel(DocModel):
                 token_bytes, _ = make_byte_inputs(
                     tokens, self.max_byte_len, self.byte_offset_for_non_padding
                 )
+                dense_feat = self.normalizer.normalize(dense_feat)
                 logits = self.model(
                     torch.tensor(word_ids),
                     token_bytes,
