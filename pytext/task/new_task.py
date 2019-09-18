@@ -12,7 +12,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
-from pytext.utils import cuda, distributed, precision
+from pytext.utils import cuda, precision
 from torch import jit
 
 from .task import TaskBase
@@ -101,7 +101,7 @@ class _NewTask(TaskBase):
         rank=0,
         world_size=1,
     ):
-        distributed.force_print(f"Creating task: {cls.__name__}...", flush=True)
+        print(f"Creating task: {cls.__name__}...")
         tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
 
         # Initialized tensorizers can be used to create the model

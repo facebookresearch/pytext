@@ -29,30 +29,32 @@ def _set_cuda(
     elif cuda.CUDA_ENABLED:
         torch.cuda.set_device(device_id)
 
-    print(
-        """
-    # for debug of GPU
-    use_cuda_if_available: {}
-    device_id: {}
-    world_size: {}
-    torch.cuda.is_available(): {}
-    cuda.CUDA_ENABLED: {}
-    cuda.DISTRIBUTED_WORLD_SIZE: {}
-    """.format(
-            use_cuda_if_available,
-            device_id,
-            world_size,
-            torch.cuda.is_available(),
-            cuda.CUDA_ENABLED,
-            cuda.DISTRIBUTED_WORLD_SIZE,
+    if device_id == 0:
+        print(
+            """
+        # for debug of GPU
+        use_cuda_if_available: {}
+        device_id: {}
+        world_size: {}
+        torch.cuda.is_available(): {}
+        cuda.CUDA_ENABLED: {}
+        cuda.DISTRIBUTED_WORLD_SIZE: {}
+        """.format(
+                use_cuda_if_available,
+                device_id,
+                world_size,
+                torch.cuda.is_available(),
+                cuda.CUDA_ENABLED,
+                cuda.DISTRIBUTED_WORLD_SIZE,
+            )
         )
-    )
 
 
-def _set_fp16(use_fp16: bool) -> None:
+def _set_fp16(use_fp16: bool, rank: int) -> None:
     # only support single GPU training at this moment.
     precision.set_fp16(fp16_enabled=use_fp16)
-    print(f"# for debug of FP16: fp16_enabled={precision._FP16_ENABLED}")
+    if rank == 0:
+        print(f"# for debug of FP16: fp16_enabled={precision._FP16_ENABLED}")
 
 
 def _set_distributed(
@@ -109,7 +111,7 @@ def prepare_task(
     if rank == 0:
         print("\nParameters: {}\n".format(config), flush=True)
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
-    _set_fp16(config.use_fp16)
+    _set_fp16(config.use_fp16, rank)
     _set_distributed(rank, world_size, dist_init_url, device_id)
 
     if config.random_seed is not None:

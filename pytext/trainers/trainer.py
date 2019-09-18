@@ -26,7 +26,7 @@ from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
-from pytext.utils import cuda, distributed, precision, timing
+from pytext.utils import cuda, precision, timing
 
 
 class TrainerBase(Component):
@@ -389,17 +389,13 @@ class Trainer(TrainerBase):
             state.epoch += 1
             state.epochs_since_last_improvement += 1
             lrs = learning_rates(state.optimizer)
-            distributed.force_print(
-                f"\nWorker {state.rank} starting epoch {state.epoch}", flush=True
-            )
+            print(f"\nWorker {state.rank} starting epoch {state.epoch}")
             print(f"Learning rate(s): {', '.join(map(str, lrs))}")
 
             with timing.time("train epoch"):
                 state.stage = Stage.TRAIN
                 state.model.train()
-                distributed.force_print(
-                    f"start training epoch {state.epoch}", flush=True
-                )
+                print(f"start training epoch {state.epoch}")
                 epoch_data = training_data
                 if self.config.num_batches_per_epoch:
                     # We want to limit the number of batches in the epoch;
@@ -418,9 +414,7 @@ class Trainer(TrainerBase):
             with timing.time("eval epoch"):
                 state.stage = Stage.EVAL
                 model.eval(Stage.EVAL)
-                distributed.force_print(
-                    f"start evaluating epoch {state.epoch}", flush=True
-                )
+                print(f"start evaluating epoch {state.epoch}")
                 with torch.no_grad():
                     eval_metric = self.run_epoch(state, eval_data, metric_reporter)
 
@@ -443,7 +437,7 @@ class Trainer(TrainerBase):
         if self.optimizer.finalize():
             state.stage = Stage.EVAL
             model.eval(Stage.EVAL)
-            distributed.force_print(f"start evaluating finalized state", flush=True)
+            print(f"start evaluating finalized state")
             with torch.no_grad():
                 eval_metric = self.run_epoch(state, eval_data, metric_reporter)
             better_model = metric_reporter.compare_metric(

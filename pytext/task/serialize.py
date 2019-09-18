@@ -11,7 +11,6 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
-from pytext.utils import distributed
 
 
 DATA_STATE = "data_state"
@@ -72,10 +71,10 @@ def load_v3(state, overwrite_config=None):
     saved_config = pytext_config_from_json(state[CONFIG_JSON])
     if overwrite_config:
         config = overwrite_config
-        distributed.force_print(f"Use config from current task", flush=True)
+        print(f"Use config from current task")
     else:
         config = saved_config
-        distributed.force_print(f"Use config saved in snapshot", flush=True)
+        print(f"Use config saved in snapshot")
 
     model_state = state[MODEL_STATE]
     training_state = state[TRAINING_STATE]
@@ -125,7 +124,7 @@ def load_v3(state, overwrite_config=None):
 
 def load_checkpoint(f: io.IOBase, overwrite_config=None):
     state = torch.load(f, map_location=lambda storage, loc: storage)
-    distributed.force_print(f"Loaded checkpoint...", flush=True)
+    print(f"Loaded checkpoint...")
     if SERIALIZE_VERSION_KEY not in state:
         return load_v1(state)
     else:
@@ -233,7 +232,7 @@ class CheckpointManager:
         """
         if not (load_path and os.path.isfile(load_path)):
             raise ValueError(f"Invalid snapshot path{load_path}")
-        distributed.force_print(f"Loading model from {load_path}...", flush=True)
+        print(f"Loading model from {load_path}...")
         with open(load_path, "rb") as checkpoint_f:
             return load_checkpoint(checkpoint_f, overwrite_config)
 
