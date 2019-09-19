@@ -1,0 +1,154 @@
+[
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          },
+          "model": {
+            "representation": {
+              "DocNNRepresentation": {}
+            }
+          }
+        }
+      },
+      "version": 16
+    },
+    "adapted": {
+      "task": {
+        "DocumentClassificationTask": {
+          "data": {
+            "source": {
+              "TSVDataSource": {
+                "eval_filename": "tests/data/test_data_tiny.tsv",
+                "test_filename": "tests/data/test_data_tiny.tsv",
+                "train_filename": "tests/data/train_data_tiny.tsv",
+                "field_names": ["doc_label", "text"]
+              }
+            },
+            "batcher": {
+              "PoolingBatcher": {}
+            }
+          },
+          "model": {
+            "DocModel": {
+              "inputs": {
+                "labels": {
+                  "column": "doc_label"
+                }
+              },
+              "representation": {
+                "DocNNRepresentation": {}
+              }
+            }
+          }
+        }
+      },
+      "version": 17
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask_Deprecated": {
+          "data_handler": {
+            "columns_to_read": ["label", "raw_text"],
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "version": 16
+    },
+    "adapted": {
+      "task": {
+        "DocumentClassificationTask": {
+          "data": {
+            "source": {
+              "TSVDataSource": {
+                "eval_filename": "tests/data/test_data_tiny.tsv",
+                "test_filename": "tests/data/test_data_tiny.tsv",
+                "train_filename": "tests/data/train_data_tiny.tsv",
+                "field_names": ["label", "raw_text"]
+              }
+            },
+            "batcher": {
+              "PoolingBatcher": {}
+            }
+          },
+          "model": {
+            "DocModel": {
+              "inputs": {
+                "labels": {
+                  "column": "doc_label"
+                }
+              }
+            }
+          }
+        }
+      },
+      "version": 17
+    }
+  },
+  {
+    "original": {
+      "task": {
+        "DocClassificationTask_Deprecated": {
+          "data_handler": {
+            "train_path": "tests/data/train_data_tiny.tsv",
+            "eval_path": "tests/data/test_data_tiny.tsv",
+            "test_path": "tests/data/test_data_tiny.tsv"
+          },
+          "featurizer": {
+            "SimpleFeaturizer": {
+              "convert_to_bytes": true,
+              "lowercase_tokens": false
+            }
+          },
+          "model": {
+            "representation": {
+              "DocNNRepresentation": {}
+            }
+          }
+        }
+      },
+      "version": 16
+    },
+    "adapted": {
+      "task": {
+        "DocumentClassificationTask": {
+          "data": {
+            "source": {
+              "TSVDataSource": {
+                "eval_filename": "tests/data/test_data_tiny.tsv",
+                "test_filename": "tests/data/test_data_tiny.tsv",
+                "train_filename": "tests/data/train_data_tiny.tsv",
+                "field_names": ["doc_label", "text"]
+              }
+            },
+            "batcher": {
+              "PoolingBatcher": {}
+            }
+          },
+          "model": {
+            "ByteTokensDocumentModel": {
+              "inputs": {
+                "labels": {
+                  "column": "doc_label"
+                }
+              },
+              "representation": {
+                "DocNNRepresentation": {}
+              }
+            }
+          }
+        }
+      },
+      "version": 17
+    }
+  }
+]

@@ -4,7 +4,7 @@ from typing import Dict, Optional, Union
 
 from pytext.common.constants import Stage
 from pytext.config import doc_classification as DocClassification
-from pytext.data import DocClassificationDataHandler
+from pytext.config.field_config import WordLabelConfig
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
 from pytext.data.packed_lm_data import PackedLMData
@@ -26,7 +26,7 @@ from pytext.metric_reporters.language_model_metric_reporter import (
 )
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import NewBertRegressionModel
-from pytext.models.doc_model import DocModel, DocModel_Deprecated, DocRegressionModel
+from pytext.models.doc_model import DocModel, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
 from pytext.models.joint_model import IntentSlotModel
 from pytext.models.language_models.lmlstm import LMLSTM
@@ -84,33 +84,6 @@ class EnsembleTask(NewTask):
         return cls.Config(
             model=BaggingDocEnsembleModel.Config(models=[DocModel.Config()])
         )
-
-
-class DocClassificationTask_Deprecated(Task_Deprecated):
-    class Config(Task_Deprecated.Config):
-        model: DocModel_Deprecated.Config = DocModel_Deprecated.Config()
-        trainer: Trainer.Config = Trainer.Config()
-        features: DocClassification.ModelInputConfig = (
-            DocClassification.ModelInputConfig()
-        )
-        labels: DocClassification.TargetConfig = DocClassification.TargetConfig()
-        data_handler: DocClassificationDataHandler.Config = (
-            DocClassificationDataHandler.Config()
-        )
-        metric_reporter: ClassificationMetricReporter.Config = (
-            ClassificationMetricReporter.Config()
-        )
-        exporter: Optional[DenseFeatureExporter.Config] = None
-
-    @classmethod
-    def format_prediction(cls, predictions, scores, context, target_meta):
-        target_names = target_meta.vocab.itos
-        for prediction, score in zip(predictions, scores):
-            score_with_name = {n: s for n, s in zip(target_names, score.tolist())}
-            yield {
-                "prediction": target_names[prediction.data],
-                "score": score_with_name,
-            }
 
 
 class DocumentClassificationTask(NewTask):

@@ -12,7 +12,6 @@ from .data import Batcher, Data, PoolingBatcher, generator_iterator
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data import DisjointMultitaskData
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
-from .doc_classification_data_handler import DocClassificationDataHandler, RawData
 from .tensorizers import Tensorizer
 
 
@@ -26,12 +25,10 @@ __all__ = [
     "DataHandler",
     "DisjointMultitaskData",
     "DisjointMultitaskDataHandler",
-    "DocClassificationDataHandler",
     "EvalBatchSampler",
     "generator_iterator",
     "PoolingBatcher",
     "RandomizedBatchSampler",
-    "RawData",
     "RoundRobinBatchSampler",
     "Tensorizer",
 ]

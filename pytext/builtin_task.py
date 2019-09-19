@@ -13,7 +13,6 @@ from pytext.task.new_task import NewTask
 from pytext.task.task import Task_Deprecated
 from pytext.task.tasks import (
     BertPairRegressionTask,
-    DocClassificationTask_Deprecated,
     DocumentClassificationTask,
     DocumentRegressionTask,
     EnsembleTask,
@@ -66,7 +65,6 @@ def register_builtin_tasks():
         (
             BertPairRegressionTask,
             DisjointMultitask,
-            DocClassificationTask_Deprecated,
             DocumentClassificationTask,
             DocumentRegressionTask,
             EnsembleTask,
