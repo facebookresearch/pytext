@@ -597,10 +597,13 @@ def migrate_to_new_data_handler(task, columns):
         lambda x: [{"filepath": x}],
     )
 
+    rename_parameter(task, "labels.label_weights", "model.output_layer.label_weights")
+
     delete_parameter(task, "data_handler")
     delete_parameter(task, "exporter")
     delete_parameter(task, "features")
     delete_parameter(task, "featurizer")
+    delete_parameter(task, "labels")
 
 
 @register_adapter(from_version=15)
@@ -610,6 +613,31 @@ def remove_lmtask_deprecated(json_config):
         migrate_to_new_data_handler(task, ["text"])
         section["LMTask"] = task
 
+    return json_config
+
+
+@register_adapter(from_version=16)
+def remove_docclassificationtask_deprecated(json_config):
+    for section in find_dicts_containing_key(
+        json_config, "DocClassificationTask_Deprecated"
+    ):
+        task = section.pop("DocClassificationTask_Deprecated")
+        convert = next(find_dicts_containing_key(task, "convert_to_bytes"), None)
+
+        section["DocumentClassificationTask"] = task
+        migrate_to_new_data_handler(task, ["doc_label", "text"])
+        create_parameter(task, "model.inputs.labels.column", "doc_label")
+
+        # In DocumentClassificationTask.Config:
+        #   model: BaseModel.Config = DocModel.Config()
+        # It will create a BaseModel if model class is implicit in json.
+        # We make it explicit to avoid errors.
+        for model in find_dicts_containing_key(section, "model"):
+            if next(iter(model["model"]))[0].islower():
+                model["model"] = {"DocModel": model.pop("model")}
+
+        if convert and convert["convert_to_bytes"]:
+            rename(section, "DocModel", "ByteTokensDocumentModel")
     return json_config
 
 

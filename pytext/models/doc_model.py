@@ -51,32 +51,6 @@ from pytext.utils.torch import (
 from torch import jit
 
 
-class DocModel_Deprecated(Model):
-    """
-    An n-ary document classification model. It can be used for all text
-    classification scenarios. It supports :class:`~PureDocAttention`,
-    :class:`~BiLSTMDocAttention` and :class:`~DocNNRepresentation` as the ways
-    to represent the document followed by multi-layer perceptron (:class:`~MLPDecoder`)
-    for projecting the document representation into label/target space.
-
-    It can be instantiated just like any other :class:`~Model`.
-
-    DEPRECATED: Use DocModel instead
-    """
-
-    class Config(ConfigBase):
-        representation: Union[
-            PureDocAttention.Config,
-            BiLSTMDocAttention.Config,
-            DocNNRepresentation.Config,
-            DeepCNNRepresentation.Config,
-        ] = BiLSTMDocAttention.Config()
-        decoder: MLPDecoder.Config = MLPDecoder.Config()
-        output_layer: ClassificationOutputLayer.Config = (
-            ClassificationOutputLayer.Config()
-        )
-
-
 class DocModel(Model):
     """DocModel that's compatible with the new Model abstraction, which is responsible
     for describing which inputs it expects and arranging its input tensors."""
