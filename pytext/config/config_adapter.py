@@ -297,7 +297,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "FLQueryDocumentPairwiseRankingTask")
     deprecate(json_config, "KDDocClassificationTask")
     deprecate(json_config, "LMTask")
-    deprecate(json_config, "NLGSeq2SeqTask")
     deprecate(json_config, "PairClassificationTask")
     deprecate(json_config, "PairwiseAttentionClassificationTask")
     deprecate(json_config, "QueryDocumentPairwiseRankingTask")
