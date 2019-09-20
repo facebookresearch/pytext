@@ -100,6 +100,8 @@ class _NewTask(TaskBase):
         tensorizers=None,
         rank=0,
         world_size=1,
+        optimizer_state_dict: Dict = None,
+        scheduler_state_dict: Dict = None,
     ):
         print(f"Creating task: {cls.__name__}...")
         tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
@@ -111,7 +113,9 @@ class _NewTask(TaskBase):
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
         metric_reporter = cls.create_metric_reporter(config, tensorizers)
-        trainer = create_trainer(config.trainer, model)
+        trainer = create_trainer(
+            config.trainer, model, optimizer_state_dict, scheduler_state_dict
+        )
         return cls(data, model, metric_reporter, trainer)
 
     @classmethod

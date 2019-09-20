@@ -86,17 +86,17 @@ def train_model(
     world_size: int = 1,
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
-) -> Tuple:
+) -> TrainingState:
     task, training_state = prepare_task(
         config, dist_init_url, device_id, rank, world_size, metric_channels, metadata
     )
-    trained_model, best_metric = task.train(config, rank, world_size, training_state)
+    training_state = task.train(config, rank, world_size, training_state)
     # Only rank 0 gets to finalize the job and export the model
     if rank == 0:
-        save_and_export(config, task, metric_channels)
+        save_and_export(config, task, metric_channels, training_state)
     print("Training timings")
     timing.report()
-    return trained_model, best_metric
+    return training_state
 
 
 def prepare_task(
@@ -141,16 +141,14 @@ def prepare_task(
 def save_and_export(
     config: PyTextConfig,
     task: Task_Deprecated,
+    trainingstate: TrainingState,
     metric_channels: Optional[List[Channel]] = None,
 ) -> None:
     print("\n=== Saving model to: " + config.save_snapshot_path)
     meta = None
-    tensorizers = None
     if hasattr(task, "data_handler"):
         meta = task.data_handler.metadata_to_save()
-    else:
-        tensorizers = task.data.tensorizers
-    save(config, task.model, meta, tensorizers=tensorizers)
+    save(config=config, training_state=trainingstate, meta=meta)
     if config.export_caffe2_path:
         task.export(
             task.model,
