@@ -108,5 +108,5 @@ class BERTTensorizer(TokenTensorizer):
         tokens, segment_labels, seq_lens = zip(*batch)
         tokens = pad_and_tensorize(tokens, self.vocab.get_pad_index())
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
-        segment_labels = pad_and_tensorize(segment_labels, self.vocab.get_pad_index())
+        segment_labels = pad_and_tensorize(segment_labels, 0)
         return tokens, pad_mask, segment_labels

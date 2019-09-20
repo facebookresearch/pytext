@@ -9,6 +9,7 @@ from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import RowData
 from pytext.data.sources import DataSource
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
+from pytext.data.utils import BOS, EOS
 from pytext.data.xlm_tensorizer import XLMTensorizer
 
 
@@ -24,6 +25,8 @@ class PackedLMData(Data):
 
     class Config(Data.Config):
         max_seq_len: int = 128
+        add_eos: bool = False
+        add_bos: bool = False
 
     @classmethod
     def from_config(
@@ -42,6 +45,8 @@ class PackedLMData(Data):
             tensorizers,
             rank,
             world_size,
+            add_eos=config.add_eos,
+            add_bos=config.add_bos,
             language=language,
             max_seq_len=config.max_seq_len,
             init_tensorizers=init_tensorizers,
@@ -54,6 +59,8 @@ class PackedLMData(Data):
         batcher: Batcher = None,
         max_seq_len: int = Config.max_seq_len,
         sort_key: Optional[str] = None,
+        add_eos=Config.add_eos,
+        add_bos=Config.add_bos,
         # language is used in cross-lingual LM training
         language: Optional[str] = None,
         in_memory: Optional[bool] = False,
@@ -68,6 +75,8 @@ class PackedLMData(Data):
         self.max_seq_len = max_seq_len
         self.language = language
         self.batch = {Stage.TRAIN: None, Stage.EVAL: None, Stage.TEST: None}
+        self.add_eos = add_eos
+        self.add_bos = add_bos
 
     def _parse_row(self, row):
         """
@@ -118,7 +127,16 @@ class PackedLMData(Data):
     def _yield_and_reset(self):
         packed_tokens = list(self.remainder["tokens"])
         packed_segments = list(self.remainder["segment_labels"])
-        self.remainder: Dict[str, List[int]] = {"tokens": [], "segment_labels": []}
+        if self.add_eos:
+            packed_tokens.append(self.tensorizer.vocab.idx[EOS])
+            packed_segments.append(packed_segments[-1])
+        if self.add_bos:
+            self.remainder: Dict[str, List[int]] = {
+                "tokens": [self.tensorizer.vocab.idx[BOS]],
+                "segment_labels": [0],
+            }
+        else:
+            self.remainder: Dict[str, List[int]] = {"tokens": [], "segment_labels": []}
         return RowData(
             {},  # packed LM data doesn't respect data cardinality
             self._format_output_row(packed_tokens, packed_segments, len(packed_tokens)),
@@ -129,6 +147,7 @@ class PackedLMData(Data):
         This function does the actual packing. It processes rows until we obtain
         a block of data with length = max_seq_len.
         """
+        extra_tokens = 1 if self.add_eos else 0
         for row in rows:
 
             # if the packedLM object has a language member then a cross-lingual
@@ -140,14 +159,17 @@ class PackedLMData(Data):
                 row["language"] = self.language
 
             tokens, segment_labels, seq_len = self._parse_row(row)
-            remaining = self.max_seq_len - len(self.remainder["tokens"]) - 1
+
+            remaining = self.max_seq_len - len(self.remainder["tokens"]) - extra_tokens
             while remaining < len(tokens):
                 self.remainder["tokens"].extend(tokens[:remaining])
                 self.remainder["segment_labels"].extend(segment_labels[:remaining])
                 tokens = tokens[remaining:]
                 segment_labels = segment_labels[remaining:]
                 yield self._yield_and_reset()
-                remaining = self.max_seq_len - 1
+                remaining = (
+                    self.max_seq_len - len(self.remainder["tokens"]) - extra_tokens
+                )
             self.remainder["tokens"].extend(tokens)
             self.remainder["segment_labels"].extend(segment_labels)
         if len(self.remainder["tokens"]):
