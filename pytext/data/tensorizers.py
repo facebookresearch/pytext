@@ -463,11 +463,11 @@ class ByteTokenTensorizer(Tensorizer):
     def _numberize_token(self, token):
         return [c + self.offset_for_non_padding for c in token.value.encode()]
 
-    def tensorize(self, batch):
+    def tensorize(self, batch, pad_token=0):
         bytes, token_lengths, byte_lengths = zip(*batch)
         pad_shape = (len(batch), max(len(l) for l in byte_lengths), self.max_byte_len)
         return (
-            pad_and_tensorize(bytes, pad_shape=pad_shape),
+            pad_and_tensorize(bytes, pad_shape=pad_shape, pad_token=pad_token),
             pad_and_tensorize(token_lengths),
             pad_and_tensorize(byte_lengths),
         )
