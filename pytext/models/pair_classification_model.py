@@ -73,7 +73,6 @@ class BasePairwiseModel(BaseModel):
         representations: nn.ModuleList,
         tensorizers: Dict[str, Tensorizer],
     ):
-        labels = tensorizers["labels"].vocab
         decoder = None
         if config.decoder:
             num_reps = len(representations)
@@ -83,7 +82,9 @@ class BasePairwiseModel(BaseModel):
                 decoder_in_dim += 2 * comb(num_reps, 2, exact=True) * rep_dim
 
             decoder = create_module(
-                config.decoder, in_dim=decoder_in_dim, out_dim=len(labels)
+                config.decoder,
+                in_dim=decoder_in_dim,
+                out_dim=len(tensorizers["labels"].vocab),
             )
         return decoder
 

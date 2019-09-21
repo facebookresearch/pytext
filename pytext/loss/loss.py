@@ -66,10 +66,14 @@ class BinaryCrossEntropyLoss(Loss):
         classification.
         """
         # Converts targets to one-hot representation. Dim: [batch, n_classes]
-        one_hot_targets = (
-            FloatTensor(targets.size(0), logits.size(1))
-            .zero_()
-            .scatter_(1, targets.unsqueeze(1).data, 1)
+        targets = (
+            (
+                FloatTensor(targets.size(0), logits.size(1))
+                .zero_()
+                .scatter_(1, targets.unsqueeze(1).data, 1)
+            )
+            if len(logits.size()) > 1  # If multi-class classification.
+            else targets.float()
         )
 
         """
@@ -82,19 +86,17 @@ class BinaryCrossEntropyLoss(Loss):
         # weights = total_positive.unsqueeze(0) / examples_per_class
 
         loss = F.binary_cross_entropy_with_logits(
-            precision.maybe_float(logits), one_hot_targets, reduction="none"
+            precision.maybe_float(logits), targets, reduction="none"
         )
 
         if self.config.reweight_negative:
             # This makes sure we have same weights for all negative classes and
             # single positive class. Weight is 1 for the correct class and
             # 1 / (n - 1) for other ones.
-            weights = one_hot_targets + (1.0 - one_hot_targets) / max(
-                1, one_hot_targets.size(1) - 1.0
-            )
+            weights = targets + (1.0 - targets) / max(1, targets.size(1) - 1.0)
             loss = loss * weights
 
-        return loss.sum(1).mean() if reduce else loss.sum(1)
+        return loss.sum(-1).mean() if reduce else loss.sum(-1)
 
 
 class CosineEmbeddingLoss(Loss):
@@ -109,10 +111,6 @@ class CosineEmbeddingLoss(Loss):
             raise ValueError(
                 f"Number of embeddings must be 2. Found {len(embeddings)} embeddings."
             )
-        # Replace label = 0 with -1 because we're using cosine_embedding_loss.
-        targets = targets.masked_fill(mask=(targets == 0), value=-1.0).to(
-            dtype=torch.float
-        )
         return F.cosine_embedding_loss(
             embeddings[0],
             embeddings[1],
@@ -452,9 +450,21 @@ class PairwiseRankingLoss(Loss):
         )
 
 
+class MAELoss(Loss):
+    """
+    Mean absolute error or L1 loss, for regression tasks.
+    """
+
+    class Config(ConfigBase):
+        pass
+
+    def __call__(self, predictions, targets, reduce=True):
+        return F.l1_loss(predictions, targets, reduction="mean" if reduce else "none")
+
+
 class MSELoss(Loss):
     """
-    Mean squared error loss, for regression tasks.
+    Mean squared error or L2 loss, for regression tasks.
     """
 
     class Config(ConfigBase):
