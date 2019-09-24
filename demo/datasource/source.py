@@ -22,13 +22,19 @@ def load_vocab(file_path):
 
 
 def reader(file_path, vocab):
-    with open(file_path, "r") as reader:
-        for line in reader:
+    with open(file_path, "r") as r:
+        for line in r:
             yield " ".join(
                 vocab.get(s.strip(), UNK)
-                # ATIS every row starts/ends with BOS/EOS: remove them
+                # In ATIS every query starts/ends with BOS/EOS: we remove them
                 for s in line.split()[1:-1]
             )
+
+
+def reader_raw(file_path, vocab):
+    with open(file_path, "r") as r:
+        for line in r:
+            yield vocab[line.strip()]
 
 
 class AtisIntentDataSource(RootDataSource):
@@ -67,24 +73,27 @@ class AtisIntentDataSource(RootDataSource):
 
     def __init__(
         self,
-        path="my_directory",
+        path=Config.path,
         field_names=None,
-        validation_split=0.25,
-        random_seed=12345,
-        intent_filename="atis.dict.intent.csv",
-        vocab_filename="atis.dict.vocab.csv",
-        test_queries_filename="atis.test.query.csv",
-        test_intent_filename="atis.test.intent.csv",
-        train_queries_filename="atis.train.query.csv",
-        train_intent_filename="atis.train.intent.csv",
+        validation_split=Config.validation_split,
+        random_seed=Config.random_seed,
+        intent_filename=Config.intent_filename,
+        vocab_filename=Config.vocab_filename,
+        test_queries_filename=Config.test_queries_filename,
+        test_intent_filename=Config.test_intent_filename,
+        train_queries_filename=Config.train_queries_filename,
+        train_intent_filename=Config.train_intent_filename,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
-        field_names = field_names or ["text", "label"]
+        field_names = field_names or Config.field_names
         assert (
             len(field_names or []) == 2
         ), "AtisIntentDataSource only handles 2 field_names: {}".format(field_names)
+
+        self.query_field = field_names[0]
+        self.intent_field = field_names[1]
 
         self.random_seed = random_seed
         self.validation_split = validation_split
@@ -93,9 +102,6 @@ class AtisIntentDataSource(RootDataSource):
         # This allows other applications to
         self.words = load_vocab(os.path.join(path, vocab_filename))
         self.intents = load_vocab(os.path.join(path, intent_filename))
-
-        self.query_field = field_names[0]
-        self.intent_field = field_names[1]
 
         self.test_queries_filepath = os.path.join(path, test_queries_filename)
         self.test_intent_filepath = os.path.join(path, test_intent_filename)
@@ -124,7 +130,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.train_queries_filepath, self.words),
-                intent_reader=reader(self.train_intent_filepath, self.intents),
+                intent_reader=reader_raw(self.train_intent_filepath, self.intents),
                 select_fn=self._selector(select_eval=False),
             )
         )
@@ -133,7 +139,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.train_queries_filepath, self.words),
-                intent_reader=reader(self.train_intent_filepath, self.intents),
+                intent_reader=reader_raw(self.train_intent_filepath, self.intents),
                 select_fn=self._selector(select_eval=True),
             )
         )
@@ -142,7 +148,7 @@ class AtisIntentDataSource(RootDataSource):
         return iter(
             self._iter_rows(
                 query_reader=reader(self.test_queries_filepath, self.words),
-                intent_reader=reader(self.test_intent_filepath, self.intents),
+                intent_reader=reader_raw(self.test_intent_filepath, self.intents),
             )
         )
 
