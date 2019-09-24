@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 import math
 from typing import List
 
 import torch
+import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
+from pytext.models.crf import CRF
 from pytext.models.model import Model
 
 
@@ -18,6 +19,9 @@ class Sparsifier(Component):
         pass
 
     def sparsify(self, *args, **kwargs):
+        pass
+
+    def sparsification_condition(self, *args, **kwargs):
         pass
 
     def get_current_sparsity(self, model: Model) -> float:
@@ -62,11 +66,18 @@ class L0_projection_sparsifier(Sparsifier):
             config.layerwise_pruning,
         )
 
-    def sparsify(self, model: Model):
+    def sparsification_condition(self, state):
+        return (
+            state.epoch >= self.starting_epoch
+            and state.step_counter % self.frequency == 0
+        )
+
+    def sparsify(self, state):
         """
         obtain a mask and apply the mask to sparsify
         """
         print("running L0 projection-based (unstructured) sparsification. \n ")
+        model = state.model
         masks = self.get_masks(model)
         self.apply_masks(model, masks)
 
@@ -154,3 +165,122 @@ class L0_projection_sparsifier(Sparsifier):
             ]
 
         return masks
+
+
+class CRF_SparsifierBase(Sparsifier):
+    class Config(Sparsifier.Config):
+        starting_epoch: int = 1
+        frequency: int = 1
+
+    def sparsification_condition(self, state):
+        return (
+            state.epoch >= self.starting_epoch
+            and state.step_counter % self.frequency == 0
+        )
+
+    def get_CRF_transition(self, model: nn.Module):
+        for m in model.modules():
+            if isinstance(m, CRF):
+                return m.transitions.data
+
+    def get_transition_sparsity(self, transition):
+        nonzero_params = transition.nonzero().size(0)
+        return (transition.numel() - nonzero_params) / transition.numel()
+
+
+class CRF_L1_SoftThresholding(CRF_SparsifierBase):
+    """
+    implement l1 regularization:
+        min Loss(x, y, CRFparams) + lambda_l1 * ||CRFparams||_1
+
+    and solve the optimiation problem via (stochastic) proximal gradient-based
+    method i.e., soft-thresholding
+
+    param_updated = sign(CRFparams) * max ( abs(CRFparams) - lambda_l1, 0)
+    """
+
+    class Config(CRF_SparsifierBase.Config):
+        lambda_l1: float = 0.001
+
+    def __init__(self, lambda_l1: float, starting_epoch: int, frequency: int):
+        self.lambda_l1 = lambda_l1
+        assert starting_epoch >= 1
+        self.starting_epoch = starting_epoch
+        assert frequency >= 1
+        self.frequency = frequency
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.lambda_l1, config.starting_epoch, config.frequency)
+
+    def sparsify(self, state):
+        model = state.model
+        transition_matrix = self.get_CRF_transition(model)
+        transition_matrix_abs = torch.abs(transition_matrix)
+        assert (
+            len(state.optimizer.param_groups) == 1
+        ), "different learning rates for multiple param groups not supported"
+        lrs = state.optimizer.param_groups[0]["lr"]
+        threshold = self.lambda_l1 * lrs
+        transition_matrix = torch.sign(transition_matrix) * torch.max(
+            (transition_matrix_abs - threshold),
+            transition_matrix.new_zeros(transition_matrix.shape),
+        )
+        current_sparsity = self.get_transition_sparsity(transition_matrix)
+        print(f"sparsity of CRF transition matrix: {current_sparsity}")
+
+
+class CRF_MagnitudeThresholding(CRF_SparsifierBase):
+    """
+    magnitude-based (equivalent to projection onto l0 constraint set) sparsification
+    on CRF transition matrix. Preserveing the top-k elements either rowwise or
+    columnwise until sparsity constraint is met.
+    """
+
+    class Config(CRF_SparsifierBase.Config):
+        sparsity: float = 0.9
+        grouping: str = "row"
+
+    def __init__(self, sparsity, starting_epoch, frequency, grouping):
+        assert 0 <= sparsity <= 1
+        self.sparsity = sparsity
+        assert starting_epoch >= 1
+        self.starting_epoch = starting_epoch
+        assert frequency >= 1
+        self.frequency = frequency
+        assert (
+            grouping == "row" or grouping == "column"
+        ), "grouping needs to be row or column"
+        self.grouping = grouping
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            config.sparsity, config.starting_epoch, config.frequency, config.grouping
+        )
+
+    def sparsify(self, state):
+        model = state.model
+        transition_matrix = self.get_CRF_transition(model)
+        num_rows, num_cols = transition_matrix.shape
+        trans_abs = torch.abs(transition_matrix)
+        if self.grouping == "row":
+            max_num_nonzeros = math.ceil(num_cols * (1 - self.sparsity))
+            topkvals = (
+                torch.topk(trans_abs, k=max_num_nonzeros, dim=1)
+                .values.min(dim=1, keepdim=True)
+                .values
+            )
+
+        else:
+            max_num_nonzeros = math.ceil(num_rows * (1 - self.sparsity))
+            topkvals = (
+                torch.topk(trans_abs, k=max_num_nonzeros, dim=0)
+                .values.min(dim=0, keepdim=True)
+                .values
+            )
+
+        # trans_abs < topkvals is a broadcasted comparison
+        transition_matrix[trans_abs < topkvals] = 0.0
+        current_sparsity = self.get_transition_sparsity(transition_matrix)
+        print(f"sparsity of CRF transition matrix: {current_sparsity}")

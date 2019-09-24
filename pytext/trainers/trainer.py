@@ -204,9 +204,8 @@ class Trainer(TrainerBase):
         if state.stage != Stage.TRAIN:
             return
 
-        if state.epoch >= state.sparsifier.starting_epoch:
-            if state.step_counter % state.sparsifier.frequency == 0:
-                state.sparsifier.sparsify(state.model)
+        if state.sparsifier.sparsification_condition(state):
+            state.sparsifier.sparsify(state)
 
         if state.rank == 0:
             current_sparsity = state.sparsifier.get_current_sparsity(state.model)
