@@ -1,0 +1,69 @@
+{
+  "include_dirs": ["demo/datasource"],
+  "export_caffe2_path": "atis_intent_slot2.c2",
+  "task": {
+    "IntentSlotTask": {
+      "data": {
+        "Data": {
+          "source": {
+            "AtisIntentSlotsDataSource": {
+              "path": "atis"
+            }
+          },
+          "batcher": {
+            "PoolingBatcher": {
+              "train_batch_size": 128,
+              "eval_batch_size": 128,
+              "test_batch_size": 128
+            }
+          },
+          "sort_key": "tokens"
+        }
+      },
+      "model": {
+        "representation": {
+          "BiLSTMDocSlotAttention": {
+            "lstm": {
+              "BiLSTM": {
+                "dropout": 0.5,
+                "lstm_dim": 366,
+                "num_layers": 2,
+                "bidirectional": true
+              }
+            },
+            "pooling": {
+              "SelfAttention": {
+                "attn_dimension": 128
+              }
+            }
+          }
+        },
+        "output_layer": {
+          "doc_output": {
+            "loss": {
+              "CrossEntropyLoss": {}
+            }
+          },
+          "word_output": {
+            "CRFOutputLayer": {}
+          }
+        },
+        "word_embedding": {
+          "embed_dim": 100,
+          "embedding_init_strategy": "zero",
+          "pretrained_embeddings_path": "atis/glove.6B.100d.txt"
+        }
+      },
+      "trainer": {
+        "epochs": 30,
+        "optimizer": {
+          "Adam": {
+            "lr": "0.001",
+            "weight_decay": 0
+          }
+        }
+      }
+    }
+  },
+  "version": 17
+}
