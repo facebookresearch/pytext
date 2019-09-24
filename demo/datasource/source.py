@@ -87,7 +87,7 @@ class AtisIntentDataSource(RootDataSource):
     ):
         super().__init__(**kwargs)
 
-        field_names = field_names or Config.field_names
+        field_names = field_names or AtisIntentDataSource.Config.field_names
         assert (
             len(field_names or []) == 2
         ), "AtisIntentDataSource only handles 2 field_names: {}".format(field_names)
