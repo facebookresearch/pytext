@@ -59,6 +59,9 @@ If you want to use PyText as a library and build your own models, please check t
   pytext_models_in_your_app
   serving_models_in_production
 
+  config_files
+  config_commands
+
 .. toctree::
   :maxdepth: 1
   :caption: Training More Advanced Models
