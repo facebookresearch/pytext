@@ -136,11 +136,12 @@ A very common reason to reject a pull request is lack of unit testing. Make sure
 Creating Documentation
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Whether you want to add documentation for your feature in code, or just change the existing the documentation, you will need to test it locally. First install the documentation builder `sphinx`:
+Whether you want to add documentation for your feature in code, or just change the existing the documentation, you will need to test it locally. First install extra dependencies needed to build the documentation:
 
 .. code-block:: console
 
-  $ pip install sphinx sphinx_rtd_theme
+  $ pip install --upgrade -r docs_requirements.txt
+  $ pip install --upgrade -r pytext/docs/requirements.txt
 
 Then you can build the documentation
 
