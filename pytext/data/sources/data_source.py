@@ -4,7 +4,7 @@
 import json
 import logging
 import re
-from typing import Dict, List, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar
 
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
@@ -289,6 +289,7 @@ class RootDataSource(DataSource):
         return self._convert_raw_source(self.raw_eval_data_generator())
 
 
+@RootDataSource.register_type(Any)
 @RootDataSource.register_type(str)
 def load_text(s):
     return s
