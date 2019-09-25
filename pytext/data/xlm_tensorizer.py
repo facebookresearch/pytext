@@ -11,26 +11,33 @@ from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
+from pytext.data.xlm_constants import LANG2ID_15
 from pytext.data.xlm_dictionary import Dictionary as XLMDictionary
 
 
-DEFAULT_LANG2ID_DICT = {
-    "ar": 0,
-    "bg": 1,
-    "de": 2,
-    "el": 3,
-    "en": 4,
-    "es": 5,
-    "fr": 6,
-    "hi": 7,
-    "ru": 8,
-    "sw": 9,
-    "th": 10,
-    "tr": 11,
-    "ur": 12,
-    "vi": 13,
-    "zh": 14,
-}
+def read_vocab(
+    vocab_file: str, max_vocab: int, min_count: int
+) -> Tuple[List, List, Dict]:
+    dictionary = XLMDictionary.read_vocab(vocab_file)
+    if max_vocab >= 1:
+        dictionary.max_vocab(max_vocab)
+    if min_count >= 0:
+        dictionary.min_count(min_count)
+    vocab_list = [dictionary.id2word[w] for w in sorted(dictionary.id2word)]
+    counts = [dictionary.counts[w] for w in vocab_list]
+    replacements = {"<unk>": UNK, "<pad>": PAD, "<s>": BOS, "</s>": EOS}
+    return vocab_list, counts, replacements
+
+
+def read_fairseq_vocab(
+    vocab_file: str, max_vocab: int = -1, min_count: int = -1
+) -> Tuple[List, List, Dict]:
+    dictionary = MaskedLMDictionary.load(vocab_file)
+    dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
+    vocab_list = dictionary.symbols
+    counts = dictionary.count
+    replacements = {"<pad>": PAD, "</s>": EOS, "<unk>": UNK, "<mask>": MASK}
+    return vocab_list, counts, replacements
 
 
 class XLMTensorizer(BERTTensorizer):
@@ -48,7 +55,7 @@ class XLMTensorizer(BERTTensorizer):
         max_vocab: int = 95000
         min_count: int = 0
         language_columns: List[str] = ["language"]
-        lang2id: Dict[str, int] = DEFAULT_LANG2ID_DICT
+        lang2id: Dict[str, int] = LANG2ID_15
         reset_positions: bool = False
         has_language_in_data: bool = False
         use_language_embeddings: bool = True
@@ -235,29 +242,6 @@ class XLMTensorizer(BERTTensorizer):
             positions,
         )
 
-    def _read_vocab(
-        self, vocab_file: str, max_vocab: int, min_count: int
-    ) -> Tuple[List, List, Dict]:
-        dictionary = XLMDictionary.read_vocab(vocab_file)
-        if max_vocab >= 1:
-            dictionary.max_vocab(max_vocab)
-        if min_count >= 0:
-            dictionary.min_count(min_count)
-        vocab_list = [dictionary.id2word[w] for w in sorted(dictionary.id2word)]
-        counts = [dictionary.counts[w] for w in vocab_list]
-        replacements = {"<unk>": UNK, "<pad>": PAD, "<s>": BOS, "</s>": EOS}
-        return vocab_list, counts, replacements
-
-    def _read_fairseq_vocab(
-        self, vocab_file: str, max_vocab: int = -1, min_count: int = -1
-    ) -> Tuple[List, List, Dict]:
-        dictionary = MaskedLMDictionary.load(vocab_file)
-        dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
-        vocab_list = dictionary.symbols
-        counts = dictionary.count
-        replacements = {"<pad>": PAD, "</s>": EOS, "<unk>": UNK, "<mask>": MASK}
-        return vocab_list, counts, replacements
-
     def _build_vocab(
         self, vocab_file: str, max_vocab: int, min_count: int
     ) -> Vocabulary:
@@ -266,11 +250,11 @@ class XLMTensorizer(BERTTensorizer):
         source.
         """
         if self.is_fairseq:
-            vocab_list, counts, replacements = self._read_fairseq_vocab(
+            vocab_list, counts, replacements = read_fairseq_vocab(
                 vocab_file, max_vocab, min_count
             )
         else:
-            vocab_list, counts, replacements = self._read_vocab(
+            vocab_list, counts, replacements = read_vocab(
                 vocab_file, max_vocab, min_count
             )
         return Vocabulary(vocab_list, counts, replacements=replacements)
