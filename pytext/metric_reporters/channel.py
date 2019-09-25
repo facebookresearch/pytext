@@ -6,7 +6,7 @@ import traceback
 from typing import Tuple
 
 from pytext.common.constants import Stage
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Channel:
