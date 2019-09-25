@@ -138,7 +138,11 @@ class MaskedLanguageModel(BaseModel):
 
     def forward(self, *inputs) -> List[torch.Tensor]:
         encoded_layers, _ = self.encoder(inputs)
-        return self.decoder(encoded_layers[-1][self.mask.bool(), :])
+        encoded_layer = encoded_layers[-1][self.mask.bool(), :]
+        if encoded_layer.nelement() == 0:
+            # No masked tokens, select just the first state from the first batch
+            encoded_layer = encoded_layers[-1][0, :1]
+        return self.decoder(encoded_layer)
 
     def _select_tokens_to_mask(
         self, tokens: torch.Tensor, mask_prob: float
@@ -179,4 +183,8 @@ class MaskedLanguageModel(BaseModel):
         return tokens * (1 - mask) + replacement * mask
 
     def _mask_output(self, tokens, mask):
-        return torch.masked_select(tokens, mask.bool())
+        output = torch.masked_select(tokens, mask.bool())
+        if output.nelement() == 0:
+            # No masked tokens, select just the first target from the first batch
+            output = tokens[0, :1]
+        return output
