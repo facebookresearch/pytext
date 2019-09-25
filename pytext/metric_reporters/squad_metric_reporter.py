@@ -6,7 +6,8 @@ import string
 from collections import Counter
 from typing import Dict, List
 
-from pytext.common.constants import RawExampleFieldName, Stage
+import numpy as np
+from pytext.common.constants import Stage
 from pytext.metric_reporters.channel import Channel, ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics.squad_metrics import SquadMetrics
@@ -37,7 +38,7 @@ class SquadFileChannel(FileChannel):
         start_pos_scores, end_pos_scores, has_answer_scores = scores
         for i in range(len(pred_answers)):
             yield [
-                contexts[RawExampleFieldName.ROW_INDEX][i],
+                contexts[SquadMetricReporter.ROW_INDEX][i],
                 contexts[SquadMetricReporter.QUES_COLUMN][i],
                 contexts[SquadMetricReporter.DOC_COLUMN][i],
                 pred_answers[i],
@@ -58,7 +59,7 @@ class SquadMetricReporter(MetricReporter):
     QUES_COLUMN = "question"
     ANSWERS_COLUMN = "answers"
     DOC_COLUMN = "doc"
-    ROW_INDEX = "row_index"
+    ROW_INDEX = "id"
 
     class Config(MetricReporter.Config):
         n_best_size: int = 5
@@ -177,6 +178,54 @@ class SquadMetricReporter(MetricReporter):
         return context
 
     def calculate_metric(self):
+        all_rows = zip(
+            self.all_context[self.ROW_INDEX],
+            self.all_context[self.ANSWERS_COLUMN],
+            self.all_context[self.QUES_COLUMN],
+            self.all_context[self.DOC_COLUMN],
+            self.all_pred_answers,
+            self.all_start_pos_preds,
+            self.all_end_pos_preds,
+            self.all_has_answer_preds,
+            self.all_start_pos_targets,
+            self.all_end_pos_targets,
+            self.all_has_answer_targets,
+            self.all_start_pos_scores,
+            self.all_end_pos_scores,
+            self.all_has_answer_scores,
+        )
+
+        all_rows_dict = {}
+        for row in all_rows:
+            try:
+                all_rows_dict[row[0]].append(row)
+            except KeyError:
+                all_rows_dict[row[0]] = [row]
+
+        all_rows = []
+        for rows in all_rows_dict.values():
+            argmax = np.argmax([row[11] + row[12] for row in rows])
+            all_rows.append(rows[argmax])
+
+        sorted(all_rows, key=lambda x: int(x[0]))
+
+        (
+            self.all_context[self.ROW_INDEX],
+            self.all_context[self.ANSWERS_COLUMN],
+            self.all_context[self.QUES_COLUMN],
+            self.all_context[self.DOC_COLUMN],
+            self.all_pred_answers,
+            self.all_start_pos_preds,
+            self.all_end_pos_preds,
+            self.all_has_answer_preds,
+            self.all_start_pos_targets,
+            self.all_end_pos_targets,
+            self.all_has_answer_targets,
+            self.all_start_pos_scores,
+            self.all_end_pos_scores,
+            self.all_has_answer_scores,
+        ) = zip(*all_rows)
+
         exact_matches, count = self._compute_exact_matches(
             self.all_pred_answers,
             self.all_context[self.ANSWERS_COLUMN],

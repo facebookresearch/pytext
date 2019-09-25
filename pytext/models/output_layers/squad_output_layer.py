@@ -18,6 +18,7 @@ class SquadOutputLayer(OutputLayerBase):
         pos_loss_weight: float = 0.5
         has_answer_loss_weight: float = 0.5
         false_label: str = "False"
+        max_answer_len: int = 30
 
     @classmethod
     def from_config(
@@ -33,6 +34,7 @@ class SquadOutputLayer(OutputLayerBase):
             has_answer_loss_weight=config.has_answer_loss_weight,
             has_answer_labels=labels,
             false_label=config.false_label,
+            max_answer_len=config.max_answer_len,
         )
 
     def __init__(
@@ -43,18 +45,23 @@ class SquadOutputLayer(OutputLayerBase):
         has_answer_loss_weight: float = Config.has_answer_loss_weight,
         has_answer_labels: Iterable[str] = ("False", "True"),
         false_label: str = Config.false_label,
+        max_answer_len: int = Config.max_answer_len,
     ) -> None:
         super().__init__(loss_fn=loss_fn)
         self.pos_loss_weight = pos_loss_weight
         self.has_answer_loss_weight = has_answer_loss_weight
         self.has_answer_labels = has_answer_labels
         self.ignore_impossible = ignore_impossible
+        self.max_answer_len = max_answer_len
         if not ignore_impossible:
             self.false_idx = 1 if has_answer_labels[1] == false_label else 0
             self.true_idx = 1 - self.false_idx
 
     def _get_position_preds(
-        self, start_pos_logits: torch.Tensor, end_pos_logits: torch.Tensor
+        self,
+        start_pos_logits: torch.Tensor,
+        end_pos_logits: torch.Tensor,
+        max_span_length: int,
     ):
         # the following is to enforce end_pos > start_pos.  We create a matrix
         # of start_positions X end_positions, fill it with the sum logits,
@@ -84,6 +91,8 @@ class SquadOutputLayer(OutputLayerBase):
             end_pos_logits.unsqueeze(-1).expand(size).transpose(-2, -1) + 10
         )
         logit_sum_matrix = (start_pos_logits + end_pos_logits).triu()
+        for i in range(logit_sum_matrix.size()[1]):
+            logit_sum_matrix[:, i, i + max_span_length :] = 0
         vals, ids = logit_sum_matrix.max(-1)
         _, start_positions = vals.max(-1)
         end_positions = ids.gather(-1, start_positions.unsqueeze(-1)).squeeze(-1)
@@ -98,7 +107,7 @@ class SquadOutputLayer(OutputLayerBase):
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
         start_pos_logits, end_pos_logits, has_answer_logits = logits
         start_pos_preds, end_pos_preds = self._get_position_preds(
-            start_pos_logits, end_pos_logits
+            start_pos_logits, end_pos_logits, self.max_answer_len
         )
         has_answer_preds = has_answer_logits.argmax(-1)
         has_answer_scores = torch.zeros(has_answer_logits.size())
@@ -147,16 +156,20 @@ class SquadOutputLayer(OutputLayerBase):
         start_pos_target, end_pos_target, has_answer_target = targets
 
         num_answers = start_pos_target.size()[-1]
-        start_loss = self.loss_fn(
-            start_pos_logit.repeat((num_answers, 1)),
-            start_pos_target.transpose(1, 0).flatten(),
-            reduce=False,
-        )
-        end_loss = self.loss_fn(
-            end_pos_logit.repeat((num_answers, 1)),
-            end_pos_target.transpose(1, 0).flatten(),
-            reduce=False,
-        )
+        if num_answers == 0:
+            start_loss = torch.tensor(0, requires_grad=True).type_as(end_pos_logit)
+            end_loss = torch.tensor(0, requires_grad=True).type_as(end_pos_logit)
+        else:
+            start_loss = self.loss_fn(
+                start_pos_logit.repeat((num_answers, 1)),
+                start_pos_target.transpose(1, 0).flatten(),
+                reduce=False,
+            )
+            end_loss = self.loss_fn(
+                end_pos_logit.repeat((num_answers, 1)),
+                end_pos_target.transpose(1, 0).flatten(),
+                reduce=False,
+            )
         loss = (start_loss + end_loss).mean()
         if not self.ignore_impossible:
             has_answer_mask = (
