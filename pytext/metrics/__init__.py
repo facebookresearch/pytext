@@ -88,6 +88,7 @@ class SoftClassificationMetrics(NamedTuple):
 
     average_precision: float
     recall_at_precision: Dict[float, float]
+    decision_thresh_at_precision: Dict[float, float]
     roc_auc: Optional[float]
 
 
@@ -546,7 +547,7 @@ def recall_at_precision(
     Computes recall at various precision levels
 
     Args:
-        y_true_sorted: Numpy array sorted according to decreasing condifence scores
+        y_true_sorted: Numpy array sorted according to decreasing confidence scores
             indicating whether each prediction is correct.
         y_score_sorted: Numpy array of confidence scores for the predictions in
             decreasing order.
@@ -559,18 +560,26 @@ def recall_at_precision(
     score_change = (y_score_sorted - y_score_shift) != 0
     cum_sum = np.cumsum(y_true_sorted)
     recall_at_precision_dict = {t: 0.0 for t in thresholds}
+    decision_thresh_at_precision_dict = {t: 0.0 for t in thresholds}
     sum_y_true = y_true_sorted.sum()
     if sum_y_true == 0:
-        return recall_at_precision_dict
+        return recall_at_precision_dict, decision_thresh_at_precision_dict
     recall = cum_sum / sum_y_true
     precision = cum_sum / np.array(range(1, len(y_true_sorted) + 1))
+
     for threshold in thresholds:
         meets_requirements = np.logical_and(precision >= threshold, score_change)
-        r = 0.0
-        if np.any(meets_requirements):
-            r = float(max(np.extract(meets_requirements, recall)))
-        recall_at_precision_dict[threshold] = r
-    return recall_at_precision_dict
+        if not np.any(meets_requirements):
+            continue
+
+        recall_at_precision_dict[threshold] = float(
+            max(np.extract(meets_requirements, recall))
+        )
+        decision_thresh_at_precision_dict[threshold] = float(
+            min(np.extract(meets_requirements, y_score_sorted))
+        )
+
+    return recall_at_precision_dict, decision_thresh_at_precision_dict
 
 
 def compute_soft_metrics(
@@ -601,13 +610,14 @@ def compute_soft_metrics(
             y_score.append(label_scores[i])
         y_true_sorted, y_score_sorted = sort_by_score(y_true, y_score)
         ap = average_precision_score(y_true_sorted, y_score_sorted)
-        recall_at_precision_dict = recall_at_precision(
+        recall_at_precision_dict, decision_thresh_at_precision = recall_at_precision(
             y_true_sorted, y_score_sorted, recall_at_precision_thresholds
         )
         roc_auc = compute_roc_auc(predictions, target_class=i)
         soft_metrics[label_name] = SoftClassificationMetrics(
             average_precision=ap,
             recall_at_precision=recall_at_precision_dict,
+            decision_thresh_at_precision=decision_thresh_at_precision,
             roc_auc=roc_auc,
         )
     return soft_metrics
@@ -642,13 +652,14 @@ def compute_multi_label_soft_metrics(
             y_score.append(label_scores[i])
         y_true_sorted, y_score_sorted = sort_by_score(y_true, y_score)
         ap = average_precision_score(y_true_sorted, y_score_sorted)
-        recall_at_precision_dict = recall_at_precision(
+        recall_at_precision_dict, decision_thresh_at_precision = recall_at_precision(
             y_true_sorted, y_score_sorted, recall_at_precision_thresholds
         )
         roc_auc = compute_roc_auc(predictions, target_class=i)
         soft_metrics[label_name] = SoftClassificationMetrics(
             average_precision=ap,
             recall_at_precision=recall_at_precision_dict,
+            decision_thresh_at_precision=decision_thresh_at_precision,
             roc_auc=roc_auc,
         )
     return soft_metrics
