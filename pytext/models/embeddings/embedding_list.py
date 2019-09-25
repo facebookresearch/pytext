@@ -5,8 +5,8 @@ from typing import Dict, Iterable, List, Tuple, Union
 
 import torch
 import torch.nn as nn
-from tensorboardX import SummaryWriter
 from torch.nn import ModuleList
+from torch.utils.tensorboard import SummaryWriter
 
 from .embedding_base import EmbeddingBase
 

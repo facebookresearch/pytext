@@ -6,7 +6,7 @@ import traceback
 from typing import Tuple
 
 from pytext.common.constants import Stage
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 class Channel:
@@ -143,9 +143,9 @@ class TensorBoardChannel(Channel):
     job to TensorBoard.
 
     Attributes:
-        summary_writer: An instance of the TensorBoardX SummaryWriter class, or
+        summary_writer: An instance of the TensorBoard SummaryWriter class, or
             an object that implements the same interface.
-            https://tensorboardx.readthedocs.io/en/latest/tensorboard.html
+            https://pytorch.org/docs/stable/tensorboard.html
         metric_name: The name of the default metric to display on the
             TensorBoard dashboard, defaults to "accuracy"
         train_step: The training step count

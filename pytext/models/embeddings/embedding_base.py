@@ -5,7 +5,7 @@ from typing import Dict, List
 
 import torch.nn as nn
 from pytext.models.module import Module
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 
 class EmbeddingBase(Module):
