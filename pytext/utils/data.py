@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import builtins
 import json
+import os
 import unicodedata
 from typing import Any, List, Optional, Tuple
 
@@ -272,3 +274,13 @@ def unkify(token: str):
             res = "<unk>-NUM"
 
     return res
+
+
+def patch_path_manager_with_python_builtins():
+    class PathManager:
+        open = builtins.open
+        isfile = os.path.isfile
+        mkdirs = os.makedirs
+        exists = os.path.exists
+
+    return PathManager
