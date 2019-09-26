@@ -9,8 +9,8 @@ from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.fields import FieldMeta
 from pytext.utils.embeddings import PretrainedEmbedding
-from tensorboardX import SummaryWriter
 from torch import nn
+from torch.utils.tensorboard import SummaryWriter
 
 from .embedding_base import EmbeddingBase
 

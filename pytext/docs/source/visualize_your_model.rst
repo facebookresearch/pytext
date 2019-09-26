@@ -2,7 +2,7 @@ Visualize Model Training with TensorBoard
 ======================================================
 
 Visualizations can be helpful in allowing you to better understand, debug and optimize your models during training.
-By default, all models trained using PyText can be visualized using `TensorBoard <https://www.tensorflow.org/guide/summaries_and_tensorboard>`_, thanks to the `TensorBoardX <https://github.com/lanpa/tensorboardX>`_ library.
+By default, all models trained using PyText can be visualized using `TensorBoard <https://www.tensorflow.org/guide/summaries_and_tensorboard>`.
 
 Here, we will explore how to visualize the model from the tutorial :doc:`atis_tutorial`.
 

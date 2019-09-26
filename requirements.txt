@@ -10,4 +10,5 @@ pytorch-pretrained-bert
 requests
 scipy
 torchtext
-tensorboardX
+tensorboard==1.14
+torch
