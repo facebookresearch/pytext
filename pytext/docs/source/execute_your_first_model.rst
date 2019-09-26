@@ -124,7 +124,7 @@ Then we implement a minimal `Flask <http://flask.pocoo.org/>`_ web server.
         text = flask.request.data.decode()
 
         # Pass the inputs to PyText's prediction API
-        result = predictor({"raw_text": text})
+        result = predictor({"text": text})
 
         # Results is a list of output blob names and their scores.
         # The blob names are different for joint models vs doc models
