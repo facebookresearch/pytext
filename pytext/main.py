@@ -197,6 +197,7 @@ def main(context, config_file, config_json, config_module, include):
         add_include(path.rstrip("/"))
 
     context.obj = Attrs()
+    context.obj.include = include
 
     def load_config():
         # Cache the config object so it can be accessed multiple times
@@ -212,6 +213,9 @@ def main(context, config_file, config_json, config_module, include):
                 else:
                     eprint("No config file specified, reading from stdin")
                     config = json.load(sys.stdin)
+                # before parsing the config, include the custom components
+                for path in config.get("include_dirs", []):
+                    add_include(path.rstrip("/"))
                 context.obj.config = parse_config(config)
         return context.obj.config
 
@@ -254,6 +258,14 @@ def gen_default_config(context, task_name, options):
             ex,
         )
         sys.exit(-1)
+
+    # add the --include to the config generated
+    if context.obj.include:
+        if cfg.include_dirs is None:
+            cfg.include_dirs = []
+        for path in context.obj.include:
+            cfg.include_dirs.append(path.rstrip("/"))
+
     cfg_json = config_to_json(PyTextConfig, cfg)
     print(json.dumps(cfg_json, sort_keys=True, indent=2))
 
