@@ -112,6 +112,8 @@ class Trainer(TrainerBase):
         sparsifier: Optional[Sparsifier.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
+        if config.early_stop_after > 0:
+            assert config.do_eval, "can't do early stopping when not running evalution"
         optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, optimizer)
