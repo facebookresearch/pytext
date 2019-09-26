@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 import io
 import os
 from typing import Dict, List, Optional
@@ -11,6 +10,15 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
+from pytext.utils.data import patch_path_manager_with_python_builtins
+
+
+# TODO: @stevenliu remove try statement after borc becomes available in pypi
+try:
+    from borc.common.file_io import PathManager
+except ImportError:
+    print("Patch PathManager with python builtins")
+    PathManager = patch_path_manager_with_python_builtins()
 
 
 DATA_STATE = "data_state"
@@ -204,24 +212,30 @@ class CheckpointManager:
         together represent the checkpoint. When identifier is None, this
         function is used to save post-training snapshot
         """
+        saved_path = ""
         if identifier:
             # saving during-training checkpoints
-            save_path = self.generate_checkpoint_path(config, identifier)
-            print("Saving checkpoint to ", save_path)
+            saved_path = self.generate_checkpoint_path(config, identifier)
+            print("Saving checkpoint to ", saved_path)
         else:
             # saving post-training snapshot if no identifer given
-            save_path = config.save_snapshot_path
-            print(f"Saving pytorch model to: {save_path}")
+            saved_path = config.save_snapshot_path
+            print(f"Saving pytorch model to: {saved_path}")
 
-        with open(save_path, "wb") as checkpoint_f:
-            saved_path = save_checkpoint(
+        saved_folder = os.path.dirname(saved_path)
+        if not PathManager.exists(saved_folder):
+            PathManager.mkdirs(saved_folder)
+            print(f"created {saved_folder}")
+
+        with PathManager.open(saved_path, "wb") as checkpoint_f:
+            save_checkpoint(
                 checkpoint_f, config, model, meta, tensorizers, training_state
             )
             if identifier:
                 self._saved_paths.append(saved_path)
             else:
                 self._post_training_snapshot_path = saved_path
-        return save_path
+        return saved_path
 
     def load(self, load_path: str, overwrite_config=None):
         """
@@ -230,10 +244,10 @@ class CheckpointManager:
             load_path (str): the file path to load for checkpoint
         Returns: task (Task), config (PyTextConfig) and training_state (TrainingState)
         """
-        if not (load_path and os.path.isfile(load_path)):
+        if not (load_path and PathManager.isfile(load_path)):
             raise ValueError(f"Invalid snapshot path{load_path}")
-        print(f"Loading model from {load_path}...")
-        with open(load_path, "rb") as checkpoint_f:
+        print(f"Loading model from {load_path}")
+        with PathManager.open(load_path, "rb") as checkpoint_f:
             return load_checkpoint(checkpoint_f, overwrite_config)
 
     def list(self) -> List[str]:
