@@ -84,27 +84,27 @@ Opt level explaination (from Nvidia Apex):
 """
 
 
-_FP16_ENABLED = False
-_OPT_LEVEL = None
-_DELAY_UNSCALE = False
+FP16_ENABLED = False
+OPT_LEVEL = None
+DELAY_UNSCALE = False
 
 
 @contextmanager
 def delay_unscale():
-    global _DELAY_UNSCALE
+    global DELAY_UNSCALE
 
     # delay_unscale is required for gradients accumulation, model accumulate
     # gradient on FP16 parameters when set to True and using the same loss_scale
-    old_delay_unscale = _DELAY_UNSCALE
-    _DELAY_UNSCALE = True
+    old_delay_unscale = DELAY_UNSCALE
+    DELAY_UNSCALE = True
     try:
         yield
     finally:
-        _DELAY_UNSCALE = old_delay_unscale
+        DELAY_UNSCALE = old_delay_unscale
 
 
 def set_fp16(fp16_enabled: bool):
-    global _FP16_ENABLED
+    global FP16_ENABLED
 
     if _APEX_DISABLED:
         return
@@ -113,26 +113,26 @@ def set_fp16(fp16_enabled: bool):
         if not cuda.CUDA_ENABLED:
             raise RuntimeError("Cuda is not available, should not running fp16...")
 
-        _FP16_ENABLED = fp16_enabled
+        FP16_ENABLED = fp16_enabled
 
 
 def initialize(model, optimizer):
-    global _OPT_LEVEL
+    global OPT_LEVEL
 
-    if _FP16_ENABLED:
-        _OPT_LEVEL = "O2" if model.SUPPORT_FP16_OPTIMIZER else "O1"
-        return amp.initialize(model, optimizer, opt_level=_OPT_LEVEL)
+    if FP16_ENABLED:
+        OPT_LEVEL = "O2" if model.SUPPORT_FP16_OPTIMIZER else "O1"
+        return amp.initialize(model, optimizer, opt_level=OPT_LEVEL)
     else:
         return model, optimizer
 
 
 def backward(optimizer, loss):
-    if _FP16_ENABLED:
+    if FP16_ENABLED:
         # 1. Use automatic loss scaling to best use fp16 range
         # 2. Clear handle's cache of casted parameters
         if loss > 0:
             with amp.scale_loss(
-                loss, optimizer, delay_unscale=_DELAY_UNSCALE
+                loss, optimizer, delay_unscale=DELAY_UNSCALE
             ) as scaled_loss:
                 scaled_loss.backward()
         else:
@@ -142,7 +142,7 @@ def backward(optimizer, loss):
 
 
 def clip_grad_norm(model, optimizer, max_clip_norm):
-    if _FP16_ENABLED:
+    if FP16_ENABLED:
         # Refer: https://nvidia.github.io/apex/advanced.html
         return torch.nn.utils.clip_grad_norm_(
             amp.master_params(optimizer), max_clip_norm
@@ -155,36 +155,36 @@ def deactivate(model):
     # Warning: this function is expected to be called after train finished.
     # In case need to deactivate before train, should invoke unwrap_optimizer first.
 
-    global _FP16_ENABLED
-    global _OPT_LEVEL
+    global FP16_ENABLED
+    global OPT_LEVEL
 
-    if _FP16_ENABLED:
-        if _OPT_LEVEL == "O2":
+    if FP16_ENABLED:
+        if OPT_LEVEL == "O2":
             # convert model parameters back to fp32
             model.float()
-            _OPT_LEVEL = None
+            OPT_LEVEL = None
         else:
             # restoring uncasted versions of functions
             amp._amp_state.handle._deactivate()
-        _FP16_ENABLED = False
+        FP16_ENABLED = False
 
 
 def maybe_float(tensor):
-    if _FP16_ENABLED and tensor.type().split(".")[-1] == "HalfTensor":
+    if FP16_ENABLED and tensor.type().split(".")[-1] == "HalfTensor":
         return tensor.float()
     else:
         return tensor
 
 
 def maybe_half(tensor):
-    if _FP16_ENABLED and tensor.type().split(".")[-1] == "FloatTensor":
+    if FP16_ENABLED and tensor.type().split(".")[-1] == "FloatTensor":
         return tensor.half()
     else:
         return tensor
 
 
 def pad_length(n):
-    if _FP16_ENABLED:
+    if FP16_ENABLED:
         # To take advantage of tensor core, length should be multiple of 8
         remainder = n % 8
         if remainder > 0:

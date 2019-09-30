@@ -155,11 +155,11 @@ class DataTest(unittest.TestCase):
         expected_lists = [[1, 2, 3], [4, 5, 0]]
         self.assertEqual(padded_lists, expected_lists)
 
-        precision._FP16_ENABLED = True
+        precision.FP16_ENABLED = True
         padded_lists = pad(nested_lists, pad_token=0)
         expected_lists = [[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0, 0]]
         self.assertEqual(padded_lists, expected_lists)
-        precision._FP16_ENABLED = False
+        precision.FP16_ENABLED = False
 
 
 class BatcherTest(unittest.TestCase):

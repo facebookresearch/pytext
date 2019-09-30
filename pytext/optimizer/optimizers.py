@@ -13,6 +13,18 @@ class Optimizer(Component):
     class Config(ConfigBase):
         pass
 
+    def backward(self, loss):
+        loss.backward()
+
+    def clip_grad_norm(self, model, max_norm):
+        if max_norm is not None:
+            return torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+        else:
+            return None
+
+    def pre_export(self, model):
+        pass
+
     def finalize(self) -> bool:
         return False
 
