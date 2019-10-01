@@ -40,6 +40,7 @@ class WordFeatConfig(ModuleConfig):
     min_freq: int = 1
     mlp_layer_dims: Optional[List[int]] = []
     padding_idx: Optional[int] = None
+    cpu_only: bool = False
 
 
 class DictFeatConfig(ModuleConfig):
