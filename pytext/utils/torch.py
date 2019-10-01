@@ -436,13 +436,13 @@ class VectorNormalizer(torch.jit.ScriptModule):
     """
 
     def __init__(self, dim: int, do_normalization: bool = True):
+        super().__init__()
         self.num_rows = 0
         self.feature_sums = [0] * dim
         self.feature_squared_sums = [0] * dim
-        self.do_normalization = do_normalization
-        self.feature_avgs = [0.0] * dim
-        self.feature_stddevs = [1.0] * dim
-        super().__init__()
+        self.do_normalization = torch.jit.Attribute(do_normalization, bool)
+        self.feature_avgs = torch.jit.Attribute([0.0] * dim, List[float])
+        self.feature_stddevs = torch.jit.Attribute([1.0] * dim, List[float])
 
     def __getstate__(self):
         return {
@@ -480,7 +480,6 @@ class VectorNormalizer(torch.jit.ScriptModule):
                 ** 0.5
                 for i in range(len(self.feature_squared_sums))
             ]
-        self.package_for_inference()
 
     def normalize(self, vec: List[List[float]]):
         if self.do_normalization:
@@ -491,12 +490,3 @@ class VectorNormalizer(torch.jit.ScriptModule):
                         self.feature_stddevs[j] if self.feature_stddevs[j] != 0 else 1.0
                     )
         return vec
-
-    def package_for_inference(self):
-        """These attributes must only be assigned once the arrays are properly
-        populated with the correct final values. Without doing this, JIT will
-        save the initialised arrays with the default values.
-        """
-        self.do_normalization = torch.jit.Attribute(self.do_normalization, bool)
-        self.feature_avgs = torch.jit.Attribute(self.feature_avgs, List[float])
-        self.feature_stddevs = torch.jit.Attribute(self.feature_stddevs, List[float])
