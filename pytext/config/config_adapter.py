@@ -641,6 +641,17 @@ def remove_docclassificationtask_deprecated(json_config):
     return json_config
 
 
+@register_adapter(from_version=17)
+def rename_fl_task(json_config):
+    # remove 'NewDoc' from FL task names
+    for trainer_suffix in ["SyncTrainer", "AsyncTrainer"]:
+        old_trainer_name = f"FLNewDoc{trainer_suffix}"
+        new_trainer_name = f"FL{trainer_suffix}"
+        for section in find_dicts_containing_key(json_config, old_trainer_name):
+            section[new_trainer_name] = section.pop(old_trainer_name)
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
