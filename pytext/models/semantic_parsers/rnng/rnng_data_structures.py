@@ -102,7 +102,7 @@ class CompositionalNN(torch.jit.ScriptModule):
     Combines a list / sequence of embeddings into one using a biLSTM
     """
 
-    __constants__ = ["lstm_dim", "linear_seq"]
+    __constants__ = ["lstm_dim", "linear_seq", "device"]
 
     def __init__(self, lstm_dim: int):
         super().__init__()
