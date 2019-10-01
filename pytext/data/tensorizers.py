@@ -822,6 +822,9 @@ class FloatListTensorizer(Tensorizer):
         return [(self.column, List[float])]
 
     def initialize(self):
+        if not self.normalizer.do_normalization:
+            self.normalizer.calculate_feature_stats()
+            return
         try:
             while True:
                 row = yield
