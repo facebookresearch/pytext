@@ -55,7 +55,7 @@ def maybe_accumulate_gradients(exit_stack, model, index, sample_size):
         """
         exit_stack.enter_context(model.no_sync())
 
-    if precision._FP16_ENABLED and index < sample_size - 1:
+    if precision.FP16_ENABLED and index < sample_size - 1:
         """
         Whenever *samples* contains more than one mini-batch (e.g sample_size > 1),
         we want to accumulate gradients in FP16 parameters (e.g delay unscale)

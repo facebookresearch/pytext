@@ -100,11 +100,11 @@ class DictFieldTest(unittest.TestCase):
         )
         np.testing.assert_array_equal(feats.data.numpy(), NUMERICAL_FEATS)
 
-        precision._FP16_ENABLED = True
+        precision.FP16_ENABLED = True
         padded_feats, padded_weights, padded_lengths = self.dict_field.pad(minibatch)
         self.assertTrue(len(padded_feats[0]) % 8 == 0)
         self.assertTrue(len(padded_weights[0]) % 8 == 0)
-        precision._FP16_ENABLED = False
+        precision.FP16_ENABLED = False
 
     def test_left_pad_numericalize(self):
         minibatch = [dict_feat for dict_feat in zip(DICT_FEATS_STR, WEIGHTS, LENGTHS)]
@@ -119,8 +119,8 @@ class DictFieldTest(unittest.TestCase):
         )
         np.testing.assert_array_equal(feats.data.numpy(), LEFT_NUMERICAL_FEATS)
 
-        precision._FP16_ENABLED = True
+        precision.FP16_ENABLED = True
         padded_feats, padded_weights, padded_lengths = self.dict_field.pad(minibatch)
         self.assertTrue(len(padded_feats[0]) % 8 == 0)
         self.assertTrue(len(padded_weights[0]) % 8 == 0)
-        precision._FP16_ENABLED = False
+        precision.FP16_ENABLED = False

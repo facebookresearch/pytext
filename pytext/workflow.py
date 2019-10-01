@@ -62,7 +62,7 @@ def _set_fp16(use_fp16: bool, rank: int) -> None:
     # only support single GPU training at this moment.
     precision.set_fp16(fp16_enabled=use_fp16)
     if rank == 0:
-        print(f"# for debug of FP16: fp16_enabled={precision._FP16_ENABLED}")
+        print(f"# for debug of FP16: fp16_enabled={precision.FP16_ENABLED}")
 
 
 def _set_distributed(

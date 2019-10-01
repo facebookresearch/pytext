@@ -113,7 +113,7 @@ class CharFieldTest(unittest.TestCase):
             numericalized_minibatch.numpy().tolist(), expected_numericalized_chars
         )
 
-        precision._FP16_ENABLED = True
+        precision.FP16_ENABLED = True
         padded_minibatch = char_field.pad(minibatch)
         self.assertTrue(len(padded_minibatch[0]) % 8 == 0)
-        precision._FP16_ENABLED = False
+        precision.FP16_ENABLED = False
