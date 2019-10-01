@@ -4,7 +4,7 @@ future
 hypothesis<4.0
 joblib
 numpy
-onnx
+onnx==1.5.0
 pandas
 pytorch-pretrained-bert
 requests
