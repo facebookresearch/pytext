@@ -22,6 +22,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
+from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerApex
 from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifier import Sparsifier
 from pytext.task.serialize import save
@@ -110,20 +111,36 @@ class Trainer(TrainerBase):
         optimizer: Optimizer.Config = Adam.Config()
         scheduler: Optional[Scheduler.Config] = None
         sparsifier: Optional[Sparsifier.Config] = None
+        #: Define arguments for fp16 training. A fp16_optimizer will be created
+        #: and wraps the original optimizer, which will scale loss during
+        #: backward and master weight will be maintained on original optimizer.
+        #: https://arxiv.org/abs/1710.03740
+        fp16_args: FP16Optimizer.Config = FP16OptimizerApex.Config()
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
             assert config.do_eval, "can't do early stopping when not running evalution"
-        optimizer: torch.optim.Optimizer = create_optimizer(config.optimizer, model)
+
+        if precision.FP16_ENABLED:
+            self.optimizer: torch.optim.Optimizer = create_optimizer(
+                config.fp16_args,
+                model,
+                config.optimizer,
+                config.num_accumulated_batches,
+            )
+        else:
+            self.optimizer: torch.optim.Optimizer = create_optimizer(
+                config.optimizer, model
+            )
+
         self.scheduler: torch.optim.lr_scheduler = (
-            create_scheduler(config.scheduler, optimizer)
+            create_scheduler(config.scheduler, self.optimizer)
             if config.scheduler
             else Scheduler()
         )
         self.sparsifier: Sparsifier = (
             create_sparsifier(config.sparsifier) if config.sparsifier else Sparsifier()
         )
-        model, self.optimizer = precision.initialize(model, optimizer)
         self.config = config
 
     @classmethod
@@ -174,22 +191,18 @@ class Trainer(TrainerBase):
             return
 
         with timing.time("loss.backward"):
-            precision.backward(state.optimizer, loss)
+            state.optimizer.backward(loss)
 
     @timing.time("optimizer")
     def optimizer_step(self, state):
         if state.stage != Stage.TRAIN:
             return
 
+        grad_norm = state.optimizer.clip_grad_norm(
+            state.model, self.config.max_clip_norm
+        )
+
         state.scheduler.step_batch()
-
-        if self.config.max_clip_norm is not None:
-            grad_norm = precision.clip_grad_norm(
-                state.model, state.optimizer, self.config.max_clip_norm
-            )
-        else:
-            grad_norm = None
-
         with timing.time("optimizer.step"):
             state.optimizer.step()
 

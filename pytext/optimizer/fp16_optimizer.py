@@ -1,8 +1,200 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import contextlib
+from sys import stderr
+from typing import Optional
 
 import torch
+from pytext.config.component import create_optimizer
+from pytext.optimizer.optimizers import Optimizer
+from pytext.utils import precision
+
+
+_APEX_DISABLED = False
+try:
+    from apex import amp
+except ImportError:
+    print("Install apex from https://github.com/NVIDIA/apex/.", file=stderr)
+    _APEX_DISABLED = True
+except AttributeError as e:
+    print(f"Fail to import apex: {e}", file=stderr)
+    _APEX_DISABLED = True
+
+
+"""
+Tips:
+1. Recommand run fp16 on latest generation (Volta V100) GPU, CUDA 9.1 or newer
+   to leverage tensor cores, which provide 8x more throughput than single
+   precision math pipelines.
+2. Additionally:
+    - Batch size should be a multiple of 8
+    - Tokens size should be a multiple of 8
+    - Embedding layers should be padded to be a multiple of 8
+    - Ideally, everything should be a multiple of 8 (e.g padding, etc)
+3. Larger batch_size might increase GPU utilization and better performance.
+"""
+
+
+class FP16Optimizer(Optimizer):
+    __EXPANSIBLE__ = True
+
+    def __init__(self, fp32_optimizer):
+        self.fp32_optimizer: torch.optim.Optimizer = fp32_optimizer
+
+    @property
+    def param_groups(self):
+        return self.fp32_optimizer.param_groups
+
+    def finalize(self) -> bool:
+        return self.fp32_optimizer.finalize()
+
+    # methods to implement
+    def state_dict(self):
+        raise NotImplementedError
+
+    def load_state_dict(self, state_dict):
+        raise NotImplementedError
+
+    def zero_grad(self):
+        raise NotImplementedError
+
+    def step(self, closure=None):
+        raise NotImplementedError
+
+    def backward(self, loss):
+        raise NotImplementedError
+
+    def clip_grad_norm(self, model, max_norm):
+        raise NotImplementedError
+
+    def pre_export(self, model):
+        raise NotImplementedError
+
+
+"""
+Apex amp: https://github.com/NVIDIA/apex/tree/master/apex/amp
+
+FP32 Master Weights <--(step)-- FP32 Gradients <--(unscale)-- Scaled FP16 Gradients
+       |                                                        |
+(copy) |                                                        | (backprop)
+       |                                                        |
+FP16 Weights --(forward)--> FP32 Loss --(loss scaling)--> Scaled FP32 Loss
+
+Using amp require adding three lines of code.
+https://nvidia.github.io/apex/amp.html
+1. Allow Amp to perform casts as required by the opt_level:
+model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+
+2. loss.backward() replace with:
+with amp.scale_loss(loss, optimizer) as scaled_loss:
+    scaled_loss.backward()
+
+3. torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm) replace with:
+torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), max_norm)
+
+Opt level explaination (from Nvidia Apex):
+
+* O1:  Insert automatic casts around Pytorch functions and Tensor methods
+ - The type of your model's weights is not altered.  However, internally,
+   Pytorch functions are patched to cast any Tensor Core-friendly ops to FP16
+   for speed, while operations that might benefit from the additional stability
+   of FP32 are patched to cast their inputs to fp32.
+ - O1 is the safest way to try mixed precision training, and is recommended when
+   trying mixed precision training for the first time.
+
+* O2:  FP16 training with FP32 batchnorm and FP32 master weights.
+ - Calls .half() on your model, converting the entire model (except for batchnorms)
+   to FP16.  Batchnorms are retained in FP32 for additional stability.
+ - The forward pass is patched to cast incoming Tensors to FP16, so you don't
+   need to change your data pipeline.
+ - O2 creates FP32 master weights outside the model and patches any optimizers
+   to update these master weights, then copy the master weights into the FP16
+   model weights.
+"""
+
+
+class FP16OptimizerApex(FP16Optimizer):
+    class Config(FP16Optimizer.Config):
+        # O1: Insert automatic casts around Pytorch functions and Tensor methods
+        # O2: FP16 training with FP32 batchnorm and FP32 master weights. (recommand)
+        opt_level: str = "O2"
+        # initial loss scale
+        init_loss_scale: int = 2 ** 7
+        # determine the minimum loss scale
+        min_loss_scale: Optional[float] = None
+
+    def __init__(
+        self,
+        fp32_optimizer: Optimizer,
+        model: torch.nn.Module,
+        opt_level: str,
+        init_loss_scale: int,
+        min_loss_scale: Optional[float],
+    ):
+        assert precision.FP16_ENABLED and not _APEX_DISABLED
+        model, fp32_optimizer = amp.initialize(
+            model,
+            fp32_optimizer,
+            opt_level=opt_level,
+            loss_scale=init_loss_scale,
+            min_loss_scale=min_loss_scale,
+        )
+
+        super().__init__(fp32_optimizer)
+        self.opt_level = opt_level
+
+    @classmethod
+    def from_config(
+        cls,
+        fp16_config: Config,
+        model: torch.nn.Module,
+        fp32_config: Optimizer.Config,
+        *unused,
+    ):
+        fp32_optimizer = create_optimizer(fp32_config, model)
+        return cls(
+            fp32_optimizer,
+            model,
+            fp16_config.opt_level,
+            fp16_config.init_loss_scale,
+            fp16_config.min_loss_scale,
+        )
+
+    def state_dict(self):
+        return self.fp32_optimizer.state_dict()
+
+    def load_state_dict(self, state_dict):
+        return self.fp32_optimizer.load_state_dict(state_dict)
+
+    def zero_grad(self):
+        self.fp32_optimizer.zero_grad()
+
+    def step(self, closure=None):
+        self.fp32_optimizer.step(closure)
+
+    def backward(self, loss):
+        with amp.scale_loss(
+            loss, self.fp32_optimizer, delay_unscale=precision.DELAY_UNSCALE
+        ) as scaled_loss:
+            scaled_loss.backward()
+
+    def clip_grad_norm(self, model, max_norm):
+        if max_norm is not None:
+            return torch.nn.utils.clip_grad_norm_(
+                amp.master_params(self.fp32_optimizer), max_norm
+            )
+        else:
+            return None
+
+    def pre_export(self, model):
+        if self._opt_level == "O2":
+            # convert model parameters back to fp32
+            model.float()
+        else:
+            # restoring uncasted versions of functions
+            amp._amp_state.handle._deactivate()
+
+        precision.FP16_ENABLED = False
 
 
 """fp16 optimizer wraps torch.optim to support mixed precision training
@@ -103,7 +295,7 @@ class DynamicLossScaler(object):
             self.scale *= self.scale_factor
 
 
-class FP16Optimizer(object):
+class FP16OptimizerDeprecated(object):
     def __init__(self, init_optimizer, init_scale, scale_factor, scale_window):
         r"""Initialize master weights maintaining optimizer.
 
@@ -243,7 +435,7 @@ def initialize(
     memory_efficient=False,
 ):
     optimizer = (
-        FP16Optimizer(optimizer, init_scale, scale_factor, scale_window)
+        FP16OptimizerDeprecated(optimizer, init_scale, scale_factor, scale_window)
         if not memory_efficient
         else PureFP16Optimizer(optimizer, init_scale, scale_factor, scale_window)
     )
@@ -277,7 +469,7 @@ loss.backward()          float()          step()               half()
 """
 
 
-class PureFP16Optimizer(FP16Optimizer):
+class PureFP16Optimizer(FP16OptimizerDeprecated):
     def __init__(
         self, init_optimizer, init_scale=2.0 ** 16, scale_factor=2, scale_window=2000
     ):
