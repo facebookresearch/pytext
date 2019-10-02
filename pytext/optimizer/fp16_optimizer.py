@@ -5,9 +5,13 @@ from sys import stderr
 from typing import Optional
 
 import torch
+from fairseq.optim.fp16_optimizer import (
+    DynamicLossScaler as Fairseq_DynamicLossScaler,
+    _FP16OptimizerMixin as Fairseq_FP16OptimizerMixin,
+)
 from pytext.config.component import create_optimizer
 from pytext.optimizer.optimizers import Optimizer
-from pytext.utils import precision
+from pytext.utils import cuda, precision
 
 
 _APEX_DISABLED = False
@@ -194,6 +198,98 @@ class FP16OptimizerApex(FP16Optimizer):
             # restoring uncasted versions of functions
             amp._amp_state.handle._deactivate()
 
+        precision.FP16_ENABLED = False
+
+
+class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
+    """
+    Wrap an *optimizer* to support FP16 (mixed precision) training.
+    """
+
+    class Config(FP16Optimizer.Config):
+        # initial loss scale
+        init_loss_scale: int = 2 ** 7
+        # determine when to increase loss scale,
+        # represents: consecutive number of non-overflow steps
+        scale_window: Optional[int] = None
+        # determine when to decrease loss scale, value range should be from 0 to 1,
+        # represents: percentage of overflow since last rescale
+        scale_tolerance: float = 0.0
+        # determine the loss scale minimum value threshold
+        threshold_loss_scale: Optional[float] = None
+        # used to detect loss exploding, exception will be raised if loss_scale
+        # reach this value
+        min_loss_scale: float = 0.0001
+
+    def __init__(
+        self,
+        fp16_params,
+        fp32_optimizer,
+        init_loss_scale,
+        scale_window,
+        scale_tolerance,
+        threshold_loss_scale,
+        min_loss_scale,
+        num_accumulated_batches,
+    ):
+        assert precision.FP16_ENABLED
+        super().__init__(fp32_optimizer)
+
+        self.fp16_params = fp16_params
+        self.fp32_params = self.build_fp32_params(fp16_params)
+
+        if scale_window is None:
+            scale_window = (
+                2 ** 14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
+            )
+        else:
+            scale_window = scale_window
+
+        self.scaler = Fairseq_DynamicLossScaler(
+            init_scale=init_loss_scale,
+            scale_window=scale_window,
+            tolerance=scale_tolerance,
+            threshold=threshold_loss_scale,
+        )
+        self.min_loss_scale = min_loss_scale
+
+        # reset fp32_optimizer param groups to using master weights
+        fp32_param_group = self.fp32_optimizer.param_groups[0]
+        fp32_param_group["params"] = [self.fp32_params]
+        self.fp32_optimizer.param_groups = []
+        self.fp32_optimizer.add_param_group(fp32_param_group)
+
+    @classmethod
+    def from_config(
+        cls,
+        fp16_config: Config,
+        model: torch.nn.Module,
+        fp32_config: Optimizer.Config,
+        num_accumulated_batches: int,
+    ):
+        fp16_params = list(filter(lambda p: p.requires_grad, model.parameters()))
+        fp32_optimizer = create_optimizer(fp32_config, model)
+        print(
+            "| Fairseq FP16Optimizer with init_loss_scale={}".format(
+                fp16_config.init_loss_scale
+            )
+        )
+        return cls(
+            fp16_params=fp16_params,
+            fp32_optimizer=fp32_optimizer,
+            init_loss_scale=fp16_config.init_loss_scale,
+            scale_window=fp16_config.scale_window,
+            scale_tolerance=fp16_config.scale_tolerance,
+            threshold_loss_scale=fp16_config.threshold_loss_scale,
+            min_loss_scale=fp16_config.min_loss_scale,
+            num_accumulated_batches=num_accumulated_batches,
+        )
+
+    def clip_grad_norm(self, unused_model, max_norm):
+        return super().clip_grad_norm(max_norm)
+
+    def pre_export(self, model):
+        model.float()
         precision.FP16_ENABLED = False
 
 

@@ -22,7 +22,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
-from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerApex
+from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerFairseq
 from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifier import Sparsifier
 from pytext.task.serialize import save
@@ -115,7 +115,7 @@ class Trainer(TrainerBase):
         #: and wraps the original optimizer, which will scale loss during
         #: backward and master weight will be maintained on original optimizer.
         #: https://arxiv.org/abs/1710.03740
-        fp16_args: FP16Optimizer.Config = FP16OptimizerApex.Config()
+        fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
@@ -198,9 +198,13 @@ class Trainer(TrainerBase):
         if state.stage != Stage.TRAIN:
             return
 
-        grad_norm = state.optimizer.clip_grad_norm(
-            state.model, self.config.max_clip_norm
-        )
+        try:
+            grad_norm = state.optimizer.clip_grad_norm(
+                state.model, self.config.max_clip_norm
+            )
+        except OverflowError as e:
+            print(f"Gradient overflow. Skipping step, {e}")
+            return None
 
         state.scheduler.step_batch()
         with timing.time("optimizer.step"):
