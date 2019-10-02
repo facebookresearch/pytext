@@ -5,6 +5,7 @@ import io
 from typing import Dict, List, Optional, Tuple
 
 import torch
+from pytext.utils import cuda
 
 
 # ===== the following section should be replaced once JIT provide native support
@@ -500,3 +501,15 @@ class VectorNormalizer(torch.jit.ScriptModule):
         self.do_normalization = torch.jit.Attribute(self.do_normalization, bool)
         self.feature_avgs = torch.jit.Attribute(self.feature_avgs, List[float])
         self.feature_stddevs = torch.jit.Attribute(self.feature_stddevs, List[float])
+
+
+class CPUOnlyParameter(torch.nn.Parameter):
+    def __init__(self, *args, **kwargs):
+        assert (
+            cuda.DISTRIBUTED_WORLD_SIZE <= 1
+        ), "Multiple GPUs not supported for cpu_only embeddings"
+        super().__init__(*args, **kwargs)
+
+    def cuda(self, device=None):
+        # We do nothing because this Parameter should only be on the CPU
+        return self
