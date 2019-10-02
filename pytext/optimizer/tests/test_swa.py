@@ -188,8 +188,8 @@ class TestSWA(TestCase):
         return [dict(params=bias, **kwargs)]
 
     # Test SWA
-
-    def test_swa(self):
+    # keep timing out in diffs T54574493
+    def DISABLED_test_swa(self):
         def sgd_constructor(params):
             sgd = optim.SGD(params, lr=1e-3)
             return StochasticWeightAveraging(
