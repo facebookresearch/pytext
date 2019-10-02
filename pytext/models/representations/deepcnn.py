@@ -9,6 +9,18 @@ from pytext.models.representations.representation_base import RepresentationBase
 from pytext.optimizer import get_activation
 
 
+def pool(pooling_type, words):
+    # input dims: bsz * seq_len * num_filters
+    if pooling_type == PoolingType.MEAN:
+        return words.mean(dim=1)
+    elif pooling_type == PoolingType.MAX:
+        return words.max(dim=1)[0]
+    elif pooling_type == PoolingType.NONE:
+        return words
+    else:
+        return NotImplementedError
+
+
 class Trim1d(nn.Module):
     """
     Trims a 1d convolutional output. Used to implement history-padding
@@ -264,17 +276,6 @@ class DeepCNNRepresentation(RepresentationBase):
         self.representation_dim = out_channels
         self.dropout = nn.Dropout(p=config.dropout)
 
-    def pool(self, words):
-        # input dims: bsz * seq_len * num_filters
-        if self.pooling_type == PoolingType.MEAN:
-            return words.mean(dim=1)
-        elif self.pooling_type == PoolingType.MAX:
-            return words.max(dim=1)[0]
-        elif self.pooling_type == PoolingType.NONE:
-            return words
-        else:
-            return NotImplementedError
-
     def forward(self, inputs: torch.Tensor, *args) -> torch.Tensor:
         inputs = self.dropout(inputs)
         # bsz * seq_len * embed_dim -> bsz * embed_dim * seq_len
@@ -289,4 +290,4 @@ class DeepCNNRepresentation(RepresentationBase):
             words = self.activation(words)
             words = (words + residual) * math.sqrt(0.5)
         words = words.permute(0, 2, 1)
-        return self.pool(words)
+        return pool(self.pooling_type, words)

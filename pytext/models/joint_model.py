@@ -21,7 +21,10 @@ from .decoders import IntentSlotModelDecoder
 from .embeddings import EmbeddingList
 from .output_layers.intent_slot_output_layer import IntentSlotOutputLayer
 from .representations.bilstm_doc_slot_attention import BiLSTMDocSlotAttention
-from .representations.jointcnn_rep import JointCNNRepresentation
+from .representations.jointcnn_rep import (
+    JointCNNRepresentation,
+    SharedCNNRepresentation,
+)
 
 
 class IntentSlotModel(Model):
@@ -58,6 +61,7 @@ class IntentSlotModel(Model):
         representation: Union[
             BiLSTMDocSlotAttention.Config,
             JointCNNRepresentation.Config,
+            SharedCNNRepresentation.Config,
             PassThroughRepresentation.Config,
         ] = BiLSTMDocSlotAttention.Config()
         output_layer: IntentSlotOutputLayer.Config = (IntentSlotOutputLayer.Config())
