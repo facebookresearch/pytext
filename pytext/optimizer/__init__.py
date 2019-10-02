@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from pytext.optimizer.activations import get_activation  # noqa
-from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerApex  # noqa
+from pytext.optimizer.fp16_optimizer import (  # noqa
+    FP16Optimizer,
+    FP16OptimizerApex,
+    FP16OptimizerFairseq,
+)
 from pytext.optimizer.optimizers import (  # noqa
     SGD,
     Adagrad,
