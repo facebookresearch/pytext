@@ -185,6 +185,8 @@ def create_optimizer(optimizer_config, model: torch.nn.Module, *args, **kwargs):
 
 
 def create_scheduler(scheduler_config, optimizer, *args, **kwargs):
+    if hasattr(optimizer, "fp32_optimizer"):
+        optimizer = optimizer.fp32_optimizer
     return create_component(
         ComponentType.SCHEDULER, scheduler_config, optimizer, *args, **kwargs
     )

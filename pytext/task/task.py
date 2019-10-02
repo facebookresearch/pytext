@@ -23,7 +23,7 @@ from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda, precision
+from pytext.utils import cuda
 
 
 def create_task(
@@ -197,7 +197,8 @@ class TaskBase(Component):
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
         model = model.cpu()
-        precision.deactivate(model)
+        optimizer = self.trainer.optimizer
+        optimizer.pre_export(model)
 
         if self.exporter:
             if metric_channels:
