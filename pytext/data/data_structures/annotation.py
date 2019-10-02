@@ -488,17 +488,22 @@ class Node_Info:
 
 class Tree:
     def __init__(
-        self, root: Root, combination_labels: bool, utterance: str = ""
+        self,
+        root: Root,
+        combination_labels: bool,
+        utterance: str = "",
+        validate_tree: bool = True,
     ) -> None:
         self.root = root
         self.combination_labels = combination_labels
-        try:
-            self.validate_tree()
-        except ValueError as v:
-            raise ValueError(
-                "Tree validation failed: {}. \n".format(v)
-                + "Utterance is: {}".format(utterance)
-            )
+        if validate_tree:
+            try:
+                self.validate_tree()
+            except ValueError as v:
+                raise ValueError(
+                    "Tree validation failed: {}. \n".format(v)
+                    + "Utterance is: {}".format(utterance)
+                )
 
     def validate_tree(self):
         """
@@ -632,8 +637,8 @@ class TreeBuilder:
         else:
             raise ValueError("Don't understand action %s" % (action))
 
-    def finalize_tree(self):
-        return Tree(self.root, self.combination_labels)
+    def finalize_tree(self, validate_tree=True):
+        return Tree(self.root, self.combination_labels, validate_tree=validate_tree)
 
 
 def list_from_actions(

@@ -82,7 +82,10 @@ class CompositionalMetricReporter(MetricReporter):
             topk_pred_trees = []
             for k, action_preds in enumerate(top_k_action_preds):
                 pred_tree = CompositionalMetricReporter.tree_from_tokens_and_indx_actions(
-                    token_str_list, self.actions_vocab, action_preds
+                    token_str_list,
+                    self.actions_vocab,
+                    action_preds,
+                    validate_tree=False,
                 )
                 topk_pred_trees.append(
                     CompositionalMetricReporter.tree_to_metric_node(pred_tree)
@@ -146,21 +149,28 @@ class CompositionalMetricReporter(MetricReporter):
 
     @staticmethod
     def tree_from_tokens_and_indx_actions(
-        token_str_list: List[str], actions_vocab: List[str], actions_indices: List[int]
+        token_str_list: List[str],
+        actions_vocab: List[str],
+        actions_indices: List[int],
+        validate_tree: bool = True,
     ):
         builder = TreeBuilder()
         i = 0
+        try:
+            for action_idx in actions_indices:
+                action = actions_vocab[action_idx]
+                if action == REDUCE:
+                    builder.update_tree(action, None)
+                elif action == SHIFT:
+                    builder.update_tree(action, token_str_list[i])
+                    i += 1
+                else:
+                    builder.update_tree(action, action)
 
-        for action_idx in actions_indices:
-            action = actions_vocab[action_idx]
-            if action == REDUCE:
-                builder.update_tree(action, None)
-            elif action == SHIFT:
-                builder.update_tree(action, token_str_list[i])
-                i += 1
-            else:
-                builder.update_tree(action, action)
-        tree = builder.finalize_tree()
+        except IndexError:
+            builder = TreeBuilder()
+            builder.update_tree(SHIFT, "IN:INVALID")
+        tree = builder.finalize_tree(validate_tree=validate_tree)
         return tree
 
     @staticmethod
@@ -179,14 +189,17 @@ class CompositionalMetricReporter(MetricReporter):
         """
         res_children: Set[Node] = set()
         idx = start
-        for child in node.children:
-            if type(child) == Token:
-                idx += len(child.label) + 1
-            elif type(child) == Intent or type(child) == Slot:
-                res_child = CompositionalMetricReporter.node_to_metrics_node(child, idx)
-                res_children.add(res_child)
-                idx = res_child.span.end + 1
-            else:
-                raise ValueError("Child must be Token, Intent or Slot!")
+        if node.children:
+            for child in node.children:
+                if type(child) == Token:
+                    idx += len(child.label) + 1
+                elif type(child) == Intent or type(child) == Slot:
+                    res_child = CompositionalMetricReporter.node_to_metrics_node(
+                        child, idx
+                    )
+                    res_children.add(res_child)
+                    idx = res_child.span.end + 1
+                else:
+                    raise ValueError("Child must be Token, Intent or Slot!")
         node = Node(label=node.label, span=Span(start, idx - 1), children=res_children)
         return node
