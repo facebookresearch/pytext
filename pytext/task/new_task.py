@@ -12,7 +12,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
-from pytext.utils import cuda, precision
+from pytext.utils import cuda
 from torch import jit
 
 from .task import TaskBase
@@ -237,7 +237,8 @@ class _NewTask(TaskBase):
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
         model = model.cpu()
-        precision.deactivate(model)
+        optimizer = self.trainer.optimizer
+        optimizer.pre_export(model)
 
         unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
         if metric_channels:
@@ -254,7 +255,9 @@ class _NewTask(TaskBase):
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
         model.cpu()
-        precision.deactivate(model)
+        optimizer = self.trainer.optimizer
+        optimizer.pre_export(model)
+
         # Trace needs eval mode, to disable dropout etc
         model.eval()
         model.prepare_for_onnx_export_()

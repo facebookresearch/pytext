@@ -20,7 +20,6 @@ try:
 except ImportError:
     print("Install apex from https://github.com/NVIDIA/apex/.", file=stderr)
     _APEX_DISABLED = True
-    from pytext.optimizer import fp16_optimizer as amp
 
 except AttributeError as e:
     print(f"Fail to import apex: {e}")
