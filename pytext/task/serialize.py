@@ -13,9 +13,9 @@ from pytext.trainers.training_state import TrainingState
 from pytext.utils.data import patch_path_manager_with_python_builtins
 
 
-# TODO: @stevenliu remove try statement after borc becomes available in pypi
+# TODO: @stevenliu remove try statement after fvcore becomes available in pypi
 try:
-    from borc.common.file_io import PathManager
+    from fvcore.common.file_io import PathManager
 except ImportError:
     print("Patch PathManager with python builtins")
     PathManager = patch_path_manager_with_python_builtins()
