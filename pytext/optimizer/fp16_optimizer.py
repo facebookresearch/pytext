@@ -5,10 +5,7 @@ from sys import stderr
 from typing import Optional
 
 import torch
-from fairseq.optim.fp16_optimizer import (
-    DynamicLossScaler as Fairseq_DynamicLossScaler,
-    _FP16OptimizerMixin as Fairseq_FP16OptimizerMixin,
-)
+from fairseq.optim.fp16_optimizer import DynamicLossScaler as Fairseq_DynamicLossScaler
 from pytext.config.component import create_optimizer
 from pytext.optimizer.optimizers import Optimizer
 from pytext.utils import cuda, precision
@@ -24,6 +21,14 @@ except AttributeError as e:
     print(f"Fail to import apex: {e}", file=stderr)
     _APEX_DISABLED = True
 
+
+try:
+    from fairseq.optim.fp16_optimizer import (
+        _FP16OptimizerMixin as Fairseq_FP16OptimizerMixin,
+    )
+except ImportError:
+    # TODO: temporary fix fairseq dependency, remove after fairseq new release.
+    from .fairseq_fp16_utils import Fairseq_FP16OptimizerMixin
 
 """
 Tips:
