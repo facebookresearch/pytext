@@ -5,9 +5,9 @@
         "source": {
           "TSVDataSource": {
             "field_names": ["label", "slots", "text", "doc_weight", "word_weight"],
-            "train_filename": "pytext/tests/data/train_data_tiny_weights.tsv",
-            "test_filename": "pytext/tests/data/test_data_tiny_weights.tsv",
-            "eval_filename": "pytext/tests/data/test_data_tiny_weights.tsv"
+            "train_filename": "tests/data/train_data_tiny_weights.tsv",
+            "test_filename": "tests/data/test_data_tiny_weights.tsv",
+            "eval_filename": "tests/data/test_data_tiny_weights.tsv"
           }
         },
         "sort_key": "tokens"

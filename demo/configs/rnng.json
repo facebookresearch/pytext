@@ -12,9 +12,9 @@
         "source": {
           "TSVDataSource": {
             "field_names": ["text", "tokenized_text", "seqlogical"],
-            "train_filename": "pytext/tests/data/test_rnng.tsv",
-            "test_filename": "pytext/tests/data/test_rnng.tsv",
-            "eval_filename": "pytext/tests/data/test_rnng.tsv"
+            "train_filename": "tests/data/test_rnng.tsv",
+            "test_filename": "tests/data/test_rnng.tsv",
+            "eval_filename": "tests/data/test_rnng.tsv"
           }
         }
       },
@@ -42,13 +42,13 @@
       },
       "metric_reporter": {
         "text_column_name": "tokenized_text"
-      },      
+      },
       "trainer": {
         "real_trainer": {
           "report_train_metrics": false,
           "epochs": 1
         }
-      }      
+      }
     }
   },
   "version": 12

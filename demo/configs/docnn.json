@@ -21,5 +21,6 @@
       }
     }
   },
-  "export_torchscript_path": "/tmp/new_docnn.pt1"
+  "export_torchscript_path": "/tmp/new_docnn.pt1",
+  "export_caffe2_path": "/tmp/model.caffe2.predictor"
 }
