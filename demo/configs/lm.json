@@ -6,9 +6,9 @@
         "source": {
           "TSVDataSource": {
             "field_names": ["text"],
-            "train_filename": "pytext/tests/data/alarm_lm_tiny.tsv",
-            "test_filename": "pytext/tests/data/alarm_lm_tiny.tsv",
-            "eval_filename": "pytext/tests/data/alarm_lm_tiny.tsv"
+            "train_filename": "tests/data/alarm_lm_tiny.tsv",
+            "test_filename": "tests/data/alarm_lm_tiny.tsv",
+            "eval_filename": "tests/data/alarm_lm_tiny.tsv"
           }
         }
       },

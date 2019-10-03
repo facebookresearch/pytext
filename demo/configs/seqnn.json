@@ -6,9 +6,9 @@
         "source": {
           "TSVDataSource": {
             "field_names": ["label", "text_seq"],
-            "train_filename": "pytext/tests/data/msg_topic_train.tsv",
-            "test_filename": "pytext/tests/data/msg_topic_train.tsv",
-            "eval_filename": "pytext/tests/data/msg_topic_train.tsv"
+            "train_filename": "tests/data/msg_topic_train.tsv",
+            "test_filename": "tests/data/msg_topic_train.tsv",
+            "eval_filename": "tests/data/msg_topic_train.tsv"
           }
         }
       },

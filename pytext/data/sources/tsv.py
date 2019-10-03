@@ -6,6 +6,8 @@ import sys
 import threading
 from typing import Dict, List, Optional, Type
 
+from pytext.utils.path import get_absolute_path
+
 from .data_source import (
     RootDataSource,
     SafeFileWrapper,
@@ -85,18 +87,25 @@ class TSVDataSource(RootDataSource):
         train_filename = args.pop("train_filename")
         test_filename = args.pop("test_filename")
         eval_filename = args.pop("eval_filename")
+
         train_file = (
-            SafeFileWrapper(train_filename, encoding="utf-8", errors="replace")
+            SafeFileWrapper(
+                get_absolute_path(train_filename), encoding="utf-8", errors="replace"
+            )
             if train_filename
             else None
         )
         test_file = (
-            SafeFileWrapper(test_filename, encoding="utf-8", errors="replace")
+            SafeFileWrapper(
+                get_absolute_path(test_filename), encoding="utf-8", errors="replace"
+            )
             if test_filename
             else None
         )
         eval_file = (
-            SafeFileWrapper(eval_filename, encoding="utf-8", errors="replace")
+            SafeFileWrapper(
+                get_absolute_path(eval_filename), encoding="utf-8", errors="replace"
+            )
             if eval_filename
             else None
         )

@@ -5,14 +5,21 @@ import os
 from enum import Enum
 from typing import List, NamedTuple, Optional
 
+from pytext.utils.path import PYTEXT_HOME
 
-TEST_BASE_DIR = os.environ.get(
-    "PYTEXT_TEST_DATA", os.path.join(os.path.dirname(__file__), "data")
+
+TEST_DATA_DIR = os.environ.get(
+    "PYTEXT_TEST_DATA", os.path.join(PYTEXT_HOME, "tests/data")
+)
+
+
+TEST_CONFIG_DIR = os.environ.get(
+    "PYTEXT_TEST_CONFIG", os.path.join(PYTEXT_HOME, "demo/configs")
 )
 
 
 def test_file(filename):
-    return os.path.join(TEST_BASE_DIR, filename)
+    return os.path.join(TEST_DATA_DIR, filename)
 
 
 class TestFileName(Enum):
