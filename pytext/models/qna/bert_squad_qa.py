@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch
 from pytext.common.constants import Stage
+from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.squad_for_bert_tensorizer import SquadForBERTTensorizer
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.data.utils import Vocabulary
@@ -21,7 +22,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 class BertSquadQAModel(NewBertModel):
     class Config(NewBertModel.Config):
         class ModelInput(BaseModel.Config.ModelInput):
-            squad_input: SquadForBERTTensorizer.Config = SquadForBERTTensorizer.Config(
+            squad_input: BERTTensorizer.Config = SquadForBERTTensorizer.Config(
                 max_seq_len=256
             )
             # is_impossible label

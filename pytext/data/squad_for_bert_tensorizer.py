@@ -44,7 +44,8 @@ class SquadForBERTTensorizer(BERTTensorizer):
         question_column, doc_column = self.columns
         doc_tokens, start_idx, end_idx = self._lookup_tokens(row[doc_column])
         question_tokens, _, _ = self._lookup_tokens(row[question_column])
-        question_tokens = [self.vocab.idx[BOS]] + question_tokens
+        if self.add_bos_token:
+            question_tokens = [self.vocab.get_bos_index()] + question_tokens
         seq_lens = (len(question_tokens), len(doc_tokens))
         segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
         tokens = list(itertools.chain(question_tokens, doc_tokens))
