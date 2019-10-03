@@ -28,7 +28,7 @@ class LoadAllConfigTest(unittest.TestCase):
     def setUp(self):
         os.chdir(PYTEXT_HOME)
 
-    def test_load_all_configs(self):
+    def DISABLED_test_load_all_configs(self):
         """
             Try an load all the json files in pytext to make sure we didn't
             break the config API.

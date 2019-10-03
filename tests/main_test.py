@@ -27,6 +27,6 @@ class TestMain(unittest.TestCase):
         result = self.run_from_command(args=["train"], config_filename="docnn.json")
         assert result.exit_code == 0, result
 
-    def test_export_docnn(self):
+    def DISABLED_test_export_docnn(self):
         result = self.run_from_command(args=["export"], config_filename="docnn.json")
         assert result.exit_code == 0
