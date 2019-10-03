@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
+import copy
 import re
 from typing import List, NamedTuple
 
+from fairseq.data.dictionary import Dictionary
+from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
+from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.data.utils import Vocabulary
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
@@ -144,4 +148,70 @@ class WordPieceTokenizer(Tokenizer):
                 end = start + piece_len
                 tokens.append(Token(sub_token, start, end))
                 start = end
+        return [token for token in tokens if token.value]
+
+
+class PickleableGPT2BPEEncoder(GPT2BPEEncoder):
+    """Fairseq's encoder stores the regex module as a local reference on its encoders,
+    which means they can't be saved via pickle.dumps or torch.save. This modified
+    their save/load logic doesn't store the module, and restores the reference
+    after re-inflating."""
+
+    def __getstate__(self):
+        state = vars(self)
+        state.pop("re")
+        return state
+
+    def __setstate__(self, state):
+        vars(self).update(state)
+        import regex
+
+        self.re = regex
+
+
+class Gpt2Tokenizer(Tokenizer):
+    """Tokenizer for gpt-2 and RoBERTa."""
+
+    class Config(ConfigBase):
+        token_dictionary_path: str = (
+            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
+        )
+        bpe_encoder_path: str = (
+            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/encoder.json"
+        )
+        bpe_vocab_path: str = (
+            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/vocab.bpe"
+        )
+
+    @classmethod
+    def from_config(cls, config: Config):
+        dictionary = Dictionary.load(config.token_dictionary_path)
+        bpe = create_gpt2_bpe(config.bpe_encoder_path, config.bpe_vocab_path)
+        # This hacks the bpe instance to be picklable
+        bpe = copy.copy(bpe)
+        bpe.__class__ = PickleableGPT2BPEEncoder
+
+        return cls(bpe, dictionary)
+
+    def __init__(self, bpe, dictionary: Dictionary):
+        self.bpe = bpe
+        self.vocab = Vocabulary(
+            dictionary.symbols,
+            pad_token=str(dictionary[dictionary.pad()]),
+            bos_token=str(dictionary[dictionary.bos()]),
+            eos_token=str(dictionary[dictionary.eos()]),
+        )
+        self.bos = self.vocab.bos_token
+        self.eos = self.vocab.eos_token
+
+    def tokenize(self, input_str: str) -> List[Token]:
+        bpe_ids = self.bpe.encode(input_str)
+        char_tokens = [self.bpe.decoder[id].lstrip(u"\u0120") for id in bpe_ids]
+        lengths = [len(token) for token in char_tokens]
+        tokens = []
+        end = 0
+        for length, id, char_token in zip(lengths, bpe_ids, char_tokens):
+            start = input_str.find(char_token, end)
+            end = start + length
+            tokens.append(Token(str(id), start, end))
         return [token for token in tokens if token.value]
