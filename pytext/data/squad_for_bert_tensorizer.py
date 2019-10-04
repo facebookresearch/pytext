@@ -4,8 +4,9 @@
 import itertools
 from typing import List
 
-from pytext.data.bert_tensorizer import BERTTensorizer
-from pytext.data.utils import BOS, pad_and_tensorize
+from pytext.config.component import ComponentType, create_component
+from pytext.data.bert_tensorizer import BERTTensorizer, RoBERTaTensorizer
+from pytext.data.utils import pad_and_tensorize
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -85,3 +86,46 @@ class SquadForBERTTensorizer(BERTTensorizer):
         answer_start_idx = pad_and_tensorize(answer_start_idx, self.SPAN_PAD_IDX)
         answer_end_idx = pad_and_tensorize(answer_end_idx, self.SPAN_PAD_IDX)
         return tokens, pad_mask, segment_labels, answer_start_idx, answer_end_idx
+
+
+class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
+    """Produces RoBERTa inputs and answer spans for Squad."""
+
+    class Config(RoBERTaTensorizer.Config):
+        columns: List[str] = ["question", "doc"]
+        # for labels
+        answers_column: str = "answers"
+        answer_starts_column: str = "answer_starts"
+        max_seq_len: int = 256
+
+    @classmethod
+    def from_config(cls, config: Config):
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        vocab = tokenizer.vocab
+        return cls(
+            columns=config.columns,
+            tokenizer=tokenizer,
+            vocab=vocab,
+            answers_column=config.answers_column,
+            answer_starts_column=config.answer_starts_column,
+            max_seq_len=config.max_seq_len,
+        )
+
+    def __init__(
+        self,
+        columns=Config.columns,
+        tokenizer=None,
+        vocab=None,
+        answers_column: str = Config.answers_column,
+        answer_starts_column: str = Config.answer_starts_column,
+        max_seq_len: int = Config.max_seq_len,
+    ):
+        RoBERTaTensorizer.__init__(
+            self, columns, tokenizer=tokenizer, vocab=vocab, max_seq_len=max_seq_len
+        )
+        self.answers_column = answers_column
+        self.answer_starts_column = answer_starts_column
+        self.add_bos_token = False
+
+    def _lookup_tokens(self, text):
+        return RoBERTaTensorizer._lookup_tokens(self, text)

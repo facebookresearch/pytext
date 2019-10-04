@@ -6,8 +6,8 @@ from typing import List
 
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
-from pytext.data.tensorizers import TokenTensorizer, lookup_tokens
-from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
+from pytext.data.tensorizers import Tensorizer, TokenTensorizer, lookup_tokens
+from pytext.data.tokenizers import Gpt2Tokenizer, Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 
 
@@ -114,3 +114,43 @@ class BERTTensorizer(TokenTensorizer):
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
         segment_labels = pad_and_tensorize(segment_labels, self.vocab.get_pad_index())
         return tokens, pad_mask, segment_labels
+
+
+class RoBERTaTensorizer(BERTTensorizer):
+    class Config(Tensorizer.Config):
+        columns: List[str] = ["text"]
+        tokenizer: Gpt2Tokenizer.Config = Gpt2Tokenizer.Config()
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        vocab = tokenizer.vocab
+        return cls(
+            columns=config.columns,
+            tokenizer=tokenizer,
+            max_seq_len=config.max_seq_len,
+            vocab=vocab,
+        )
+
+    def __init__(self, columns, tokenizer=None, vocab=None, max_seq_len=256):
+        super().__init__(
+            columns=columns,
+            tokenizer=tokenizer,
+            add_bos_token=False,
+            add_eos_token=True,
+            max_seq_len=max_seq_len,
+            vocab=vocab,
+        )
+        self.bpe = self.tokenizer.bpe
+        self.bos = self.tokenizer.bos
+        self.eos = self.tokenizer.eos
+
+    def _lookup_tokens(self, text):
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            bos_token=self.bos,
+            eos_token=self.eos,
+            max_seq_len=self.max_seq_len,
+        )

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import Union
+
 import torch
 from pytext.common.constants import Stage
-from pytext.data.bert_tensorizer import BERTTensorizer
-from pytext.data.squad_for_bert_tensorizer import SquadForBERTTensorizer
+from pytext.data.squad_for_bert_tensorizer import (
+    SquadForBERTTensorizer,
+    SquadForRoBERTaTensorizer,
+)
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.data.utils import Vocabulary
 from pytext.models.bert_classification_models import NewBertModel
@@ -22,9 +26,9 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 class BertSquadQAModel(NewBertModel):
     class Config(NewBertModel.Config):
         class ModelInput(BaseModel.Config.ModelInput):
-            squad_input: BERTTensorizer.Config = SquadForBERTTensorizer.Config(
-                max_seq_len=256
-            )
+            squad_input: Union[
+                SquadForBERTTensorizer.Config, SquadForRoBERTaTensorizer.Config
+            ] = SquadForBERTTensorizer.Config(max_seq_len=256)
             # is_impossible label
             has_answer: LabelTensorizer.Config = LabelTensorizer.Config(
                 column="has_answer"
