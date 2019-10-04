@@ -83,7 +83,7 @@ class BERTTensorizer(TokenTensorizer):
             tokenizer=self.tokenizer,
             vocab=self.vocab,
             bos_token=None,
-            eos_token=EOS,
+            eos_token=self.vocab.eos_token,
             max_seq_len=self.max_seq_len,
         )
 
@@ -91,7 +91,11 @@ class BERTTensorizer(TokenTensorizer):
         """Tokenize, look up in vocabulary."""
         sentences = [self._lookup_tokens(row[column])[0] for column in self.columns]
         if self.add_bos_token:
-            bos_token = EOS if self.use_eos_token_for_bos else BOS
+            bos_token = (
+                self.vocab.eos_token
+                if self.use_eos_token_for_bos
+                else self.vocab.bos_token
+            )
             sentences[0] = [self.vocab.idx[bos_token]] + sentences[0]
         seq_lens = (len(sentence) for sentence in sentences)
         segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
