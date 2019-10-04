@@ -23,6 +23,7 @@ class EnsembleTrainer(TrainerBase):
 
     def __init__(self, real_trainer):
         self.real_trainer = real_trainer
+        self.optimizer = real_trainer.optimizer
         self.test = real_trainer.test
         self.train_single_model = real_trainer.train
 
