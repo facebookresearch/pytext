@@ -145,6 +145,9 @@ class WordPieceTokenizer(Tokenizer):
                     if not sub_token.startswith("##")
                     else (len(sub_token) - 2)  # account for ##
                 )
+                if sub_token == "[UNK]":
+                    # this fixes the bug wherein piece_len = 5 for all [UNK]
+                    piece_len = len(token.value)
                 end = start + piece_len
                 tokens.append(Token(sub_token, start, end))
                 start = end

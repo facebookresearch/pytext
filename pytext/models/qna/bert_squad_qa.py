@@ -24,6 +24,9 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 
 
 class BertSquadQAModel(NewBertModel):
+
+    __EXPANSIBLE__ = True
+
     class Config(NewBertModel.Config):
         class ModelInput(BaseModel.Config.ModelInput):
             squad_input: Union[
