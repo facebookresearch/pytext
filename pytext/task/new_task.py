@@ -3,6 +3,7 @@
 
 from typing import Any, Dict, Optional, Type, Union
 
+import torch
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
@@ -204,6 +205,7 @@ class _NewTask(TaskBase):
             rank=rank,
         )
 
+    @torch.no_grad()
     def test(self, data_source):
         return self.trainer.test(
             self.data.batches(Stage.TEST, data_source=data_source),
@@ -221,9 +223,9 @@ class _NewTask(TaskBase):
             examples: json format examples, input names should match the names specified
                 in this task's features config
         """
+        self.model.eval()
         results = []
         for row in examples:
-            self.model.eval()
             numberized_rows = self.data.numberize_rows([row])
             batches = self.data.batcher.batchify(numberized_rows)
             _, inputs = next(pad_and_tensorize_batches(self.data.tensorizers, batches))
