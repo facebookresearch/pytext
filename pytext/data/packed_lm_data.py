@@ -115,21 +115,23 @@ class PackedLMData(Data):
                 "PackedLMData only supports BERTTensorizer and TokenTensorizer."
             )
 
-    def _yield_and_reset(self):
+    def _yield_and_reset(self, row):
         packed_tokens = list(self.remainder["tokens"])
         packed_segments = list(self.remainder["segment_labels"])
         self.remainder: Dict[str, List[int]] = {"tokens": [], "segment_labels": []}
         return RowData(
-            {},  # packed LM data doesn't respect data cardinality
+            row,
             self._format_output_row(packed_tokens, packed_segments, len(packed_tokens)),
         )
 
     def numberize_rows(self, rows):
+        last_row = None
         """
         This function does the actual packing. It processes rows until we obtain
         a block of data with length = max_seq_len.
         """
         for row in rows:
+            last_row = row
 
             # if the packedLM object has a language member then a cross-lingual
             # LM is being trained using monolingual data.
@@ -146,9 +148,12 @@ class PackedLMData(Data):
                 self.remainder["segment_labels"].extend(segment_labels[:remaining])
                 tokens = tokens[remaining:]
                 segment_labels = segment_labels[remaining:]
-                yield self._yield_and_reset()
+                # packed LM data doesn't respect data cardinality,
+                # therefore, it stores the row at the start position,
+                # instead of the exact corresponding row.
+                yield self._yield_and_reset(row)
                 remaining = self.max_seq_len - 1
             self.remainder["tokens"].extend(tokens)
             self.remainder["segment_labels"].extend(segment_labels)
         if len(self.remainder["tokens"]):
-            yield self._yield_and_reset()
+            yield self._yield_and_reset(last_row)
