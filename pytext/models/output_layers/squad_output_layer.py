@@ -57,7 +57,7 @@ class SquadOutputLayer(OutputLayerBase):
             self.false_idx = 1 if has_answer_labels[1] == false_label else 0
             self.true_idx = 1 - self.false_idx
 
-    def _get_position_preds(
+    def get_position_preds(
         self,
         start_pos_logits: torch.Tensor,
         end_pos_logits: torch.Tensor,
@@ -97,7 +97,11 @@ class SquadOutputLayer(OutputLayerBase):
         _, start_positions = vals.max(-1)
         end_positions = ids.gather(-1, start_positions.unsqueeze(-1)).squeeze(-1)
 
-        return start_positions, end_positions
+        return (
+            start_positions,
+            end_positions,
+            logit_sum_matrix[0, start_positions, end_positions],
+        )
 
     def get_pred(
         self,
@@ -106,7 +110,7 @@ class SquadOutputLayer(OutputLayerBase):
         contexts: Dict[str, List[Any]],
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
         start_pos_logits, end_pos_logits, has_answer_logits = logits
-        start_pos_preds, end_pos_preds = self._get_position_preds(
+        start_pos_preds, end_pos_preds, _ = self.get_position_preds(
             start_pos_logits, end_pos_logits, self.max_answer_len
         )
         has_answer_preds = has_answer_logits.argmax(-1)
