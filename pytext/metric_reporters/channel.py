@@ -213,9 +213,9 @@ class TensorBoardChannel(Channel):
 
         if stage == Stage.TRAIN:
             for key, val in model.named_parameters():
-                if val is not None:
+                if val is not None and len(val) > 0:
                     self.summary_writer.add_histogram(key, val, epoch)
-                    if val.grad is not None:
+                    if val.grad is not None and len(val.grad) > 0:
                         self.summary_writer.add_histogram(
                             key + "_gradients", val.grad, epoch
                         )
