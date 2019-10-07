@@ -120,6 +120,7 @@ class RoBERTaTensorizer(BERTTensorizer):
     class Config(Tensorizer.Config):
         columns: List[str] = ["text"]
         tokenizer: Gpt2Tokenizer.Config = Gpt2Tokenizer.Config()
+        max_seq_len: int = 256
 
     @classmethod
     def from_config(cls, config: Config, **kwargs):

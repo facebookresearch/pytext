@@ -381,7 +381,7 @@ def pad_2d(
 
 
 @torch.jit.script
-def add_bos_eos_2d(
+def add_special_token_2d(
     values: List[List[int]], special_token: int = 0, use_first_value: bool = False
 ) -> List[List[int]]:
     results = torch.jit.annotate(List[List[int]], [])
@@ -392,6 +392,18 @@ def add_bos_eos_2d(
         result.append(special_token)
         result.extend(value)
         result.append(special_token)
+        results.append(result)
+    return results
+
+
+@torch.jit.script
+def add_bos_eos_2d(values: List[List[int]], bos: int, eos: int) -> List[List[int]]:
+    results = torch.jit.annotate(List[List[int]], [])
+    for value in values:
+        result = torch.jit.annotate(List[int], [])
+        result.append(bos)
+        result.extend(value)
+        result.append(eos)
         results.append(result)
     return results
 
