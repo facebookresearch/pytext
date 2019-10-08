@@ -26,7 +26,12 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 
 *To get started on a Cloud VM, check out [our guide](https://pytext.readthedocs.io/en/master/installation.html#cloud-vm-setup)*.
 
-We recommend using a virtualenv:
+Get the source code:
+```
+  $ git clone https://github.com/facebookresearch/pytext
+  $ cd pytext
+```
+Create a virtualenv and install PyText:
 
 ```
   $ python3 -m venv pytext_venv
@@ -41,7 +46,7 @@ Detailed instructions and more installation options can be found in our [Documen
 For this first example, we'll train a CNN-based text-classifier that classifies text utterances, using the examples in `tests/data/train_data_tiny.tsv`. The data and configs files can be obtained either by cloning the repository or by downloading the files manually from GitHub.
 
 ```
-  (venv) $ pytext train < demo/configs/docnn.json
+  (pytext_venv) $ pytext train < demo/configs/docnn.json
 ```
 
 By default, the model is created in `/tmp/model.pt`
@@ -49,13 +54,13 @@ By default, the model is created in `/tmp/model.pt`
 Now you can export your model as a caffe2 net:
 
 ```
-  (venv) $ pytext export < demo/configs/docnn.json
+  (pytext_venv) $ pytext export < demo/configs/docnn.json
 ```
 
 You can use the exported caffe2 model to predict the class of raw utterances like this:
 
 ```
-  (venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"text": "create an alarm for 1:30 pm"}'
+  (pytext_venv) $ pytext --config-file demo/configs/docnn.json predict <<< '{"text": "create an alarm for 1:30 pm"}'
 ```
 
 More examples and tutorials can be found in [Full Documentation](https://pytext.readthedocs.io/en/master/).
