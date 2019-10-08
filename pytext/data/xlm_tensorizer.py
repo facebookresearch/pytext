@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
+from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -16,7 +17,13 @@ from pytext.data.xlm_dictionary import Dictionary as XLMDictionary
 
 
 def read_vocab(
-    vocab_file: str, max_vocab: int, min_count: int
+    vocab_file: str,
+    max_vocab: int,
+    min_count: int,
+    unk: str = UNK,
+    pad: str = PAD,
+    bos: str = BOS,
+    eos: str = EOS,
 ) -> Tuple[List, List, Dict]:
     dictionary = XLMDictionary.read_vocab(vocab_file)
     if max_vocab >= 1:
@@ -24,19 +31,25 @@ def read_vocab(
     if min_count >= 0:
         dictionary.min_count(min_count)
     vocab_list = [dictionary.id2word[w] for w in sorted(dictionary.id2word)]
-    counts = [dictionary.counts[w] for w in vocab_list]
-    replacements = {"<unk>": UNK, "<pad>": PAD, "<s>": BOS, "</s>": EOS}
+    counts = Counter(dictionary.counts)
+    replacements = {"<unk>": unk, "<pad>": pad, "<s>": bos, "</s>": eos}
     return vocab_list, counts, replacements
 
 
 def read_fairseq_vocab(
-    vocab_file: str, max_vocab: int = -1, min_count: int = -1
+    vocab_file: str,
+    max_vocab: int = -1,
+    min_count: int = -1,
+    unk: str = UNK,
+    pad: str = PAD,
+    mask: str = MASK,
+    eos: str = EOS,
 ) -> Tuple[List, List, Dict]:
     dictionary = MaskedLMDictionary.load(vocab_file)
     dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
     vocab_list = dictionary.symbols
-    counts = dictionary.count
-    replacements = {"<pad>": PAD, "</s>": EOS, "<unk>": UNK, "<mask>": MASK}
+    counts = Counter(dict(zip(vocab_list, dictionary.count)))
+    replacements = {"<pad>": pad, "</s>": eos, "<unk>": unk, "<mask>": mask}
     return vocab_list, counts, replacements
 
 
@@ -77,6 +90,11 @@ class XLMTensorizer(BERTTensorizer):
             reset_positions=config.reset_positions,
             has_language_in_data=config.has_language_in_data,
             use_language_embeddings=config.use_language_embeddings,
+            unk_token=config.unk_token_replacement or UNK,
+            pad_token=config.pad_token_replacement or PAD,
+            bos_token=config.bos_token_replacement or BOS,
+            eos_token=config.eos_token_replacement or EOS,
+            mask_token=config.mask_token_replacement or MASK,
         )
 
     def __init__(
@@ -94,6 +112,11 @@ class XLMTensorizer(BERTTensorizer):
         reset_positions=Config.reset_positions,
         has_language_in_data=Config.has_language_in_data,
         use_language_embeddings=Config.use_language_embeddings,
+        unk_token=UNK,
+        pad_token=PAD,
+        bos_token=BOS,
+        eos_token=EOS,
+        mask_token=MASK,
     ) -> None:
         assert (
             len(columns) <= 2 and len(language_columns) <= 2
@@ -106,7 +129,7 @@ class XLMTensorizer(BERTTensorizer):
         # Used to distinguish the model pre-trained in PyText and the OSS FAIR model
         self.is_fairseq = is_fairseq
 
-        # controls the settings we need explictly for pretraining
+        # controls the settings we need explicitly for pretraining
         self.pretraining = pretraining
 
         # language identifiers for extracting the language from a row of data
@@ -116,8 +139,17 @@ class XLMTensorizer(BERTTensorizer):
         # language-to-id mapping used to obtain language embeddings
         self.lang2id = lang2id
 
-        vocab = self._build_vocab(vocab_file, max_vocab, min_count)
-        self.special_token = vocab.idx[EOS]
+        vocab = self._build_vocab(
+            vocab_file,
+            max_vocab,
+            min_count,
+            unk_token,
+            pad_token,
+            bos_token,
+            eos_token,
+            mask_token,
+        )
+        self.special_token = vocab.get_eos_index()
 
         # Controls whether we reset the position or not in case we have
         # multiplt text fields
@@ -243,7 +275,15 @@ class XLMTensorizer(BERTTensorizer):
         )
 
     def _build_vocab(
-        self, vocab_file: str, max_vocab: int, min_count: int
+        self,
+        vocab_file: str,
+        max_vocab: int,
+        min_count: int,
+        unk: str = UNK,
+        pad: str = PAD,
+        bos: str = BOS,
+        eos: str = EOS,
+        mask: str = MASK,
     ) -> Vocabulary:
         """
         Build Vocab for XLM by calling the vocab reader associated with the model
@@ -251,10 +291,10 @@ class XLMTensorizer(BERTTensorizer):
         """
         if self.is_fairseq:
             vocab_list, counts, replacements = read_fairseq_vocab(
-                vocab_file, max_vocab, min_count
+                vocab_file, max_vocab, min_count, unk, pad, mask, eos
             )
         else:
             vocab_list, counts, replacements = read_vocab(
-                vocab_file, max_vocab, min_count
+                vocab_file, max_vocab, min_count, unk, pad, bos, eos
             )
-        return Vocabulary(vocab_list, counts, replacements=replacements)
+        return Vocabulary(vocab_list, counts, replacements, unk, pad, bos, eos)
