@@ -23,10 +23,11 @@ class TestMain(unittest.TestCase):
             config_str = f.read()
         return runner.invoke(main, args=args, input=config_str)
 
-    def test_train_docnn(self):
+    def test_docnn(self):
+        # train model
         result = self.run_from_command(args=["train"], config_filename="docnn.json")
-        assert result.exit_code == 0, result
+        assert not result.exception, result.exception
 
-    def DISABLED_test_export_docnn(self):
+        # export the trained model
         result = self.run_from_command(args=["export"], config_filename="docnn.json")
-        assert result.exit_code == 0
+        assert not result.exception, result.exception
