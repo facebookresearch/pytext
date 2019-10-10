@@ -64,5 +64,8 @@ class NewDisjointMultitaskModel(DisjointMultitaskModel):
     def arrange_targets(self, tensor_dict):
         return self.current_model.arrange_targets(tensor_dict)
 
+    def arrange_model_context(self, tensor_dict):
+        return self.current_model.arrange_model_context(tensor_dict)
+
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
