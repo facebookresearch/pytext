@@ -7,6 +7,9 @@ import timeit
 import traceback
 import weakref
 from json import dumps as json_dumps
+from typing import List
+
+import numpy as np
 
 from .ascii_table import ascii_table
 
@@ -19,17 +22,38 @@ class Timings:
     sum: float
     count: int
     max: float
+    times: List
 
-    def __init__(self, sum: float = 0.0, count: int = 0, max: float = -float("inf")):
+    def __init__(
+        self,
+        sum: float = 0.0,
+        count: int = 0,
+        max: float = -float("inf"),
+        times: List = None,
+    ):
         self.sum = sum
         self.count = count
         self.max = max
+        self.times = [] if times is None else times
 
     @property
     def average(self):
         return self.sum / (self.count or 1)
 
+    @property
+    def p50(self):
+        return np.percentile(self.times, 50)
+
+    @property
+    def p90(self):
+        return np.percentile(self.times, 90)
+
+    @property
+    def p99(self):
+        return np.percentile(self.times, 99)
+
     def add(self, time):
+        self.times.append(time)
         self.sum += time
         self.count += 1
         self.max = max(self.max, time)
@@ -95,6 +119,9 @@ class Snapshot:
                 "total": format_time(times.sum),
                 "avg": format_time(times.average),
                 "max": format_time(times.max),
+                "p50": format_time(times.p50),
+                "p90": format_time(times.p90),
+                "p99": format_time(times.p99),
                 "count": times.count,
             }
             for key, times in sorted(self.times.items())
@@ -107,6 +134,9 @@ class Snapshot:
                     "total": "Total",
                     "avg": "Average",
                     "max": "Max",
+                    "p50": "P50",
+                    "p90": "P90",
+                    "p99": "P99",
                     "count": "Count",
                 },
                 footer={"name": "Total time", "total": format_time(snapshot_total)},
