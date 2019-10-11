@@ -13,7 +13,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
-from pytext.utils import cuda
+from pytext.utils import cuda, lazy
 from torch import jit
 
 from .task import TaskBase
@@ -106,7 +106,7 @@ class _NewTask(TaskBase):
         tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
 
         # Initialized tensorizers can be used to create the model
-        model = cls._init_model(config.model, tensorizers, model_state)
+        model = cls._init_model(config.model, tensorizers, model_state, data)
 
         # This is the only place right now that the task actually cares about which
         # features and tensors are being used. This is a strong tie between
@@ -151,11 +151,21 @@ class _NewTask(TaskBase):
         return tensorizers, data
 
     @classmethod
-    def _init_model(cls, model_config, tensorizers, model_state=None):
+    def _init_model(cls, model_config, tensorizers, model_state, data):
         model_config.init_from_saved_state = model_state is not None
         model = create_component(
             ComponentType.MODEL, model_config, tensorizers=tensorizers
         )
+
+        # In cases with non-lazy modules, don't require data.
+        if lazy.is_lazy(model):
+            # Finalize the model creation, make sure there's no lazy modules left.
+            # This needs to happen before we can create the trainer, or load state dict.
+            _raw_first_batch, first_batch = next(iter(data.batches(Stage.TRAIN)))
+            model = lazy.init_lazy_modules(
+                model, model.arrange_model_inputs(first_batch)
+            )
+
         if model_state:
             model.load_state_dict(model_state)
 
@@ -173,6 +183,7 @@ class _NewTask(TaskBase):
     ):
         self.data = data
         self.model = model
+
         # Attempt to build a default metric reporter
         self.metric_reporter = metric_reporter or self.create_metric_reporter(
             self.Config.metric_reporter, model
