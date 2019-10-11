@@ -23,7 +23,7 @@ from pytext.loss import KLDivergenceBCELoss, KLDivergenceCELoss
 from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
-from pytext.utils import cuda
+from pytext.utils import cuda, lazy
 
 
 def create_task(
@@ -104,6 +104,12 @@ class TaskBase(Component):
         metadata = data_handler.metadata
 
         model = create_model(task_config.model, task_config.features, metadata)
+
+        if lazy.is_lazy(model):
+            # finalize any lazy modules before loading weights
+            inputs, _, _ = next(iter(data_handler.get_train_iter()))
+            lazy.init_lazy_modules(model, inputs)
+
         if model_state:
             model.load_state_dict(model_state)
 

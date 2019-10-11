@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import io
 import json
 import tempfile
 from collections import Counter
+from typing import List
 
 import caffe2.python.hypothesis_test_util as hu
 import caffe2.python.predictor.predictor_exporter as pe
@@ -23,6 +25,8 @@ from pytext.common.constants import DatasetFieldName
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
+from pytext.data.sources import TSVDataSource
+from pytext.data.tensorizers import NO_LABEL
 from pytext.data.utils import PAD, UNK, Vocabulary
 from pytext.exporters.exporter import ModelExporter
 from pytext.fields import (
@@ -33,6 +37,7 @@ from pytext.fields import (
     TextFeatureField,
 )
 from pytext.task.new_task import _NewTask
+from pytext.utils.data import Slot
 from pytext.utils.onnx import CAFFE2_DB_TYPE
 from torchtext.vocab import Vocab
 
@@ -285,7 +290,7 @@ CONTEXTUAL_INTENT_SLOT_CONFIG = """
     }
 }
 """
-WORD_VOCAB = [UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
+WORD_VOCAB = [UNK, PAD, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
 
 
 W_VOCAB_SIZE = 10
@@ -297,6 +302,24 @@ DICT_VOCAB = ["<UNK>", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"]
 CHAR_VOCAB_SIZE = 10
 CHAR_VOCAB = ["<UNK>", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
 
+DATA = """
+cu:other		"Hey"
+cu:address_Person	0:4:person	"this is crazy still to me"
+cu:other		"Whats up. How are you doing"
+"""
+
+SEQ_DATA = """
+cu:other		["Hey", "How are you?"]
+cu:address_Person	0:4:person	["this is crazy still to me"]
+cu:other		["Whats up. How are you doing"]
+"""
+
+CONTEXTUAL_SEQ_DATA = """
+cu:other		["How are you?"]	"Hey"
+cu:address_Person	0:4:person	["."]	"this is crazy still to me"
+cu:other		["."]	"Whats up. How are you doing"
+"""
+
 # For now we need to fix the batch_size for exporting and testing,
 # Need to remove this and make it a random input once ONNX is able to
 # Handle different batch_sizes
@@ -304,6 +327,30 @@ BATCH_SIZE = 1
 
 # Fixed dimension of dense_features since it needs to be specified in config
 DENSE_FEATURE_DIM = 10
+
+
+def make_data_source():
+    return TSVDataSource(
+        train_file=io.StringIO(DATA),
+        field_names=["label", "slots", "text"],
+        schema={"label": str, "slots": List[Slot], "text": str},
+    )
+
+
+def make_seq_data_source():
+    return TSVDataSource(
+        train_file=io.StringIO(SEQ_DATA),
+        field_names=["label", "slots", "text_seq"],
+        schema={"label": str, "slots": List[Slot], "text_seq": List[str]},
+    )
+
+
+def make_contextual_data_source():
+    return TSVDataSource(
+        train_file=io.StringIO(CONTEXTUAL_SEQ_DATA),
+        field_names=["label", "slots", "text_seq", "text"],
+        schema={"label": str, "slots": List[Slot], "text_seq": List[str], "text": str},
+    )
 
 
 class ModelExporterTest(hu.HypothesisTestCase):
@@ -449,10 +496,11 @@ class ModelExporterTest(hu.HypothesisTestCase):
         for WORD_CONFIG in WORD_CONFIGS:
             config = self._get_config(WordTaggingTask.Config, WORD_CONFIG)
             tensorizers, data = _NewTask._init_tensorizers(config)
-            word_labels = [PAD, UNK, "NoLabel", "person"]
+            data.data_source = make_data_source()
+            word_labels = [PAD, UNK, NO_LABEL, "person"]
             tensorizers["labels"].vocab = Vocabulary(word_labels)
             tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
-            py_model = _NewTask._init_model(config.model, tensorizers)
+            py_model = _NewTask._init_model(config.model, tensorizers, None, data)
             dummy_test_input = self._get_rand_input_intent_slot(
                 BATCH_SIZE, W_VOCAB_SIZE, test_num_words
             )
@@ -546,12 +594,13 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(IntentSlotTask.Config, JOINT_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
+        data.data_source = make_data_source()
         doc_labels = [UNK, "cu:other", "cu:address_Person"]
-        word_labels = [PAD, UNK, "NoLabel", "person"]
+        word_labels = [PAD, UNK, NO_LABEL, "person"]
         tensorizers["word_labels"].vocab = Vocabulary(word_labels)
         tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
-        py_model = _NewTask._init_model(config.model, tensorizers)
+        py_model = _NewTask._init_model(config.model, tensorizers, None, data)
         dummy_test_input = self._get_rand_input_intent_slot(
             BATCH_SIZE, W_VOCAB_SIZE, test_num_words
         )
@@ -627,10 +676,11 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(SeqNNTask.Config, SEQ_NN_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
+        data.data_source = make_seq_data_source()
         doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
         tensorizers["labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
-        py_model = _NewTask._init_model(config.model, tensorizers)
+        py_model = _NewTask._init_model(config.model, tensorizers, None, data)
         dummy_test_input = self._get_seq_nn_rand_input(
             BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
         )
@@ -676,13 +726,14 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(IntentSlotTask.Config, CONTEXTUAL_INTENT_SLOT_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
+        data.data_source = make_contextual_data_source()
         doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
-        word_labels = ["__UNKNOWN__", "NoLabel", "person"]
+        word_labels = ["__UNKNOWN__", NO_LABEL, "person"]
         tensorizers["word_labels"].vocab = Vocabulary(word_labels)
         tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
         tensorizers["seq_tokens"].vocab = Vocabulary(WORD_VOCAB)
-        py_model = _NewTask._init_model(config.model, tensorizers)
+        py_model = _NewTask._init_model(config.model, tensorizers, None, data)
         dummy_test_input = self._get_rand_input_intent_slot(
             BATCH_SIZE, W_VOCAB_SIZE, test_num_words, test_num_seq
         )
