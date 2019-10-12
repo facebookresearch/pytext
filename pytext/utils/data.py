@@ -274,13 +274,3 @@ def unkify(token: str):
             res = "<unk>-NUM"
 
     return res
-
-
-def patch_path_manager_with_python_builtins():
-    class PathManager:
-        open = builtins.open
-        isfile = os.path.isfile
-        mkdirs = os.makedirs
-        exists = os.path.exists
-
-    return PathManager

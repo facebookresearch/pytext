@@ -15,15 +15,7 @@ from pytext.task import NewTask, Task_Deprecated, create_task, load, save
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.trainers import TrainingState
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
-from pytext.utils.data import patch_path_manager_with_python_builtins
-
-
-# TODO: @stevenliu remove try statement after fvcore becomes available in pypi
-try:
-    from fvcore.common.file_io import PathManager
-except ImportError:
-    print("Patch PathManager with python builtins")
-    PathManager = patch_path_manager_with_python_builtins()
+from pytext.utils.file_io import PathManager
 
 
 def _set_cuda(
