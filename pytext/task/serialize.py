@@ -10,15 +10,7 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
-from pytext.utils.data import patch_path_manager_with_python_builtins
-
-
-# TODO: @stevenliu remove try statement after fvcore becomes available in pypi
-try:
-    from fvcore.common.file_io import PathManager
-except ImportError:
-    print("Patch PathManager with python builtins")
-    PathManager = patch_path_manager_with_python_builtins()
+from pytext.utils.file_io import PathManager
 
 
 DATA_STATE = "data_state"
