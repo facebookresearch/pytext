@@ -117,21 +117,6 @@ class Lazy(nn.Module):
         return self._module
 
 
-def is_lazy(module, seen=None):
-    """Returns True if a module is Lazy or has any Lazy modules in its graph."""
-    seen = seen or set()
-    unseen = [module]
-    while unseen:
-        mod, *unseen = unseen
-        if mod in seen:
-            continue
-        seen.add(mod)
-        if isinstance(mod, Lazy):
-            return True
-        unseen += [m for m in mod.children() if m not in seen]
-    return False
-
-
 def replace_lazy_modules(module):
     if isinstance(module, Lazy):
         module = module.resolve()
@@ -155,8 +140,6 @@ def init_lazy_modules(
     Returns:
         The full nn.Module object constructed using inferred arguments/dimensions.
     """
-    if not isinstance(dummy_input, tuple):
-        dummy_input = (dummy_input,)
     module(*dummy_input)
     return replace_lazy_modules(module)
 

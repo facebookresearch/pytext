@@ -25,7 +25,7 @@ from pytext.models.disjoint_multitask_model import (
     NewDisjointMultitaskModel,
 )
 from pytext.optimizer.scheduler import Scheduler
-from pytext.utils import cuda, lazy
+from pytext.utils import cuda
 
 from . import NewTask, Task_Deprecated, TaskBase, _NewTask
 
@@ -110,12 +110,6 @@ class DisjointMultitask(TaskBase):
             ),
             loss_weights=task_weights,
         )
-
-        if lazy.is_lazy(model):
-            # finalize any lazy modules before loading weights
-            inputs, _, _ = next(iter(data_handler.get_train_iter()))
-            lazy.init_lazy_modules(model, inputs)
-
         if model_state:
             model.load_state_dict(model_state)
         if cuda.CUDA_ENABLED:
@@ -206,7 +200,7 @@ class NewDisjointMultitask(_NewTask):
                 task, tensorizers_dict.get(name), rank, world_size
             )
             data_dict[name] = data
-            models[name] = NewTask._init_model(task.model, tensorizers, None, data)
+            models[name] = NewTask._init_model(task.model, tensorizers)
             metric_reporters[name] = create_component(
                 ComponentType.METRIC_REPORTER,
                 task.metric_reporter,
