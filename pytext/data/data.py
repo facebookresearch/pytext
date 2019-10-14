@@ -317,7 +317,7 @@ class Data(Component):
             yield row
 
     @generator_iterator
-    def batches(self, stage: Stage, data_source=None):
+    def batches(self, stage: Stage, data_source=None, load_early=False):
         """Create batches of tensors to pass to model train_batch.
         This function yields dictionaries that mirror the `tensorizers` dict passed to
         `__init__`, ie. the keys will be the same, and the tensors will be the shape
@@ -326,6 +326,9 @@ class Data(Component):
         `stage` is used to determine which data source is used to create batches.
         if data_source is provided, it is used instead of the configured data_sorce
         this is to allow setting a different data_source for testing a model.
+
+        Passing in `load_early` = True disables loading all data in memory and using
+        PoolingBatcher, so that we get the first batch as quickly as possible.
         """
         data_source = data_source or self.data_source
         rows = {
@@ -340,7 +343,7 @@ class Data(Component):
 
         # rows and numberized_rows are generators which can iterate over large
         # datasets; be careful not to do any operations which will expend them.
-        if self.in_memory:
+        if self.in_memory and not load_early:
             numberized_rows = self.numberized_cache.get(stage, None)
             if numberized_rows is None:
                 numberized_rows = self.cache(self.numberize_rows(indexed_rows), stage)
@@ -353,7 +356,15 @@ class Data(Component):
         def key(row):
             return self.tensorizers[sort_key].sort_key(row.numberized[sort_key])
 
-        batches = self.batcher.batchify(
+        if load_early:
+            batcher = Batcher(
+                self.batcher.train_batch_size,
+                self.batcher.eval_batch_size,
+                self.batcher.test_batch_size,
+            )
+        else:
+            batcher = self.batcher
+        batches = batcher.batchify(
             numberized_rows, sort_key=(key if sort_key else None), stage=stage
         )
         return pad_and_tensorize_batches(self.tensorizers, batches)

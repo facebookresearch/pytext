@@ -242,7 +242,9 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
-        unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
+        unused_raw_batch, batch = next(
+            iter(self.data.batches(Stage.TRAIN, load_early=True))
+        )
         if metric_channels:
             print("Exporting metrics")
             for mc in metric_channels:
@@ -264,7 +266,9 @@ class _NewTask(TaskBase):
         model.eval()
         model.prepare_for_onnx_export_()
 
-        unused_raw_batch, batch = next(iter(self.data.batches(Stage.TRAIN)))
+        unused_raw_batch, batch = next(
+            iter(self.data.batches(Stage.TRAIN, load_early=True))
+        )
         inputs = model.arrange_model_inputs(batch)
         # call model forward to set correct device types
         model(*inputs)
