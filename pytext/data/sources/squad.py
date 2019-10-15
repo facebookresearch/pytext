@@ -5,7 +5,13 @@ import json
 import math
 from typing import List, Optional
 
-from pytext.data.sources.data_source import DataSource, generator_property
+from pytext.data.sources.data_source import (
+    DataSource,
+    SafeFileWrapper,
+    generator_property,
+)
+from pytext.data.sources.tsv import TSV
+from pytext.utils.path import get_absolute_path
 
 
 def _shift_answers(orig_starts, piece_start, piece_end):
@@ -64,8 +70,8 @@ def _split_document(
 def process_squad_json(fname, ignore_impossible, max_character_length, min_overlap):
     if not fname:
         return
-    with open(fname) as file:
-        dump = json.load(file)
+    with open(fname) as infile:
+        dump = json.load(infile)
 
     id = 0
     for article in dump["data"]:
@@ -99,25 +105,36 @@ def process_squad_tsv(fname, ignore_impossible, max_character_length, min_overla
         print(f"Empty file name!")
         return
 
-    with open(fname) as file:
-        for id, line in enumerate(file):
-            doc, question, answers, answer_starts, has_answer = line.rstrip().split(
-                "\t"
-            )
-            answers = json.loads(answers)
-            answer_starts = json.loads(answer_starts)
-            for piece_dict in _split_document(
-                id,
-                doc,
-                question,
-                answers,
-                answer_starts,
-                has_answer == "True",
-                ignore_impossible,
-                max_character_length,
-                min_overlap,
-            ):
-                yield piece_dict
+    field_names = ["doc", "question", "answers", "answer_starts", "has_answer"]
+    tsv_file = SafeFileWrapper(
+        get_absolute_path(fname), encoding="utf-8", errors="replace"
+    )
+    tsv = TSV(
+        tsv_file,
+        field_names=field_names,
+        delimiter="\t",
+        quoted=False,
+        drop_incomplete_rows=True,
+    )
+
+    for id, row in enumerate(tsv):
+        doc, question, answers, answer_starts, has_answer = (
+            row[f] for f in field_names
+        )
+        answers = json.loads(answers)
+        answer_starts = json.loads(answer_starts)
+        for piece_dict in _split_document(
+            id,
+            doc,
+            question,
+            answers,
+            answer_starts,
+            has_answer == "True",
+            ignore_impossible,
+            max_character_length,
+            min_overlap,
+        ):
+            yield piece_dict
 
 
 def process_squad(fname, ignore_impossible, max_character_length, min_overlap=0.1):

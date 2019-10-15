@@ -722,13 +722,21 @@ class SquadForBERTTensorizerTest(unittest.TestCase):
 
 class SquadTensorizerTest(unittest.TestCase):
     def setUp(self):
-        self.data_source = SquadDataSource.from_config(
+        self.json_data_source = SquadDataSource.from_config(
             SquadDataSource.Config(
                 train_filename=tests_module.test_file("squad_tiny.json"),
                 eval_filename=None,
                 test_filename=None,
             )
         )
+        self.tsv_data_source = SquadDataSource.from_config(
+            SquadDataSource.Config(
+                train_filename=tests_module.test_file("squad_tiny.tsv"),
+                eval_filename=None,
+                test_filename=None,
+            )
+        )
+
         self.tensorizer_with_wordpiece = SquadTensorizer.from_config(
             SquadTensorizer.Config(
                 tokenizer=WordPieceTokenizer.Config(
@@ -743,12 +751,13 @@ class SquadTensorizerTest(unittest.TestCase):
             )
         )
 
-    def _init_tensorizer(self):
+    def _init_tensorizer(self, tsv=False):
         tensorizer_dict = {
             "wordpiece": self.tensorizer_with_wordpiece,
             "alphanumeric": self.tensorizer_with_alphanumeric,
         }
-        initialize_tensorizers(tensorizer_dict, self.data_source.train)
+        data_source = self.tsv_data_source.train if tsv else self.json_data_source.train
+        initialize_tensorizers(tensorizer_dict, data_source)
 
     def test_initialize(self):
         self._init_tensorizer()
@@ -767,7 +776,7 @@ class SquadTensorizerTest(unittest.TestCase):
 
     def test_numberize_with_alphanumeric(self):
         self._init_tensorizer()
-        row = next(iter(self.data_source.train))
+        row = next(iter(self.json_data_source.train))
         (
             doc_tokens,
             doc_seq_len,
@@ -802,7 +811,7 @@ class SquadTensorizerTest(unittest.TestCase):
 
     def test_numberize_with_wordpiece(self):
         self._init_tensorizer()
-        row = next(iter(self.data_source.train))
+        row = next(iter(self.json_data_source.train))
         (
             doc_tokens,
             doc_seq_len,
@@ -829,6 +838,44 @@ class SquadTensorizerTest(unittest.TestCase):
             answer_start_token_idx,
             answer_end_token_idx,
         ) = self.tensorizer_with_wordpiece.numberize(row)
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(answer_start_token_idx, [-100])
+        self.assertEqual(answer_end_token_idx, [-100])
+
+    def test_tsv_numberize_with_alphanumeric(self):
+        # No need to repeat other tests with TSV.
+        # All we want to test is that TSV and JSON loading are identical.
+        self._init_tensorizer(tsv=True)
+        row = next(iter(self.json_data_source.train))
+        print(row)
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_alphanumeric.numberize(row)
+
+        # check against manually verified answer positions in tokenized output
+        # there are 4 identical answers
+        self.assertEqual(len(ques_tokens), ques_seq_len)
+        self.assertEqual(len(doc_tokens), doc_seq_len)
+        self.assertEqual(ques_tokens, [2, 3, 4, 5, 6, 7])  # It's a coincidence.
+        self.assertEqual(answer_start_token_idx, [26, 26, 26, 26])
+        self.assertEqual(answer_end_token_idx, [26, 26, 26, 26])
+
+        self.tensorizer_with_alphanumeric.doc_tensorizer.max_seq_len = 20
+        # answer should be truncated out because max doc len is smaller.
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_token_idx,
+            answer_end_token_idx,
+        ) = self.tensorizer_with_alphanumeric.numberize(row)
         self.assertEqual(len(ques_tokens), ques_seq_len)
         self.assertEqual(len(doc_tokens), doc_seq_len)
         self.assertEqual(answer_start_token_idx, [-100])
