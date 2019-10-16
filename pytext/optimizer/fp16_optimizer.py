@@ -291,6 +291,9 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
         )
 
     def clip_grad_norm(self, unused_model, max_norm):
+        # fairseq clip_grad_norm will skip clipping when max_norm is 0.
+        if max_norm is None:
+            max_norm = 0.0
         return super().clip_grad_norm(max_norm)
 
     def pre_export(self, model):
