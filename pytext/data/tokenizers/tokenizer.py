@@ -58,6 +58,9 @@ class Tokenizer(Component):
         tokens.append(Token(tokenize_input[start : len(input)], start, len(input)))
         return [token for token in tokens if token.value]
 
+    def torchscriptify(self):
+        raise NotImplementedError
+
 
 class DoNothingTokenizer(Tokenizer):
     """

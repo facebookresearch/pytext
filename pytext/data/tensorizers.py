@@ -159,6 +159,9 @@ class Tensorizer(Component):
         # we need yield here to make this function a generator
         yield
 
+    def torchscriptify(self):
+        raise NotImplementedError
+
 
 class VocabFileConfig(Component.Config):
     #: File containing tokens to add to vocab (first whitespace-separated entry per

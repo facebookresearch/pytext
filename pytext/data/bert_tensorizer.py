@@ -9,6 +9,8 @@ from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer, lookup_tokens
 from pytext.data.tokenizers import Gpt2Tokenizer, Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
+from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
+from pytext.utils.torch import Vocabulary as ScriptVocabulary
 
 
 class BERTTensorizer(TokenTensorizer):
@@ -154,4 +156,20 @@ class RoBERTaTensorizer(BERTTensorizer):
             bos_token=self.bos,
             eos_token=self.eos,
             max_seq_len=self.max_seq_len,
+        )
+
+    def torchscriptify(self):
+        tokenizer = self.tokenizer.torchscriptify()
+        vocab = ScriptVocabulary(
+            list(self.vocab),
+            pad_idx=self.vocab.get_pad_index(),
+            bos_idx=self.vocab.get_bos_index(),
+            eos_idx=self.vocab.get_eos_index(),
+        )
+        return ScriptRoBERTaTensorizer(
+            tokenizer,
+            vocab,
+            max_seq_len=self.max_seq_len,
+            add_bos_token=True,
+            use_eos_token_for_bos=False,
         )
