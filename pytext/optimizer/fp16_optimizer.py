@@ -127,8 +127,9 @@ class FP16OptimizerApex(FP16Optimizer):
         # O1: Insert automatic casts around Pytorch functions and Tensor methods
         # O2: FP16 training with FP32 batchnorm and FP32 master weights. (recommand)
         opt_level: str = "O2"
-        # initial loss scale
-        init_loss_scale: int = 2 ** 7
+        # initial loss scale, None will use the default loss_scale
+        # defined in opt_level (for example: "dynamic" for O2)
+        init_loss_scale: Optional[int] = None
         # determine the minimum loss scale
         min_loss_scale: Optional[float] = None
 
@@ -137,7 +138,7 @@ class FP16OptimizerApex(FP16Optimizer):
         fp32_optimizer: Optimizer,
         model: torch.nn.Module,
         opt_level: str,
-        init_loss_scale: int,
+        init_loss_scale: Optional[int],
         min_loss_scale: Optional[float],
     ):
         assert precision.FP16_ENABLED and not _APEX_DISABLED
