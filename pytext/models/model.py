@@ -122,6 +122,13 @@ class BaseModel(nn.Module, Component):
 
         self.apply(apply_prepare_for_onnx_export_)
 
+    def prepare_for_torchscript_export_(self, **kwargs):
+        def apply_prepare_for_torchscript_export_(module):
+            if module != self and hasattr(module, "prepare_for_torchscript_export_"):
+                module.prepare_for_torchscript_export_(**kwargs)
+
+        self.apply(apply_prepare_for_torchscript_export_)
+
     def quantize(self):
         """Quantize the model during export."""
         # by default only quantize the linear modules, override this method if your

@@ -108,6 +108,10 @@ class DocModel(Model):
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
+    def quantize(self):
+        jit.quantized.quantize_linear_modules(self)
+        jit.quantized.quantize_rnn_modules(self)
+
     def torchscriptify(self, tensorizers, traced_model):
         output_layer = self.output_layer.torchscript_predictions()
 

@@ -265,6 +265,7 @@ class _NewTask(TaskBase):
         # Trace needs eval mode, to disable dropout etc
         model.eval()
         model.prepare_for_onnx_export_()
+        model.prepare_for_torchscript_export_(quantize=quantize)
 
         unused_raw_batch, batch = next(
             iter(self.data.batches(Stage.TRAIN, load_early=True))

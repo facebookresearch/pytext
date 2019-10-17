@@ -120,6 +120,7 @@ class BiLSTM(RepresentationBase):
                 device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
             )
             states = (state, state)
+
         if torch.onnx.is_in_onnx_export():
             lstm_in = [embedded_tokens, states[0], states[1]] + [
                 param.detach() for param in self.lstm._flat_weights
@@ -132,6 +133,11 @@ class BiLSTM(RepresentationBase):
                 self.lstm.bidirectional,
             )
             new_state = (new_state_0, new_state_1)
+        elif not self.lstm.batch_first:
+            # In a torchscript export with quantization
+            rnn_input = embedded_tokens.transpose(0, 1)
+            rep, new_state = self.lstm(rnn_input, states)
+            rep = rep.transpose(0, 1)
         else:
             if self.pack_sequence:
                 rnn_input = pack_padded_sequence(
@@ -152,3 +158,21 @@ class BiLSTM(RepresentationBase):
         # used in data parallel model
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
         return rep, new_state
+
+    def prepare_for_torchscript_export_(self, quantize=False):
+        """
+        Quantization for LSTMs is currently only supported with batch_first = False.
+        Convert the LSTM module to that setting.
+        """
+        if not quantize:
+            return
+
+        new_lstm = nn.LSTM(
+            self.lstm.input_size,
+            self.config.lstm_dim,
+            num_layers=self.config.num_layers,
+            bidirectional=self.config.bidirectional,
+            batch_first=False,
+        )
+        new_lstm.load_state_dict(self.lstm.state_dict())
+        self.lstm = new_lstm
