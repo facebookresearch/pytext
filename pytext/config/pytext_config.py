@@ -98,6 +98,9 @@ class PyTextConfig(ConfigBase):
     save_snapshot_path: str = "/tmp/model.pt"
     # True: use the config saved in snapshot. False: use config from current task
     use_config_from_snapshot: bool = True
+    # if there are existing snapshots in parent directory of save_snapshot_path
+    # resume training from the latest snapshot automatically
+    auto_resume_from_snapshot: bool = False
     # Exported caffe model will be stored here
     export_caffe2_path: Optional[str] = None
     # Exported onnx model will be stored here

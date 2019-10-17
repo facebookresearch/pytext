@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import io
+import logging
 import os
 from typing import Dict, List, Optional
 
@@ -23,6 +24,9 @@ TRAINING_STATE = "training_state"
 
 LATEST_SERIALIZE_VERSION = 3
 LOADER_VERSION_MAP = {}
+
+
+logger = logging.getLogger(__name__)
 
 
 def register_snapshot_loader(version):
@@ -161,12 +165,28 @@ def save_checkpoint(
             training_state.model = model_in_training_state
 
 
-def get_latest_checkpoint_path() -> str:
+def get_latest_checkpoint_path(dir_path: Optional[str] = None) -> str:
     """
-    Return most recent saved checkpoint path in str
-    Returns: checkpoint_path (str)
+    Get the latest checkpoint path
+    args:
+        dir_path: the dir to scan for existing checkpoint files. Default: if None,
+        the latest checkpoint path saved in momery will be returned
+    Returns: checkpoint_path
     """
-    return _CHECKPOINT_MANAGER.get_latest_checkpoint_path()
+    if not dir_path:
+        return _CHECKPOINT_MANAGER.get_latest_checkpoint_path()
+
+    if PathManager.exists(dir_path):
+        checkpoint_indices = [
+            int(file_path.split("-")[1])
+            for file_path in PathManager.ls(dir_path)
+            if file_path.startswith("checkpoint")
+        ]
+        if checkpoint_indices:
+            latest_checkpoint_path = f"{dir_path}/checkpoint-{max(checkpoint_indices)}"
+            logger.info(f"find the latest checkpoint: {latest_checkpoint_path}")
+            return latest_checkpoint_path
+    return None
 
 
 def get_post_training_snapshot_path() -> str:
@@ -180,6 +200,8 @@ class CheckpointManager:
         save() and load().
     """
 
+    DELIMITER = "-"
+
     def __init__(self):
         # keep a list of saved checkpoint path
         self._saved_paths: List[str] = []
@@ -188,7 +210,7 @@ class CheckpointManager:
     # generate per epoch checkpoint save path
     def generate_checkpoint_path(self, config: PyTextConfig, identifier: str):
         dir_name = os.path.dirname(config.save_snapshot_path)
-        return "{}/checkpoint-{}".format(dir_name, identifier)
+        return f"{dir_name}/checkpoint{self.DELIMITER}{identifier}"
 
     def save(
         self,

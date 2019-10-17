@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import os
 from typing import Any, Dict, List, Optional, Tuple, get_type_hints
 
 import torch
@@ -11,7 +12,14 @@ from pytext.config.component import ComponentType, create_component, create_expo
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
-from pytext.task import NewTask, Task_Deprecated, create_task, load, save
+from pytext.task import (
+    NewTask,
+    Task_Deprecated,
+    create_task,
+    get_latest_checkpoint_path,
+    load,
+    save,
+)
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.trainers import TrainingState
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
@@ -118,6 +126,15 @@ def prepare_task(
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
 
     training_state = None
+
+    if config.auto_resume_from_snapshot:
+        # if there are existing checkpoints, resume from the latest one
+        latest_snapshot_path = get_latest_checkpoint_path(
+            os.path.dirname(config.save_snapshot_path)
+        )
+        if latest_snapshot_path:
+            config.load_snapshot_path = latest_snapshot_path
+
     if config.load_snapshot_path and PathManager.isfile(config.load_snapshot_path):
         if config.use_config_from_snapshot:
             task, _, training_state = load(config.load_snapshot_path)
