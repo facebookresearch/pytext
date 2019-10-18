@@ -49,6 +49,7 @@ class DFColumn:
     TOKEN_RANGE = "token_range"
     LANGUAGE_ID = "lang"
     SOURCE_SEQUENCE = "source_sequence"
+    CONTEXT_SEQUENCE = "context_sequence"
     TARGET_SEQUENCE = "target_sequence"
     SOURCE_FEATS = "source_feats"
     TARGET_TOKENS = "target_tokens"
