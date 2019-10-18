@@ -161,7 +161,8 @@ class PickleableGPT2BPEEncoder(GPT2BPEEncoder):
     after re-inflating."""
 
     def __getstate__(self):
-        state = vars(self)
+        # make a shallow copy of state to avoid side effect on the original object
+        state = copy.copy(vars(self))
         state.pop("re")
         return state
 
