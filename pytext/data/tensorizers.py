@@ -17,7 +17,7 @@ from pytext.data.data_structures.annotation import (
 )
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
-from pytext.utils import cuda, torch as utils_torch
+from pytext.utils import cuda, precision, torch as utils_torch
 from pytext.utils.data import Slot
 
 from .utils import (
@@ -465,7 +465,13 @@ class ByteTokenTensorizer(Tensorizer):
 
     def tensorize(self, batch, pad_token=0):
         bytes, token_lengths, byte_lengths = zip(*batch)
-        pad_shape = (len(batch), max(len(l) for l in byte_lengths), self.max_byte_len)
+        # Set bytes shape because byte length should always be `max_byte_len` no
+        # matter how long the bytes in the batch are.
+        pad_shape = (
+            len(batch),
+            precision.pad_length(max(len(l) for l in byte_lengths)),
+            self.max_byte_len,
+        )
         return (
             pad_and_tensorize(bytes, pad_shape=pad_shape, pad_token=pad_token),
             pad_and_tensorize(token_lengths),
@@ -739,10 +745,12 @@ class SoftLabelTensorizer(LabelTensorizer):
 
     def tensorize(self, batch):
         label, probs, logits = zip(*batch)
+        # Set probs and logits shape because they should not change with fp16
+        probs_shape = len(probs), len(self.vocab)
         return (
             pad_and_tensorize(label, self.pad_idx),
-            pad_and_tensorize(probs, dtype=torch.float),
-            pad_and_tensorize(logits, dtype=torch.float),
+            pad_and_tensorize(probs, dtype=torch.float, pad_shape=probs_shape),
+            pad_and_tensorize(logits, dtype=torch.float, pad_shape=probs_shape),
         )
 
 
