@@ -5,6 +5,7 @@ import sys
 import traceback
 from typing import Tuple
 
+import torch
 from pytext.common.constants import Stage
 from torch.utils.tensorboard import SummaryWriter
 
@@ -214,10 +215,15 @@ class TensorBoardChannel(Channel):
         if stage == Stage.TRAIN:
             for key, val in model.named_parameters():
                 if val is not None and len(val) > 0:
-                    self.summary_writer.add_histogram(key, val, epoch)
+                    limit = 9.9e19
+                    self.summary_writer.add_histogram(
+                        key, torch.clamp(val, limit, -limit), epoch
+                    )
                     if val.grad is not None and len(val.grad) > 0:
                         self.summary_writer.add_histogram(
-                            key + "_gradients", val.grad, epoch
+                            key + "_gradients",
+                            torch.clamp(val.grad, limit, -limit),
+                            epoch,
                         )
 
     def add_texts(self, tag, metrics):
