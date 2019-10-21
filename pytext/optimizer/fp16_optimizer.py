@@ -273,6 +273,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
         fp32_config: Optimizer.Config,
         num_accumulated_batches: int,
     ):
+        model = model.half()
         fp16_params = list(filter(lambda p: p.requires_grad, model.parameters()))
         fp32_optimizer = create_optimizer(fp32_config, model)
         print(
