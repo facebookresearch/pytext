@@ -69,6 +69,14 @@ class VocabTest(unittest.TestCase):
         vocab = Vocabulary(vocab_list, unk_idx=1)
         self.assertEqual([0, 1, 3, 4], vocab.lookup_indices_1d(["a", "e", "c", "d"]))
 
+    def test_lookup_words_1d_cycle_heuristic(self):
+        self.assertEqual(
+            self.vocab.lookup_words_1d_cycle_heuristic(
+                torch.tensor([1, 0, 0]), [], ["y", "z"]
+            ),
+            ["a", "y", "z"],
+        )
+
 
 BPE_VOCAB_FILE = io.StringIO(
     """
