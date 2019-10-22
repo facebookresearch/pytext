@@ -123,6 +123,40 @@ class Vocabulary(torch.jit.ScriptModule):
         return result
 
     @torch.jit.script_method
+    def lookup_words_1d_cycle_heuristic(
+        self,
+        values: torch.Tensor,
+        filter_token_list: List[int],
+        ordered_unks_token: List[str],
+    ) -> List[str]:
+        """This function is a extension of the possible_unk_token heuristic
+        in lookup_words_1d, which fails in the case when multiple unks are
+        available. The way we deal with this is we increment every unk token in
+        ordered_unks_token everytime we substitute an unk token. This solves a
+        substantial amount of queries with multiple unk tokens.
+        """
+        unk_idx = 0
+        unk_idx_length = torch.jit.annotate(int, len(ordered_unks_token))
+        unk_copy = torch.jit.annotate(bool, unk_idx_length != 0)
+        vocab_length = torch.jit.annotate(int, len(self.vocab))
+
+        result = torch.jit.annotate(List[str], [])
+        for idx in range(values.size(0)):
+            value = int(values[idx])
+            if not list_membership(value, filter_token_list):
+                if value < vocab_length and value != self.unk_idx:
+                    result.append(self.vocab[value])
+                else:
+                    if not unk_copy:
+                        result.append(self.vocab[self.unk_idx])
+                    else:
+                        unk_value = ordered_unks_token[unk_idx % unk_idx_length]
+                        result.append(unk_value)
+                        unk_idx += 1
+
+        return result
+
+    @torch.jit.script_method
     def lookup_word(self, idx: int, possible_unk_token: Optional[str] = None):
         if idx < len(self.vocab) and idx != self.unk_idx:
             return self.vocab[idx]
