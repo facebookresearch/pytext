@@ -166,7 +166,7 @@ def find_config_class(class_name):
                 ):
                     if not module_part or obj.__module__ == module_part:
                         ret.add(obj)
-        except ModuleNotFoundError:
+        except (ModuleNotFoundError, TypeError):
             continue
     return ret
 

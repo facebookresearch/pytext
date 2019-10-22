@@ -32,9 +32,13 @@ class IncorrectTypeError(Exception):
 
 
 def _canonical_typename(cls):
-    if cls.__name__.endswith(".Config"):
-        return cls.__name__[: -len(".Config")]
-    return cls.__name__
+    if "_name" in dir(cls):
+        name = cls._name
+    else:
+        name = cls.__name__
+    if name.endswith(".Config"):
+        return name[: -len(".Config")]
+    return name
 
 
 def _extend_tuple_type(cls, value):
