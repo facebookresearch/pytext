@@ -32,6 +32,8 @@ class MaskedLanguageModel(BaseModel):
 
     SUPPORT_FP16_OPTIMIZER = True
 
+    __EXPANSIBLE__ = True
+
     class Config(BaseModel.Config):
         class InputConfig(ConfigBase):
             tokens: BERTTensorizer.Config = BERTTensorizer.Config(max_seq_len=128)
