@@ -216,6 +216,7 @@ def test_model(
         metric_channels,
         test_out_path,
         test_config.field_names,
+        test_config.model_test_params,
     )
 
 
@@ -226,6 +227,7 @@ def test_model_from_snapshot_path(
     metric_channels: Optional[List[Channel]] = None,
     test_out_path: str = "",
     field_names: Optional[List[str]] = None,
+    model_test_params: Optional[Dict[str, str]] = None,
 ):
     _set_cuda(use_cuda_if_available)
     task, train_config, _training_state = load(snapshot_path)
@@ -248,7 +250,7 @@ def test_model_from_snapshot_path(
         data_source = _get_data_source(
             test_path, train_config.task.data, field_names, task
         )
-        test_results = task.test(data_source)
+        test_results = task.test(data_source, model_test_params)
     else:
         if not test_path:
             test_path = train_config.task.data_handler.test_path

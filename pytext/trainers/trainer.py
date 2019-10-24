@@ -148,11 +148,13 @@ class Trainer(TrainerBase):
         return cls(config, model)
 
     @timing.time("Trainer.test")
-    def test(self, test_iter, model, metric_reporter: MetricReporter):
+    def test(
+        self, test_iter, model, metric_reporter: MetricReporter, model_test_params=None
+    ):
         state = TrainingState(stage=Stage.TEST, model=model, epoch=1)
         if cuda.CUDA_ENABLED:
             state.model.cuda()
-        state.model.eval()
+        state.model.prepare_for_test(model_test_params)
         with torch.no_grad():
             return self.run_epoch(state, test_iter, metric_reporter)
 
