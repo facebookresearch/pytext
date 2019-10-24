@@ -24,7 +24,7 @@ from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
 from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerFairseq
 from pytext.optimizer.scheduler import Scheduler
-from pytext.optimizer.sparsifier import Sparsifier
+from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import cuda, precision, timing
