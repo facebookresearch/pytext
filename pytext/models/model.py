@@ -207,6 +207,9 @@ class BaseModel(nn.Module, Component):
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
 
+    def prepare_for_test(self, test_params):
+        self.eval()
+
 
 class Model(BaseModel):
     """

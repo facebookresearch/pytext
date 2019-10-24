@@ -206,11 +206,12 @@ class _NewTask(TaskBase):
         )
 
     @torch.no_grad()
-    def test(self, data_source):
+    def test(self, data_source, model_test_params=None):
         return self.trainer.test(
             self.data.batches(Stage.TEST, data_source=data_source),
             self.model,
             self.metric_reporter,
+            model_test_params,
         )
 
     def predict(self, examples):

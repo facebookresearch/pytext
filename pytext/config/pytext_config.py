@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import OrderedDict
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class ConfigBaseMeta(type):
@@ -147,6 +147,8 @@ class TestConfig(ConfigBase):
     use_tensorboard: bool = True
     # Output path where metric reporter writes to.
     test_out_path: str = ""
+    # Dictionary of test params to be passed to the model when preparing for testing.
+    model_test_params: Optional[Dict[str, str]] = None
 
 
 LATEST_VERSION = 18
