@@ -76,7 +76,6 @@ class L0_projection_sparsifier(Sparsifier):
         """
         obtain a mask and apply the mask to sparsify
         """
-        print("running L0 projection-based (unstructured) sparsification. \n ")
         model = state.model
         masks = self.get_masks(model)
         self.apply_masks(model, masks)
@@ -88,8 +87,9 @@ class L0_projection_sparsifier(Sparsifier):
         learnableparams = [p for p in model.parameters() if p.requires_grad]
         assert len(learnableparams) == len(masks)
         for m, w in zip(masks, learnableparams):
-            assert m.size() == w.size()
-            w.data *= m.clone()
+            if len(m.size()):
+                assert m.size() == w.size()
+                w.data *= m.clone()
 
     def get_masks(
         self, model: Model, pre_masks: List[torch.Tensor] = None
