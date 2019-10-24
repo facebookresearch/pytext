@@ -174,8 +174,10 @@ class BaseModel(nn.Module, Component):
         # Forward pass through the network.
         model_inputs = model.arrange_model_inputs(batch)
         model_context = model.arrange_model_context(batch)
-        targets = model.arrange_targets(batch)
         model_outputs = model(*model_inputs)
+        # Compute targets after forward pass; some models may save internal state
+        # based on forward to arrange targets.
+        targets = model.arrange_targets(batch)
 
         # Add stage to context.
         if state:
