@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from pytext.common.constants import PackageFileName
 from pytext.config.field_config import EmbedInitStrategy
+from pytext.utils.file_io import PathManager
 
 
 class PretrainedEmbedding(object):
@@ -19,14 +20,14 @@ class PretrainedEmbedding(object):
         self, embeddings_path: str = None, lowercase_tokens: bool = True
     ) -> None:
         if embeddings_path:
-            if os.path.isdir(embeddings_path):
+            if PathManager.isdir(embeddings_path):
                 serialized_embed_path = os.path.join(
                     embeddings_path, PackageFileName.SERIALIZED_EMBED
                 )
                 raw_embeddings_path = os.path.join(
                     embeddings_path, PackageFileName.RAW_EMBED
                 )
-            elif os.path.isfile(embeddings_path):
+            elif PathManager.isfile(embeddings_path):
                 serialized_embed_path = ""
                 raw_embeddings_path = embeddings_path
             else:
@@ -34,7 +35,7 @@ class PretrainedEmbedding(object):
                     f"{embeddings_path} not found. Can't load pretrained embeddings."
                 )
 
-            if os.path.isfile(serialized_embed_path):
+            if PathManager.isfile(serialized_embed_path):
                 try:
                     self.load_cached_embeddings(serialized_embed_path)
                 except Exception:
@@ -80,7 +81,10 @@ class PretrainedEmbedding(object):
             store values into the 'chunk_vocab' list.
             """
             tokens = set()
-            with open(raw_embeddings_path, "r", errors="backslashreplace") as txtfile:
+            # PathManager doesn't support errors="backslashreplace"
+            # if there are encoding errors, it has to be handled explicitly
+            # http://python-notes.curiousefficiency.org/en/latest/python3/text_file_processing.html#unicode-error-handlers
+            with PathManager.open(raw_embeddings_path, "r") as txtfile:
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
@@ -124,7 +128,8 @@ class PretrainedEmbedding(object):
         """
         t = time.time()
         print("loading cached pretrained embedding")
-        torch.save((self.embed_vocab, self.stoi, self.embedding_vectors), cache_path)
+        with PathManager.open(cache_path, "wb") as f:
+            torch.save((self.embed_vocab, self.stoi, self.embedding_vectors), f)
         print(
             f"Embedding loaded: {self.embedding_vectors.size()} in {time.time() - t} s."
         )
@@ -133,7 +138,8 @@ class PretrainedEmbedding(object):
         """
         Load cached embeddings from file
         """
-        self.embed_vocab, self.stoi, self.embedding_vectors = torch.load(cache_path)
+        with PathManager.open(cache_path, "rb") as f:
+            self.embed_vocab, self.stoi, self.embedding_vectors = torch.load(f)
 
     def initialize_embeddings_weights(
         self,

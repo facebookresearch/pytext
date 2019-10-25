@@ -35,6 +35,10 @@ except ImportError:
             return os.path.isfile(path)
 
         @staticmethod
+        def isdir(path: str) -> bool:
+            return os.path.isdir(path)
+
+        @staticmethod
         def ls(path: str) -> List[str]:
             return os.listdir(path)
 
