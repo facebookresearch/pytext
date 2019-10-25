@@ -106,6 +106,7 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         )
 
     def load_state_dict(self, state_dict):
+        self.upgrade_state_dict_named(state_dict)
         # "projection" must be be in sync with the name of member variable projection.
         has_projection = any("projection" in key for key in state_dict.keys())
         if self.projection is not None and not has_projection:
@@ -145,3 +146,43 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
     def _embedding(self):
         # used to tie weights in MaskedLM model
         return self.sentence_encoder.embed_tokens
+
+    def upgrade_state_dict_named(self, state_dict):
+        # We convert in_proj_weight to individual q,k,v weights
+        items_to_add = {}
+        keys_to_remove = []
+        for k in state_dict.keys():
+            if k.endswith("in_proj_weight"):
+                # in_proj_weight used to be q + k + v with same dimensions
+                dim = int(state_dict[k].shape[0] / 3)
+                items_to_add[k.replace("in_proj_weight", "q_proj.weight")] = state_dict[
+                    k
+                ][:dim]
+                items_to_add[k.replace("in_proj_weight", "k_proj.weight")] = state_dict[
+                    k
+                ][dim : 2 * dim]
+                items_to_add[k.replace("in_proj_weight", "v_proj.weight")] = state_dict[
+                    k
+                ][2 * dim :]
+                keys_to_remove.append(k)
+
+            if k.endswith("in_proj_bias"):
+                dim = int(state_dict[k].shape[0] / 3)
+                items_to_add[k.replace("in_proj_bias", "q_proj.bias")] = state_dict[k][
+                    :dim
+                ]
+                items_to_add[k.replace("in_proj_bias", "k_proj.bias")] = state_dict[k][
+                    dim : 2 * dim
+                ]
+                items_to_add[k.replace("in_proj_bias", "v_proj.bias")] = state_dict[k][
+                    2 * dim :
+                ]
+                keys_to_remove.append(k)
+
+        for k in keys_to_remove:
+            del state_dict[k]
+
+        for key, value in items_to_add.items():
+            state_dict[key] = value
+
+        return state_dict
