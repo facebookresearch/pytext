@@ -21,51 +21,39 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
 
         frequency: sparsification_condition only if number of steps devides frequency
 
-        accumulate_mask: if true, the mask obtain after each .sparisfy() will store in
-        memory, and apply to the parameters in the rest of the training steps.
-        In order words, once a param is masked, the connection is set to zero
-        permanently.
-        If false, a param that is masked as 0 in the current
-        iteration may be resurrect in later iterations. For example, in stochasic
-        projected gradient descent, we have
-                x_new = Projection(x_old - lr * grad),
-        components in x_new may be zero after this update by updated (become
-        non-zero) later.
+        accumulate_mask: if true, the mask after each .sparisfy() will be reused
 
-        sparsity: percentage of zeros among the **UNPRUNED** parameters. When
-        accumulate_mask is false, we do not store the masks permanently so sparsity
-        is computed on all the parameters. When accumulate_mask is true, sparsity
-        is computed only on the parameters that weren't previously masked as zeros.
+        sparsity: percentage of zeros among the **UNPRUNED** parameters.
 
 
-    Examples on how the sparsifier work:
+        Examples on how the sparsifier work:
 
-    2D matrix:
-    [
-      0  1  2  3  4
-      5  6  7  8  9
-      10 11 12 13 14
-      15 16 17 18 19
-      20 21 22 23 24
-    ]
+        2D matrix:
+        [
+          0  1  2  3  4
+          5  6  7  8  9
+          10 11 12 13 14
+          15 16 17 18 19
+          20 21 22 23 24
+        ]
 
-    define 3 X 1 block
-    [
-      *********  *******
-      *0  1  2*  *3   4*
-      ********** *******
-      *5  6  7*  *8   9*
-      ********** *******
-      *10 11 12* *13 14*
-      ********** *******
-      *15 16 17* *18 19*
-      ********** *******
-      *20 21 22* *23 24*
-      ********** *******
-    ]
+        define 3 X 1 block
+        [
+          *********  *******
+          *0  1  2*  *3   4*
+          ********** *******
+          *5  6  7*  *8   9*
+          ********** *******
+          *10 11 12* *13 14*
+          ********** *******
+          *15 16 17* *18 19*
+          ********** *******
+          *20 21 22* *23 24*
+          ********** *******
+        ]
 
-    compute l1 norm of each block and sort them. Retain blocks with largest
-    absolute values until sparsity threshold is met
+        compute l1 norm of each block and sort them. Retain blocks with largest
+        absolute values until sparsity threshold is met
     """
 
     class Config(L0_projection_sparsifier.Config):
