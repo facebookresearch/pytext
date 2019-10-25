@@ -9,7 +9,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.models.model import Model
 from pytext.optimizer import Optimizer
 from pytext.optimizer.scheduler import Scheduler
-from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
+from pytext.optimizer.sparsifier import Sparsifier
 
 
 class TrainingState:
