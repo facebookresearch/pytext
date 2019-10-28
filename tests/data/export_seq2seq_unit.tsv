@@ -1,0 +1,10 @@
+delays in tempe	[IN:GET_INFO_TRAFFIC delays in [SL:LOCATION tempe ] ]	{}
+directions the detroit zoo from my house , leaving at 8:30am .	[IN:GET_DIRECTIONS directions [SL:DESTINATION the detroit zoo ] from [SL:SOURCE [IN:GET_LOCATION_HOME [SL:CONTACT my ] house ] ] , leaving [SL:DATE_TIME_DEPARTURE at 8 : 30 am ] . ]	{}
+why are the police directing traffic in this area	[IN:UNSUPPORTED_NAVIGATION why are the police directing traffic in this area ]	{}
+what is causing the traffic	[IN:GET_INFO_TRAFFIC what is causing the traffic ] 	{}
+how long will it take me to get from home to work if i leave in 15 minutes ?	[IN:GET_ESTIMATED_DURATION how long will it take me to get from [SL:SOURCE [IN:GET_LOCATION_HOME home ] ] to [SL:DESTINATION [IN:GET_LOCATION_WORK work ] ] if i leave [SL:DATE_TIME_DEPARTURE in 15 minutes ] ? ] 	{}
+get me directions to greenville without using i-85	[IN:GET_DIRECTIONS get me directions to [SL:DESTINATION greenville ] without using [SL:PATH_AVOID i - 85 ] ] 	{}
+find me the quickest route home	[IN:GET_DIRECTIONS find me the quickest route [SL:DESTINATION [IN:GET_LOCATION_HOME home ] ] ] 	{}
+shortest distance between faridabad and noida	[IN:GET_DISTANCE shortest distance between [SL:SOURCE faridabad ] and [SL:DESTINATION noida ] ] 	{}
+what is traffic like in paris	[IN:GET_INFO_TRAFFIC what is traffic like in [SL:LOCATION paris ] ] 	{}
+what route to the jazz fest saves the most gas	[IN:UNSUPPORTED_NAVIGATION what route to the jazz fest saves the most gas ] 	{}
