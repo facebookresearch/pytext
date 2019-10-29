@@ -10,7 +10,7 @@ from pytext.data.tensorizers import Tensorizer, TokenTensorizer, lookup_tokens
 from pytext.data.tokenizers import Gpt2Tokenizer, Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
-from pytext.utils.torch import Vocabulary as ScriptVocabulary
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class BERTTensorizer(TokenTensorizer):

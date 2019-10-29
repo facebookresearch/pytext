@@ -4,7 +4,6 @@
 from typing import Dict, List, Optional, Union
 
 import torch
-from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
@@ -42,12 +41,8 @@ from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
 from pytext.models.representations.representation_base import RepresentationBase
-from pytext.utils.torch import (
-    Vocabulary,
-    make_byte_inputs,
-    make_sequence_lengths,
-    pad_2d,
-)
+from pytext.torchscript.utils import make_byte_inputs, make_sequence_lengths, pad_2d
+from pytext.torchscript.vocab import ScriptVocabulary
 from torch import jit
 
 
@@ -116,7 +111,7 @@ class DocModel(Model):
         class Model(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
                 self.model = traced_model
                 self.output_layer = output_layer
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
@@ -132,7 +127,7 @@ class DocModel(Model):
         class ModelWithDenseFeat(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
                 self.normalizer = tensorizers["dense"].normalizer
                 self.model = traced_model
                 self.output_layer = output_layer
@@ -248,7 +243,7 @@ class ByteTokensDocumentModel(DocModel):
         class Model(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
                 self.max_byte_len = jit.Attribute(max_byte_len, int)
                 self.byte_offset_for_non_padding = jit.Attribute(
                     byte_offset_for_non_padding, int
@@ -273,7 +268,7 @@ class ByteTokensDocumentModel(DocModel):
         class ModelWithDenseFeat(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = Vocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
                 self.normalizer = tensorizers["dense"].normalizer
                 self.max_byte_len = jit.Attribute(max_byte_len, int)
                 self.byte_offset_for_non_padding = jit.Attribute(
