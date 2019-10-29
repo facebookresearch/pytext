@@ -125,8 +125,12 @@ class BaseModel(nn.Module, Component):
     def quantize(self):
         """Quantize the model during export."""
         # by default only quantize the linear modules, override this method if your
-        # model wants other modules quantized
-        quantized.quantize_linear_modules(self)
+        # model wants other modules quantized.
+        # By default we dynamic quantize Linear for PyText models.
+        # Todo: we can also add quantized torch.nn.LSTM/GRU support in the future.
+        torch.quantization.quantize_dynamic(
+            self, {torch.nn.Linear}, dtype=torch.qint8, inplace=True
+        )
 
     def get_param_groups_for_optimizer(self) -> List[Dict[str, List[nn.Parameter]]]:
         """
