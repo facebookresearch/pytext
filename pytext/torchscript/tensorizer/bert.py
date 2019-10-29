@@ -4,7 +4,8 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.utils.torch import Vocabulary as ScriptVocabulary, pad_2d_mask
+from pytext.torchscript.utils import pad_2d_mask
+from pytext.torchscript.vocab import ScriptVocabulary
 
 from .tensorizer import ScriptTensorizer, VocabLookup
 
