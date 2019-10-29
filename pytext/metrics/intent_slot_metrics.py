@@ -278,7 +278,7 @@ def compare_frames(
 
 
 def compute_prf1_metrics(
-    nodes_pairs: Sequence[NodesPredictionPair]
+    nodes_pairs: Sequence[NodesPredictionPair],
 ) -> Tuple[AllConfusions, PRF1Metrics]:
     """
     Computes precision/recall/F1 metrics given a list of predicted and expected sets of
@@ -439,7 +439,7 @@ def compute_metric_at_k(
 
 
 def compute_frame_accuracies_by_depth(
-    frame_pairs: Sequence[FramePredictionPair]
+    frame_pairs: Sequence[FramePredictionPair],
 ) -> FrameAccuraciesByDepth:
     """
     Given a list of predicted and gold intent frames, splits the predictions into
