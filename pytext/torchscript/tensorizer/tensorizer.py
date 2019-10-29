@@ -4,7 +4,7 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.utils.torch import Vocabulary as ScriptVocabulary
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class ScriptTensorizer(torch.jit.ScriptModule):
@@ -29,6 +29,10 @@ class ScriptTensorizer(torch.jit.ScriptModule):
 
 
 class VocabLookup(torch.jit.ScriptModule):
+    """
+    TorchScript implementation of lookup_tokens() in pytext/data/tensorizers.py
+    """
+
     def __init__(self, vocab: ScriptVocabulary):
         super().__init__()
         self.vocab = vocab

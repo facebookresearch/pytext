@@ -8,7 +8,7 @@ from typing import List, Tuple
 import torch
 from pytext.torchscript.tensorizer import ScriptBERTTensorizer, ScriptRoBERTaTensorizer
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
-from pytext.utils.torch import Vocabulary as ScriptVocabulary
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class TensorizerTest(unittest.TestCase):
