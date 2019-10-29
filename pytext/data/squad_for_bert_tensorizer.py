@@ -5,7 +5,8 @@ import itertools
 from typing import List
 
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizer, RoBERTaTensorizer
+from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.roberta_tensorizer import RoBERTaTensorizer, build_roberta_vocab
 from pytext.data.utils import pad_and_tensorize
 
 
@@ -52,6 +53,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
         tokens = list(itertools.chain(question_tokens, doc_tokens))
         segment_labels = list(itertools.chain(*segment_labels))
         seq_len = len(tokens)
+        positions = [index for index in range(seq_len)]
 
         # now map original answer spans to tokenized spans
         offset = len(question_tokens)
@@ -76,16 +78,38 @@ class SquadForBERTTensorizer(BERTTensorizer):
         if not answer_start_indices and answer_end_indices:
             answer_start_indices = [self.SPAN_PAD_IDX]
             answer_end_indices = [self.SPAN_PAD_IDX]
-        return tokens, segment_labels, seq_len, answer_start_indices, answer_end_indices
+        return (
+            tokens,
+            segment_labels,
+            positions,
+            seq_len,
+            answer_start_indices,
+            answer_end_indices,
+        )
 
     def tensorize(self, batch):
-        tokens, segment_labels, seq_lens, answer_start_idx, answer_end_idx = zip(*batch)
+        (
+            tokens,
+            segment_labels,
+            positions,
+            seq_len,
+            answer_start_idx,
+            answer_end_idx,
+        ) = zip(*batch)
         tokens = pad_and_tensorize(tokens, self.vocab.get_pad_index())
         segment_labels = pad_and_tensorize(segment_labels, self.vocab.get_pad_index())
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
         answer_start_idx = pad_and_tensorize(answer_start_idx, self.SPAN_PAD_IDX)
         answer_end_idx = pad_and_tensorize(answer_end_idx, self.SPAN_PAD_IDX)
-        return tokens, pad_mask, segment_labels, answer_start_idx, answer_end_idx
+        positions = pad_and_tensorize(positions)
+        return (
+            tokens,
+            pad_mask,
+            segment_labels,
+            positions,
+            answer_start_idx,
+            answer_end_idx,
+        )
 
 
 class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
@@ -101,7 +125,13 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        vocab = tokenizer.vocab
+        vocab = build_roberta_vocab(
+            config.pad_token,
+            config.bos_token,
+            config.eos_token,
+            config.unk_token,
+            config.vocab_file,
+        )
         return cls(
             columns=config.columns,
             tokenizer=tokenizer,
