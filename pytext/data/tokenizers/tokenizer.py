@@ -180,9 +180,6 @@ class Gpt2Tokenizer(Tokenizer):
     """Tokenizer for gpt-2 and RoBERTa."""
 
     class Config(ConfigBase):
-        token_dictionary_path: str = (
-            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
-        )
         bpe_encoder_path: str = (
             "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/encoder.json"
         )
@@ -192,24 +189,15 @@ class Gpt2Tokenizer(Tokenizer):
 
     @classmethod
     def from_config(cls, config: Config):
-        dictionary = Dictionary.load(config.token_dictionary_path)
         bpe = create_gpt2_bpe(config.bpe_encoder_path, config.bpe_vocab_path)
         # This hacks the bpe instance to be picklable
         bpe = copy.copy(bpe)
         bpe.__class__ = PickleableGPT2BPEEncoder
 
-        return cls(bpe, dictionary)
+        return cls(bpe)
 
-    def __init__(self, bpe, dictionary: Dictionary):
+    def __init__(self, bpe):
         self.bpe = bpe
-        self.vocab = Vocabulary(
-            dictionary.symbols,
-            pad_token=str(dictionary[dictionary.pad()]),
-            bos_token=str(dictionary[dictionary.bos()]),
-            eos_token=str(dictionary[dictionary.eos()]),
-        )
-        self.bos = self.vocab.bos_token
-        self.eos = self.vocab.eos_token
 
     def tokenize(self, input_str: str) -> List[Token]:
         bpe_ids = self.bpe.encode(input_str)

@@ -81,7 +81,7 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
         self.bert = model
 
     def _encoder(self, input_tuple: Tuple[torch.Tensor, ...]):
-        tokens, pad_mask, segment_labels = input_tuple
+        tokens, pad_mask, segment_labels, _ = input_tuple
         return self.bert(tokens, segment_labels, pad_mask)
 
     def _embedding(self):

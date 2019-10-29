@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 import torch
 from pytext.config import ConfigBase
-from pytext.data.bert_tensorizer import RoBERTaTensorizer
+from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.module import Module, create_module
@@ -30,7 +30,7 @@ class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
 
     def _encoder(self, inputs):
         # NewBertModel expects the output as a tuple and grabs the first element
-        tokens, _, _ = inputs
+        tokens, _, _, _ = inputs
         full_representation = self.encoder(tokens)
         sentence_rep = full_representation[:, 0, :]
         return [full_representation], sentence_rep
