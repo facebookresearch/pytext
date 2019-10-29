@@ -17,7 +17,8 @@ from pytext.data.data_structures.annotation import (
 )
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
-from pytext.utils import cuda, precision, torch as utils_torch
+from pytext.torchscript.tensorizer import VectorNormalizer
+from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 
 from .utils import (
@@ -825,7 +826,7 @@ class FloatListTensorizer(Tensorizer):
         self.column = column
         self.error_check = error_check
         self.dim = dim
-        self.normalizer = utils_torch.VectorNormalizer(dim, normalize)
+        self.normalizer = VectorNormalizer(dim, normalize)
         assert not self.error_check or self.dim is not None, "Error check requires dim"
 
     @property

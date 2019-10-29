@@ -5,9 +5,9 @@ from typing import Any, List, Sized, Tuple
 
 import torch as torch
 import torch.nn as nn
+from pytext.torchscript.utils import reverse_tensor_list
 from pytext.utils.cuda import FloatTensor
 from pytext.utils.tensor import xaviervar
-from pytext.utils.torch import reverse_tensor_list
 
 
 class Element:
