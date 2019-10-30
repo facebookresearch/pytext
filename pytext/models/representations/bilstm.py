@@ -6,10 +6,9 @@ import torch
 import torch.nn as nn
 import torch.onnx
 from pytext.config import ConfigBase
+from pytext.models.representations.representation_base import RepresentationBase
 from pytext.utils import cuda
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-
-from .representation_base import RepresentationBase
 
 
 class BiLSTM(RepresentationBase):
@@ -51,6 +50,7 @@ class BiLSTM(RepresentationBase):
         num_layers: int = 1
         bidirectional: bool = True
         pack_sequence: bool = True
+        allow_zero_length: bool = False
 
     def __init__(
         self, config: Config, embed_dim: int, padding_value: float = 0.0
@@ -70,6 +70,7 @@ class BiLSTM(RepresentationBase):
             2 if config.bidirectional else 1
         )
         self.pack_sequence = config.pack_sequence
+        self.allow_zero_length = config.allow_zero_length
 
     def forward(
         self,
@@ -134,9 +135,22 @@ class BiLSTM(RepresentationBase):
             new_state = (new_state_0, new_state_1)
         else:
             if self.pack_sequence:
-                rnn_input = pack_padded_sequence(
-                    embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
-                )
+                if self.allow_zero_length:
+                    non_zero_embedded_tokens = embedded_tokens[seq_lengths != 0]
+                    non_zero_seq_lengths = seq_lengths[seq_lengths != 0]
+                    rnn_input = pack_padded_sequence(
+                        non_zero_embedded_tokens,
+                        non_zero_seq_lengths,
+                        batch_first=True,
+                        enforce_sorted=False,
+                    )
+                else:
+                    rnn_input = pack_padded_sequence(
+                        embedded_tokens,
+                        seq_lengths,
+                        batch_first=True,
+                        enforce_sorted=False,
+                    )
             else:
                 rnn_input = embedded_tokens
             rep, new_state = self.lstm(rnn_input, states)
@@ -147,8 +161,33 @@ class BiLSTM(RepresentationBase):
                     batch_first=True,
                     total_length=embedded_tokens.size(1),
                 )
+                if self.allow_zero_length:
+                    rep_with_zero = torch.tensor(
+                        self.padding_value,
+                        device=torch.cuda.current_device()
+                        if cuda.CUDA_ENABLED
+                        else None,
+                    ).repeat((embedded_tokens.shape[0], rep.shape[1], rep.shape[2]))
+                    rep_with_zero[seq_lengths != 0] = rep
+                    rep = rep_with_zero
         # Make sure the output from LSTM is padded to input's sequence length.
         # convert states back to (bsz x num_layers*num_directions x nhid) to be
         # used in data parallel model
         new_state = (new_state[0].transpose(0, 1), new_state[1].transpose(0, 1))
+        if self.allow_zero_length:
+            new_state0_with_zero = torch.tensor(
+                self.padding_value,
+                device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
+            ).repeat(
+                (embedded_tokens.shape[0], new_state[0].shape[1], new_state[0].shape[2])
+            )
+            new_state0_with_zero[seq_lengths != 0] = new_state[0]
+            new_state1_with_zero = torch.tensor(
+                self.padding_value,
+                device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
+            ).repeat(
+                (embedded_tokens.shape[0], new_state[1].shape[1], new_state[1].shape[2])
+            )
+            new_state1_with_zero[seq_lengths != 0] = new_state[1]
+            new_state = (new_state0_with_zero, new_state1_with_zero)
         return rep, new_state
