@@ -43,6 +43,7 @@ from pytext.models.representations.pure_doc_attention import PureDocAttention
 from pytext.models.representations.representation_base import RepresentationBase
 from pytext.torchscript.utils import make_byte_inputs, make_sequence_lengths, pad_2d
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.label import get_label_weights
 from torch import jit
 
 
@@ -177,7 +178,13 @@ class DocModel(Model):
         decoder = cls.create_decoder(
             config, representation.representation_dim, len(labels)
         )
-        loss = create_loss(config.output_layer.loss)
+
+        label_weights = (
+            get_label_weights(labels.idx, config.output_layer.label_weights)
+            if config.output_layer.label_weights
+            else None
+        )
+        loss = create_loss(config.output_layer.loss, weight=label_weights)
 
         if isinstance(loss, BinaryCrossEntropyLoss):
             output_layer_cls = BinaryClassificationOutputLayer
