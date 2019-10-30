@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
+from collections import Counter
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -24,7 +25,7 @@ def read_vocab(
     if min_count >= 0:
         dictionary.min_count(min_count)
     vocab_list = [dictionary.id2word[w] for w in sorted(dictionary.id2word)]
-    counts = [dictionary.counts[w] for w in vocab_list]
+    counts = Counter(dictionary.counts)
     replacements = {"<unk>": UNK, "<pad>": PAD, "<s>": BOS, "</s>": EOS}
     return vocab_list, counts, replacements
 
@@ -35,7 +36,7 @@ def read_fairseq_vocab(
     dictionary = MaskedLMDictionary.load(vocab_file)
     dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
     vocab_list = dictionary.symbols
-    counts = dictionary.count
+    counts = Counter(dict(zip(vocab_list, dictionary.count)))
     replacements = {"<pad>": PAD, "</s>": EOS, "<unk>": UNK, "<mask>": MASK}
     return vocab_list, counts, replacements
 
@@ -106,7 +107,7 @@ class XLMTensorizer(BERTTensorizer):
         # Used to distinguish the model pre-trained in PyText and the OSS FAIR model
         self.is_fairseq = is_fairseq
 
-        # controls the settings we need explictly for pretraining
+        # controls the settings we need explicitly for pretraining
         self.pretraining = pretraining
 
         # language identifiers for extracting the language from a row of data
