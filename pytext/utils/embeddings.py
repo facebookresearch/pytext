@@ -17,7 +17,11 @@ class PretrainedEmbedding(object):
     """
 
     def __init__(
-        self, embeddings_path: str = None, lowercase_tokens: bool = True
+        self,
+        embeddings_path: str = None,
+        lowercase_tokens: bool = True,
+        delimiter: str = " ",
+        skip_header: bool = True,
     ) -> None:
         if embeddings_path:
             if PathManager.isdir(embeddings_path):
@@ -41,11 +45,17 @@ class PretrainedEmbedding(object):
                 except Exception:
                     print("Failed to load cached embeddings, loading the raw file.")
                     self.load_pretrained_embeddings(
-                        raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                        raw_embeddings_path,
+                        lowercase_tokens=lowercase_tokens,
+                        delimiter=delimiter,
+                        skip_header=skip_header,
                     )
             else:
                 self.load_pretrained_embeddings(
-                    raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                    raw_embeddings_path,
+                    lowercase_tokens=lowercase_tokens,
+                    delimiter=delimiter,
+                    skip_header=skip_header,
                 )
         else:
             self.embed_vocab = []  # type: List[str]
@@ -58,6 +68,8 @@ class PretrainedEmbedding(object):
         append: bool = False,
         dialect: str = None,
         lowercase_tokens: bool = True,
+        delimiter: str = " ",
+        skip_header: bool = True,
     ) -> None:
         """
         Loading raw embeddings vectors from file in the format:
@@ -100,7 +112,10 @@ class PretrainedEmbedding(object):
                             yield dtype(item)
 
         t = time.time()
-        embed_array = np.fromiter(iter_parser(skip_header=1), dtype=np.float32)
+        skip_header = 1 if skip_header else 0
+        embed_array = np.fromiter(
+            iter_parser(skip_header=skip_header, delimiter=delimiter), dtype=np.float32
+        )
         embed_matrix = embed_array.reshape((len(chunk_vocab), -1))
         print("Rows loaded: ", embed_matrix.shape[0], "; Time: ", time.time() - t, "s.")
 
