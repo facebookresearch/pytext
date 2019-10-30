@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import collections
 import itertools
-from typing import Dict, List, Tuple
+import typing
+from collections import Counter
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext.utils import cuda, precision
@@ -94,13 +95,13 @@ class Vocabulary:
 
     def __init__(
         self,
-        vocab_list,
-        counts=None,
-        replacements=None,
-        unk_token=UNK,
-        pad_token=PAD,
-        bos_token=BOS,
-        eos_token=EOS,
+        vocab_list: List[str],
+        counts: Optional[typing.Counter[str]] = None,
+        replacements: Optional[Dict[str, str]] = None,
+        unk_token: str = UNK,
+        pad_token: str = PAD,
+        bos_token: str = BOS,
+        eos_token: str = EOS,
     ):
         self._vocab = vocab_list
         self.counts = counts
@@ -124,6 +125,9 @@ class Vocabulary:
             idx = self.idx.pop(token)
             self._vocab[idx] = replacement
             self.idx[replacement] = idx
+            if self.counts and self.counts[token]:
+                count = self.counts.pop(token)
+                self.counts[replacement] += count
 
     def lookup_all(self, nested_values):
         res, unk_counter, total = self.lookup_all_internal(nested_values)
@@ -208,7 +212,7 @@ class VocabBuilder:
     """Helper class for aggregating and building `Vocabulary` objects."""
 
     def __init__(self):
-        self._counter = collections.Counter()
+        self._counter = Counter()
         self.use_unk = True
         self.unk_index = 0
         self.use_pad = True
@@ -294,9 +298,7 @@ class VocabBuilder:
 
     def truncate_to_vocab_size(self, vocab_size) -> None:
         if len(self._counter) > vocab_size > 0:
-            self._counter = collections.Counter(
-                dict(self._counter.most_common(vocab_size))
-            )
+            self._counter = Counter(dict(self._counter.most_common(vocab_size)))
 
 
 def align_target_labels(
