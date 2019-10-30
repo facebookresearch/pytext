@@ -17,7 +17,10 @@ class PretrainedEmbedding(object):
     """
 
     def __init__(
-        self, embeddings_path: str = None, lowercase_tokens: bool = True
+        self,
+        embeddings_path: str = None,
+        lowercase_tokens: bool = True,
+        skip_header: bool = True,
     ) -> None:
         if embeddings_path:
             if PathManager.isdir(embeddings_path):
@@ -41,11 +44,15 @@ class PretrainedEmbedding(object):
                 except Exception:
                     print("Failed to load cached embeddings, loading the raw file.")
                     self.load_pretrained_embeddings(
-                        raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                        raw_embeddings_path,
+                        lowercase_tokens=lowercase_tokens,
+                        skip_header=skip_header,
                     )
             else:
                 self.load_pretrained_embeddings(
-                    raw_embeddings_path, lowercase_tokens=lowercase_tokens
+                    raw_embeddings_path,
+                    lowercase_tokens=lowercase_tokens,
+                    skip_header=skip_header,
                 )
         else:
             self.embed_vocab = []  # type: List[str]
@@ -58,6 +65,7 @@ class PretrainedEmbedding(object):
         append: bool = False,
         dialect: str = None,
         lowercase_tokens: bool = True,
+        skip_header: bool = True,
     ) -> None:
         """
         Loading raw embeddings vectors from file in the format:
@@ -70,9 +78,7 @@ class PretrainedEmbedding(object):
         """
         chunk_vocab = []
 
-        def iter_parser(
-            skip_header: int = 0, delimiter: str = " ", dtype: type = np.float32
-        ):
+        def iter_parser(skip_header: int = 0, dtype: type = np.float32):
             """ Iterator to load numpy 1-d array from multi-row text file,
             where format is assumed to be:
                 word_i v0, v1, v2, ...., v_dim
@@ -88,7 +94,7 @@ class PretrainedEmbedding(object):
                 for _ in range(skip_header):
                     next(txtfile)
                 for line in txtfile:
-                    split_line = line.rstrip("\r\n ").split(delimiter)
+                    split_line = line.rstrip("\r\n ").split()
                     token = split_line[0]
                     if lowercase_tokens:
                         # lowercase here so that returned matrix doesn't contain
@@ -100,7 +106,10 @@ class PretrainedEmbedding(object):
                             yield dtype(item)
 
         t = time.time()
-        embed_array = np.fromiter(iter_parser(skip_header=1), dtype=np.float32)
+        skip_header = 1 if skip_header else 0
+        embed_array = np.fromiter(
+            iter_parser(skip_header=skip_header), dtype=np.float32
+        )
         embed_matrix = embed_array.reshape((len(chunk_vocab), -1))
         print("Rows loaded: ", embed_matrix.shape[0], "; Time: ", time.time() - t, "s.")
 
