@@ -29,7 +29,6 @@ class NewBertRegressionModel(NewBertModel):
         vocab = tensorizers["tokens"].vocab
         encoder = create_module(
             config.encoder,
-            output_encoded_layers=True,
             padding_idx=vocab.get_pad_index(),
             vocab_size=vocab.__len__(),
         )
