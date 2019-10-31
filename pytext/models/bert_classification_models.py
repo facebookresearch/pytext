@@ -69,7 +69,7 @@ class NewBertModel(BaseModel):
     def forward(
         self, encoder_inputs: Tuple[torch.Tensor, ...], *args
     ) -> List[torch.Tensor]:
-        _, representation = self.encoder(encoder_inputs)
+        representation = self.encoder(encoder_inputs)[0]
         return self.decoder(representation, *args)
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
@@ -80,10 +80,7 @@ class NewBertModel(BaseModel):
         labels = tensorizers["labels"].vocab
         vocab = tensorizers["tokens"].vocab
         encoder = create_module(
-            config.encoder,
-            output_encoded_layers=True,
-            padding_idx=vocab.get_pad_index(),
-            vocab_size=len(vocab),
+            config.encoder, padding_idx=vocab.get_pad_index(), vocab_size=len(vocab)
         )
         dense_dim = tensorizers["dense"].dim if "dense" in tensorizers else 0
         decoder = create_module(
