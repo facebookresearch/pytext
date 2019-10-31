@@ -41,6 +41,7 @@ class WordFeatConfig(ModuleConfig):
     mlp_layer_dims: Optional[List[int]] = []
     padding_idx: Optional[int] = None
     cpu_only: bool = False
+    skip_header: bool = True
 
 
 class DictFeatConfig(ModuleConfig):

@@ -8,11 +8,10 @@ import torch
 from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.fields import FieldMeta
+from pytext.models.embeddings.embedding_base import EmbeddingBase
 from pytext.utils.embeddings import PretrainedEmbedding
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
-
-from .embedding_base import EmbeddingBase
 
 
 class WordEmbedding(EmbeddingBase):
@@ -71,6 +70,7 @@ class WordEmbedding(EmbeddingBase):
                 pretrained_embedding = PretrainedEmbedding(
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=config.lowercase_tokens,
+                    skip_header=config.skip_header,
                 )
                 embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
                     tensorizer.vocab.idx,
