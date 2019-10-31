@@ -4,7 +4,6 @@
 from typing import List, Tuple
 
 import torch
-from pytext.utils import cuda
 
 
 # ===== the following section should be replaced once JIT provide native support
@@ -194,15 +193,3 @@ def make_byte_inputs(
                 bytes[batch_index][token_index][byte_index] = v + offset_for_non_padding
 
     return bytes, torch.tensor(seq_lens)
-
-
-class CPUOnlyParameter(torch.nn.Parameter):
-    def __init__(self, *args, **kwargs):
-        assert (
-            cuda.DISTRIBUTED_WORLD_SIZE <= 1
-        ), "Multiple GPUs not supported for cpu_only embeddings"
-        super().__init__(*args, **kwargs)
-
-    def cuda(self, device=None):
-        # We do nothing because this Parameter should only be on the CPU
-        return self
