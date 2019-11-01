@@ -31,6 +31,7 @@ class NewBertRegressionModel(NewBertModel):
             config.encoder,
             padding_idx=vocab.get_pad_index(),
             vocab_size=vocab.__len__(),
+            output_encoded_layers=True,
         )
         decoder = create_module(
             config.decoder, in_dim=encoder.representation_dim, out_dim=1
