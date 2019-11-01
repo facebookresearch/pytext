@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import json
+import logging
 import uuid
 from typing import Callable, Mapping, Optional
 
 import numpy as np
 from caffe2.python import workspace
 from caffe2.python.predictor import predictor_exporter
+from pytext.data.sources.data_source import DataSource
+from pytext.task import load
 from pytext.task.new_task import NewTask
+from pytext.workflow import _set_cuda
 
 from .builtin_task import register_builtin_tasks
 from .config import PyTextConfig, pytext_config_from_json
@@ -50,7 +54,9 @@ def load_config(filename: str) -> PyTextConfig:
 
 
 def create_predictor(
-    config: PyTextConfig, model_file: Optional[str] = None
+    config: PyTextConfig,
+    model_file: Optional[str] = None,
+    db_type: str = CAFFE2_DB_TYPE,
 ) -> Predictor:
     """
     Create a simple prediction API from a training config and an exported caffe2
@@ -60,7 +66,7 @@ def create_predictor(
     workspace_id = str(uuid.uuid4())
     workspace.SwitchWorkspace(workspace_id, True)
     predict_net = predictor_exporter.prepare_prediction_net(
-        filename=model_file or config.export_caffe2_path, db_type=CAFFE2_DB_TYPE
+        filename=model_file or config.export_caffe2_path, db_type=db_type
     )
 
     new_task = NewTask.from_config(config.task)
@@ -69,7 +75,27 @@ def create_predictor(
         for name, tensorizer in new_task.data.tensorizers.items()
         if tensorizer.is_input
     }
-
     return lambda input: _predict(
         workspace_id, predict_net, new_task.model, input_tensorizers, input
     )
+
+
+def batch_predict_caffe2_model(
+    pytext_model_file: str,
+    caffe2_model_file: str,
+    db_type: str = CAFFE2_DB_TYPE,
+    data_source: Optional[DataSource] = None,
+    use_cuda=False,
+):
+    logging.info(f"Loading data processing config from {pytext_model_file}")
+
+    _set_cuda(use_cuda)
+
+    task, train_config, _ = load(pytext_model_file)
+
+    data_source = data_source or task.data.data_source
+    logging.info("Loading Caffe2 model")
+    predictor = create_predictor(train_config, caffe2_model_file, db_type)
+    logging.info(f"Model loaded, start testing")
+    predictions = [predictor(example) for example in data_source.test]
+    return predictions
