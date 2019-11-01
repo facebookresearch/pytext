@@ -131,11 +131,8 @@ class FileChannel(Channel):
         return ("prediction", "target", "score") + context_keys
 
     def gen_content(self, metrics, loss, preds, targets, scores, context):
-        context_values = context.values()
-        for i in range(len(preds)):
-            res = [preds[i], targets[i], scores[i]]
-            res.extend([v_list[i] for v_list in context_values])
-            yield res
+        # Use zip to truncate to the shortest of these sequences
+        return zip(preds, targets, scores, *context.values())
 
 
 class TensorBoardChannel(Channel):
