@@ -125,7 +125,7 @@ class Tensorizer(Component):
 
     def prepare_input(self, row):
         """ Return preprocessed input tensors/blob for caffe2 prediction net."""
-        self.numberize(row)
+        return self.numberize(row)
 
     def sort_key(self, row):
         raise NotImplementedError
@@ -1230,26 +1230,41 @@ class SeqTokenTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
+        return self._process(row, raw_token_output=False)
+
+    def prepare_input(self, row):
+        """Tokenize, return tokenized_texts in raw text"""
+        seq, seq_lens = self._process(row, raw_token_output=True)
+        # convert all special tokens to str
+        return [[str(token) for token in sen] for sen in seq], seq_lens
+
+    def _process(self, row, raw_token_output):
+        sentence_process_fn = (
+            self._tokenize if raw_token_output else self._lookup_tokens
+        )
+        pad_token = (
+            self.vocab.pad_token if raw_token_output else self.vocab.get_pad_index()
+        )
         seq = []
 
         if self.add_bol_token:
             bol = EOL if self.use_eol_token_for_bol else BOL
-            tokens, _, _ = self._lookup_tokens(pre_tokenized=[Token(bol, -1, -1)])
-            seq.append(tokens)
+            tokens, _, _ = sentence_process_fn(pre_tokenized=[Token(bol, -1, -1)])
+            seq.append(list(tokens))
 
         for raw_text in row[self.column]:
-            tokens, _, _ = self._lookup_tokens(raw_text)
-            seq.append(tokens)
+            tokens, _, _ = sentence_process_fn(raw_text)
+            seq.append(list(tokens))
 
         if self.add_eol_token:
-            tokens, _, _ = self._lookup_tokens(pre_tokenized=[Token(EOL, -1, -1)])
-            seq.append(tokens)
+            tokens, _, _ = sentence_process_fn(pre_tokenized=[Token(EOL, -1, -1)])
+            seq.append(list(tokens))
 
         max_len = max(len(sentence) for sentence in seq)
         for sentence in seq:
             pad_len = max_len - len(sentence)
             if pad_len:
-                sentence += [self.vocab.get_pad_index()] * pad_len
+                sentence += [pad_token] * pad_len
         return seq, len(seq)
 
     def tensorize(self, batch):
