@@ -57,6 +57,7 @@ def create_predictor(
     config: PyTextConfig,
     model_file: Optional[str] = None,
     db_type: str = CAFFE2_DB_TYPE,
+    task: Optional[NewTask] = None,
 ) -> Predictor:
     """
     Create a simple prediction API from a training config and an exported caffe2
@@ -69,7 +70,7 @@ def create_predictor(
         filename=model_file or config.export_caffe2_path, db_type=db_type
     )
 
-    new_task = NewTask.from_config(config.task)
+    new_task = task or NewTask.from_config(config.task)
     input_tensorizers = {
         name: tensorizer
         for name, tensorizer in new_task.data.tensorizers.items()
@@ -95,7 +96,7 @@ def batch_predict_caffe2_model(
 
     data_source = data_source or task.data.data_source
     logging.info("Loading Caffe2 model")
-    predictor = create_predictor(train_config, caffe2_model_file, db_type)
+    predictor = create_predictor(train_config, caffe2_model_file, db_type, task)
     logging.info(f"Model loaded, start testing")
     predictions = [predictor(example) for example in data_source.test]
     return predictions
