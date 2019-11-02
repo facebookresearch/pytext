@@ -216,14 +216,12 @@ class TensorBoardChannel(Channel):
             for key, val in model.named_parameters():
                 if val is not None and len(val) > 0:
                     limit = 9.9e19
-                    self.summary_writer.add_histogram(
-                        key, torch.clamp(val, limit, -limit), epoch
-                    )
+                    val = torch.clamp(val.float(), -limit, limit)
+                    self.summary_writer.add_histogram(key, val, epoch)
                     if val.grad is not None and len(val.grad) > 0:
+                        grad = torch.clamp(val.grad.float(), -limit, limit)
                         self.summary_writer.add_histogram(
-                            key + "_gradients",
-                            torch.clamp(val.grad, limit, -limit),
-                            epoch,
+                            key + "_gradients", grad, epoch
                         )
 
     def add_texts(self, tag, metrics):
