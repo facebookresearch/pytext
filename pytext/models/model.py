@@ -388,7 +388,7 @@ class Model(BaseModel):
         output_layer = create_module(config.output_layer, metadata.target)
         return cls(embedding, representation, decoder, output_layer)
 
-    def forward(self, *inputs) -> List[torch.Tensor]:
+    def compute_representation(self, *inputs):
         embedding_input = inputs[: self.embedding.num_emb_modules]
         token_emb = self.embedding(*embedding_input)
         other_input = inputs[
@@ -401,6 +401,10 @@ class Model(BaseModel):
         elif isinstance(input_representation[-1], tuple):
             # since some lstm based representations return states as (h0, c0)
             input_representation = input_representation[:-1]
+        return input_representation
+
+    def forward(self, *inputs) -> List[torch.Tensor]:
+        input_representation = self.compute_representation(*inputs)
         decoder_inputs: tuple = ()
         if self.decoder.num_decoder_modules:
             decoder_inputs = inputs[-self.decoder.num_decoder_modules :]
