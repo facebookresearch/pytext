@@ -392,9 +392,18 @@ class TensorizersTest(unittest.TestCase):
         # only one row in test file:
         # ["where do you wanna meet?", "MPK"]
         for row in data.train:
+            tokens, token_lens = tensorizer.prepare_input(row)
             idx, lens = tensorizer.numberize(row)
             self.assertEqual(2, lens)
             self.assertEqual([[2, 3, 4, 5, 6], [7, 1, 1, 1, 1]], idx)
+            self.assertEqual(2, token_lens)
+            self.assertEqual(
+                [
+                    ["where", "do", "you", "wanna", "meet?"],
+                    ["mpk", "__PAD__", "__PAD__", "__PAD__", "__PAD__"],
+                ],
+                tokens,
+            )
 
     def test_seq_tensor_with_bos_eos_eol_bol(self):
         tensorizer = SeqTokenTensorizer(
@@ -422,7 +431,9 @@ class TensorizersTest(unittest.TestCase):
         # ["where do you wanna meet?", "MPK"]
         for row in data.train:
             idx, lens = tensorizer.numberize(row)
+            tokens, token_lens = tensorizer.prepare_input(row)
             self.assertEqual(4, lens)
+            self.assertEqual(4, token_lens)
             self.assertEqual(
                 [
                     [2, 4, 3, 1, 1, 1, 1],
@@ -431,6 +442,47 @@ class TensorizersTest(unittest.TestCase):
                     [2, 5, 3, 1, 1, 1, 1],
                 ],
                 idx,
+            )
+            self.assertEqual(
+                [
+                    [
+                        "__BEGIN_OF_SENTENCE__",
+                        "__BEGIN_OF_LIST__",
+                        "__END_OF_SENTENCE__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                    ],
+                    [
+                        "__BEGIN_OF_SENTENCE__",
+                        "where",
+                        "do",
+                        "you",
+                        "wanna",
+                        "meet?",
+                        "__END_OF_SENTENCE__",
+                    ],
+                    [
+                        "__BEGIN_OF_SENTENCE__",
+                        "mpk",
+                        "__END_OF_SENTENCE__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                    ],
+                    [
+                        "__BEGIN_OF_SENTENCE__",
+                        "__END_OF_LIST__",
+                        "__END_OF_SENTENCE__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                        "__PAD__",
+                    ],
+                ],
+                tokens,
             )
 
     def test_create_float_list_tensor(self):
@@ -450,6 +502,16 @@ class TensorizersTest(unittest.TestCase):
         for raw, expected in tests:
             row = {"dense": load_float_list(raw)}
             numberized = tensorizer.numberize(row)
+            self.assertEqual(expected, numberized)
+
+    def test_float_list_tensor_prepare_input(self):
+        tensorizer = FloatListTensorizer(
+            column="dense", dim=2, error_check=True, normalize=False
+        )
+        tests = [("[0.1,0.2]", [0.1, 0.2])]
+        for raw, expected in tests:
+            row = {"dense": load_float_list(raw)}
+            numberized = tensorizer.prepare_input(row)
             self.assertEqual(expected, numberized)
 
     def test_create_normalized_float_list_tensor(self):
