@@ -5,8 +5,8 @@ from typing import List, Optional
 
 import torch
 
-from pytext.config import ConfigBase
 from pytext.common import Padding
+from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.data_structures.annotation import (
     REDUCE,
