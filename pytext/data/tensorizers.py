@@ -4,7 +4,6 @@
 from typing import List, Optional
 
 import torch
-
 from pytext.common import Padding
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
