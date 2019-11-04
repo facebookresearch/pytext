@@ -6,8 +6,8 @@ from typing import List, Optional
 from sentencepiece import SentencePieceProcessor
 import torch
 
-from pytext.common import Padding
 from pytext.config import ConfigBase
+from pytext.common import Padding
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.data_structures.annotation import (
     REDUCE,
