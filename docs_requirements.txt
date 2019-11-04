@@ -8,6 +8,7 @@ numpy
 onnx
 pytorch-pretrained-bert
 requests
+sentencepiece
 torchtext
 tensorboard==1.14
 pandas

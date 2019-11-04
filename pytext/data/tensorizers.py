@@ -3,7 +3,6 @@
 
 from typing import List, Optional
 
-from sentencepiece import SentencePieceProcessor
 import torch
 
 from pytext.config import ConfigBase
@@ -23,6 +22,7 @@ from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
+from sentencepiece import SentencePieceProcessor
 
 from .utils import (
     BOL,
