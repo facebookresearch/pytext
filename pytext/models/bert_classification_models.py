@@ -31,6 +31,7 @@ from pytext.models.representations.huggingface_bert_sentence_encoder import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.utils.label import get_label_weights
 
 
 class NewBertModel(BaseModel):
@@ -89,7 +90,13 @@ class NewBertModel(BaseModel):
             out_dim=len(labels),
         )
 
-        loss = create_loss(config.output_layer.loss)
+        label_weights = (
+            get_label_weights(labels.idx, config.output_layer.label_weights)
+            if config.output_layer.label_weights
+            else None
+        )
+
+        loss = create_loss(config.output_layer.loss, weight=label_weights)
 
         if isinstance(loss, BinaryCrossEntropyLoss):
             output_layer_cls = BinaryClassificationOutputLayer
