@@ -3,8 +3,8 @@
 
 from typing import List, Optional
 
-import torch
 from sentencepiece import SentencePieceProcessor
+import torch
 
 from pytext.common import Padding
 from pytext.config import ConfigBase
