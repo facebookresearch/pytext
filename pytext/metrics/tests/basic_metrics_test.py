@@ -66,7 +66,6 @@ class BasicMetricsTest(MetricsTestBase):
 
     def test_soft_metrics_computation(self) -> None:
         recall_at_precision_dict_l1 = {0.9: 0.0, 0.8: 0.0, 0.6: 1.0, 0.4: 1.0, 0.2: 1.0}
-        recall_at_precision_dict_l2 = {0.9: 0.5, 0.8: 0.5, 0.6: 0.5, 0.4: 1.0, 0.2: 1.0}
         decision_thresh_at_precision_dict_l1 = {
             0.9: 0.0,
             0.8: 0.0,
@@ -74,12 +73,29 @@ class BasicMetricsTest(MetricsTestBase):
             0.4: -0.7,
             0.2: -0.7,
         }
+        recall_at_precision_dict_l2 = {0.9: 0.5, 0.8: 0.5, 0.6: 0.5, 0.4: 1.0, 0.2: 1.0}
         decision_thresh_at_precision_dict_l2 = {
             0.9: -0.2,
             0.8: -0.2,
             0.6: -0.2,
             0.4: -0.8,
             0.2: -0.8,
+        }
+        precision_at_recall_dict_l1 = {0.9: 0.6, 0.8: 0.6, 0.6: 0.6, 0.4: 0.6, 0.2: 0.6}
+        decision_thresh_at_recall_dict_l1 = {
+            0.9: -0.7,
+            0.8: -0.7,
+            0.6: -0.7,
+            0.4: -0.7,
+            0.2: -0.7,
+        }
+        precision_at_recall_dict_l2 = {0.9: 0.4, 0.8: 0.4, 0.6: 0.4, 0.4: 1.0, 0.2: 1.0}
+        decision_thresh_at_recall_dict_l2 = {
+            0.9: -0.8,
+            0.8: -0.8,
+            0.6: -0.8,
+            0.4: -0.2,
+            0.2: -0.2,
         }
         self.assertMetricsAlmostEqual(
             compute_soft_metrics(PREDICTIONS2, LABEL_NAMES2),
@@ -88,12 +104,16 @@ class BasicMetricsTest(MetricsTestBase):
                     average_precision=8.0 / 15,
                     recall_at_precision=recall_at_precision_dict_l1,
                     decision_thresh_at_precision=decision_thresh_at_precision_dict_l1,
+                    precision_at_recall=precision_at_recall_dict_l1,
+                    decision_thresh_at_recall=decision_thresh_at_recall_dict_l1,
                     roc_auc=1.0 / 6,
                 ),
                 "label2": SoftClassificationMetrics(
                     average_precision=0.7,
                     recall_at_precision=recall_at_precision_dict_l2,
                     decision_thresh_at_precision=decision_thresh_at_precision_dict_l2,
+                    precision_at_recall=precision_at_recall_dict_l2,
+                    decision_thresh_at_recall=decision_thresh_at_recall_dict_l2,
                     roc_auc=4.0 / 6,
                 ),
             },
