@@ -627,7 +627,7 @@ def precision_at_recall(
     Returns:
         Dictionary of maximum precision at requested recall thresholds.
         Dictionary of decision thresholds resulting in max precision at
-            requested recall thresholds.
+        requested recall thresholds.
     """
     y_score_shift = np.append(y_score_sorted[1:], np.nan)
     score_change = (y_score_sorted - y_score_shift) != 0
