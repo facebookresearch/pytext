@@ -9,6 +9,14 @@ from pytext.torchscript.vocab import ScriptVocabulary
 
 class ScriptTensorizer(torch.jit.ScriptModule):
     @torch.jit.script_method
+    def tokenize(self, row):
+        """
+        Tokenize raw inputs into tokens, for example gpt-2 bpe,
+        sentence piece and yoda tokenizer.
+        """
+        raise NotImplementedError
+
+    @torch.jit.script_method
     def numberize(self, row):
         """
         Convert raw inputs into numberized result, which usually include the
