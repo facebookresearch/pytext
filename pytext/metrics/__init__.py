@@ -18,10 +18,11 @@ from typing import (
 
 import numpy as np
 from pytext.utils import cuda
-from pytext.utils.ascii_table import ascii_table, ascii_table_from_dict
+from pytext.utils.ascii_table import ascii_table
 
 
 RECALL_AT_PRECISION_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
+PRECISION_AT_RECALL_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
 
 """
 Basic metric classes and functions for single-label prediction problems.
@@ -89,6 +90,8 @@ class SoftClassificationMetrics(NamedTuple):
     average_precision: float
     recall_at_precision: Dict[float, float]
     decision_thresh_at_precision: Dict[float, float]
+    precision_at_recall: Dict[float, float]
+    decision_thresh_at_recall: Dict[float, float]
     roc_auc: Optional[float]
 
 
@@ -244,13 +247,13 @@ class ClassificationMetrics(NamedTuple):
                 "roc_auc": "ROC AUC",
             }
             print(ascii_table(soft_scores, columns))
-            all_thresholds = set(
+            print("\nRecall at Precision")
+            r_at_p_thresholds = set(
                 itertools.chain.from_iterable(
                     metrics.recall_at_precision
                     for metrics in self.per_label_soft_scores.values()
                 )
             )
-            print("\nRecall at Precision")
             print(
                 ascii_table(
                     (
@@ -265,7 +268,33 @@ class ClassificationMetrics(NamedTuple):
                     ),
                     dict(
                         {"label": "Label"},
-                        **{str(t): f"R@P {t}" for t in all_thresholds},
+                        **{str(t): f"R@P {t}" for t in r_at_p_thresholds},
+                    ),
+                    alignments={"label": "<"},
+                )
+            )
+            print("\nPrecision at Recall")
+            p_at_r_thresholds = set(
+                itertools.chain.from_iterable(
+                    metrics.precision_at_recall
+                    for metrics in self.per_label_soft_scores.values()
+                )
+            )
+            print(
+                ascii_table(
+                    (
+                        dict(
+                            {"label": label},
+                            **{
+                                str(p): f"{r:.3f}"
+                                for p, r in metrics.precision_at_recall.items()
+                            },
+                        )
+                        for label, metrics in sorted(self.per_label_soft_scores.items())
+                    ),
+                    dict(
+                        {"label": "Label"},
+                        **{str(t): f"P@R {t}" for t in p_at_r_thresholds},
                     ),
                     alignments={"label": "<"},
                 )
@@ -582,20 +611,67 @@ def recall_at_precision(
     return recall_at_precision_dict, decision_thresh_at_precision_dict
 
 
+def precision_at_recall(
+    y_true_sorted: np.ndarray, y_score_sorted: np.ndarray, thresholds: Sequence[float]
+) -> Tuple[Dict[float, float], Dict[float, float]]:
+    """
+    Computes precision at various recall levels
+
+    Args:
+        y_true_sorted: Numpy array sorted according to decreasing confidence scores
+            indicating whether each prediction is correct.
+        y_score_sorted: Numpy array of confidence scores for the predictions in
+            decreasing order.
+        thresholds: Sequence of floats indicating the requested recall thresholds
+
+    Returns:
+        Dictionary of maximum precision at requested recall thresholds.
+        Dictionary of decision thresholds resulting in max precision at
+            requested recall thresholds.
+    """
+    y_score_shift = np.append(y_score_sorted[1:], np.nan)
+    score_change = (y_score_sorted - y_score_shift) != 0
+    cum_sum = np.cumsum(y_true_sorted)
+    precision_at_recall_dict = {t: 0.0 for t in thresholds}
+    decision_thresh_at_recall_dict = {t: 0.0 for t in thresholds}
+    sum_y_true = y_true_sorted.sum()
+    if sum_y_true == 0:
+        return precision_at_recall_dict, decision_thresh_at_recall_dict
+    recall = cum_sum / sum_y_true
+    precision = cum_sum / np.array(range(1, len(y_true_sorted) + 1))
+    for threshold in thresholds:
+        meets_requirements = np.logical_and(recall >= threshold, score_change)
+        if not np.any(meets_requirements):
+            continue
+        precisions_meeting_requirements = np.extract(meets_requirements, precision)
+        idx_max_precision_at_recall = np.amin(
+            np.argmax(precisions_meeting_requirements), axis=None
+        )
+        precision_at_recall_dict[threshold] = float(
+            precisions_meeting_requirements[idx_max_precision_at_recall]
+        )
+        decision_thresh_at_recall_dict[threshold] = float(
+            np.extract(meets_requirements, y_score_sorted)[idx_max_precision_at_recall]
+        )
+    return precision_at_recall_dict, decision_thresh_at_recall_dict
+
+
 def compute_soft_metrics(
     predictions: Sequence[LabelPrediction],
     label_names: Sequence[str],
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
 ) -> Dict[str, SoftClassificationMetrics]:
     """
-    Computes soft classification metrics (for now, average precision) given a list of
-    label predictions.
+    Computes soft classification metrics given a list of label predictions.
 
     Args:
         predictions: Label predictions, including the confidence score for each label.
         label_names: Indexed label names.
         recall_at_precision_thresholds: precision thresholds at which to calculate
             recall
+        precision_at_recall_thresholds: recall thresholds at which to calculate
+            precision
 
 
     Returns:
@@ -613,11 +689,16 @@ def compute_soft_metrics(
         recall_at_precision_dict, decision_thresh_at_precision = recall_at_precision(
             y_true_sorted, y_score_sorted, recall_at_precision_thresholds
         )
+        precision_at_recall_dict, decision_thresh_at_recall = precision_at_recall(
+            y_true_sorted, y_score_sorted, precision_at_recall_thresholds
+        )
         roc_auc = compute_roc_auc(predictions, target_class=i)
         soft_metrics[label_name] = SoftClassificationMetrics(
             average_precision=ap,
             recall_at_precision=recall_at_precision_dict,
             decision_thresh_at_precision=decision_thresh_at_precision,
+            precision_at_recall=precision_at_recall_dict,
+            decision_thresh_at_recall=decision_thresh_at_recall,
             roc_auc=roc_auc,
         )
     return soft_metrics
@@ -627,10 +708,10 @@ def compute_multi_label_soft_metrics(
     predictions: Sequence[LabelListPrediction],
     label_names: Sequence[str],
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
 ) -> Dict[str, SoftClassificationMetrics]:
     """
     Computes multi-label soft classification metrics
-    (for now, average precision)
 
     Args:
         predictions: multi-label predictions,
@@ -638,6 +719,8 @@ def compute_multi_label_soft_metrics(
         label_names: Indexed label names.
         recall_at_precision_thresholds: precision thresholds at which to calculate
             recall
+        precision_at_recall_thresholds: recall thresholds at which to calculate
+            precision
 
 
     Returns:
@@ -655,11 +738,16 @@ def compute_multi_label_soft_metrics(
         recall_at_precision_dict, decision_thresh_at_precision = recall_at_precision(
             y_true_sorted, y_score_sorted, recall_at_precision_thresholds
         )
+        precision_at_recall_dict, decision_thresh_at_recall = precision_at_recall(
+            y_true_sorted, y_score_sorted, precision_at_recall_thresholds
+        )
         roc_auc = compute_roc_auc(predictions, target_class=i)
         soft_metrics[label_name] = SoftClassificationMetrics(
             average_precision=ap,
             recall_at_precision=recall_at_precision_dict,
             decision_thresh_at_precision=decision_thresh_at_precision,
+            precision_at_recall=precision_at_recall_dict,
+            decision_thresh_at_recall=decision_thresh_at_recall,
             roc_auc=roc_auc,
         )
     return soft_metrics
@@ -726,6 +814,7 @@ def compute_classification_metrics(
     loss: float,
     average_precisions: bool = True,
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of label
@@ -736,7 +825,10 @@ def compute_classification_metrics(
         label_names: Indexed label names.
         average_precisions: Whether to compute average precisions for labels or not.
             Defaults to True.
-        recall_at_precision_thresholds: precision thresholds at which to calculate recall
+        recall_at_precision_thresholds: precision thresholds at which
+                                        to calculate recall
+        precision_at_recall_thresholds: recall thresholds at which
+                                        to calculate precision
 
 
     Returns:
@@ -757,7 +849,12 @@ def compute_classification_metrics(
     macro_prf1_metrics = per_label_confusions.compute_metrics()
 
     soft_metrics = (
-        compute_soft_metrics(predictions, label_names, recall_at_precision_thresholds)
+        compute_soft_metrics(
+            predictions,
+            label_names,
+            recall_at_precision_thresholds,
+            precision_at_recall_thresholds,
+        )
         if average_precisions
         else None
     )
@@ -791,6 +888,7 @@ def compute_multi_label_classification_metrics(
     loss: float,
     average_precisions: bool = True,
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of multi-label
@@ -804,6 +902,8 @@ def compute_multi_label_classification_metrics(
                             Defaults to True.
         recall_at_precision_thresholds: precision thresholds at which
                                         to calculate recall
+        precision_at_recall_thresholds: recall thresholds at which
+                                        to calculate precision
 
 
     Returns:
@@ -838,7 +938,10 @@ def compute_multi_label_classification_metrics(
 
     soft_metrics = (
         compute_multi_label_soft_metrics(
-            predictions, label_names, recall_at_precision_thresholds
+            predictions,
+            label_names,
+            recall_at_precision_thresholds,
+            precision_at_recall_thresholds,
         )
         if average_precisions
         else None
