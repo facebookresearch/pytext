@@ -214,11 +214,15 @@ class TensorBoardChannel(Channel):
 
         if stage == Stage.TRAIN:
             for key, val in model.named_parameters():
-                if val is not None and len(val) > 0:
+                if val is not None and len(val) > 0 and not (val == 0).all():
                     limit = 9.9e19
                     val = torch.clamp(val.float(), -limit, limit)
                     self.summary_writer.add_histogram(key, val, epoch)
-                    if val.grad is not None and len(val.grad) > 0:
+                    if (
+                        val.grad is not None
+                        and len(val.grad) > 0
+                        and not (val.grad == 0).all()
+                    ):
                         grad = torch.clamp(val.grad.float(), -limit, limit)
                         self.summary_writer.add_histogram(
                             key + "_gradients", grad, epoch
