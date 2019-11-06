@@ -17,6 +17,7 @@ from pytext.loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
+    LabelSmoothedCrossEntropyLoss,
 )
 from pytext.models.crf import CRF
 from pytext.utils.label import get_label_weights
@@ -44,6 +45,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
             AUCPRHingeLoss.Config,
             KLDivergenceBCELoss.Config,
             KLDivergenceCELoss.Config,
+            LabelSmoothedCrossEntropyLoss.Config,
         ] = CrossEntropyLoss.Config()
         label_weights: Dict[str, float] = {}
         ignore_pad_in_loss: Optional[bool] = True
