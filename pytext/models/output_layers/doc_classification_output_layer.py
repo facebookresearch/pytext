@@ -14,6 +14,7 @@ from pytext.loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
+    LabelSmoothedCrossEntropyLoss,
     MultiLabelSoftMarginLoss,
 )
 from pytext.utils.label import get_label_weights
@@ -45,6 +46,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             AUCPRHingeLoss.Config,
             KLDivergenceBCELoss.Config,
             KLDivergenceCELoss.Config,
+            LabelSmoothedCrossEntropyLoss.Config,
         ] = CrossEntropyLoss.Config()
         label_weights: Optional[Dict[str, float]] = None
 

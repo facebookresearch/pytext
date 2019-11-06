@@ -478,6 +478,7 @@ class LabelSmoothedCrossEntropyLoss(Loss):
     class Config(ConfigBase):
         beta: float = 0.1
         from_logits: bool = True
+        use_entropy: bool = False
 
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         # weight values other than 1.0 gives inconsistent behavior
@@ -489,15 +490,33 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         self.weight = weight
         self.beta = config.beta
         self.from_logits = config.from_logits
+        self.use_entropy = config.use_entropy
 
     def __call__(self, logits, targets, reduce=True):
         """
-        Returns the cross-entropy loss alongwith the KL divergence of the
-        discrete uniform distribution with the logits. Refer section 3.2 of
+        If use_entropy is False, returns the cross-entropy loss alongwith the KL divergence of the
+        discrete uniform distribution with the logits. Refer to section 3.2
+        If use_entopy is True, uses the entropy of the output distribution as
+        the smoothing loss (i.e., higher entropy, better). Refer to section 3
         https://arxiv.org/pdf/1701.06548.pdf
         """
 
-        log_probs = F.log_softmax(logits, dim=1) if self.from_logits else logits
+        if self.use_entropy:
+            # loss is negative of entropy
+            probs = F.softmax(logits, dim=1)
+            log_probs = torch.log(probs)
+            label_smoothing_loss = torch.sum(log_probs * probs, dim=1)
+        else:
+            # negative KL-div has an additional log(num_classes) term but ignored
+            # here because it doesn't contribute to optimization
+            log_probs = F.log_softmax(logits, dim=1) if self.from_logits else logits
+            label_smoothing_loss = -1 * log_probs.mean(dim=1)
+
+        if reduce:
+            label_smoothing_loss = torch.mean(
+                label_smoothing_loss[targets != self.ignore_index]
+            )
+
         cross_entropy_loss = F.nll_loss(
             log_probs,
             targets,
@@ -506,11 +525,4 @@ class LabelSmoothedCrossEntropyLoss(Loss):
             weight=self.weight,
         )
 
-        # negative KL-div has an additional log(num_classes) term but ignored
-        # here because it doesn't contribute to optimization
-        label_smoothing_loss = -1 * log_probs.mean(dim=1)
-        if reduce:
-            label_smoothing_loss = torch.mean(
-                label_smoothing_loss[targets != self.ignore_index]
-            )
         return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
