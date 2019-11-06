@@ -3,7 +3,7 @@
 
 from .tokenizer import (
     DoNothingTokenizer,
-    Gpt2Tokenizer,
+    GPT2BPETokenizer,
     Token,
     Tokenizer,
     WordPieceTokenizer,
@@ -11,7 +11,7 @@ from .tokenizer import (
 
 
 __all__ = [
-    "Gpt2Tokenizer",
+    "GPT2BPETokenizer",
     "Token",
     "Tokenizer",
     "DoNothingTokenizer",

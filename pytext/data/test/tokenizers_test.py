@@ -3,7 +3,8 @@
 
 import unittest
 
-from pytext.data.tokenizers import Tokenizer
+from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
+from pytext.data.tokenizers.tokenizer import Token
 
 
 class TokenizeTest(unittest.TestCase):
@@ -47,3 +48,19 @@ class TokenizeTest(unittest.TestCase):
         expected = "please buy me a coffee he implored in vain".split()
         tokens = tokenizer.tokenize(sentence)
         self.assertListEqual(expected, [t.value for t in tokens])
+
+
+class GPT2BPETest(unittest.TestCase):
+    def test_gpt2_bpe_tokenizer(self):
+        text = "Prototype"
+        expected = [Token("19703", 0, 4), Token("8690", 4, 9)]
+        tokenizer = GPT2BPETokenizer.from_config(
+            GPT2BPETokenizer.Config(
+                token_dictionary_path="pytext/data/test/data/gpt2_dict.txt",
+                bpe_vocab_path="pytext/data/test/data/gpt2_vocab.bpe",
+                bpe_encoder_path="pytext/data/test/data/gpt2_encoder.json",
+            )
+        )
+        tokens = tokenizer.tokenize(text)
+        print(tokens)
+        self.assertEqual(tokens, expected)

@@ -7,7 +7,7 @@ from typing import List
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer, lookup_tokens
-from pytext.data.tokenizers import Gpt2Tokenizer, Tokenizer, WordPieceTokenizer
+from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
@@ -121,7 +121,7 @@ class BERTTensorizer(TokenTensorizer):
 class RoBERTaTensorizer(BERTTensorizer):
     class Config(Tensorizer.Config):
         columns: List[str] = ["text"]
-        tokenizer: Gpt2Tokenizer.Config = Gpt2Tokenizer.Config()
+        tokenizer: GPT2BPETokenizer.Config = GPT2BPETokenizer.Config()
         max_seq_len: int = 256
 
     @classmethod
