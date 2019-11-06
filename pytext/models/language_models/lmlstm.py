@@ -52,7 +52,7 @@ class LMLSTM(BaseModel):
 
     class Config(BaseModel.Config):
         class ModelInput(Model.Config.ModelInput):
-            tokens: TokenTensorizer.Config = TokenTensorizer.Config(
+            tokens: Optional[TokenTensorizer.Config] = TokenTensorizer.Config(
                 add_bos_token=True, add_eos_token=True
             )
 
@@ -68,7 +68,16 @@ class LMLSTM(BaseModel):
         caffe2_format: ExporterType = ExporterType.PREDICTOR
 
     @classmethod
+    def checkTokenConfig(cls, tokens: Optional[TokenTensorizer.Config]):
+        if tokens is None:
+            raise ValueError(
+                "Tokens cannot be None. Please set it to TokenTensorizer in"
+                "config file."
+            )
+
+    @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        cls.checkTokenConfig(tensorizers["tokens"])
         embedding = create_module(config.embedding, tensorizer=tensorizers["tokens"])
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
