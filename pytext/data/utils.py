@@ -4,6 +4,7 @@
 import itertools
 import typing
 from collections import Counter
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -330,3 +331,14 @@ def align_target_label(
         aligned_targets[label_vocab[label]] = target
     assert all(t is not None for t in aligned_targets)
     return aligned_targets
+
+
+class ScriptTokenizerInputType(Enum):
+    text = 1
+    token = 2
+
+    def is_text(self):
+        return self is ScriptTokenizerInputType.text
+
+    def is_token(self):
+        return self is ScriptTokenizerInputType.token
