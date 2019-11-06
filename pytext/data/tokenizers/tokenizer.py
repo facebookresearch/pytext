@@ -176,7 +176,7 @@ class PickleableGPT2BPEEncoder(GPT2BPEEncoder):
         self.re = regex
 
 
-class Gpt2Tokenizer(Tokenizer):
+class GPT2BPETokenizer(Tokenizer):
     """Tokenizer for gpt-2 and RoBERTa."""
 
     class Config(ConfigBase):
