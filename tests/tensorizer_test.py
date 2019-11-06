@@ -9,7 +9,7 @@ from pytext.data.tensorizers import SentencePieceTokenizer
 class SentencePieceTokenizerTest(unittest.TestCase):
     def test_tokenize(self):
         sentence = "Testing out sentencepiece"
-        expected = ["▁Test", "ing", "▁out", "▁sentence", "piece"]
+        expected = ['▁T', 'est', 'ing', '▁out', '▁sen', 't', 'ence', 'p', 'i', 'e', 'ce']
         sp_tokenizer = SentencePieceTokenizer.from_config(
             SentencePieceTokenizer.Config(
                 sp_model_path="tests/models/sentencepiece.model"
