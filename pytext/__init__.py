@@ -32,9 +32,15 @@ def _predict(workspace_id, predict_net, model, tensorizers, input):
     }
     model_inputs = model.arrange_model_inputs(tensor_dict)
     model_input_names = model.get_export_input_names(tensorizers)
+    vocab_to_export = model.vocab_to_export(tensorizers)
     for blob_name, model_input in zip(model_input_names, model_inputs):
-        converted_blob_name = convert_caffe2_blob_name(blob_name)
-        workspace.blobs[converted_blob_name] = np.array([model_input], dtype=str)
+        converted_blob_name = blob_name
+        dtype = np.float32
+        if blob_name in vocab_to_export:
+            converted_blob_name = convert_caffe2_blob_name(blob_name)
+            dtype = str
+
+        workspace.blobs[converted_blob_name] = np.array([model_input], dtype=dtype)
     workspace.RunNet(predict_net)
     return {
         str(blob): workspace.blobs[blob][0] for blob in predict_net.external_outputs
