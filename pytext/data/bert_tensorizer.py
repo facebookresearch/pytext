@@ -2,18 +2,50 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
-from typing import List
+from typing import Dict, List
 
+from fairseq.data.dictionary import Dictionary
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer, lookup_tokens
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer, WordPieceTokenizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
+from pytext.data.utils import (
+    BOS,
+    EOS,
+    MASK,
+    PAD,
+    UNK,
+    SpecialToken,
+    Vocabulary,
+    pad_and_tensorize,
+)
 from pytext.torchscript.tensorizer import (
     ScriptRoBERTaTensorizer,
     ScriptRoBERTaTokenTensorizer,
 )
 from pytext.torchscript.vocab import ScriptVocabulary
+
+
+def build_fairseq_vocab(
+    vocab_file: str,
+    dictionary_class: Dictionary = Dictionary,
+    special_token_replacements: Dict[str, SpecialToken] = None,
+    max_vocab: int = -1,
+    min_count: int = -1,
+) -> Vocabulary:
+    """
+    Function builds a PyText vocabulary for models pre-trained using Fairseq
+    modules. The dictionary class can take any Fairseq Dictionary class
+    and is used to load the vocab file.
+    """
+    dictionary = dictionary_class.load(vocab_file)
+    # finalize will sort the dict based on frequency so only do this if
+    # a min_count or max_vocab size is specified
+    if min_count > 0 or max_vocab > 0:
+        dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
+    return Vocabulary(
+        dictionary.symbols, dictionary.count, replacements=special_token_replacements
+    )
 
 
 class BERTTensorizer(TokenTensorizer):
@@ -39,7 +71,7 @@ class BERTTensorizer(TokenTensorizer):
     @classmethod
     def from_config(cls, config: Config, **kwargs):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        replacements = {
+        special_token_replacements = {
             config.unk_token: UNK,
             config.pad_token: PAD,
             config.bos_token: BOS,
@@ -49,12 +81,13 @@ class BERTTensorizer(TokenTensorizer):
         if isinstance(tokenizer, WordPieceTokenizer):
             vocab = Vocabulary(
                 [token for token, _ in tokenizer.vocab.items()],
-                replacements=replacements,
+                replacements=special_token_replacements,
             )
         else:
-            dictionary = BertDictionary.load(config.vocab_file)
-            vocab = Vocabulary(
-                dictionary.symbols, dictionary.count, replacements=replacements
+            vocab = build_fairseq_vocab(
+                dictionary_class=BertDictionary,
+                vocab_file=config.vocab_file,
+                special_token_replacements=special_token_replacements,
             )
         return cls(
             columns=config.columns,
@@ -124,13 +157,30 @@ class BERTTensorizer(TokenTensorizer):
 class RoBERTaTensorizer(BERTTensorizer):
     class Config(Tensorizer.Config):
         columns: List[str] = ["text"]
+        vocab_file: str = (
+            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
+        )
         tokenizer: GPT2BPETokenizer.Config = GPT2BPETokenizer.Config()
+        # Make special tokens configurable so we don't need a new
+        # tensorizer if the model is trained with different special token
+        bos_token: str = "<s>"
+        eos_token: str = "</s>"
+        pad_token: str = "<pad>"
+        unk_token: str = "<unk>"
         max_seq_len: int = 256
 
     @classmethod
     def from_config(cls, config: Config, **kwargs):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        vocab = tokenizer.vocab
+        vocab = build_fairseq_vocab(
+            vocab_file=config.vocab_file,
+            special_token_replacements={
+                config.pad_token: PAD,
+                config.bos_token: BOS,
+                config.eos_token: EOS,
+                config.unk_token: UNK,
+            },
+        )
         return cls(
             columns=config.columns,
             tokenizer=tokenizer,
@@ -147,17 +197,14 @@ class RoBERTaTensorizer(BERTTensorizer):
             max_seq_len=max_seq_len,
             vocab=vocab,
         )
-        self.bpe = self.tokenizer.bpe
-        self.bos = self.tokenizer.bos
-        self.eos = self.tokenizer.eos
 
     def _lookup_tokens(self, text):
         return lookup_tokens(
             text,
             tokenizer=self.tokenizer,
             vocab=self.vocab,
-            bos_token=self.bos,
-            eos_token=self.eos,
+            bos_token=self.vocab.bos_token,
+            eos_token=self.vocab.eos_token,
             max_seq_len=self.max_seq_len,
         )
 
