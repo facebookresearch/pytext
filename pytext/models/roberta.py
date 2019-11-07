@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 import torch
 from pytext.config import ConfigBase
-from pytext.data.bert_tensorizer import RoBERTaTensorizer
+from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.module import Module, create_module
@@ -59,7 +59,9 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
     class Config(RoBERTaEncoderBase.Config):
         num_encoder_layers: int = 12
         num_attention_heads: int = 12
-        model_path: str = "manifold://pytext_training/tree/static/models/roberta_base_torch.pt"
+        model_path: str = (
+            "manifold://pytext_training/tree/static/models/roberta_base_torch.pt"
+        )
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
