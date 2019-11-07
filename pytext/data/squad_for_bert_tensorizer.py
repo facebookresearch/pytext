@@ -5,8 +5,12 @@ import itertools
 from typing import List
 
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizer, RoBERTaTensorizer
-from pytext.data.utils import pad_and_tensorize
+from pytext.data.bert_tensorizer import (
+    BERTTensorizer,
+    RoBERTaTensorizer,
+    build_fairseq_vocab,
+)
+from pytext.data.utils import BOS, EOS, PAD, UNK, pad_and_tensorize
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -101,7 +105,15 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        vocab = tokenizer.vocab
+        vocab = build_fairseq_vocab(
+            vocab_file=config.vocab_file,
+            special_token_replacements={
+                config.pad_token: PAD,
+                config.bos_token: BOS,
+                config.eos_token: EOS,
+                config.unk_token: UNK,
+            },
+        )
         return cls(
             columns=config.columns,
             tokenizer=tokenizer,

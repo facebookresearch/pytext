@@ -97,7 +97,7 @@ class Vocabulary:
     def __init__(
         self,
         vocab_list: List[str],
-        counts: Optional[typing.Counter[str]] = None,
+        counts: List = None,
         replacements: Optional[Dict[str, str]] = None,
         unk_token: str = UNK,
         pad_token: str = PAD,
@@ -126,9 +126,6 @@ class Vocabulary:
             idx = self.idx.pop(token)
             self._vocab[idx] = replacement
             self.idx[replacement] = idx
-            if self.counts and self.counts[token]:
-                count = self.counts.pop(token)
-                self.counts[replacement] += count
 
     def lookup_all(self, nested_values):
         res, unk_counter, total = self.lookup_all_internal(nested_values)
