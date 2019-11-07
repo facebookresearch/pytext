@@ -56,7 +56,6 @@ class GPT2BPETest(unittest.TestCase):
         expected = [Token("19703", 0, 4), Token("8690", 4, 9)]
         tokenizer = GPT2BPETokenizer.from_config(
             GPT2BPETokenizer.Config(
-                token_dictionary_path="pytext/data/test/data/gpt2_dict.txt",
                 bpe_vocab_path="pytext/data/test/data/gpt2_vocab.bpe",
                 bpe_encoder_path="pytext/data/test/data/gpt2_encoder.json",
             )
