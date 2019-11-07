@@ -5,11 +5,8 @@ import itertools
 from typing import List
 
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import (
-    BERTTensorizer,
-    RoBERTaTensorizer,
-    build_fairseq_vocab,
-)
+from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
+from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.utils import BOS, EOS, PAD, UNK, pad_and_tensorize
 
 
