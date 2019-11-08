@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Type
 
 from pytext.common.constants import Stage
 from pytext.data import Batcher, Data
-from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.bert_tensorizer import BERTTensorizerBase
 from pytext.data.data import RowData
 from pytext.data.sources import DataSource
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
@@ -80,10 +80,8 @@ class PackedLMData(Data):
         numberize. We will simply create this in `_format_output_row`.
         """
         numberized_row = self.tensorizer.numberize(row)
-        if isinstance(self.tensorizer, XLMTensorizer):
-            tokens, seq_len, segment_labels, _ = numberized_row
-        elif isinstance(self.tensorizer, BERTTensorizer):
-            tokens, segment_labels, seq_len = numberized_row
+        if isinstance(self.tensorizer, BERTTensorizerBase):
+            tokens, segment_labels, seq_len, _ = numberized_row
         elif isinstance(self.tensorizer, TokenTensorizer):
             tokens, seq_len, _ = numberized_row
             segment_labels = []
@@ -102,11 +100,9 @@ class PackedLMData(Data):
         In case of the XLMTensorizer, we also need to create a new positions list
         which goes from 0 to seq_len.
         """
-        if isinstance(self.tensorizer, XLMTensorizer):
+        if isinstance(self.tensorizer, BERTTensorizerBase):
             positions = [index for index in range(seq_len)]
-            return {self.tensorizer_name: (tokens, seq_len, segment_labels, positions)}
-        elif isinstance(self.tensorizer, BERTTensorizer):
-            return {self.tensorizer_name: (tokens, segment_labels, seq_len)}
+            return {self.tensorizer_name: (tokens, segment_labels, seq_len, positions)}
         elif isinstance(self.tensorizer, TokenTensorizer):
             # dummy token_ranges
             return {self.tensorizer_name: (tokens, seq_len, [(-1, -1)] * seq_len)}

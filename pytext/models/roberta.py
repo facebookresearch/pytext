@@ -30,7 +30,7 @@ class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
 
     def _encoder(self, inputs):
         # NewBertModel expects the output as a tuple and grabs the first element
-        tokens, _, _ = inputs
+        tokens, _, _, _ = inputs
         full_representation = self.encoder(tokens)
         sentence_rep = full_representation[:, 0, :]
         return [full_representation], sentence_rep

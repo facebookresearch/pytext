@@ -28,7 +28,7 @@ class TransformerSentenceEncoderTest(unittest.TestCase):
 
     def test_monolingual_transformer_sentence_encoder(self):
 
-        input_tuple = (self.tokens, self.pad_mask, self.segment_labels)
+        input_tuple = (self.tokens, self.pad_mask, self.segment_labels, self.positions)
 
         sentence_encoder = TransformerSentenceEncoder.from_config(
             TransformerSentenceEncoder.Config(
@@ -55,13 +55,7 @@ class TransformerSentenceEncoderTest(unittest.TestCase):
 
     def test_multilingual_transformer_sentence_encoder(self):
 
-        input_tuple = (
-            self.tokens,
-            self.pad_mask,
-            self.lengths,
-            self.segment_labels,
-            self.positions,
-        )
+        input_tuple = (self.tokens, self.pad_mask, self.segment_labels, self.positions)
 
         sentence_encoder = TransformerSentenceEncoder.from_config(
             TransformerSentenceEncoder.Config(
