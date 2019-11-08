@@ -120,17 +120,8 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
     def _encoder(
         self, input_tuple: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, ...]:
-        # If multilingual is True then the input_tuple has additional information
-        # related to the lengths of the inputs as well as a position tensor
-        if self.multilingual:
-            tokens, _, lengths, segment_labels, positions = input_tuple
-
-            # we need this for backwards compatibility with models that are
-            # pre-trained with the offset
-            if self.offset_positions_by_padding:
-                positions = None
-        else:
-            tokens, _, segment_labels = input_tuple
+        tokens, _, segment_labels, positions = input_tuple
+        if self.offset_positions_by_padding or (not self.multilingual):
             positions = None
 
         encoded_layers, pooled_output = self.sentence_encoder(

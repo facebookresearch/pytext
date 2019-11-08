@@ -720,13 +720,13 @@ class BERTTensorizerTest(unittest.TestCase):
                 )
             )
         )
-        tokens, segment_label, seq_len = tensorizer.numberize(row)
+        tokens, segment_label, seq_len, positions = tensorizer.numberize(row)
         self.assertEqual(tokens, expected)
         self.assertEqual(seq_len, len(expected))
         self.assertEqual(segment_label, [0] * len(expected))
 
-        tokens, pad_mask, segment_labels = tensorizer.tensorize(
-            [(tokens, segment_label, seq_len)]
+        tokens, pad_mask, segment_labels, _ = tensorizer.tensorize(
+            [(tokens, segment_label, seq_len, positions)]
         )
         self.assertEqual(pad_mask[0].tolist(), [1] * len(expected))
 
@@ -743,7 +743,7 @@ class BERTTensorizerTest(unittest.TestCase):
                 ),
             )
         )
-        tokens, segment_labels, seq_len = tensorizer.numberize(row)
+        tokens, segment_labels, seq_len, _ = tensorizer.numberize(row)
         self.assertEqual(tokens, expected_tokens)
         self.assertEqual(segment_labels, expected_segment_labels)
         self.assertEqual(seq_len, len(expected_tokens))
@@ -765,7 +765,7 @@ class SquadForBERTTensorizerTest(unittest.TestCase):
                 max_seq_len=250,
             )
         )
-        tokens, segments, seq_len, start, end = tensorizer.numberize(row)
+        tokens, segments, seq_len, positions, start, end = tensorizer.numberize(row)
         # check against manually verified answer positions in tokenized output
         # there are 4 identical answers
         self.assertEqual(start, [83, 83, 83, 83])
@@ -775,7 +775,7 @@ class SquadForBERTTensorizerTest(unittest.TestCase):
 
         tensorizer.max_seq_len = 50
         # answer should be truncated out
-        _, _, _, start, end = tensorizer.numberize(row)
+        _, _, _, _, start, end = tensorizer.numberize(row)
         self.assertEqual(start, [-100, -100, -100, -100])
         self.assertEqual(end, [-100, -100, -100, -100])
         self.assertEqual(len(tokens), seq_len)

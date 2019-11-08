@@ -7,7 +7,7 @@ import torch
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
-from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.bert_tensorizer import BERTTensorizerBase
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -34,7 +34,9 @@ class MaskedLanguageModel(BaseModel):
 
     class Config(BaseModel.Config):
         class InputConfig(ConfigBase):
-            tokens: BERTTensorizer.Config = BERTTensorizer.Config(max_seq_len=128)
+            tokens: BERTTensorizerBase.Config = BERTTensorizerBase.Config(
+                max_seq_len=128
+            )
 
         inputs: InputConfig = InputConfig()
         encoder: TransformerSentenceEncoderBase.Config = TransformerSentenceEncoder.Config()
@@ -86,7 +88,7 @@ class MaskedLanguageModel(BaseModel):
         encoder: TransformerSentenceEncoderBase,
         decoder: MLPDecoder,
         output_layer: LMOutputLayer,
-        token_tensorizer: BERTTensorizer,
+        token_tensorizer: BERTTensorizerBase,
         vocab: Vocabulary,
         mask_prob: float = Config.mask_prob,
         mask_bos: float = Config.mask_bos,
@@ -146,11 +148,7 @@ class MaskedLanguageModel(BaseModel):
         if self.masking_strategy == MaskingStrategy.RANDOM:
             mask = random_masking(tokens, mask_prob)
             if not self.mask_bos:
-                bos_idx = (
-                    self.vocab.idx[EOS]
-                    if self.token_tensorizer.use_eos_token_for_bos
-                    else self.vocab.idx[BOS]
-                )
+                bos_idx = self.vocab.idx[self.token_tensorizer.bos_token]
                 mask *= (tokens != bos_idx).long()
             return mask
         elif self.masking_strategy == MaskingStrategy.FREQUENCY:

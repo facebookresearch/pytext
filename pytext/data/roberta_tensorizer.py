@@ -4,8 +4,7 @@
 from typing import List
 
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
-from pytext.data.tensorizers import Tensorizer, lookup_tokens
+from pytext.data.bert_tensorizer import BERTTensorizerBase, build_fairseq_vocab
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
 from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary
 from pytext.torchscript.tensorizer import (
@@ -15,64 +14,42 @@ from pytext.torchscript.tensorizer import (
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
-class RoBERTaTensorizer(BERTTensorizer):
-    class Config(Tensorizer.Config):
-        columns: List[str] = ["text"]
+class RoBERTaTensorizer(BERTTensorizerBase):
+    class Config(BERTTensorizerBase.Config):
         vocab_file: str = (
             "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
         )
         tokenizer: GPT2BPETokenizer.Config = GPT2BPETokenizer.Config()
-        # Make special tokens configurable so we don't need a new
-        # tensorizer if the model is trained with different special token
-        bos_token: str = "<s>"
-        eos_token: str = "</s>"
-        pad_token: str = "<pad>"
-        unk_token: str = "<unk>"
         max_seq_len: int = 256
 
     @classmethod
-    def from_config(cls, config: Config, **kwargs):
+    def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
         vocab = build_fairseq_vocab(
             vocab_file=config.vocab_file,
             special_token_replacements={
-                config.pad_token: PAD,
-                config.bos_token: BOS,
-                config.eos_token: EOS,
-                config.unk_token: UNK,
+                "<pad>": PAD,
+                "<s>": BOS,
+                "</s>": EOS,
+                "<unk>": UNK,
             },
         )
         return cls(
             columns=config.columns,
+            vocab=vocab,
             tokenizer=tokenizer,
             max_seq_len=config.max_seq_len,
-            vocab=vocab,
         )
 
     def __init__(
         self,
-        columns: List[str],
-        tokenizer: Tokenizer = None,
+        columns: List[str] = Config.columns,
         vocab: Vocabulary = None,
-        max_seq_len=256,
+        tokenizer: Tokenizer = None,
+        max_seq_len: int = Config.max_seq_len,
     ) -> None:
         super().__init__(
-            columns=columns,
-            tokenizer=tokenizer,
-            add_bos_token=False,
-            add_eos_token=True,
-            max_seq_len=max_seq_len,
-            vocab=vocab,
-        )
-
-    def _lookup_tokens(self, text: str):
-        return lookup_tokens(
-            text,
-            tokenizer=self.tokenizer,
-            vocab=self.vocab,
-            bos_token=self.vocab.bos_token,
-            eos_token=self.vocab.eos_token,
-            max_seq_len=self.max_seq_len,
+            columns=columns, vocab=vocab, tokenizer=tokenizer, max_seq_len=max_seq_len
         )
 
     def torchscriptify(self):

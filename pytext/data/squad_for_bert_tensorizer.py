@@ -7,7 +7,8 @@ from typing import List
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
-from pytext.data.utils import BOS, EOS, PAD, UNK, pad_and_tensorize
+from pytext.data.tokenizers import Tokenizer
+from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary, pad_and_tensorize
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -38,6 +39,8 @@ class SquadForBERTTensorizer(BERTTensorizer):
         answer_starts_column: str = Config.answer_starts_column,
         **kwargs,
     ):
+        # Arguments which are common to both current and base class are passed
+        # as **kwargs. These are then passed to the __init__ of the base class
         super().__init__(**kwargs)
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
@@ -46,13 +49,13 @@ class SquadForBERTTensorizer(BERTTensorizer):
         question_column, doc_column = self.columns
         doc_tokens, start_idx, end_idx = self._lookup_tokens(row[doc_column])
         question_tokens, _, _ = self._lookup_tokens(row[question_column])
-        if self.add_bos_token:
-            question_tokens = [self.vocab.get_bos_index()] + question_tokens
+        question_tokens = [self.vocab.get_bos_index()] + question_tokens
         seq_lens = (len(question_tokens), len(doc_tokens))
         segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
         tokens = list(itertools.chain(question_tokens, doc_tokens))
         segment_labels = list(itertools.chain(*segment_labels))
         seq_len = len(tokens)
+        positions = list(range(seq_len))
 
         # now map original answer spans to tokenized spans
         offset = len(question_tokens)
@@ -77,16 +80,39 @@ class SquadForBERTTensorizer(BERTTensorizer):
         if not answer_start_indices and answer_end_indices:
             answer_start_indices = [self.SPAN_PAD_IDX]
             answer_end_indices = [self.SPAN_PAD_IDX]
-        return tokens, segment_labels, seq_len, answer_start_indices, answer_end_indices
+        # import pdb; pdb.set_trace()
+        return (
+            tokens,
+            segment_labels,
+            seq_len,
+            positions,
+            answer_start_indices,
+            answer_end_indices,
+        )
 
     def tensorize(self, batch):
-        tokens, segment_labels, seq_lens, answer_start_idx, answer_end_idx = zip(*batch)
+        (
+            tokens,
+            segment_labels,
+            seq_len,
+            positions,
+            answer_start_idx,
+            answer_end_idx,
+        ) = zip(*batch)
         tokens = pad_and_tensorize(tokens, self.vocab.get_pad_index())
         segment_labels = pad_and_tensorize(segment_labels, self.vocab.get_pad_index())
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
+        positions = pad_and_tensorize(positions)
         answer_start_idx = pad_and_tensorize(answer_start_idx, self.SPAN_PAD_IDX)
         answer_end_idx = pad_and_tensorize(answer_end_idx, self.SPAN_PAD_IDX)
-        return tokens, pad_mask, segment_labels, answer_start_idx, answer_end_idx
+        return (
+            tokens,
+            pad_mask,
+            segment_labels,
+            positions,
+            answer_start_idx,
+            answer_end_idx,
+        )
 
 
 class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
@@ -113,28 +139,32 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
         )
         return cls(
             columns=config.columns,
-            tokenizer=tokenizer,
             vocab=vocab,
+            tokenizer=tokenizer,
+            max_seq_len=config.max_seq_len,
             answers_column=config.answers_column,
             answer_starts_column=config.answer_starts_column,
-            max_seq_len=config.max_seq_len,
         )
 
     def __init__(
         self,
-        columns=Config.columns,
-        tokenizer=None,
-        vocab=None,
+        columns: List[str] = Config.columns,
+        vocab: Vocabulary = None,
+        tokenizer: Tokenizer = None,
+        max_seq_len: int = Config.max_seq_len,
         answers_column: str = Config.answers_column,
         answer_starts_column: str = Config.answer_starts_column,
-        max_seq_len: int = Config.max_seq_len,
     ):
         RoBERTaTensorizer.__init__(
-            self, columns, tokenizer=tokenizer, vocab=vocab, max_seq_len=max_seq_len
+            self,
+            columns=columns,
+            vocab=vocab,
+            tokenizer=tokenizer,
+            max_seq_len=max_seq_len,
         )
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
-        self.add_bos_token = False
+        self.wrap_special_tokens = False
 
     def _lookup_tokens(self, text):
         return RoBERTaTensorizer._lookup_tokens(self, text)
