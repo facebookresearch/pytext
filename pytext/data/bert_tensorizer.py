@@ -19,6 +19,8 @@ from pytext.data.utils import (
     Vocabulary,
     pad_and_tensorize,
 )
+from pytext.torchscript.tensorizer import ScriptBERTTensorizer
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 def build_fairseq_vocab(
@@ -147,3 +149,16 @@ class BERTTensorizer(TokenTensorizer):
         pad_mask = (tokens != self.vocab.get_pad_index()).long()
         segment_labels = pad_and_tensorize(segment_labels, self.vocab.get_pad_index())
         return tokens, pad_mask, segment_labels
+
+    def torchscriptify(self):
+        return ScriptBERTTensorizer(
+            tokenizer=self.tokenizer.torchscriptify(),
+            vocab=ScriptVocabulary(
+                list(self.vocab),
+                pad_idx=self.vocab.get_pad_index(),
+                bos_idx=self.vocab.get_bos_index(),
+                eos_idx=self.vocab.get_eos_index(),
+            ),
+            max_seq_len=self.max_seq_len,
+            wrap_special_tokens=True,
+        )

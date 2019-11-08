@@ -16,16 +16,14 @@ class ScriptBERTTensorizer(ScriptTensorizer):
         tokenizer: torch.jit.ScriptModule,
         vocab: ScriptVocabulary,
         max_seq_len: int,
-        add_bos_token: bool,
-        use_eos_token_for_bos: bool,
+        wrap_special_tokens: bool,
     ):
         super().__init__()
         self.tokenizer = tokenizer
         self.vocab = vocab
         self.vocab_lookup = VocabLookup(vocab)
         self.max_seq_len = torch.jit.Attribute(max_seq_len, int)
-        self.add_bos_token = torch.jit.Attribute(add_bos_token, bool)
-        self.use_eos_token_for_bos = torch.jit.Attribute(use_eos_token_for_bos, bool)
+        self.wrap_special_tokens = torch.jit.Attribute(wrap_special_tokens, bool)
 
     @torch.jit.script_method
     def tokenize(
@@ -46,58 +44,74 @@ class ScriptBERTTensorizer(ScriptTensorizer):
         return per_sentence_tokens
 
     @torch.jit.script_method
+    def _lookup_tokens(self, tokens: List[Tuple[str, int, int]]) -> List[int]:
+        return self.vocab_lookup(
+            tokens,
+            bos_idx=None,
+            eos_idx=self.vocab.eos_idx,
+            use_eos_token_for_bos=False,
+            max_seq_len=self.max_seq_len,
+        )[0]
+
+    @torch.jit.script_method
+    def _wrap_special_tokens(self, token_ids: List[int], idx: int) -> List[int]:
+        if idx == 0:
+            token_ids = [self.vocab.bos_idx] + token_ids
+        return token_ids
+
+    @torch.jit.script_method
     def numberize(
         self, text_row: Optional[List[str]], token_row: Optional[List[List[str]]]
-    ) -> Tuple[List[int], List[int], int]:
+    ) -> Tuple[List[int], List[int], int, List[int]]:
         token_ids: List[int] = []
         segment_labels: List[int] = []
         seq_len: int = 0
+        positions: List[int] = []
         per_sentence_tokens: List[List[Tuple[str, int, int]]] = self.tokenize(
             text_row, token_row
         )
 
         for idx, per_sentence_token in enumerate(per_sentence_tokens):
-            if idx == 0 and self.add_bos_token:
-                bos_idx: Optional[int] = self.vocab.bos_idx
-            else:
-                bos_idx: Optional[int] = None
+            lookup_ids: List[int] = self._lookup_tokens(per_sentence_token)
+            if self.wrap_special_tokens:
+                lookup_ids = self._wrap_special_tokens(lookup_ids, idx)
 
-            lookup_ids: List[int] = self.vocab_lookup(
-                per_sentence_token,
-                bos_idx=bos_idx,
-                eos_idx=self.vocab.eos_idx,
-                use_eos_token_for_bos=self.use_eos_token_for_bos,
-                max_seq_len=self.max_seq_len,
-            )[0]
             token_ids.extend(lookup_ids)
             segment_labels.extend([idx] * len(lookup_ids))
         seq_len = len(token_ids)
+        positions = [i for i in range(seq_len)]
 
-        return token_ids, segment_labels, seq_len
+        return token_ids, segment_labels, seq_len, positions
 
     @torch.jit.script_method
     def tensorize(
         self,
         texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[List[str]]]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         tokens_2d: List[List[int]] = []
         segment_labels_2d: List[List[int]] = []
         seq_len_2d: List[int] = []
+        positions_2d: List[List[int]] = []
 
         for idx in range(self.batch_size(texts, tokens)):
-            numberized: Tuple[List[int], List[int], int] = self.numberize(
+            numberized: Tuple[List[int], List[int], int, List[int]] = self.numberize(
                 self.get_texts_by_index(texts, idx),
                 self.get_tokens_by_index(tokens, idx),
             )
             tokens_2d.append(numberized[0])
             segment_labels_2d.append(numberized[1])
             seq_len_2d.append(numberized[2])
+            positions_2d.append(numberized[3])
 
         tokens, pad_mask = pad_2d_mask(tokens_2d, pad_value=self.vocab.pad_idx)
         segment_labels = torch.tensor(
             pad_2d(segment_labels_2d, seq_lens=seq_len_2d, pad_idx=self.vocab.pad_idx),
             dtype=torch.long,
         )
+        positions = torch.tensor(
+            pad_2d(positions_2d, seq_lens=seq_len_2d, pad_idx=self.vocab.pad_idx),
+            dtype=torch.long,
+        )
 
-        return tokens, pad_mask, segment_labels
+        return tokens, pad_mask, segment_labels, positions
