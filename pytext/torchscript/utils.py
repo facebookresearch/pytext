@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 
@@ -193,3 +193,23 @@ def make_byte_inputs(
                 bytes[batch_index][token_index][byte_index] = v + offset_for_non_padding
 
     return bytes, torch.tensor(seq_lens)
+
+
+@torch.jit.script
+def squeeze_1d(inputs: Optional[List[str]]) -> Optional[List[List[str]]]:
+    result: Optional[List[List[str]]] = None
+    if inputs is not None:
+        result = torch.jit.annotate(List[List[str]], [])
+        for line in inputs:
+            result.append([line])
+    return result
+
+
+@torch.jit.script
+def squeeze_2d(inputs: Optional[List[List[str]]]) -> Optional[List[List[List[str]]]]:
+    result: Optional[List[List[List[str]]]] = None
+    if inputs is not None:
+        result = torch.jit.annotate(List[List[List[str]]], [])
+        for line in inputs:
+            result.append([line])
+    return result
