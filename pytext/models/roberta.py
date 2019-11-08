@@ -104,10 +104,9 @@ class ScriptRoBERTa(torch.jit.ScriptModule):
 
     @torch.jit.script_method
     def forward(self, texts: List[str]):
-        rows: List[List[str]] = [[text] for text in texts]
         input_tensors: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor
-        ] = self.tensorizer.tensorize(rows)
+        ] = self.tensorizer.tensorize_single(texts=texts)
         logits = self.model(input_tensors)
         return self.output_layer(logits)
 

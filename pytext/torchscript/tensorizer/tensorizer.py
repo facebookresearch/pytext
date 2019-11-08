@@ -4,36 +4,98 @@
 from typing import List, Optional, Tuple
 
 import torch
+from pytext.torchscript.utils import squeeze_1d, squeeze_2d
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class ScriptTensorizer(torch.jit.ScriptModule):
     @torch.jit.script_method
-    def tokenize(self, row):
+    def tokenize(
+        self, text_row: Optional[List[str]], token_row: Optional[List[List[str]]]
+    ):
         """
-        Tokenize raw inputs into tokens, for example gpt-2 bpe,
-        sentence piece and yoda tokenizer.
-        """
-        raise NotImplementedError
-
-    @torch.jit.script_method
-    def numberize(self, row):
-        """
-        Convert raw inputs into numberized result, which usually include the
-        process of tokenization and vocab lookup.
+        Process a single line of raw inputs into tokens, it supports
+        two input formats:
+            1) a single line of texts (single sentence or a pair)
+            2) a single line of pre-processed tokens (single sentence or a pair)
         """
         raise NotImplementedError
 
     @torch.jit.script_method
-    def tensorize(self, rows):
+    def numberize(
+        self, text_row: Optional[List[str]], token_row: Optional[List[List[str]]]
+    ):
         """
-        Convert raw inputs into model input tensors, for example: raw inputs
-        could be text or list of tokens.
+        Process a single line of raw inputs into numberized result, it supports
+        two input formats:
+            1) a single line of texts (single sentence or a pair)
+            2) a single line of pre-processed tokens (single sentence or a pair)
 
-        This function should handle the calling to numberize() and padding
-        the numberized result.
+        This function should handle the logic of calling tokenize(), add special
+        tokens and vocab lookup.
         """
         raise NotImplementedError
+
+    @torch.jit.script_method
+    def tensorize(
+        self,
+        texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[List[str]]]] = None,
+    ):
+        """
+        Process raw inputs into model input tensors, it supports two input
+        formats:
+            1) multiple rows of texts (single sentence or a pair)
+            2) multiple rows of pre-processed tokens (single sentence or a pair)
+
+        This function should handle the logic of calling numberize() and also
+        padding the numberized result.
+        """
+        raise NotImplementedError
+
+    @torch.jit.script_method
+    def tensorize_single(
+        self,
+        texts: Optional[List[str]] = None,
+        tokens: Optional[List[List[str]]] = None,
+    ):
+        """
+        Process raw inputs into model input tensors, it supports two input
+        formats:
+            1) multiple rows of single sentence
+            2) multiple rows of single sentence pre-processed tokens
+
+        This function should handle the logic of calling numberize() and also
+        padding the numberized result.
+        """
+        return self.tensorize(squeeze_1d(texts), squeeze_2d(tokens))
+
+    @torch.jit.script_method
+    def batch_size(
+        self, texts: Optional[List[List[str]]], tokens: Optional[List[List[List[str]]]]
+    ) -> int:
+        if texts is not None:
+            return len(texts)
+        elif tokens is not None:
+            return len(tokens)
+        else:
+            raise RuntimeError("Empty input for both texts and tokens.")
+
+    @torch.jit.script_method
+    def get_texts_by_index(
+        self, texts: Optional[List[List[str]]], index: int
+    ) -> Optional[List[str]]:
+        if texts is None:
+            return None
+        return texts[index]
+
+    @torch.jit.script_method
+    def get_tokens_by_index(
+        self, tokens: Optional[List[List[List[str]]]], index: int
+    ) -> Optional[List[List[str]]]:
+        if tokens is None:
+            return None
+        return tokens[index]
 
 
 class VocabLookup(torch.jit.ScriptModule):

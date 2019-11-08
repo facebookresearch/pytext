@@ -8,10 +8,7 @@ from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.tensorizers import Tensorizer, lookup_tokens
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
 from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary
-from pytext.torchscript.tensorizer import (
-    ScriptRoBERTaTensorizer,
-    ScriptRoBERTaTokenTensorizer,
-)
+from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -76,15 +73,7 @@ class RoBERTaTensorizer(BERTTensorizer):
         )
 
     def torchscriptify(self):
-        input_type = self.tokenizer.torchscriptify_input_type()
-        if input_type.is_text():
-            script_tensorizer_class = ScriptRoBERTaTensorizer
-        elif input_type.is_token():
-            script_tensorizer_class = ScriptRoBERTaTokenTensorizer
-        else:
-            raise RuntimeError(f"Unsupported {input_type}...")
-
-        return script_tensorizer_class(
+        return ScriptRoBERTaTensorizer(
             tokenizer=self.tokenizer.torchscriptify(),
             vocab=ScriptVocabulary(
                 list(self.vocab),
