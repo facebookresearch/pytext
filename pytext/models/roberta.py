@@ -57,17 +57,25 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
     """A PyTorch RoBERTa implementation"""
 
     class Config(RoBERTaEncoderBase.Config):
+        embedding_dim: int = 768
+        vocab_size: int = 50265
         num_encoder_layers: int = 12
         num_attention_heads: int = 12
         model_path: str = (
             "manifold://pytext_training/tree/static/models/roberta_base_torch.pt"
         )
+        # Loading the state dict of the model depends on whether the model was
+        # previously finetuned in PyText or not. If it was finetuned then we
+        # dont need to translate the state dict and can just load it`
+        # directly.
+        is_finetuned: bool = False
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
         # assert config.pretrained_encoder.load_path, "Load path cannot be empty."
         self.encoder = SentenceEncoder(
             transformer=Transformer(
+                vocab_size=config.vocab_size,
                 embedding_dim=config.embedding_dim,
                 layers=[
                     TransformerLayer(
@@ -84,7 +92,13 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             config.model_path,
             map_location=lambda s, l: default_restore_location(s, "cpu"),
         )
-        self.encoder.load_roberta_state_dict(roberta_state["model"])
+        # In case the model has previously been loaded in PyText and finetuned,
+        # then we dont need to do the special state dict translation. Load
+        # it directly
+        if not config.is_finetuned:
+            self.encoder.load_roberta_state_dict(roberta_state["model"])
+        else:
+            self.load_state_dict(roberta_state)
         self.representation_dim = self.encoder.transformer.token_embedding.weight.size(
             -1
         )

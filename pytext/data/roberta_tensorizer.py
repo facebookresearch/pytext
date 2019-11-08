@@ -19,7 +19,7 @@ class RoBERTaTensorizer(BERTTensorizerBase):
         vocab_file: str = (
             "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
         )
-        tokenizer: GPT2BPETokenizer.Config = GPT2BPETokenizer.Config()
+        tokenizer: Tokenizer.Config = GPT2BPETokenizer.Config()
         max_seq_len: int = 256
 
     @classmethod
