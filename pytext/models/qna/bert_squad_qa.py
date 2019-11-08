@@ -76,16 +76,18 @@ class BertSquadQAModel(NewBertModel):
             tokens,
             pad_mask,
             segment_labels,
+            positions,
             answer_start_indices,
             answer_end_indices,
         ) = tensor_dict["squad_input"]
-        return tokens, pad_mask, segment_labels
+        return tokens, pad_mask, segment_labels, positions
 
     def arrange_targets(self, tensor_dict):
         (
             tokens,
             pad_mask,
             segment_labels,
+            positions,
             answer_start_indices,
             answer_end_indices,
         ) = tensor_dict["squad_input"]
