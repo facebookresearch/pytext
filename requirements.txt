@@ -12,3 +12,4 @@ scipy
 torchtext
 tensorboard==1.14
 torch
+sentencepiece
