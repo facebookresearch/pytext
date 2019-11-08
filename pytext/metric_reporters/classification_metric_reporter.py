@@ -190,3 +190,21 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
             self.calculate_loss(),
             recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
+
+    def predictions_to_report(self):
+        """
+        Generate human readable predictions
+        """
+        return [
+            [self.label_names[pred] for pred in predictions]
+            for predictions in self.all_preds
+        ]
+
+    def targets_to_report(self):
+        """
+        Generate human readable targets
+        """
+        return [
+            [self.label_names[target] for target in targets]
+            for targets in self.all_targets
+        ]
