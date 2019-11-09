@@ -81,11 +81,13 @@ class WordEmbedding(EmbeddingBase):
             num_embeddings = len(tensorizer.vocab)
             unk_token_idx = tensorizer.vocab.get_unk_index()
             vocab = tensorizer.vocab
+            vocab_pad_idx = vocab.get_pad_index()
         else:  # This else condition should go away after metadata goes away.
             num_embeddings = metadata.vocab_size
             embeddings_weight = metadata.pretrained_embeds_weight
             unk_token_idx = metadata.unk_token_idx
             vocab = metadata.vocab
+            vocab_pad_idx = None
 
         return cls(
             num_embeddings=num_embeddings,
@@ -94,7 +96,7 @@ class WordEmbedding(EmbeddingBase):
             init_range=config.embedding_init_range,
             unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
-            padding_idx=config.padding_idx,
+            padding_idx=config.padding_idx or vocab_pad_idx,
             vocab=vocab,
         )
 
@@ -135,6 +137,7 @@ class WordEmbedding(EmbeddingBase):
             )
         )
         self.vocab = vocab
+        self.padding_idx = padding_idx
 
     def __getattr__(self, name):
         if name == "weight":
