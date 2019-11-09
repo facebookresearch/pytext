@@ -4,12 +4,11 @@ import copy
 import re
 from typing import List, NamedTuple
 
-from fairseq.data.dictionary import Dictionary
 from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
-from pytext.data.utils import ScriptTokenizerInputType, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
@@ -59,9 +58,6 @@ class Tokenizer(Component):
         return [token for token in tokens if token.value]
 
     def torchscriptify(self):
-        raise NotImplementedError
-
-    def torchscriptify_input_type(self) -> ScriptTokenizerInputType:
         raise NotImplementedError
 
 
@@ -213,6 +209,3 @@ class GPT2BPETokenizer(Tokenizer):
             end = start + length
             tokens.append(Token(str(id), start, end))
         return [token for token in tokens if token.value]
-
-    def torchscriptify_input_type(self) -> ScriptTokenizerInputType:
-        return ScriptTokenizerInputType.text

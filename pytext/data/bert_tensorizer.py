@@ -20,6 +20,8 @@ from pytext.data.utils import (
     Vocabulary,
     pad_and_tensorize,
 )
+from pytext.torchscript.tensorizer import ScriptBERTTensorizer
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 def build_fairseq_vocab(
@@ -231,3 +233,15 @@ class BERTTensorizer(BERTTensorizerBase):
     ) -> List[List[str]]:
         numberized_sentences[0] = [self.vocab.get_bos_index()] + numberized_sentences[0]
         return numberized_sentences
+
+    def torchscriptify(self):
+        return ScriptBERTTensorizer(
+            tokenizer=self.tokenizer.torchscriptify(),
+            vocab=ScriptVocabulary(
+                list(self.vocab),
+                pad_idx=self.vocab.get_pad_index(),
+                bos_idx=self.vocab.get_bos_index(),
+                eos_idx=self.vocab.get_eos_index(),
+            ),
+            max_seq_len=self.max_seq_len,
+        )

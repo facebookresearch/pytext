@@ -55,30 +55,19 @@ class TensorizerTest(unittest.TestCase):
         tokenizer, rand_tokens = self._mock_tokenizer()
         vocab = self._mock_vocab()
 
-        bert = ScriptBERTTensorizer(
-            tokenizer,
-            vocab,
-            max_seq_len=100,
-            add_bos_token=False,
-            use_eos_token_for_bos=False,
-        )
-        token_ids, _, _ = bert.numberize("mock test")
+        bert = ScriptBERTTensorizer(tokenizer, vocab, max_seq_len=100)
+        token_ids, _, _, _ = bert.numberize(["mock test"], None)
+        self.assertEqual(token_ids[0], 201)
         self.assertEqual(token_ids[-1], 202)
-        for token_id, token in zip(token_ids[0:-1], rand_tokens):
+        for token_id, token in zip(token_ids[1:-1], rand_tokens):
             self.assertEqual(token_id, int(token[0]) - 100)
 
     def test_roberta_tensorizer(self):
         tokenizer, rand_tokens = self._mock_tokenizer()
         vocab = self._mock_vocab()
 
-        bert = ScriptRoBERTaTensorizer(
-            tokenizer,
-            vocab,
-            max_seq_len=100,
-            add_bos_token=False,
-            use_eos_token_for_bos=True,
-        )
-        token_ids, _, _ = bert.numberize("mock test")
+        roberta = ScriptRoBERTaTensorizer(tokenizer, vocab, max_seq_len=100)
+        token_ids, _, _, _ = roberta.numberize(["mock test"], None)
         self.assertEqual(token_ids[0], 201)
         self.assertEqual(token_ids[-1], 202)
         for token_id, token in zip(token_ids[1:-1], rand_tokens):
