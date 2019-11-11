@@ -124,6 +124,54 @@ class ComponentMeta(type):
             Registry.add(component_type, new_cls, new_cls.Config)
         return new_cls
 
+    def __dir__(cls):
+        """Jit doesnt allow scripting of attributes whose classname includes "."
+
+        Example Repro:
+
+        class OldModule(Module):
+            class Config(ConfigBase):
+                a: int = 5
+
+            @classmethod
+            def from_config(cls, config: Config):
+                return cls(config.a)
+
+            def __init__(self, a):
+                super().__init__()
+                self.a = a
+
+            def forward(self, b: int) -> int:
+                return b + self.a
+
+        m = OldModule.from_config(OldModule.Config())
+        jit.script(m)
+
+            > RuntimeError: Could not get qualified name for class 'OldModule.Config':
+        'OldModule.Config' is not a valid identifier
+
+        print(m.Config.__name__)
+            > OldModule.Config
+
+        At the sametime, we dont need to script the config classes because they
+        are not needed during inference time. Hence in this workaround we skip
+        the config classes.
+
+        Ideal solution is that when building models they should be inheriting
+        from nn.Module only and not Component. This requires significant changes
+        to the way models are created in PyText.
+
+        """
+        result = super().__dir__()
+        return [
+            r
+            for r in result
+            if not (
+                isinstance(getattr(cls, r, None), type)
+                and issubclass(getattr(cls, r, None), ConfigBase)
+            )
+        ]
+
 
 class Component(metaclass=ComponentMeta):
     class Config(ConfigBase):
