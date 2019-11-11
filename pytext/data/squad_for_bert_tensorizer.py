@@ -9,6 +9,8 @@ from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary, pad_and_tensorize
+from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizerWithIndices
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -80,7 +82,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
         if not answer_start_indices and answer_end_indices:
             answer_start_indices = [self.SPAN_PAD_IDX]
             answer_end_indices = [self.SPAN_PAD_IDX]
-        # import pdb; pdb.set_trace()
+
         return (
             tokens,
             segment_labels,
@@ -131,10 +133,10 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
         vocab = build_fairseq_vocab(
             vocab_file=config.vocab_file,
             special_token_replacements={
-                config.pad_token: PAD,
-                config.bos_token: BOS,
-                config.eos_token: EOS,
-                config.unk_token: UNK,
+                "<pad>": PAD,
+                "<s>": BOS,
+                "</s>": EOS,
+                "<unk>": UNK,
             },
         )
         return cls(
@@ -168,3 +170,15 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
 
     def _lookup_tokens(self, text):
         return RoBERTaTensorizer._lookup_tokens(self, text)
+
+    def torchscriptify(self):
+        return ScriptRoBERTaTensorizerWithIndices(
+            tokenizer=self.tokenizer.torchscriptify(),
+            vocab=ScriptVocabulary(
+                list(self.vocab),
+                pad_idx=self.vocab.get_pad_index(),
+                bos_idx=self.vocab.get_bos_index(),
+                eos_idx=self.vocab.get_eos_index(),
+            ),
+            max_seq_len=self.max_seq_len,
+        )

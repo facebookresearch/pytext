@@ -3,7 +3,12 @@
 
 from .bert import ScriptBERTTensorizer
 from .normalizer import VectorNormalizer
-from .roberta import ScriptRoBERTaTensorizer
+from .roberta import ScriptRoBERTaTensorizer, ScriptRoBERTaTensorizerWithIndices
 
 
-__all__ = ["ScriptBERTTensorizer", "ScriptRoBERTaTensorizer", "VectorNormalizer"]
+__all__ = [
+    "ScriptBERTTensorizer",
+    "ScriptRoBERTaTensorizer",
+    "ScriptRoBERTaTensorizerWithIndices",
+    "VectorNormalizer",
+]
