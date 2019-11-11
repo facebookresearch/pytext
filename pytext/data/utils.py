@@ -207,7 +207,7 @@ class Vocabulary:
 class VocabBuilder:
     """Helper class for aggregating and building `Vocabulary` objects."""
 
-    def __init__(self):
+    def __init__(self, delimiter=" "):
         self._counter = Counter()
         self.use_unk = True
         self.unk_index = 0
@@ -228,6 +228,8 @@ class VocabBuilder:
         self.pad_token = PAD
         self.bos_token = BOS
         self.eos_token = EOS
+
+        self.delimiter = delimiter
 
     def add_all(self, values) -> None:
         """Count a value or nested container of values in the vocabulary."""
@@ -252,7 +254,7 @@ class VocabBuilder:
                     f"Skipping rest of the file."
                 )
                 break
-            token = line.split()[0].strip()
+            token = line.split(self.delimiter)[0].strip()
             if lowercase_tokens:
                 token = token.lower()
             vocab_from_file.add(token)

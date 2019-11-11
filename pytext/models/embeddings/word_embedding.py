@@ -71,6 +71,7 @@ class WordEmbedding(EmbeddingBase):
                     config.pretrained_embeddings_path,  # doesn't support fbpkg
                     lowercase_tokens=config.lowercase_tokens,
                     skip_header=config.skip_header,
+                    delimiter=config.delimiter,
                 )
                 embeddings_weight = pretrained_embedding.initialize_embeddings_weights(
                     tensorizer.vocab.idx,

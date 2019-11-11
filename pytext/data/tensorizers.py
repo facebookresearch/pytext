@@ -203,6 +203,7 @@ class TokenTensorizer(Tensorizer):
         use_eos_token_for_bos: bool = False
         max_seq_len: Optional[int] = None
         vocab: VocabConfig = VocabConfig()
+        vocab_file_delimiter: str = " "
 
     @classmethod
     def from_config(cls, config: Config):
@@ -215,6 +216,7 @@ class TokenTensorizer(Tensorizer):
             use_eos_token_for_bos=config.use_eos_token_for_bos,
             max_seq_len=config.max_seq_len,
             vocab_config=config.vocab,
+            vocab_file_delimiter=config.vocab_file_delimiter,
         )
 
     def __init__(
@@ -227,6 +229,7 @@ class TokenTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         vocab_config=None,
         vocab=None,
+        vocab_file_delimiter=" ",
     ):
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
@@ -237,6 +240,7 @@ class TokenTensorizer(Tensorizer):
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
+        self.vocab_file_delimiter = vocab_file_delimiter
 
     @property
     def column_schema(self):
@@ -288,7 +292,9 @@ class TokenTensorizer(Tensorizer):
         if not self.vocab_builder:
             # else means not initialize from scratch, self.vocab_builder
             # would be set already
-            self.vocab_builder = vocab_builder or VocabBuilder()
+            self.vocab_builder = vocab_builder or VocabBuilder(
+                delimiter=self.vocab_file_delimiter
+            )
             self.vocab_builder.use_bos = self.add_bos_token
             self.vocab_builder.use_eos = self.add_eos_token
         if not self.vocab_config.build_from_data:
