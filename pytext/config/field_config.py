@@ -42,6 +42,7 @@ class WordFeatConfig(ModuleConfig):
     padding_idx: Optional[int] = None
     cpu_only: bool = False
     skip_header: bool = True
+    delimiter: str = " "
 
 
 class DictFeatConfig(ModuleConfig):
