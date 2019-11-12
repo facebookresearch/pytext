@@ -401,6 +401,7 @@ class Trainer(TrainerBase):
         trainable_params = sum(
             p.numel() for p in state.model.parameters() if p.requires_grad
         )
+        print(f"Model :{model}")
         print(f"Num trainable parameters: {trainable_params}")
 
         while self.continue_training(state):
