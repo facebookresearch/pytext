@@ -109,7 +109,7 @@ class SquadOutputLayer(OutputLayerBase):
         start_pos_preds, end_pos_preds = self.get_position_preds(
             start_pos_logits, end_pos_logits, self.max_answer_len
         )
-        has_answer_preds = has_answer_logits.argmax(-1)
+        has_answer_preds = has_answer_logits.float().argmax(-1)
         has_answer_scores = torch.zeros(has_answer_logits.size())
         if not self.ignore_impossible:
             has_answer_scores = F.softmax(has_answer_logits, 1)
