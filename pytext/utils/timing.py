@@ -113,6 +113,13 @@ class Snapshot:
                     }
                     print("PyTorchObserver " + json_dumps(info))
 
+        if len(self.times) == 0:
+            print(
+                "Note: Nothing was reported. "
+                'Please use timing.time("foo") to measure time.'
+            )
+            return
+
         results = [
             {
                 "name": path(key),
