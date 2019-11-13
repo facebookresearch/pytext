@@ -3,7 +3,7 @@
 
 import unittest
 
-from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
+from pytext.data.tokenizers import GPT2BPETokenizer, SentencePieceTokenizer, Tokenizer
 from pytext.data.tokenizers.tokenizer import Token
 
 
@@ -62,4 +62,30 @@ class GPT2BPETest(unittest.TestCase):
         )
         tokens = tokenizer.tokenize(text)
         print(tokens)
+        self.assertEqual(tokens, expected)
+
+
+class SentencePieceTokenizerTest(unittest.TestCase):
+    def test_tokenize(self):
+        sentence = "Testing out sentencepiece"
+        expected = [
+            "▁T",
+            "est",
+            "ing",
+            "▁out",
+            "▁sen",
+            "t",
+            "ence",
+            "p",
+            "i",
+            "e",
+            "ce",
+        ]
+        sp_tokenizer = SentencePieceTokenizer.from_config(
+            SentencePieceTokenizer.Config(
+                sp_model_path="pytext/data/test/data/sentencepiece.model"
+            )
+        )
+        tokens = sp_tokenizer.tokenize(sentence)
+        tokens = [token.value for token in tokens]
         self.assertEqual(tokens, expected)
