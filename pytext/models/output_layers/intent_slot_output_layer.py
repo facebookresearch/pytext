@@ -83,6 +83,9 @@ class IntentSlotOutputLayer(OutputLayerBase):
             torch.Tensor: Averaged intent and slot loss.
 
         """
+        # print("***"*10)
+        # print("*** logits", logits)
+        # print("*** targets", targets)
         d_logit, w_logit = logits
         if DatasetFieldName.TOKEN_INDICES in context:
             w_logit = torch.gather(

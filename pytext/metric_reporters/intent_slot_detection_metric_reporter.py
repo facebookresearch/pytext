@@ -196,6 +196,7 @@ class IntentSlotMetricReporter(MetricReporter):
         context[DatasetFieldName.RAW_WORD_LABEL] = [
             self.get_raw_slot_str(raw_data_row) for raw_data_row in raw_batch
         ]
+        # print("***", context)
         return context
 
     def get_model_select_metric(self, metrics):
