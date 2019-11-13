@@ -8,12 +8,12 @@ from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
-from pytext.data.utils import Vocabulary
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
     load_vocab,
 )
+from sentencepiece import SentencePieceProcessor
 
 
 class Token(NamedTuple):
@@ -209,3 +209,42 @@ class GPT2BPETokenizer(Tokenizer):
             end = start + length
             tokens.append(Token(str(id), start, end))
         return [token for token in tokens if token.value]
+
+
+class CppProcessorMixin:
+    """Cpp processors like SentencePiece don't pickle well; reload them."""
+
+    def _load_processor(self):
+        raise NotImplementedError
+
+    def __getstate__(self):
+        state = dict(vars(self))
+        state.pop("processor")
+        return state
+
+    def __setstate__(self, state):
+        vars(self).update(state)
+        self._load_processor()
+
+
+class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
+    """Sentence piece tokenizer."""
+
+    class Config(ConfigBase):
+        sp_model_path: str = ""
+
+    def __init__(self, sp_model_path: str = ""):
+        self.sp_model_path = sp_model_path
+        self._load_processor()
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.sp_model_path)
+
+    def tokenize(self, input_str: str) -> List[Token]:
+        pieces = self.processor.EncodeAsPieces(input_str)
+        return [Token(piece, -1, -1) for piece in pieces]
+
+    def _load_processor(self):
+        self.processor = SentencePieceProcessor()
+        self.processor.Load(self.sp_model_path)

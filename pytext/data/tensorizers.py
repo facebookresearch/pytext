@@ -5,7 +5,6 @@ from typing import List, Optional
 
 import torch
 from pytext.common import Padding
-from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.data_structures.annotation import (
     REDUCE,
@@ -21,7 +20,6 @@ from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
-from sentencepiece import SentencePieceProcessor
 
 from .utils import (
     BOL,
@@ -1426,45 +1424,6 @@ class FloatTensorizer(Tensorizer):
 
     def tensorize(self, batch):
         return cuda.tensor(batch, torch.float)
-
-
-class CppProcessorMixin:
-    """Cpp processors like SentencePiece don't pickle well; reload them."""
-
-    def _load_processor(self):
-        raise NotImplementedError
-
-    def __getstate__(self):
-        state = dict(vars(self))
-        state.pop("processor")
-        return state
-
-    def __setstate__(self, state):
-        vars(self).update(state)
-        self._load_processor()
-
-
-class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
-    """Sentence piece tokenizer."""
-
-    class Config(ConfigBase):
-        sp_model_path: str = ""
-
-    def __init__(self, sp_model_path: str = ""):
-        self.sp_model_path = sp_model_path
-        self._load_processor()
-
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(config.sp_model_path)
-
-    def tokenize(self, input_str: str) -> List[Token]:
-        pieces = self.processor.EncodeAsPieces(input_str)
-        return [Token(piece, -1, -1) for piece in pieces]
-
-    def _load_processor(self):
-        self.processor = SentencePieceProcessor()
-        self.processor.Load(self.sp_model_path)
 
 
 def initialize_tensorizers(tensorizers, data_source, from_scratch=True):

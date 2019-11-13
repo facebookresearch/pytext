@@ -2,8 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .tokenizer import (
+    CppProcessorMixin,
     DoNothingTokenizer,
     GPT2BPETokenizer,
+    SentencePieceTokenizer,
     Token,
     Tokenizer,
     WordPieceTokenizer,
@@ -16,4 +18,6 @@ __all__ = [
     "Tokenizer",
     "DoNothingTokenizer",
     "WordPieceTokenizer",
+    "CppProcessorMixin",
+    "SentencePieceTokenizer",
 ]
