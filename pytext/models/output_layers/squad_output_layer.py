@@ -157,8 +157,12 @@ class SquadOutputLayer(OutputLayerBase):
 
         num_answers = start_pos_target.size()[-1]
         if num_answers == 0:
-            start_loss = torch.tensor(0, requires_grad=True).type_as(end_pos_logit)
-            end_loss = torch.tensor(0, requires_grad=True).type_as(end_pos_logit)
+            start_loss = torch.tensor(
+                0.0, dtype=torch.float, requires_grad=True
+            ).type_as(end_pos_logit)
+            end_loss = torch.tensor(0.0, dtype=torch.float, requires_grad=True).type_as(
+                end_pos_logit
+            )
         else:
             start_loss = self.loss_fn(
                 start_pos_logit.repeat((num_answers, 1)),
