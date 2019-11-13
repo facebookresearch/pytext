@@ -4,7 +4,6 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.utils import squeeze_1d, squeeze_2d
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -52,23 +51,6 @@ class ScriptTensorizer(torch.jit.ScriptModule):
         padding the numberized result.
         """
         raise NotImplementedError
-
-    @torch.jit.script_method
-    def tensorize_1d(
-        self,
-        texts: Optional[List[str]] = None,
-        tokens: Optional[List[List[str]]] = None,
-    ):
-        """
-        Process raw inputs(single sentence) into model input tensors, it
-        supports two input formats:
-            1) multiple rows of single sentence
-            2) multiple rows of single sentence pre-processed tokens
-
-        This function should handle the logic of calling numberize() and also
-        padding the numberized result.
-        """
-        return self.tensorize(squeeze_1d(texts), squeeze_2d(tokens))
 
     @torch.jit.script_method
     def batch_size(
