@@ -38,15 +38,16 @@ class TestSparsifier(unittest.TestCase):
         block_sz = 3
         blockwise_sparsifier = self._get_blockwise_sparsifier(block_sz, sparsity)
         param = torch.tensor([i for i in range(100)], dtype=float).view(10, 10)
+        param = param - param.new_ones(param.shape) * 50
         block_l1_norms = param.new_zeros(param.shape)
         # loop-based implementation to compute blockwise l1norm
         abs_vals = []
         for i in range(10):
             for j in range(0, 10, block_sz):
                 block_l1_norms[i, j : j + block_sz] = torch.sum(
-                    param[i, j : j + block_sz]
+                    torch.abs(param[i, j : j + block_sz])
                 )
-                abs_vals.append(torch.sum(param[i, j : j + block_sz]))
+                abs_vals.append(torch.sum(torch.abs(param[i, j : j + block_sz])))
 
         nnz = math.ceil(100 * (1 - sparsity))
         nnz_blocks = math.ceil(nnz / block_sz)
@@ -70,9 +71,9 @@ class TestSparsifier(unittest.TestCase):
         for i in range(10):
             for j in range(0, 10, block_sz):
                 block_l1_norms[j : j + block_sz, i] = torch.sum(
-                    param[j : j + block_sz, i]
+                    torch.abs(param[j : j + block_sz, i])
                 )
-                abs_vals.append(torch.sum(param[j : j + block_sz, i]))
+                abs_vals.append(torch.sum(torch.abs(param[j : j + block_sz, i])))
 
         nnz = math.ceil(100 * (1 - sparsity))
         nnz_blocks = math.ceil(nnz / block_sz)
@@ -95,9 +96,9 @@ class TestSparsifier(unittest.TestCase):
         for i in range(10):
             for j in range(0, 10, block_sz):
                 block_l1_norms[i, j : j + block_sz] = torch.sum(
-                    param[i, j : j + block_sz]
+                    torch.abs(param[i, j : j + block_sz])
                 )
-                abs_vals.append(torch.sum(param[i, j : j + block_sz]))
+                abs_vals.append(torch.sum(torch.abs(param[i, j : j + block_sz])))
 
         nnz = math.ceil(100 * (1 - sparsity))
         nnz_blocks = math.ceil(nnz / block_sz)

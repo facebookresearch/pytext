@@ -114,7 +114,9 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
                 pre_mask=(pre_mask.transpose(1, 0) if pre_mask else None),
             ).transpose(1, 0)
         padded_param = self._padding_into_full_blocks(param)
-        block_l1norms = padded_param.reshape(-1, 1, self.block_size).sum(dim=2)
+        block_l1norms = (
+            torch.abs(padded_param).reshape(-1, 1, self.block_size).sum(dim=2)
+        )
         max_num_blocks = self._num_blocks_kept(param)
 
         topk_threshold = (
