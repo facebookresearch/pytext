@@ -47,8 +47,16 @@ class L0_projection_sparsifier(Sparsifier):
         starting_epoch: int = 2
         frequency: int = 1
         layerwise_pruning: bool = True
+        accumulate_mask: bool = False
 
-    def __init__(self, sparsity, starting_epoch, frequency, layerwise_pruning=True):
+    def __init__(
+        self,
+        sparsity,
+        starting_epoch,
+        frequency,
+        layerwise_pruning=True,
+        accumulate_mask=False,
+    ):
         assert 0 <= sparsity <= 1
         self.sparsity = sparsity
         assert starting_epoch >= 1
@@ -56,6 +64,8 @@ class L0_projection_sparsifier(Sparsifier):
         assert frequency >= 1
         self.frequency = frequency
         self.layerwise_pruning = layerwise_pruning
+        self.accumulate_mask = accumulate_mask
+        self._masks = None
 
     @classmethod
     def from_config(cls, config: Config):
@@ -64,6 +74,7 @@ class L0_projection_sparsifier(Sparsifier):
             config.starting_epoch,
             config.frequency,
             config.layerwise_pruning,
+            config.accumulate_mask,
         )
 
     def sparsification_condition(self, state):
@@ -110,39 +121,46 @@ class L0_projection_sparsifier(Sparsifier):
             that "1" only if the weight is selected after new masking and pre_mask
         """
         learnableparams = [p for p in model.parameters() if p.requires_grad]
-        if pre_masks is None:
+        if pre_masks:
+            self._masks = pre_masks
+        if self._masks is None:
             # retain everything if no pre_masks given
-            pre_masks = [torch.ones_like(p) for p in learnableparams]
-        assert len(learnableparams) == len(pre_masks)
-        for m, w in zip(pre_masks, learnableparams):
-            assert m.size() == w.size()
+            self._masks = [torch.ones_like(p) for p in learnableparams]
+
+        assert len(learnableparams) == len(self._masks)
+        for m, w in zip(self._masks, learnableparams):
+            if len(m.size()):
+                assert m.size() == w.size()
 
         if self.layerwise_pruning:
             masks = []
-            for m, param in zip(pre_masks, learnableparams):
+            for m, param in zip(self._masks, learnableparams):
                 weights_abs = torch.abs(param.data).to(param.device)
-                # absolute value of weights selected from pre_masks
+                # absolute value of weights selected from existent masks
                 weights_abs_masked_flat = torch.flatten(weights_abs[m.bool()])
                 total_size = weights_abs_masked_flat.numel()
-                # using ceil instead of floor() or int()
-                # because at least one element in the tensor required to be selected
-                max_num_nonzeros = math.ceil(total_size * (1 - self.sparsity))
-                # only pruned among the weights slected from pre_masks
-                topkval = (
-                    torch.topk(weights_abs_masked_flat, max_num_nonzeros)
-                    .values.min()
-                    .item()
-                )
-                # intersection of the new mask and pre_masks,
-                # mask == 1 retain, mask == 0 pruned,
-                mask = (weights_abs >= topkval).float() * m
+                if total_size > 0:
+                    # using ceil instead of floor() or int()
+                    # because at least one element in the tensor required to be selected
+                    max_num_nonzeros = math.ceil(total_size * (1 - self.sparsity))
+                    # only pruned among the weights slected from existent masks
+                    topkval = (
+                        torch.topk(weights_abs_masked_flat, max_num_nonzeros)
+                        .values.min()
+                        .item()
+                    )
+                    # intersection of the new mask and pre_mexistent masks,
+                    # mask == 1 retain, mask == 0 pruned,
+                    mask = (weights_abs >= topkval).float() * m
+                else:
+                    mask = param.new_empty(())
                 masks.append(mask)
         else:
-            # concatenated flatten tensor of learnableparams that have pre_masks as True
+            # concatenated flatten tensor of learnableparams that have _masks as True
             learnableparams_masked_flat = torch.cat(
                 [
                     torch.flatten(p[m.bool()])
-                    for m, p in zip(pre_masks, learnableparams)
+                    for m, p in zip(self._masks, learnableparams)
                 ],
                 dim=0,
             )
@@ -151,18 +169,23 @@ class L0_projection_sparsifier(Sparsifier):
             max_num_nonzeros = math.ceil(
                 learnableparams_masked_flat.numel() * (1 - self.sparsity)
             )
-            # select globally the top-k th weight among weights selected from pre_masks
+            # select globally the top-k th weight among weights selected from _masks
             topkval = (
                 torch.topk(torch.abs(learnableparams_masked_flat), max_num_nonzeros)
                 .values.min()
                 .item()
             )
-            # intersection of the new mask and pre_masks,
+            # intersection of the new mask and _masks,
             # mask == 1 retain, mask == 0 pruned,
             masks = [
                 (torch.abs(p.data) >= topkval).float() * m
-                for m, p in zip(pre_masks, learnableparams)
+                if p.numel() > 0
+                else p.new_empty(())
+                for m, p in zip(self._masks, learnableparams)
             ]
+
+        if self.accumulate_mask:
+            self._masks = masks
 
         return masks
 
