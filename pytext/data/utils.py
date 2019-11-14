@@ -121,8 +121,11 @@ class Vocabulary:
            Used for replacing special strings for special tokens.
            e.g. '[UNK]' for UNK"""
         for token, replacement in replacements.items():
-            idx = self.idx.pop(token)
-            self._vocab[idx] = replacement
+            idx = self.idx.pop(token, len(self._vocab))
+            if idx == len(self._vocab):
+                self._vocab.append(replacement)
+            else:
+                self._vocab[idx] = replacement
             self.idx[replacement] = idx
 
     def lookup_all(self, nested_values):

@@ -22,6 +22,30 @@ from pytext.torchscript.module import ScriptTextModule
 from torch.serialization import default_restore_location
 
 
+def init_params(module):
+    """
+    Initialize the weights specific to the BERT Model.
+    This overrides the default initializations depending on the specified arguments.
+        1. If normal_init_linear_weights is set then weights of linear
+           layer will be initialized using the normal distribution and
+           bais will be set to the specified value.
+        2. If normal_init_embed_weights is set then weights of embedding
+           layer will be initialized using the normal distribution.
+        3. If normal_init_proj_weights is set then weights of
+           in_project_weight for MultiHeadAttention initialized using
+           the normal distribution (to be validated).
+    """
+
+    if isinstance(module, torch.nn.Linear):
+        module.weight.data.normal_(mean=0.0, std=0.02)
+        if module.bias is not None:
+            module.bias.data.zero_()
+    if isinstance(module, torch.nn.Embedding):
+        module.weight.data.normal_(mean=0.0, std=0.02)
+        if module.padding_idx is not None:
+            module.weight.data[module.padding_idx].zero_()
+
+
 class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
     __EXPANSIBLE__ = True
 
@@ -51,6 +75,10 @@ class RoBERTaEncoderJit(RoBERTaEncoderBase):
         assert config.pretrained_encoder.load_path, "Load path cannot be empty."
         self.encoder = create_module(config.pretrained_encoder)
         self.representation_dim = self.encoder.encoder.token_embedding.weight.size(-1)
+
+    def _embedding(self):
+        # used to tie weights in MaskedLM model
+        return self.encoder.encoder.token_embedding
 
 
 class RoBERTaEncoder(RoBERTaEncoderBase):
@@ -88,20 +116,25 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 ],
             )
         )
-        roberta_state = torch.load(
-            config.model_path,
-            map_location=lambda s, l: default_restore_location(s, "cpu"),
-        )
-        # In case the model has previously been loaded in PyText and finetuned,
-        # then we dont need to do the special state dict translation. Load
-        # it directly
-        if not config.is_finetuned:
-            self.encoder.load_roberta_state_dict(roberta_state["model"])
-        else:
-            self.load_state_dict(roberta_state)
-        self.representation_dim = self.encoder.transformer.token_embedding.weight.size(
-            -1
-        )
+        self.apply(init_params)
+        if config.model_path:
+            roberta_state = torch.load(
+                config.model_path,
+                map_location=lambda s, l: default_restore_location(s, "cpu"),
+            )
+            # In case the model has previously been loaded in PyText and finetuned,
+            # then we dont need to do the special state dict translation. Load
+            # it directly
+            if not config.is_finetuned:
+                self.encoder.load_roberta_state_dict(roberta_state["model"])
+            else:
+                self.load_state_dict(roberta_state)
+
+        self.representation_dim = self._embedding().weight.size(-1)
+
+    def _embedding(self):
+        # used to tie weights in MaskedLM model
+        return self.encoder.transformer.token_embedding
 
 
 class RoBERTa(NewBertModel):
