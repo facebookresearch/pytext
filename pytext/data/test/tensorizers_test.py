@@ -10,7 +10,10 @@ from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.sources import SquadDataSource
 from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper, load_float_list
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
-from pytext.data.squad_for_bert_tensorizer import SquadForBERTTensorizer
+from pytext.data.squad_for_bert_tensorizer import (
+    SquadForBERTTensorizer,
+    SquadForRoBERTaTensorizer,
+)
 from pytext.data.squad_tensorizer import SquadTensorizer
 from pytext.data.tensorizers import (
     AnnotationNumberizer,
@@ -27,7 +30,7 @@ from pytext.data.tensorizers import (
     initialize_tensorizers,
     lookup_tokens,
 )
-from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
+from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, Vocabulary
 from pytext.utils.test import import_tests_module
 
@@ -747,6 +750,35 @@ class BERTTensorizerTest(unittest.TestCase):
         self.assertEqual(tokens, expected_tokens)
         self.assertEqual(segment_labels, expected_segment_labels)
         self.assertEqual(seq_len, len(expected_tokens))
+
+
+class SquadForRobertaTensorizerTest(unittest.TestCase):
+    def test_squad_roberta_tensorizer(self):
+        row = {
+            "id": 0,
+            "doc": "Prototype",
+            "question": "otype",
+            "answers": ["Prot"],
+            "answer_starts": [0],
+            "has_answer": True,
+        }
+        tensorizer = SquadForRoBERTaTensorizer.from_config(
+            SquadForRoBERTaTensorizer.Config(
+                tokenizer=GPT2BPETokenizer.Config(
+                    bpe_encoder_path="pytext/data/test/data/gpt2_encoder.json",
+                    bpe_vocab_path="pytext/data/test/data/gpt2_vocab.bpe",
+                ),
+                vocab_file="pytext/data/test/data/gpt2_dict.txt",
+                max_seq_len=250,
+            )
+        )
+        tokens, segments, seq_len, positions, start, end = tensorizer.numberize(row)
+        # check against manually verified answer positions in tokenized output
+        # there are 4 identical answers
+        self.assertEqual(start, [5])
+        self.assertEqual(end, [5])
+        self.assertEqual(len(tokens), seq_len)
+        self.assertEqual(len(segments), seq_len)
 
 
 class SquadForBERTTensorizerTest(unittest.TestCase):
