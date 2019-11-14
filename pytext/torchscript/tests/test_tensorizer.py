@@ -8,6 +8,7 @@ from typing import List, Tuple
 import torch
 from pytext.torchscript.tensorizer import ScriptBERTTensorizer, ScriptRoBERTaTensorizer
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
+from pytext.torchscript.tokenizer.tokenizer import ScriptTextTokenizerBase
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -19,11 +20,12 @@ class TensorizerTest(unittest.TestCase):
         )
 
     def _mock_tokenizer(self):
-        class MockTokenizer(torch.jit.ScriptModule):
+        class MockTokenizer(ScriptTextTokenizerBase):
             def __init__(self, tokens: List[Tuple[str, int, int]]):
                 super().__init__()
                 self.tokens = torch.jit.Attribute(tokens, List[Tuple[str, int, int]])
 
+            @torch.jit.script_method
             def tokenize(self, text: str) -> List[Tuple[str, int, int]]:
                 return self.tokens
 

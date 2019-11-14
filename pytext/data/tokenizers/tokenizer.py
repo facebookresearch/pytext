@@ -8,6 +8,7 @@ from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
@@ -80,6 +81,9 @@ class DoNothingTokenizer(Tokenizer):
     def tokenize(self, input: List[str]) -> List[Token]:
         tokens = [Token(token_text, -1, -1) for token_text in input if token_text]
         return tokens
+
+    def torchscriptify(self):
+        return ScriptDoNothingTokenizer()
 
 
 class BERTInitialTokenizer(Tokenizer):
@@ -248,3 +252,6 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
     def _load_processor(self):
         self.processor = SentencePieceProcessor()
         self.processor.Load(self.sp_model_path)
+
+    def torchscriptify(self):
+        return ScriptDoNothingTokenizer()

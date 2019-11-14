@@ -5,7 +5,16 @@ from typing import List
 
 import torch
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
-from pytext.torchscript.utils import squeeze_1d, squeeze_2d
+from pytext.torchscript.utils import ScriptInputType, squeeze_1d, squeeze_2d
+
+
+def get_script_module_cls(input_type: ScriptInputType) -> torch.jit.ScriptModule:
+    if input_type.is_text():
+        return ScriptTextModule
+    elif input_type.is_token():
+        return ScriptTokenModule
+    else:
+        raise RuntimeError("Only support text or token input type...")
 
 
 class ScriptTextModule(torch.jit.ScriptModule):
