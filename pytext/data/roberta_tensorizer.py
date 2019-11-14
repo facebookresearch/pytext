@@ -6,7 +6,7 @@ from typing import List
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizerBase, build_fairseq_vocab
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
-from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary
+from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 
@@ -29,6 +29,7 @@ class RoBERTaTensorizer(BERTTensorizerBase):
                 "<s>": BOS,
                 "</s>": EOS,
                 "<unk>": UNK,
+                "<mask>": MASK,
             },
         )
         return cls(
