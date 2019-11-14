@@ -8,7 +8,7 @@ from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tokenizers import Tokenizer
-from pytext.data.utils import BOS, EOS, PAD, UNK, Vocabulary, pad_and_tensorize
+from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizerWithIndices
 from pytext.torchscript.vocab import ScriptVocabulary
 
@@ -137,6 +137,7 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
                 "<s>": BOS,
                 "</s>": EOS,
                 "<unk>": UNK,
+                "<mask>": MASK,
             },
         )
         return cls(
