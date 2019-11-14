@@ -200,7 +200,7 @@ class Trainer(TrainerBase):
 
         try:
             grad_norm = state.optimizer.clip_grad_norm(
-                state.model, self.config.max_clip_norm
+                self.config.max_clip_norm, state.model
             )
         except OverflowError as e:
             print(f"Gradient overflow. Skipping step, {e}")

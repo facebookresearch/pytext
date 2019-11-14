@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 import torch
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
@@ -16,17 +15,38 @@ class Optimizer(Component):
     def backward(self, loss):
         loss.backward()
 
-    def clip_grad_norm(self, model, max_norm):
-        if max_norm is not None:
-            return torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-        else:
+    def clip_grad_norm(self, max_norm, model=None):
+        if max_norm is None:
+            """incase max_norm is none we don't compute clip_grad_norm.
+            """
             return None
+        elif model is None:
+            """Some callers are passing max_norm only instead of both the args.
+               For those we treat model as max_norm.
+               eg. optimizer.clip_grad_norm(max_norm)
+            """
+            return torch.nn.utils.clip_grad_norm_(self.params, max_norm)
+        else:
+            return torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 
     def pre_export(self, model):
         pass
 
     def finalize(self) -> bool:
         return False
+
+    def multiply_grads(self, c):
+        """Multiplies grads by a constant *c*."""
+        for p in self.params:
+            if p.grad is not None:
+                p.grad.data.mul_(c)
+
+    @property
+    def params(self):
+        """Return an iterable of the parameters held by the optimizer."""
+        for param_group in self.param_groups:
+            for p in param_group["params"]:
+                yield p
 
 
 class Adagrad(torch.optim.Adagrad, Optimizer):
