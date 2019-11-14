@@ -64,6 +64,19 @@ class ScriptTensorizer(torch.jit.ScriptModule):
             raise RuntimeError("Empty input for both texts and tokens.")
 
     @torch.jit.script_method
+    def row_size(
+        self,
+        texts_list: Optional[List[List[str]]] = None,
+        tokens_list: Optional[List[List[List[str]]]] = None,
+    ) -> int:
+        if texts_list is not None:
+            return len(texts_list[0])
+        elif tokens_list is not None:
+            return len(tokens_list[0])
+        else:
+            raise RuntimeError("Empty input for both texts and tokens.")
+
+    @torch.jit.script_method
     def get_texts_by_index(
         self, texts: Optional[List[List[str]]], index: int
     ) -> Optional[List[str]]:

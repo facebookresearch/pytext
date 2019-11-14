@@ -3,6 +3,7 @@
 
 from .bpe import ScriptBPE
 from .tokenizer import (
+    ScriptBPETokenizer,
     ScriptDoNothingTokenizer,
     ScriptTextTokenizerBase,
     ScriptTokenTokenizerBase,
@@ -11,6 +12,7 @@ from .tokenizer import (
 
 __all__ = [
     "ScriptBPE",
+    "ScriptBPETokenizer",
     "ScriptDoNothingTokenizer",
     "ScriptTextTokenizerBase",
     "ScriptTokenTokenizerBase",
