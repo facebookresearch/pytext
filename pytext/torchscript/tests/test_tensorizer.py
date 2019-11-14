@@ -6,9 +6,15 @@ import unittest
 from typing import List, Tuple
 
 import torch
-from pytext.torchscript.tensorizer import ScriptBERTTensorizer, ScriptRoBERTaTensorizer
+from pytext.torchscript.tensorizer import (
+    ScriptBERTTensorizer,
+    ScriptRoBERTaTensorizer,
+    ScriptXLMTensorizer,
+)
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
+from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
 from pytext.torchscript.tokenizer.tokenizer import ScriptTextTokenizerBase
+from pytext.torchscript.utils import squeeze_1d, squeeze_2d
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -74,3 +80,39 @@ class TensorizerTest(unittest.TestCase):
         self.assertEqual(token_ids[-1], 202)
         for token_id, token in zip(token_ids[1:-1], rand_tokens):
             self.assertEqual(token_id, int(token[0]) - 100)
+
+    def test_xlm_token_tensorizer(self):
+        vocab = self._mock_vocab()
+
+        xlm = ScriptXLMTensorizer(
+            tokenizer=ScriptDoNothingTokenizer(),
+            token_vocab=vocab,
+            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
+            max_seq_len=256,
+            default_language="en",
+        )
+        rand_tokens = [
+            [str(random.randint(100, 200)) for i in range(20)],
+            [str(random.randint(100, 200)) for i in range(10)],
+        ]
+
+        tokens, pad_masks, languages, positions = xlm.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+        tokens = tokens.tolist()
+        # eos token
+        self.assertEqual(tokens[0][0], 202)
+        self.assertEqual(tokens[0][-1], 202)
+        # pad token
+        self.assertEqual(tokens[1][12:], [200] * 10)
+
+        languages = languages.tolist()
+        self.assertEqual(languages[0], [2] * len(tokens[0]))
+        self.assertEqual(languages[1][12:], [0] * 10)
+
+        tokens, pad_masks, languages, positions = xlm.tensorize(
+            tokens=squeeze_2d(rand_tokens), languages=squeeze_1d(["cn", "en"])
+        )
+        languages = languages.tolist()
+        self.assertEqual(languages[0][:], [1] * len(tokens[0]))
+        self.assertEqual(languages[1][:12], [2] * 12)

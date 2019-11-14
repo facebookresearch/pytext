@@ -6,6 +6,8 @@ from typing import List, Tuple
 import torch
 from pytext.torchscript.utils import ScriptInputType
 
+from .bpe import ScriptBPE
+
 
 class ScriptTokenizerBase(torch.jit.ScriptModule):
     @torch.jit.script_method
@@ -48,3 +50,18 @@ class ScriptDoNothingTokenizer(ScriptTokenTokenizerBase):
     @torch.jit.script_method
     def tokenize(self, raw_token: str) -> List[Tuple[str, int, int]]:
         return [(raw_token, -1, -1)]
+
+
+class ScriptBPETokenizer(ScriptTokenTokenizerBase):
+    def __init__(self, bpe: ScriptBPE):
+        super().__init__()
+        self.bpe = bpe
+
+    @torch.jit.script_method
+    def tokenize(self, raw_token: str) -> List[Tuple[str, int, int]]:
+        tokens = torch.jit.annotate(List[Tuple[str, int, int]], [])
+
+        for bpe_token in self.bpe.bpe_token(raw_token):
+            tokens.append((bpe_token, -1, -1))
+
+        return tokens
