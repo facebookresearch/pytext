@@ -30,6 +30,15 @@ except ImportError:
     # TODO: temporary fix fairseq dependency, remove after fairseq new release.
     from .fairseq_fp16_utils import Fairseq_FP16OptimizerMixin
 
+# TODO: remove this try block after the new release by fairseq that
+# contains the dependency
+try:
+    from fairseq.optim.fp16_optimizer import (
+        _MemoryEfficientFP16OptimizerMixin as Fairseq_MemoryEfficientFP16OptimizerMixin,
+    )
+except ImportError:
+    from .fairseq_fp16_utils import Fairseq_MemoryEfficientFP16OptimizerMixin
+
 """
 Tips:
 1. Recommand run fp16 on latest generation (Volta V100) GPU, CUDA 9.1 or newer
@@ -204,6 +213,97 @@ class FP16OptimizerApex(FP16Optimizer):
             # restoring uncasted versions of functions
             amp._amp_state.handle._deactivate()
 
+        precision.FP16_ENABLED = False
+
+
+class MemoryEfficientFP16OptimizerFairseq(
+    Fairseq_MemoryEfficientFP16OptimizerMixin, FP16Optimizer
+):
+    """
+    Wrap the mem efficient *optimizer* to support FP16 (mixed precision) training.
+    """
+
+    class Config(FP16Optimizer.Config):
+        # initial loss scale
+        init_loss_scale: int = 2 ** 7
+        # determine when to increase loss scale,
+        # represents: consecutive number of non-overflow steps
+        scale_window: Optional[int] = None
+        # determine when to decrease loss scale, value range should be from 0 to 1,
+        # represents: percentage of overflow since last rescale
+        scale_tolerance: float = 0.0
+        # determine the loss scale minimum value threshold
+        threshold_loss_scale: Optional[float] = None
+        # used to detect loss exploding, exception will be raised if loss_scale
+        # reach this value
+        min_loss_scale: float = 0.0001
+
+    def __init__(
+        self,
+        fp16_params,
+        optimizer,
+        init_loss_scale,
+        scale_window,
+        scale_tolerance,
+        threshold_loss_scale,
+        min_loss_scale,
+        num_accumulated_batches,
+    ):
+        assert precision.FP16_ENABLED
+        super().__init__(optimizer)
+
+        self.wrapped_optimizer = optimizer
+
+        if scale_window is None:
+            scale_window = (
+                2 ** 14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
+            )
+        else:
+            scale_window = scale_window
+
+        self.scaler = Fairseq_DynamicLossScaler(
+            init_scale=init_loss_scale,
+            scale_window=scale_window,
+            tolerance=scale_tolerance,
+            threshold=threshold_loss_scale,
+        )
+        self.min_loss_scale = min_loss_scale
+
+    @classmethod
+    def from_config(
+        cls,
+        fp16_config: Config,
+        model: torch.nn.Module,
+        fp32_config: Optimizer.Config,
+        num_accumulated_batches: int,
+    ):
+        model = model.half()
+        fp16_params = list(filter(lambda p: p.requires_grad, model.parameters()))
+        fp32_optimizer = create_optimizer(fp32_config, model)
+        print(
+            "| Fairseq MemoryEfficientFP16Optimizer with init_loss_scale={}".format(
+                fp16_config.init_loss_scale
+            )
+        )
+        return cls(
+            fp16_params=fp16_params,
+            optimizer=fp32_optimizer,
+            init_loss_scale=fp16_config.init_loss_scale,
+            scale_window=fp16_config.scale_window,
+            scale_tolerance=fp16_config.scale_tolerance,
+            threshold_loss_scale=fp16_config.threshold_loss_scale,
+            min_loss_scale=fp16_config.min_loss_scale,
+            num_accumulated_batches=num_accumulated_batches,
+        )
+
+    def clip_grad_norm(self, max_norm, unused_model):
+        # fairseq clip_grad_norm will skip clipping when max_norm is 0.
+        if max_norm is None:
+            max_norm = 0.0
+        return super().clip_grad_norm(max_norm)
+
+    def pre_export(self, model):
+        model.float()
         precision.FP16_ENABLED = False
 
 
