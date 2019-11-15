@@ -11,6 +11,8 @@ from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
 from pytext.data.xlm_constants import LANG2ID_15
+from pytext.torchscript.tensorizer import ScriptXLMTensorizer
+from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class XLMTensorizer(BERTTensorizerBase):
@@ -85,6 +87,7 @@ class XLMTensorizer(BERTTensorizerBase):
         # unlike BERT, XLM uses the EOS token for both beginning and end of
         # sentence
         self.bos_token = self.vocab.eos_token
+        self.default_language = "en"
 
     @property
     def column_schema(self):
@@ -103,7 +106,7 @@ class XLMTensorizer(BERTTensorizerBase):
             return lang_id
         else:
             # use En as default
-            return self.lang2id.get("en", 0)
+            return self.lang2id.get(self.default_language, 0)
 
     def _lookup_tokens(self, text: str, seq_len: int) -> List[str]:
         return lookup_tokens(
@@ -137,3 +140,22 @@ class XLMTensorizer(BERTTensorizerBase):
         seq_len = len(tokens)
         positions = [index for index in range(seq_len)]
         return tokens, segment_labels, seq_len, positions
+
+    def torchscriptify(self):
+        languages = [0] * (max(list(self.lang2id.values())) + 1)
+        for k, v in self.lang2id.items():
+            languages[v] = k
+
+        return ScriptXLMTensorizer(
+            tokenizer=self.tokenizer.torchscriptify(),
+            token_vocab=ScriptVocabulary(
+                list(self.vocab),
+                pad_idx=self.vocab.get_pad_index(),
+                bos_idx=self.vocab.get_eos_index(),
+                eos_idx=self.vocab.get_eos_index(),
+                unk_idx=self.vocab.get_unk_index(),
+            ),
+            language_vocab=ScriptVocabulary(languages),
+            max_seq_len=self.max_seq_len,
+            default_language=self.default_language,
+        )
