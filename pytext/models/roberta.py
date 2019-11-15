@@ -18,7 +18,7 @@ from pytext.models.representations.transformer import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
-from pytext.torchscript.module import ScriptTextModule
+from pytext.torchscript.module import get_script_module_cls
 from torch.serialization import default_restore_location
 
 
@@ -140,8 +140,13 @@ class RoBERTa(NewBertModel):
         includes generating tensors from simple data types, and returns classified
         values according to the output layer (eg. as a dict mapping class name to score)
         """
-        return ScriptTextModule(
+        script_tensorizer = tensorizers["tokens"].torchscriptify()
+        script_module_cls = get_script_module_cls(
+            script_tensorizer.tokenizer.input_type()
+        )
+
+        return script_module_cls(
             model=traced_model,
             output_layer=self.output_layer.torchscript_predictions(),
-            tensorizer=tensorizers["tokens"].torchscriptify(),
+            tensorizer=script_tensorizer,
         )

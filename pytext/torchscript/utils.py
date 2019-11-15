@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from enum import Enum
 from typing import List, Optional, Tuple
 
 import torch
+
+
+class ScriptInputType(Enum):
+    text = 1  # row contains a single sentence
+    token = 2  # row contains a list of tokens from a single sentence
+
+    def is_text(self):
+        return self is ScriptInputType.text
+
+    def is_token(self):
+        return self is ScriptInputType.token
 
 
 # ===== the following section should be replaced once JIT provide native support
