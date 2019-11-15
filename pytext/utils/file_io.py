@@ -5,10 +5,11 @@
 TODO: @stevenliu Deprecate this file after borc available in PyPI
 """
 import os
+import shutil
 from typing import List
 
 
-try:
+try:  # noqa
     from fvcore.common.file_io import PathManager
 
 except ImportError:
@@ -20,11 +21,16 @@ except ImportError:
 
         @staticmethod
         def copy(src_path: str, dst_path: str, overwrite: bool = False) -> bool:
-            raise NotImplementedError()
+            try:
+                shutil.copyfile(src_path, dst_path)
+                return True
+            except Exception as e:
+                print("Error in file copy - {}".format(str(e)))
+                return False
 
         @staticmethod
         def get_local_path(path: str) -> str:
-            raise NotImplementedError()
+            return path
 
         @staticmethod
         def exists(path: str) -> bool:

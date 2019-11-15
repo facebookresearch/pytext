@@ -19,6 +19,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
 from pytext.torchscript.module import get_script_module_cls
+from pytext.utils.file_io import PathManager
 from torch.serialization import default_restore_location
 
 
@@ -107,10 +108,10 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         )
         self.apply(init_params)
         if config.model_path:
-            roberta_state = torch.load(
-                config.model_path,
-                map_location=lambda s, l: default_restore_location(s, "cpu"),
-            )
+            with PathManager.open(config.model_path, "rb") as f:
+                roberta_state = torch.load(
+                    f, map_location=lambda s, l: default_restore_location(s, "cpu")
+                )
             # In case the model has previously been loaded in PyText and finetuned,
             # then we dont need to do the special state dict translation. Load
             # it directly
