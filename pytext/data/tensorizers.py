@@ -832,22 +832,28 @@ class FloatListTensorizer(Tensorizer):
         self.column = column
         self.error_check = error_check
         self.dim = dim
-        self.normalizer = VectorNormalizer(dim, normalize)
-        assert not self.error_check or self.dim is not None, "Error check requires dim"
+        self.normalize = normalize
+        if self.dim:
+            self.normalizer = VectorNormalizer(dim, normalize)
 
     @property
     def column_schema(self):
         return [(self.column, List[float])]
 
     def initialize(self):
-        if not self.normalizer.do_normalization:
+        should_init = self.normalize or self.dim is None
+        if not should_init:
             self.normalizer.calculate_feature_stats()
             return
         try:
             while True:
                 row = yield
                 res = row[self.column]
-                self.normalizer.update_meta_data(res)
+                if self.dim is None:
+                    self.dim = len(res)
+                    self.normalizer = VectorNormalizer(self.dim, self.normalize)
+                if self.normalize:
+                    self.normalizer.update_meta_data(res)
         except GeneratorExit:
             self.normalizer.calculate_feature_stats()
 

@@ -622,6 +622,28 @@ class TensorizersTest(unittest.TestCase):
             round_list(output),
         )
 
+    def test_float_list_tensor_infer_dim(self):
+        class DummyData:
+            __slots__ = ["train"]
+
+            def __init__(self, train):
+                self.train = train
+
+        data = DummyData([{"dense": [1.0, 1.0, 1.0]}, {"dense": [1.0, 1.0, 1.0]}])
+        tensorizer = FloatListTensorizer(
+            column="dense", error_check=True, normalize=False, dim=None
+        )
+        self._initialize_tensorizer(tensorizer, data)
+        self.assertEqual(3, tensorizer.dim)
+
+        self.assertEqual(
+            [1.0, 1.0, 1.0], tensorizer.numberize({"dense": [1.0, 1.0, 1.0]})
+        )
+        with self.assertRaises(Exception) as context:
+            # dim mismatch
+            tensorizer.numberize({"dense": [1.0, 1.0]})
+            self.assertTrue("didn't match expected" in context.exception)
+
     def test_annotation_num(self):
         data = TSVDataSource(
             SafeFileWrapper(tests_module.test_file("compositional_seq2seq_unit.tsv")),
