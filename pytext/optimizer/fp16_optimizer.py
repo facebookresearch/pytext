@@ -82,7 +82,7 @@ class FP16Optimizer(Optimizer):
     def backward(self, loss):
         raise NotImplementedError
 
-    def clip_grad_norm(self, model, max_norm):
+    def clip_grad_norm(self, max_norm, model):
         raise NotImplementedError
 
     def pre_export(self, model):
@@ -197,7 +197,7 @@ class FP16OptimizerApex(FP16Optimizer):
         ) as scaled_loss:
             scaled_loss.backward()
 
-    def clip_grad_norm(self, model, max_norm):
+    def clip_grad_norm(self, max_norm, model):
         if max_norm is not None:
             return torch.nn.utils.clip_grad_norm_(
                 amp.master_params(self.fp32_optimizer), max_norm
@@ -392,7 +392,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
             num_accumulated_batches=num_accumulated_batches,
         )
 
-    def clip_grad_norm(self, unused_model, max_norm):
+    def clip_grad_norm(self, max_norm, unused_model):
         # fairseq clip_grad_norm will skip clipping when max_norm is 0.
         if max_norm is None:
             max_norm = 0.0
