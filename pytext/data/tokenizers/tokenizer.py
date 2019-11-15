@@ -9,6 +9,7 @@ from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
+from pytext.utils.file_io import PathManager
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
@@ -192,6 +193,10 @@ class GPT2BPETokenizer(Tokenizer):
 
     @classmethod
     def from_config(cls, config: Config):
+        # TODO: T57433776 remove once FairSeq support PathManager
+        config.bpe_encoder_path = PathManager.get_local_path(config.bpe_encoder_path)
+        config.bpe_vocab_path = PathManager.get_local_path(config.bpe_vocab_path)
+
         bpe = create_gpt2_bpe(config.bpe_encoder_path, config.bpe_vocab_path)
         # This hacks the bpe instance to be picklable
         bpe = copy.copy(bpe)

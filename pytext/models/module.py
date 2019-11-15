@@ -9,7 +9,7 @@ import torch.jit
 import torch.nn as nn
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.config.module_config import ModuleConfig
-from pytext.config.pytext_config import ConfigBase
+from pytext.utils.file_io import PathManager
 
 
 SHARED_MODULE_REGISTRY: Dict[str, torch.nn.Module] = {}
@@ -44,11 +44,13 @@ def create_module(
     shared_module_key = getattr(module_config, "shared_module_key", None)
     typed_shared_module_key = (shared_module_key, type(module_config))
     load_path = getattr(module_config, "load_path", None)
-    is_torchscript_load_path = load_path and zipfile.is_zipfile(load_path)
+    is_torchscript_load_path = load_path and zipfile.is_zipfile(
+        PathManager.get_local_path(load_path)
+    )
     module = SHARED_MODULE_REGISTRY.get(typed_shared_module_key)
     if not module:
         if is_torchscript_load_path:
-            with open(load_path, "rb") as load_file:
+            with PathManager.open(load_path, "rb") as load_file:
                 module = torch.jit.load(load_file)
         else:
             module = create_fn(module_config, *args, **kwargs)
@@ -56,7 +58,8 @@ def create_module(
     name = type(module).__name__
     if load_path and not is_torchscript_load_path:
         print(f"Loading state of module {name} from {load_path} ...")
-        module.load_state_dict(torch.load(load_path, map_location="cpu"))
+        with PathManager.open(load_path, "rb") as load_file:
+            module.load_state_dict(torch.load(load_file, map_location="cpu"))
     if getattr(module_config, "freeze", False):
         print(f"Freezing the parameters of module {name} ...")
         module.freeze()

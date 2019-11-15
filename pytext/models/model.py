@@ -16,6 +16,7 @@ from pytext.config.serialize import _is_optional
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
+from pytext.utils.file_io import PathManager
 from pytext.utils.precision import maybe_float
 from torch.jit import quantized
 
@@ -105,11 +106,11 @@ class BaseModel(nn.Module, Component):
             if save_path:
                 path = os.path.join(base_path, module.save_path + suffix)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
-                if isinstance(module, torch.jit.ScriptModule):
-                    with open(path, "wb") as save_file:
+                with PathManager.open(path, "wb") as save_file:
+                    if isinstance(module, torch.jit.ScriptModule):
                         module.save(save_file)
-                else:
-                    torch.save(module.state_dict(), path)
+                    else:
+                        torch.save(module.state_dict(), save_file)
 
         self.apply(save)
 
