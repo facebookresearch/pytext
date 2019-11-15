@@ -8,6 +8,9 @@ from fairseq.modules import (
     TransformerSentenceEncoder as TransformerSentenceEncoderModule,
 )
 from pytext.config import ConfigBase
+from pytext.models.representations.traced_transformer_encoder import (
+    TracedTransformerEncoder,
+)
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
@@ -64,6 +67,9 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         freeze_embeddings: bool = False
         n_trans_layers_to_freeze: int = 0
 
+        # Use of TorchScript and optimizations
+        use_torchscript: bool = False
+
     def __init__(
         self,
         config: Config,
@@ -77,6 +83,8 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         super().__init__(config, output_encoded_layers=output_encoded_layers)
         self.multilingual = config.multilingual
         self.offset_positions_by_padding = config.offset_positions_by_padding
+        self.use_torchscript = config.use_torchscript
+        self.traced_encoder = None
 
         self.sentence_encoder = TransformerSentenceEncoderModule(
             padding_idx=padding_idx,
@@ -98,6 +106,7 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
             freeze_embeddings=config.freeze_embeddings,
             n_trans_layers_to_freeze=config.n_trans_layers_to_freeze,
             export=self.export,
+            traceable=self.use_torchscript,
         )
         self.projection = (
             torch.nn.Linear(self.representation_dim, config.projection_dim)
@@ -123,6 +132,14 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         tokens, _, segment_labels, positions = input_tuple
         if self.offset_positions_by_padding or (not self.multilingual):
             positions = None
+
+        if self.use_torchscript and self.traced_encoder is None:
+            self.traced_encoder = TracedTransformerEncoder(
+                self.sentence_encoder, tokens, segment_labels, positions
+            )
+            del self.sentence_encoder
+            self.sentence_encoder = self.traced_encoder
+            print("Using traced transformer sentence encoder")
 
         encoded_layers, pooled_output = self.sentence_encoder(
             tokens, segment_labels, positions=positions
