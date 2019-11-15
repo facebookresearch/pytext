@@ -100,7 +100,9 @@ def process_squad_json(fname, ignore_impossible, max_character_length, min_overl
                 id += 1
 
 
-def process_squad_tsv(fname, ignore_impossible, max_character_length, min_overlap):
+def process_squad_tsv(
+    fname, ignore_impossible, max_character_length, min_overlap, delimiter, quoted
+):
     if not fname:
         print(f"Empty file name!")
         return
@@ -112,8 +114,8 @@ def process_squad_tsv(fname, ignore_impossible, max_character_length, min_overla
     tsv = TSV(
         tsv_file,
         field_names=field_names,
-        delimiter="\t",
-        quoted=False,
+        delimiter=delimiter,
+        quoted=quoted,
         drop_incomplete_rows=True,
     )
 
@@ -137,14 +139,26 @@ def process_squad_tsv(fname, ignore_impossible, max_character_length, min_overla
             yield piece_dict
 
 
-def process_squad(fname, ignore_impossible, max_character_length, min_overlap=0.1):
+def process_squad(
+    fname,
+    ignore_impossible,
+    max_character_length,
+    min_overlap=0.1,
+    delimiter="\t",
+    quoted=False,
+):
     if fname.split(".")[-1] == "json":
         return process_squad_json(
             fname, ignore_impossible, max_character_length, min_overlap
         )
     else:
         return process_squad_tsv(
-            fname, ignore_impossible, max_character_length, min_overlap
+            fname,
+            ignore_impossible,
+            max_character_length,
+            min_overlap,
+            delimiter,
+            quoted,
         )
 
 
@@ -161,6 +175,8 @@ class SquadDataSource(DataSource):
         ignore_impossible: bool = True
         max_character_length: int = 2 ** 20
         min_overlap: float = 0.1  # Expressed as a fraction of the max_character_length.
+        delimiter: str = "\t"
+        quoted: bool = False
 
     @classmethod
     def from_config(cls, config: Config, schema=None):
@@ -171,6 +187,8 @@ class SquadDataSource(DataSource):
             config.ignore_impossible,
             config.max_character_length,
             config.min_overlap,
+            config.delimiter,
+            config.quoted,
         )
 
     def __init__(
@@ -181,6 +199,8 @@ class SquadDataSource(DataSource):
         ignore_impossible=Config.ignore_impossible,
         max_character_length=Config.max_character_length,
         min_overlap=Config.min_overlap,
+        delimiter=Config.delimiter,
+        quoted=Config.quoted,
     ):
         schema = {
             "id": int,
@@ -198,10 +218,17 @@ class SquadDataSource(DataSource):
         self.ignore_impossible = ignore_impossible
         self.max_character_length = max_character_length
         self.min_overlap = min_overlap
+        self.delimiter = delimiter
+        self.quoted = quoted
 
     def process_file(self, fname):
         return process_squad(
-            fname, self.ignore_impossible, self.max_character_length, self.min_overlap
+            fname,
+            self.ignore_impossible,
+            self.max_character_length,
+            self.min_overlap,
+            self.delimiter,
+            self.quoted,
         )
 
     @generator_property
