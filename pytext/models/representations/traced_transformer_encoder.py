@@ -14,6 +14,7 @@ from fairseq.modules import (
 class TraceableTransformerWrapper(nn.Module):
     def __init__(self, eager_encoder: TransformerSentenceEncoderModule) -> None:
         super().__init__()
+        assert hasattr(eager_encoder, "traceable")
         assert eager_encoder.traceable
         self.eager_encoder = eager_encoder
 
