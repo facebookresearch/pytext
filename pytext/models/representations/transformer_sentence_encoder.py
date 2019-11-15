@@ -106,8 +106,11 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
             freeze_embeddings=config.freeze_embeddings,
             n_trans_layers_to_freeze=config.n_trans_layers_to_freeze,
             export=self.export,
-            traceable=self.use_torchscript,
         )
+        if self.use_torchscript:
+            assert hasattr(self.sentence_encoder, "traceable")
+            self.sentence_encoder.traceable = self.use_torchscript
+
         self.projection = (
             torch.nn.Linear(self.representation_dim, config.projection_dim)
             if config.projection_dim > 0
