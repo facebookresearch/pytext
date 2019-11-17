@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import List
+
 import torch
+import torch.jit as jit
 import torch.nn as nn
 from caffe2.python.crf_predict import apply_crf
-from pytext.common.constants import Padding
-from pytext.utils.cuda import GetTensor
-from torch.autograd import Variable
+from pytext.utils.cuda import convert_tensor
 
 
 class CRF(nn.Module):
@@ -17,7 +18,9 @@ class CRF(nn.Module):
         num_tags: The number of tags
     """
 
-    def __init__(self, num_tags: int, ignore_index: int) -> None:
+    def __init__(
+        self, num_tags: int, ignore_index: int, default_label_pad_index: int
+    ) -> None:
         if num_tags <= 0:
             raise ValueError(f"Invalid number of tags: {num_tags}")
         super().__init__()
@@ -29,6 +32,7 @@ class CRF(nn.Module):
         self.end_tag = num_tags + 1
         self.reset_parameters()
         self.ignore_index = ignore_index
+        self.default_label_pad_index = default_label_pad_index
 
     def reset_parameters(self) -> None:
         nn.init.uniform_(self.transitions, -0.1, 0.1)
@@ -42,8 +46,8 @@ class CRF(nn.Module):
         self.transitions.data = transitions
 
     def forward(
-        self, emissions: torch.FloatTensor, tags: torch.LongTensor, reduce: bool = True
-    ) -> Variable:
+        self, emissions: torch.Tensor, tags: torch.Tensor, reduce: bool = True
+    ) -> torch.Tensor:
         """
         Compute log-likelihood of input.
 
@@ -62,9 +66,8 @@ class CRF(nn.Module):
         llh = numerator - denominator
         return llh if not reduce else torch.mean(llh)
 
-    def decode(
-        self, emissions: torch.FloatTensor, seq_lens: torch.LongTensor
-    ) -> torch.Tensor:
+    @jit.export
+    def decode(self, emissions: torch.Tensor, seq_lens: torch.Tensor) -> torch.Tensor:
         """
         Given a set of emission probabilities, return the predicted tags.
 
@@ -78,10 +81,7 @@ class CRF(nn.Module):
         return result
 
     def _compute_joint_llh(
-        self,
-        emissions: torch.FloatTensor,
-        tags: torch.LongTensor,
-        mask: torch.FloatTensor,
+        self, emissions: torch.Tensor, tags: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
         seq_len = emissions.shape[1]
 
@@ -115,7 +115,7 @@ class CRF(nn.Module):
         return llh.squeeze(1)
 
     def _compute_log_partition_function(
-        self, emissions: torch.FloatTensor, mask: torch.FloatTensor
+        self, emissions: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
         seq_len = emissions.shape[1]
 
@@ -139,7 +139,7 @@ class CRF(nn.Module):
         return torch.logsumexp(log_prob.squeeze(1), 1)
 
     def _viterbi_decode(
-        self, emissions: torch.FloatTensor, mask: torch.FloatTensor
+        self, emissions: torch.Tensor, mask: torch.Tensor
     ) -> torch.Tensor:
         seq_len = emissions.shape[1]
         mask = mask.to(torch.uint8)
@@ -153,10 +153,14 @@ class CRF(nn.Module):
             : self.start_tag, self.end_tag
         ].unsqueeze(0)
 
-        best_scores_list = []
+        best_scores_list: List[torch.Tensor] = []
+        # Needed for Torchscript as empty list is assumed to be list of tensors
+        empty_data: List[int] = []
         # If the element has only token, empty tensor in best_paths helps
         # torch.cat() from crashing
-        best_paths_list = [GetTensor(torch.Tensor().long())]
+        best_paths_list = [
+            convert_tensor(torch.tensor(empty_data).long(), emissions.is_cuda)
+        ]
         best_scores_list.append(end_scores.unsqueeze(1))
 
         for idx in range(1, seq_len):
@@ -185,12 +189,14 @@ class CRF(nn.Module):
 
         _, max_indices_from_scores = torch.max(best_scores, 2)
 
-        valid_index_tensor = GetTensor(torch.tensor(0)).long()
-        if self.ignore_index == Padding.DEFAULT_LABEL_PAD_IDX:
+        valid_index_tensor = convert_tensor(torch.tensor(0), emissions.is_cuda).long()
+        if self.ignore_index == self.default_label_pad_index:
             # No label for padding, so use 0 index.
             padding_tensor = valid_index_tensor
         else:
-            padding_tensor = GetTensor(torch.tensor(self.ignore_index)).long()
+            padding_tensor = convert_tensor(
+                torch.tensor(self.ignore_index), emissions.is_cuda
+            ).long()
 
         # Label for the last position is always based on the index with max score
         # For illegal timesteps, we set as ignore_index
@@ -256,7 +262,9 @@ class CRF(nn.Module):
     def _make_mask_from_seq_lens(self, seq_lens):
         seq_lens = seq_lens.view(-1, 1)
         max_len = torch.max(seq_lens)
-        range_tensor = GetTensor(torch.arange(max_len)).unsqueeze(0)
+        range_tensor = convert_tensor(
+            torch.arange(max_len), seq_lens.is_cuda
+        ).unsqueeze(0)
         range_tensor = range_tensor.expand(seq_lens.size(0), range_tensor.size(1))
         mask = (range_tensor < seq_lens).float()
         return mask

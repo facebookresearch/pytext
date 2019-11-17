@@ -44,6 +44,14 @@ def GetTensor(tensor):
         return tensor
 
 
+@torch.jit.script
+def convert_tensor(tensor: torch.Tensor, is_cuda: bool = False):
+    if is_cuda:
+        return tensor.cuda()
+    else:
+        return tensor
+
+
 def tensor(data, dtype):
     return torch.tensor(data, dtype=dtype, device=device())
 

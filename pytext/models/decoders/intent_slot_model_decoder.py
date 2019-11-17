@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -77,7 +77,7 @@ class IntentSlotModelDecoder(DecoderBase):
 
     def forward(
         self, x_d: torch.Tensor, x_w: torch.Tensor, dense: Optional[torch.Tensor] = None
-    ) -> List[torch.Tensor]:
+    ) -> Tuple[torch.Tensor]:
         if dense is not None:
             logit_d = self.doc_decoder(torch.cat((x_d, dense), 1))
         else:
@@ -95,7 +95,7 @@ class IntentSlotModelDecoder(DecoderBase):
             dense = dense.unsqueeze(1).repeat(1, word_input_shape[1], 1)
             x_w = torch.cat((x_w, dense), 2)
 
-        return [logit_d, self.word_decoder(x_w)]
+        return (logit_d, self.word_decoder(x_w))
 
     def get_decoder(self) -> List[nn.Module]:
         """Returns the document and word decoder modules.
