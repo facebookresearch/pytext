@@ -4,13 +4,14 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
+import torch.jit as jit
+import torch.nn as nn
 import torch.nn.functional as F
 from caffe2.python import core
 from pytext.common import Padding
 from pytext.config.component import create_loss
 from pytext.config.serialize import MissingValueError
 from pytext.data.utils import Vocabulary
-from pytext.fields import FieldMeta
 from pytext.loss import (
     AUCPRHingeLoss,
     BinaryCrossEntropyLoss,
@@ -24,6 +25,35 @@ from pytext.utils.label import get_label_weights
 
 from .output_layer_base import OutputLayerBase
 from .utils import OutputLayerUtils
+
+
+class WordTaggingScores(nn.Module):
+    classes: List[str]
+
+    def __init__(self, classes):
+        super().__init__()
+        self.classes = classes
+
+    def forward(
+        self, logits: torch.Tensor, seq_lengths: Optional[torch.Tensor] = None
+    ) -> List[List[Dict[str, float]]]:
+        scores: torch.Tensor = F.log_softmax(logits, 2)
+        return _get_prediction_from_scores(scores, self.classes)
+
+
+class CRFWordTaggingScores(WordTaggingScores):
+    def __init__(self, classes: List[str], crf):
+        super().__init__(classes)
+        self.crf = crf
+        self.crf.eval()
+
+    def forward(
+        self, logits: torch.Tensor, seq_lengths: torch.Tensor
+    ) -> List[List[Dict[str, float]]]:
+        pred = self.crf.decode(logits, seq_lengths)
+        logits_rearranged = _rearrange_output(logits, pred)
+        scores: torch.Tensor = F.log_softmax(logits_rearranged, 2)
+        return _get_prediction_from_scores(scores, self.classes)
 
 
 class WordTaggingOutputLayer(OutputLayerBase):
@@ -138,6 +168,9 @@ class WordTaggingOutputLayer(OutputLayerBase):
             predict_net, probability_out, model_out, output_name, self.target_names
         )
 
+    def torchscript_predictions(self):
+        return jit.script(WordTaggingScores(self.target_names))
+
 
 class CRFOutputLayer(OutputLayerBase):
     """
@@ -160,7 +193,11 @@ class CRFOutputLayer(OutputLayerBase):
 
     def __init__(self, num_tags, labels: Vocabulary, *args) -> None:
         super().__init__(list(labels), *args)
-        self.crf = CRF(num_tags, labels.get_pad_index(Padding.DEFAULT_LABEL_PAD_IDX))
+        self.crf = CRF(
+            num_tags=num_tags,
+            ignore_index=labels.get_pad_index(Padding.DEFAULT_LABEL_PAD_IDX),
+            default_label_pad_index=Padding.DEFAULT_LABEL_PAD_IDX,
+        )
 
     def get_loss(
         self,
@@ -240,7 +277,11 @@ class CRFOutputLayer(OutputLayerBase):
             predict_net, probability_out, model_out, output_name, self.target_names
         )
 
+    def torchscript_predictions(self):
+        return jit.script(CRFWordTaggingScores(self.target_names, jit.script(self.crf)))
 
+
+@jit.script
 def _rearrange_output(logit, pred):
     """
     Rearrange the word logits so that the decoded word has the highest valued
@@ -252,3 +293,47 @@ def _rearrange_output(logit, pred):
     logit_rearranged = logit.scatter(2, pred_indices, max_logits)
     logit_rearranged.scatter_(2, max_logit_indices, pred_logits)
     return logit_rearranged
+
+
+@jit.script
+def _get_prediction_from_scores(
+    scores: torch.Tensor, classes: List[str]
+) -> List[List[Dict[str, float]]]:
+    """
+    Given scores for a batch, get the prediction for each word in the form of a
+    List[List[Dict[str, float]]] for callers of the torchscript model to consume.
+    The outer list iterates over batches of sentences and the inner iterates
+    over each token in the sentence. The dictionary consists of
+    `label:score` for each word.
+
+    Example:
+
+    Assuming slot labels are [No-Label, Number, Name]
+    Utterances: [[call john please], [Brightness 25]]
+    Output could look like:
+    [
+        [
+            { No-Label: -0.1, Number: -1.5, Name: -9.01},
+            { No-Label: -2.1, Number: -1.5, Name: -0.01},
+            { No-Label: -0.1, Number: -1.5, Name: -2.01},
+        ],
+        [
+            { No-Label: -0.1, Number: -1.5, Name: -9.01},
+            { No-Label: -2.1, Number: -0.5, Name: -7.01},
+            { No-Label: -0.1, Number: -1.5, Name: -2.01},
+        ]
+    ]
+    """
+    results: List[List[Dict[str, float]]] = []
+    # Extra verbosity because jit doesn't support zip
+    for sentence_scores in scores.chunk(len(scores)):
+        sentence_scores = sentence_scores.squeeze(0)
+        sentence_response: List[Dict[str, float]] = []
+        for word_scores in sentence_scores.chunk(len(sentence_scores)):
+            word_scores = word_scores.squeeze(0)
+            word_response: Dict[str, float] = {}
+            for i in range(len(classes)):
+                word_response[classes[i]] = float(word_scores[i].item())
+            sentence_response.append(word_response)
+        results.append(sentence_response)
+    return results

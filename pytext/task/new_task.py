@@ -230,7 +230,10 @@ class _NewTask(TaskBase):
             batches = self.data.batcher.batchify(numberized_rows)
             _, inputs = next(pad_and_tensorize_batches(self.data.tensorizers, batches))
             model_inputs = self.model.arrange_model_inputs(inputs)
-            predictions, scores = self.model.get_pred(self.model(*model_inputs))
+            model_context = self.model.arrange_model_context(inputs)
+            predictions, scores = self.model.get_pred(
+                self.model(*model_inputs), context=model_context
+            )
             results.append({"prediction": predictions, "score": scores})
         return results
 

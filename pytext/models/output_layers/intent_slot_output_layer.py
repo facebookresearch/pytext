@@ -4,14 +4,41 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
+import torch.nn as nn
 from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
 from pytext.data.utils import Vocabulary
 from pytext.models.module import create_module
+from torch import jit
 
 from .doc_classification_output_layer import ClassificationOutputLayer
 from .output_layer_base import OutputLayerBase
 from .word_tagging_output_layer import CRFOutputLayer, WordTaggingOutputLayer
+
+
+class IntentSlotScores(nn.Module):
+    def __init__(self, doc_scores: jit.ScriptModule, word_scores: jit.ScriptModule):
+        super().__init__()
+        self.doc_scores = doc_scores
+        self.word_scores = word_scores
+
+    def forward(
+        self,
+        logits: Tuple[torch.Tensor, torch.Tensor],
+        seq_lengths: torch.Tensor,
+        token_indices: Optional[torch.Tensor] = None,
+    ) -> Tuple[List[Dict[str, float]], List[List[Dict[str, float]]]]:
+        d_logits, w_logits = logits
+        if token_indices is not None:
+            w_logits = torch.gather(
+                w_logits,
+                1,
+                token_indices.unsqueeze(2).expand(-1, -1, w_logits.size(-1)),
+            )
+
+        d_results = self.doc_scores(d_logits)
+        w_results = self.word_scores(w_logits, seq_lengths)
+        return d_results, w_results
 
 
 class IntentSlotOutputLayer(OutputLayerBase):
@@ -161,3 +188,8 @@ class IntentSlotOutputLayer(OutputLayerBase):
         ) + self.word_output.export_to_caffe2(
             workspace, init_net, predict_net, model_out[1], word_out_name
         )
+
+    def torchscript_predictions(self):
+        doc_scores = self.doc_output.torchscript_predictions()
+        word_scores = self.word_output.torchscript_predictions()
+        return jit.script(IntentSlotScores(doc_scores, word_scores))
