@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from fairseq.data.dictionary import Dictionary
@@ -58,6 +58,8 @@ class BERTTensorizerBase(Tensorizer):
         # BERT style models support multiple text inputs
         columns: List[str] = ["text"]
         tokenizer: Tokenizer.Config = Tokenizer.Config()
+        # base token-level tokenizer for sequence labeling tasks
+        base_tokenizer: Optional[Tokenizer.Config] = None
         vocab_file: str = ""
         max_seq_len: int = 256
 
@@ -67,10 +69,12 @@ class BERTTensorizerBase(Tensorizer):
         vocab: Vocabulary = None,
         tokenizer: Tokenizer = None,
         max_seq_len: int = Config.max_seq_len,
+        base_tokenizer: Tokenizer = None,
     ) -> None:
         self.columns = columns
         self.vocab = vocab
         self.tokenizer = tokenizer
+        self.base_tokenizer = base_tokenizer
         self.max_seq_len = max_seq_len
         # Needed to ensure that we're not masking special tokens. By default
         # we use the BOS token from the vocab. If a class has different
