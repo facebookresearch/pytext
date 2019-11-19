@@ -304,22 +304,34 @@ class ExponentialLR(TorchExponentialLR, Scheduler):
 
 class WarmupScheduler(_LRScheduler, BatchScheduler):
     """
-    Scheduler to linearly increase learning rate from 0 to final value at the beginning
-    of training.
+    Scheduler to linearly increase the learning rate from 0 to its final value over
+    a number of steps:
+
+        lr = base_lr * current_step / warmup_steps
+
+    After the warm-up phase, the scheduler has the option of decaying the learning
+    rate as the inverse square root of the number of training steps taken:
+
+        lr = base_lr * sqrt(warmup_steps) / sqrt(current_step)
     """
 
     class Config(BatchScheduler.Config):
         #: number of training steps over which to increase learning rate
         warmup_steps: int = 10000
 
+        #: whether to perform inverse sqrt decay after the warmup phase
+        inverse_sqrt_decay: bool = False
+
     @classmethod
     def from_config(cls, config: Config, optimizer: Optimizer):
-        return cls(optimizer, config.warmup_steps)
+        return cls(optimizer, config.warmup_steps, config.inverse_sqrt_decay)
 
-    def __init__(self, optimizer, warmup_steps):
+    def __init__(self, optimizer, warmup_steps, inverse_sqrt_decay):
         assert warmup_steps > 0
         self.warmup_steps = warmup_steps
         self.current_steps = 0
+        self.inverse_sqrt_decay = inverse_sqrt_decay
+        self.decay_factor = warmup_steps ** 0.5
         super().__init__(optimizer)
 
     def prepare(self, train_iter, total_epochs):
@@ -332,7 +344,10 @@ class WarmupScheduler(_LRScheduler, BatchScheduler):
 
     def get_lr(self):
         if self.current_steps >= self.warmup_steps:
-            lr_multiplier = 1.0
+            if self.inverse_sqrt_decay:
+                lr_multiplier = self.decay_factor / (self.current_steps ** 0.5)
+            else:
+                lr_multiplier = 1.0
         else:
             lr_multiplier = self.current_steps / self.warmup_steps
         return [lr_multiplier * base_lr for base_lr in self.base_lrs]
