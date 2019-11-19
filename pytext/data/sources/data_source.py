@@ -347,3 +347,8 @@ def load_json_string(s):
 @RootDataSource.register_type(float)
 def load_float(f):
     return float(f)
+
+
+@RootDataSource.register_type(int)
+def load_int(x):
+    return int(x)
