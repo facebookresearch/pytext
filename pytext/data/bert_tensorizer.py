@@ -22,6 +22,7 @@ from pytext.data.utils import (
 )
 from pytext.torchscript.tensorizer import ScriptBERTTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.file_io import PathManager
 
 
 def build_fairseq_vocab(
@@ -36,6 +37,9 @@ def build_fairseq_vocab(
     modules. The dictionary class can take any Fairseq Dictionary class
     and is used to load the vocab file.
     """
+    if vocab_file.startswith("manifold://"):
+        vocab_file = PathManager.get_local_path(vocab_file)
+
     dictionary = dictionary_class.load(vocab_file)
     # finalize will sort the dict based on frequency so only do this if
     # a min_count or max_vocab size is specified
