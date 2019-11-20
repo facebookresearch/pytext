@@ -456,12 +456,16 @@ class Trainer(TrainerBase):
         if self.optimizer.finalize():
             state.stage = Stage.EVAL
             model.eval(Stage.EVAL)
-            print(f"start evaluating finalized state")
-            with torch.no_grad():
-                eval_metric = self.run_epoch(state, eval_data, metric_reporter)
-            better_model = metric_reporter.compare_metric(
-                eval_metric, state.best_model_metric
-            )
+            if self.config.do_eval:
+                print(f"start evaluating finalized state")
+                with torch.no_grad():
+                    eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+                better_model = metric_reporter.compare_metric(
+                    eval_metric, state.best_model_metric
+                )
+            else:
+                eval_metric = None
+                better_model = True
             if better_model:
                 self.update_best_model(state, train_config, eval_metric)
             if better_model or train_config.save_all_checkpoints:
