@@ -22,6 +22,7 @@ from pytext.data.utils import (
 )
 from pytext.torchscript.tensorizer import ScriptBERTTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.file_io import PathManager
 
 
 def build_fairseq_vocab(
@@ -197,11 +198,12 @@ class BERTTensorizer(BERTTensorizerBase):
                 replacements=special_token_replacements,
             )
         else:
-            vocab = build_fairseq_vocab(
-                dictionary_class=BertDictionary,
-                vocab_file=config.vocab_file,
-                special_token_replacements=special_token_replacements,
-            )
+            with PathManager.open(config.vocab_file) as file_path:
+                vocab = build_fairseq_vocab(
+                    dictionary_class=BertDictionary,
+                    vocab_file=file_path,
+                    special_token_replacements=special_token_replacements,
+                )
         return cls(
             columns=config.columns,
             vocab=vocab,

@@ -13,6 +13,7 @@ from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
 from pytext.data.xlm_constants import LANG2ID_15
 from pytext.torchscript.tensorizer import ScriptXLMTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.file_io import PathManager
 
 
 class XLMTensorizer(BERTTensorizerBase):
@@ -41,18 +42,19 @@ class XLMTensorizer(BERTTensorizerBase):
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        vocab = build_fairseq_vocab(
-            dictionary_class=MaskedLMDictionary,
-            vocab_file=config.vocab_file,
-            max_vocab=config.max_vocab,
-            min_count=config.min_count,
-            special_token_replacements={
-                "<unk>": UNK,
-                "<pad>": PAD,
-                "</s>": EOS,
-                "<mask>": MASK,
-            },
-        )
+        with PathManager.open(config.vocab_file) as file_path:
+            vocab = build_fairseq_vocab(
+                dictionary_class=MaskedLMDictionary,
+                vocab_file=file_path,
+                max_vocab=config.max_vocab,
+                min_count=config.min_count,
+                special_token_replacements={
+                    "<unk>": UNK,
+                    "<pad>": PAD,
+                    "</s>": EOS,
+                    "<mask>": MASK,
+                },
+            )
         return cls(
             columns=config.columns,
             vocab=vocab,

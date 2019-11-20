@@ -11,6 +11,7 @@ from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizerWithIndices
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.file_io import PathManager
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -130,16 +131,17 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-        vocab = build_fairseq_vocab(
-            vocab_file=config.vocab_file,
-            special_token_replacements={
-                "<pad>": PAD,
-                "<s>": BOS,
-                "</s>": EOS,
-                "<unk>": UNK,
-                "<mask>": MASK,
-            },
-        )
+        with PathManager.open(config.vocab_file) as file_path:
+            vocab = build_fairseq_vocab(
+                vocab_file=file_path,
+                special_token_replacements={
+                    "<pad>": PAD,
+                    "<s>": BOS,
+                    "</s>": EOS,
+                    "<unk>": UNK,
+                    "<mask>": MASK,
+                },
+            )
         return cls(
             columns=config.columns,
             vocab=vocab,
