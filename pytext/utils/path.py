@@ -21,13 +21,14 @@ def get_pytext_home():
     return pytext_home
 
 
-# all relateive path in PyText is based on PYTEXT_HOME
+# relateive path in PyText is either based on PYTEXT_HOME or current work directory
 PYTEXT_HOME = get_pytext_home()
 
 
-def get_absolute_path(file_path):
-    return (
-        file_path
-        if os.path.isabs(file_path)
-        else os.path.realpath(os.path.join(PYTEXT_HOME, file_path))
-    )
+def get_absolute_path(file_path: str) -> str:
+    if os.path.isabs(file_path):
+        return file_path
+    absolute_path = os.path.realpath(os.path.join(PYTEXT_HOME, file_path))
+    if os.path.exists(absolute_path):
+        return absolute_path
+    return file_path
