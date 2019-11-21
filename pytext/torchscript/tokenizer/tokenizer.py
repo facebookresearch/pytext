@@ -15,8 +15,8 @@ class ScriptTokenizerBase(torch.jit.ScriptModule):
         """
         Process a single line of raw inputs into tokens, it supports
         two input formats:
-            1) a single text
-            2) a token
+        1) a single text
+        2) a token
 
         Returns a list of tokens with start and end indices in original input.
         """
@@ -25,13 +25,13 @@ class ScriptTokenizerBase(torch.jit.ScriptModule):
     def input_type(self) -> ScriptInputType:
         """
         Determine TorchScript module input type, currently it have four types
-            1) text: batch with a single text in each row, List[str]
-            2) tokens: batch with a list of tokens from single text
-                in each row, List[List[str]]
-            3) multi_text: batch with multiple texts in each row,
-                List[List[str]]
-            4) multi_tokens: batch with multiple lists of tokens from
-                multiple texts in each row, List[List[List[str]]]
+        1) text: batch with a single text in each row, List[str]
+        2) tokens: batch with a list of tokens from single text
+        in each row, List[List[str]]
+        3) multi_text: batch with multiple texts in each row,
+        List[List[str]]
+        4) multi_tokens: batch with multiple lists of tokens from
+        multiple texts in each row, List[List[List[str]]]
         """
         raise NotImplementedError
 
