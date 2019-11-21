@@ -509,7 +509,13 @@ class Trainer(TrainerBase):
         if report_metric:
             with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
-                    model, state.stage, state.epoch, print_to_channels=(state.rank == 0)
+                    model,
+                    state.stage,
+                    state.epoch,
+                    print_to_channels=(state.rank == 0),
+                    optimizer=getattr(
+                        state, "optimizer", None
+                    ),  # optimizer is not present during test
                 )
         else:
             metric_reporter._reset()

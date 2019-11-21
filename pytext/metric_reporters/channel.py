@@ -170,6 +170,7 @@ class TensorBoardChannel(Channel):
         context,
         meta,
         model,
+        optimizer,
         *args,
     ):
         """
@@ -213,17 +214,19 @@ class TensorBoardChannel(Channel):
                 self.add_scalars(prefix, metrics, epoch)
 
         if stage == Stage.TRAIN:
+            if optimizer is not None:
+                for idx, param_group in enumerate(optimizer.param_groups):
+                    self.summary_writer.add_scalar(
+                        f"optimizer.lr.param_group.{idx}", param_group["lr"], epoch
+                    )
             for key, val in model.named_parameters():
                 if val is not None and len(val) > 0 and not (val == 0).all():
                     limit = 9.9e19
+                    grad = val.grad
                     val = torch.clamp(val.float(), -limit, limit)
                     self.summary_writer.add_histogram(key, val, epoch)
-                    if (
-                        val.grad is not None
-                        and len(val.grad) > 0
-                        and not (val.grad == 0).all()
-                    ):
-                        grad = torch.clamp(val.grad.float(), -limit, limit)
+                    if grad is not None and len(grad) > 0 and not (grad == 0).all():
+                        grad = torch.clamp(grad.float(), -limit, limit)
                         self.summary_writer.add_histogram(
                             key + "_gradients", grad, epoch
                         )
