@@ -19,13 +19,18 @@ class EnsembleTrainer(TrainerBase):
 
     @classmethod
     def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
-        return cls(create_trainer(config.real_trainer, model, *args, **kwargs))
+        trainers = [
+            create_trainer(config.real_trainer, m, *args, **kwargs)
+            for m in model.models
+        ]
 
-    def __init__(self, real_trainer):
-        self.real_trainer = real_trainer
-        self.optimizer = real_trainer.optimizer
-        self.test = real_trainer.test
-        self.train_single_model = real_trainer.train
+        return cls(trainers)
+
+    def __init__(self, real_trainers):
+        self.real_trainers = real_trainers
+        self.optimizer = real_trainers[0].optimizer
+        self.test = real_trainers[0].test
+        self.train_single_model = real_trainers[0].train
 
     """
     Train and eval ensemble model, each sub model will be trained separately in
@@ -53,7 +58,7 @@ class EnsembleTrainer(TrainerBase):
     """
 
     def train(self, train_iter, eval_iter, model, *args, **kwargs):
-        for m in model.models:
-            self.train_single_model(train_iter, eval_iter, m, *args, **kwargs)
+        for (m, t) in zip(model.models, self.real_trainers):
+            t.train(train_iter, eval_iter, m, *args, **kwargs)
         model.merge_sub_models()
         return model, None

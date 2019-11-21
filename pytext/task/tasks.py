@@ -71,7 +71,7 @@ class EnsembleTask(NewTask):
         ] = ClassificationMetricReporter.Config()
 
     def train_single_model(self, train_config, model_id, rank=0, world_size=1):
-        return self.trainer.train_single_model(
+        return self.trainer.real_trainers[model_id].train(
             self.data.batches(Stage.TRAIN),
             self.data.batches(Stage.EVAL),
             self.model.models[model_id],
