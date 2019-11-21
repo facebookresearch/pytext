@@ -456,7 +456,9 @@ class ByteTokenTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Convert text to bytes, pad batch."""
-        tokens = self.tokenizer.tokenize(row[self.text_column])[: self.max_seq_len]
+        tokens = self.tokenizer.tokenize(row[self.text_column])[
+            : (self.max_seq_len - self.add_bos_token - self.add_eos_token)
+        ]
         if self.add_bos_token:
             bos = EOS if self.use_eos_token_for_bos else BOS
             tokens = [Token(bos, -1, -1)] + tokens
