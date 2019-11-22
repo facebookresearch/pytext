@@ -71,12 +71,14 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         for reporter in self.reporters.values():
             reporter.add_channel(channel)
 
-    def report_metric(self, model, stage, epoch, reset=True, print_to_channels=True):
+    def report_metric(
+        self, model, stage, epoch, reset=True, print_to_channels=True, optimizer=None
+    ):
         metrics_dict = {AVRG_LOSS: self.total_loss / self.num_batches}
         for name, reporter in self.reporters.items():
             print(f"Reporting on task: {name}")
             metrics_dict[name] = reporter.report_metric(
-                model, stage, epoch, reset, print_to_channels
+                model, stage, epoch, reset, print_to_channels, optimizer=optimizer
             )
         if reset:
             self._reset()
