@@ -8,7 +8,7 @@ import torch.onnx.operators
 from pytext.config.field_config import DictFeatConfig
 from pytext.config.module_config import PoolingType
 from pytext.data.tensorizers import Tensorizer
-from pytext.data.utils import Vocabulary
+from pytext.data.utils import PAD_INDEX, UNK_INDEX, Vocabulary
 from pytext.fields import FieldMeta
 
 from .embedding_base import EmbeddingBase
@@ -80,15 +80,25 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             num_embeddings=vocab_size,
             embed_dim=config.embed_dim,
             pooling_type=config.pooling,
+            pad_index=tensorizer.vocab.get_pad_index(),
+            unk_index=tensorizer.vocab.get_unk_index(),
         )
 
     def __init__(
-        self, num_embeddings: int, embed_dim: int, pooling_type: PoolingType
+        self,
+        num_embeddings: int,
+        embed_dim: int,
+        pooling_type: PoolingType,
+        pad_index: int = PAD_INDEX,
+        unk_index: int = UNK_INDEX,
     ) -> None:
+        self.pad_index = pad_index
+        self.unk_index = unk_index
         EmbeddingBase.__init__(self, embed_dim)
-        nn.Embedding.__init__(self, num_embeddings, embed_dim)
+        nn.Embedding.__init__(
+            self, num_embeddings, embed_dim, padding_idx=self.pad_index
+        )
         self.pooling_type = pooling_type
-        self.weight.data.uniform_(0, 0.1)
 
     def forward(
         self, feats: torch.Tensor, weights: torch.Tensor, lengths: torch.Tensor
@@ -114,6 +124,11 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         """
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
         max_toks = torch.onnx.operators.shape_as_tensor(lengths)[1]
+
+        # convert all unk indicec to pad indices so
+        # there vector was the 0 vector
+        feats[feats == self.unk_index] = self.pad_index
+
         dict_emb = super().forward(feats)
 
         # Calculate weighted average of the embeddings
