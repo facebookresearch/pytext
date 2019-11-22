@@ -428,3 +428,142 @@ class PolynomialDecayScheduler(_LRScheduler, BatchScheduler):
         self.current_steps += 1
         # update optimizer.param_groups's learning rate
         self.step()
+
+
+class ReduceLRIfStationary(Scheduler):
+    """Reduce learning rate by a factor when stationary phase of an stochastic
+    optimizer is detected. Inspired by "Convergence diagnostics for stochastic
+    gradient descent with constant learning rate" by Chee and Toulis (2018). This
+    scheduler is very similar to ReduceLROnPlateau in spirit; however it detects
+    the stationary phase of optimization using inner product between consecutive
+    (batch) stochastic gradients instead of relying on additional eval set.
+
+    Args:
+        optimizer (Optimizer): Wrapped optimizer.
+        factor (float): Factor by which the learning rate will be
+            reduced. new_lr = lr * factor. Default: 0.1.
+        burnin (int): if the average consecutive inner prod in burnin in steps are
+            below zero, lr will be reduced. After lr is reduced, the step counter
+            and averaged consecutive will be reset. Default: 10
+        min_lr (float or list): A scalar or a list of scalars. A
+            lower bound on the learning rate of all param groups
+            or each group respectively. Default: 0.
+        max_lr (float or list): A scalar or a list of scalars. A
+            upper bound on the learning rate of all param groups
+            or each group respectively. Default: 10.
+        eps (float): Minimal decay applied to lr. If the difference
+            between new and old lr is smaller than eps, the update is
+            ignored. Default: 1e-8.
+
+    """
+
+    class Config(Scheduler.Config):
+        factor: float = 0.8
+        burnin: int = 100
+        min_lr: float = 0
+        max_lr: float = 10
+        eps: float = 1e-8
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(
+            optimizer,
+            factor=config.factor,
+            burnin=config.burnin,
+            min_lr=config.min_lr,
+            max_lr=config.max_lr,
+            eps=config.eps,
+        )
+
+    def __init__(
+        self, optimizer, factor=0.8, burnin=100, min_lr=0, max_lr=10, eps=1e-8
+    ):
+        if factor >= 1.0:
+            raise ValueError("Factor should be < 1.0.")
+        self.factor = factor
+
+        self.burnin = burnin
+        if not isinstance(optimizer, Optimizer):
+            raise TypeError("{} is not an Optimizer".format(type(optimizer).__name__))
+        self.optimizer = optimizer
+
+        if isinstance(min_lr, list) or isinstance(min_lr, tuple):
+            if len(min_lr) != len(optimizer.param_groups):
+                raise ValueError(
+                    "expected {} min_lrs, got {}".format(
+                        len(optimizer.param_groups), len(min_lr)
+                    )
+                )
+            self.min_lrs = list(min_lr)
+        else:
+            self.min_lrs = [min_lr] * len(optimizer.param_groups)
+
+        if isinstance(max_lr, list) or isinstance(max_lr, tuple):
+            if len(max_lr) != len(optimizer.param_groups):
+                raise ValueError(
+                    "expected {} min_lrs, got {}".format(
+                        len(optimizer.param_groups), len(max_lr)
+                    )
+                )
+            self.max_lrs = list(max_lr)
+        else:
+            self.max_lrs = [max_lr] * len(optimizer.param_groups)
+
+        self.eps = eps
+        self.prev_param_group = None
+        self.accumulate_consecutive_inner_product = 0.0
+        self.steps_since_last_change = 0
+
+    def _compute_grad_innerprod(self, param_grad_group1, param_grad_group2):
+        assert len(param_grad_group1) == len(
+            param_grad_group2
+        ), "the gradient dimension between two model updates changed"
+        innerprod = 0.0
+        for g1, g2 in zip(param_grad_group1, param_grad_group2):
+            assert g1.shape == g2.shape, "gradient dimension does not match"
+            innerprod += torch.matmul(g1, g2).item()
+        return innerprod
+
+    def step_batch(self):
+        param_grad_group = []
+        for group in self.optimizer.param_groups:
+            for p in group["params"]:
+                if p.requires_grad:
+                    param_grad_group.append(torch.flatten(p.grad.clone().detach()))
+
+        if self.prev_param_group is None:
+            self.prev_param_group = param_grad_group
+            return
+
+        innerprod = self._compute_grad_innerprod(
+            self.prev_param_group, param_grad_group
+        )
+        self.accumulate_consecutive_inner_product += innerprod
+        self.prev_param_group = param_grad_group
+        self.steps_since_last_change += 1
+        if self.steps_since_last_change >= self.burnin:
+            if self.accumulate_consecutive_inner_product <= 0:
+                # stationary phase, reduce lr
+                self._reduce_lr()
+            else:
+                self._enlarge_lr()
+            # reset the history
+            self.steps_since_last_change = 0
+            self.accumulate_consecutive_inner_product = 0
+            self.prev_param_group = None
+
+    def _reduce_lr(self):
+        for i, param_group in enumerate(self.optimizer.param_groups):
+            old_lr = float(param_group["lr"])
+            new_lr = max(old_lr * self.factor, self.min_lrs[i])
+            if old_lr - new_lr > self.eps:
+                print(f"new lr is {new_lr}")
+                param_group["lr"] = new_lr
+
+    def _enlarge_lr(self):
+        for i, param_group in enumerate(self.optimizer.param_groups):
+            old_lr = float(param_group["lr"])
+            new_lr = min(old_lr / self.factor, self.max_lrs[i])
+            if new_lr - old_lr > self.eps:
+                print(f"new lr is {new_lr}")
+                param_group["lr"] = new_lr
