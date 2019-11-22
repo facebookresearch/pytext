@@ -88,6 +88,9 @@ BOL = SpecialToken("__BEGIN_OF_LIST__")
 EOL = SpecialToken("__END_OF_LIST__")
 MASK = SpecialToken("__MASK__")
 
+UNK_INDEX = 0
+PAD_INDEX = 1
+
 
 class Vocabulary:
     """A mapping from indices to vocab elements."""
@@ -213,9 +216,9 @@ class VocabBuilder:
     def __init__(self, delimiter=" "):
         self._counter = Counter()
         self.use_unk = True
-        self.unk_index = 0
+        self.unk_index = UNK_INDEX
         self.use_pad = True
-        self.pad_index = 1
+        self.pad_index = PAD_INDEX
         self.use_bos = False
         self.bos_index = 2
         self.use_eos = False
