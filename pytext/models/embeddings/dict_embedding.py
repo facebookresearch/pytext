@@ -76,12 +76,19 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             if labels is not None
             else metadata.vocab_size
         )
+        tensorizer_vocab_exists = tensorizer and tensorizer.vocab
+        pad_index = (
+            tensorizer.vocab.get_pad_index() if tensorizer_vocab_exists else PAD_INDEX
+        )
+        unk_index = (
+            tensorizer.vocab.get_unk_index() if tensorizer_vocab_exists else UNK_INDEX
+        )
         return cls(
             num_embeddings=vocab_size,
             embed_dim=config.embed_dim,
             pooling_type=config.pooling,
-            pad_index=tensorizer.vocab.get_pad_index(),
-            unk_index=tensorizer.vocab.get_unk_index(),
+            pad_index=pad_index,
+            unk_index=unk_index,
         )
 
     def __init__(
