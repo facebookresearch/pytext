@@ -3,7 +3,7 @@
 
 import warnings
 from collections import defaultdict
-from typing import Union
+from typing import Optional, Union
 
 import torch
 from pytext.config.component import create_optimizer
@@ -19,7 +19,7 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
         ] = SGD.Config()
         start: int = 10
         frequency: int = 5
-        swa_learning_rate: float = 0.05
+        swa_learning_rate: Optional[float] = 0.05
 
     def __init__(self, optimizer, swa_start=None, swa_freq=None, swa_lr=None):
         r"""Implements Stochastic Weight Averaging (SWA).
