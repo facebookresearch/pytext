@@ -5,6 +5,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.models.crf import CRF
@@ -79,7 +80,8 @@ class L0_projection_sparsifier(Sparsifier):
 
     def sparsification_condition(self, state):
         return (
-            state.epoch >= self.starting_epoch
+            state.stage == Stage.TRAIN
+            and state.epoch >= self.starting_epoch
             and state.step_counter % self.frequency == 0
         )
 
@@ -88,8 +90,16 @@ class L0_projection_sparsifier(Sparsifier):
         obtain a mask and apply the mask to sparsify
         """
         model = state.model
-        masks = self.get_masks(model)
-        self.apply_masks(model, masks)
+        # compute new mask when conditions are True
+        if self.sparsification_condition(state):
+            masks = self.get_masks(model)
+            # applied the computed mask, self.accumulate_mask handled separately
+            if not self.accumulate_mask:
+                self.apply_masks(model, masks)
+
+        # if self.accumulate_mask is True, apply the existent mask irregardless Stage
+        if self.accumulate_mask and self._masks is not None:
+            self.apply_masks(model, self._masks)
 
     def apply_masks(self, model: Model, masks: List[torch.Tensor]):
         """
@@ -101,6 +111,10 @@ class L0_projection_sparsifier(Sparsifier):
             if len(m.size()):
                 assert m.size() == w.size()
                 w.data *= m.clone()
+                # if accumulate_mask, remove a param permanently by also removing
+                # its gradient
+                if self.accumulate_mask:
+                    w.grad.data *= m.clone()
 
     def get_masks(
         self, model: Model, pre_masks: List[torch.Tensor] = None
@@ -196,6 +210,9 @@ class CRF_SparsifierBase(Sparsifier):
         frequency: int = 1
 
     def sparsification_condition(self, state):
+        if state.stage == Stage.TRAIN:
+            return False
+
         return (
             state.epoch >= self.starting_epoch
             and state.step_counter % self.frequency == 0
@@ -237,6 +254,8 @@ class CRF_L1_SoftThresholding(CRF_SparsifierBase):
         return cls(config.lambda_l1, config.starting_epoch, config.frequency)
 
     def sparsify(self, state):
+        if not self.sparsification_condition(state):
+            return
         model = state.model
         transition_matrix = self.get_CRF_transition(model)
         transition_matrix_abs = torch.abs(transition_matrix)
@@ -283,6 +302,8 @@ class CRF_MagnitudeThresholding(CRF_SparsifierBase):
         )
 
     def sparsify(self, state):
+        if not self.sparsification_condition(state):
+            return
         model = state.model
         transition_matrix = self.get_CRF_transition(model)
         num_rows, num_cols = transition_matrix.shape
