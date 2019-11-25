@@ -210,6 +210,13 @@ class GPT2BPETokenizer(Tokenizer):
     def tokenize(self, input_str: str) -> List[Token]:
         bpe_ids = self.bpe.encode(input_str)
         char_tokens = [self.bpe.decoder[id].lstrip(u"\u0120") for id in bpe_ids]
+        # fix for incorrect decoding of utf-8 chars
+        char_tokens = [
+            bytearray([self.bpe.byte_decoder[char] for char in char_token]).decode(
+                "utf-8"
+            )
+            for char_token in char_tokens
+        ]
         lengths = [len(token) for token in char_tokens]
         tokens = []
         end = 0
