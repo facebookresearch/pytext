@@ -1,13 +1,20 @@
-Unsupervised Cross-lingual Representation Learning at Scale (XLM-RoBERTa)
+XLM-RoBERTa
 =========================================================================
 
 Introduction
 ------------
 
-XLM-R (XLM-RoBERTa) is scaled cross lingual sentence encoder. It is
+XLM-R (XLM-RoBERTa, Unsupervised Cross-lingual Representation Learning at Scale) is a scaled cross lingual sentence encoder. It is
 trained on ``2.5T`` of data across ``100`` languages data filtered from
 Common Crawl. XLM-R achieves state-of-the-arts results on multiple cross
 lingual benchmarks.
+
+Tutorial
+------------------
+
+`Tutorial in Notebook <https://github.com/facebookresearch/pytext/blob/master/demo/notebooks/xlm_r_tutorial.ipynb>`_
+
+`Run the tutorial in Google Colab <https://colab.research.google.com/github/facebookresearch/pytext/blob/master/demo/notebooks/xlm_r_tutorial.ipynb>`_
 
 Pre-trained models
 ------------------
