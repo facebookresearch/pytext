@@ -220,14 +220,9 @@ class Trainer(TrainerBase):
         if not self.config.sparsifier:
             return
 
-        if state.stage != Stage.TRAIN:
-            return
-
-        if state.sparsifier.sparsification_condition(state):
-            state.sparsifier.sparsify(state)
-
+        self.sparsifier.sparsify(state)
         if state.rank == 0:
-            current_sparsity = state.sparsifier.get_current_sparsity(state.model)
+            current_sparsity = self.sparsifier.get_current_sparsity(state.model)
             print(f"sparsity in the model: {current_sparsity}")
 
     def continue_training(self, state: TrainingState) -> bool:
