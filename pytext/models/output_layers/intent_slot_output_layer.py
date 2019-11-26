@@ -25,19 +25,18 @@ class IntentSlotScores(nn.Module):
     def forward(
         self,
         logits: Tuple[torch.Tensor, torch.Tensor],
-        seq_lengths: torch.Tensor,
-        token_indices: Optional[torch.Tensor] = None,
+        context: Dict[str, torch.Tensor],
     ) -> Tuple[List[Dict[str, float]], List[List[Dict[str, float]]]]:
         d_logits, w_logits = logits
-        if token_indices is not None:
+        if "token_indices" in context:
             w_logits = torch.gather(
                 w_logits,
                 1,
-                token_indices.unsqueeze(2).expand(-1, -1, w_logits.size(-1)),
+                context["token_indices"].unsqueeze(2).expand(-1, -1, w_logits.size(-1)),
             )
 
         d_results = self.doc_scores(d_logits)
-        w_results = self.word_scores(w_logits, seq_lengths)
+        w_results = self.word_scores(w_logits, context)
         return d_results, w_results
 
 

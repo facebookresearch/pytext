@@ -60,12 +60,12 @@ class OutputLayerTest(hu.HypothesisTestCase):
 
         self._validate_word_tagging_result(
             word_layer.get_pred(logits, None, context)[1],
-            torchsript_word_layer(logits, seq_lens_tensor),
+            torchsript_word_layer(logits, context),
             vocab,
         )
         self._validate_word_tagging_result(
             crf_layer.get_pred(logits, None, context)[1],
-            torchscript_crf_layer(logits, seq_lens_tensor),
+            torchscript_crf_layer(logits, context),
             vocab,
         )
 
@@ -103,7 +103,7 @@ class OutputLayerTest(hu.HypothesisTestCase):
         pt_output = intent_slot_output_layer.get_pred(
             (doc_logits, word_logits), None, context
         )[1]
-        ts_output = torchscript_output_layer((doc_logits, word_logits), seq_lens_tensor)
+        ts_output = torchscript_output_layer((doc_logits, word_logits), context)
 
         self._validate_doc_classification_result(pt_output[0], ts_output[0], doc_vocab)
         self._validate_word_tagging_result(pt_output[1], ts_output[1], word_vocab)
@@ -119,9 +119,7 @@ class OutputLayerTest(hu.HypothesisTestCase):
         pt_output = intent_slot_output_layer.get_pred(
             (doc_logits, word_bpe_logits), None, context
         )[1]
-        ts_output = torchscript_output_layer(
-            (doc_logits, word_bpe_logits), seq_lens_tensor, token_indices_tensor
-        )
+        ts_output = torchscript_output_layer((doc_logits, word_bpe_logits), context)
 
         self._validate_doc_classification_result(pt_output[0], ts_output[0], doc_vocab)
         self._validate_word_tagging_result(pt_output[1], ts_output[1], word_vocab)
