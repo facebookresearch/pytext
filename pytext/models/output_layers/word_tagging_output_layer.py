@@ -35,7 +35,7 @@ class WordTaggingScores(nn.Module):
         self.classes = classes
 
     def forward(
-        self, logits: torch.Tensor, seq_lengths: Optional[torch.Tensor] = None
+        self, logits: torch.Tensor, context: Optional[Dict[str, torch.Tensor]] = None
     ) -> List[List[Dict[str, float]]]:
         scores: torch.Tensor = F.log_softmax(logits, 2)
         return _get_prediction_from_scores(scores, self.classes)
@@ -48,9 +48,11 @@ class CRFWordTaggingScores(WordTaggingScores):
         self.crf.eval()
 
     def forward(
-        self, logits: torch.Tensor, seq_lengths: torch.Tensor
+        self, logits: torch.Tensor, context: Dict[str, torch.Tensor]
     ) -> List[List[Dict[str, float]]]:
-        pred = self.crf.decode(logits, seq_lengths)
+        # We need seq_lengths for CRF decode
+        assert "seq_lens" in context
+        pred = self.crf.decode(logits, context["seq_lens"])
         logits_rearranged = _rearrange_output(logits, pred)
         scores: torch.Tensor = F.log_softmax(logits_rearranged, 2)
         return _get_prediction_from_scores(scores, self.classes)
