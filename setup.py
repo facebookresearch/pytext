@@ -15,7 +15,7 @@ with open(REQUIREMENTS) as f:
 
 setuptools.setup(
     name="pytext-nlp",
-    version="0.2.3",
+    version="0.2.2",
     description="pytorch modeling framework and model zoo for text models",
     url="https://github.com/facebookresearch/PyText",
     author="Facebook",
