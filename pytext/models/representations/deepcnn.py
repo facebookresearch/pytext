@@ -238,19 +238,15 @@ class DeepCNNRepresentation(RepresentationBase):
         separable = config.separable
         bottleneck = config.bottleneck
 
-        conv_layers = []
-        linear_layers = []
+        conv_layers = {}
+        linear_layers = {}
         in_channels = embed_dim
 
         for i, k in enumerate(kernel_sizes):
             assert (k - 1) % 2 == 0
 
-            proj = (
-                nn.Linear(in_channels, out_channels)
-                if in_channels != out_channels
-                else None
-            )
-            linear_layers.append(proj)
+            if in_channels != out_channels:
+                linear_layers[str(i)] = nn.Linear(in_channels, out_channels)
 
             single_conv = create_conv_package(
                 index=i,
@@ -264,12 +260,12 @@ class DeepCNNRepresentation(RepresentationBase):
                 bottleneck=bottleneck,
                 weight_norm=weight_norm,
             )
-            conv_layers.append(single_conv)
+            conv_layers[str(i)] = single_conv
 
             in_channels = out_channels
 
-        self.convs = nn.ModuleList(conv_layers)
-        self.projections = nn.ModuleList(linear_layers)
+        self.convs = nn.ModuleDict(conv_layers)
+        self.projections = nn.ModuleDict(linear_layers)
         self.activation = get_activation(activation)
         self.pooling_type = pooling_type
 
@@ -280,12 +276,17 @@ class DeepCNNRepresentation(RepresentationBase):
         inputs = self.dropout(inputs)
         # bsz * seq_len * embed_dim -> bsz * embed_dim * seq_len
         words = inputs.permute(0, 2, 1)
-        for conv, proj in zip(self.convs, self.projections):
-            if proj:
+        convs_keys = self.convs.keys()
+        projections_keys = self.projections.keys()
+        # Extra verbosity is due to jit.script.
+        for k in convs_keys:
+            conv = self.convs[k]
+            if k not in projections_keys:
+                residual = words
+            else:
+                proj = self.projections[k]
                 tranposed = words.permute(0, 2, 1)
                 residual = proj(tranposed).permute(0, 2, 1)
-            else:
-                residual = words
             words = conv(words)
             words = self.activation(words)
             words = (words + residual) * math.sqrt(0.5)
