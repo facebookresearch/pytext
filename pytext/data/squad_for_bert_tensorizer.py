@@ -80,7 +80,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
                 row[self.answer_starts_column], row[self.answers_column]
             )
         ]
-        if not answer_start_indices and answer_end_indices:
+        if not (answer_start_indices and answer_end_indices):
             answer_start_indices = [self.SPAN_PAD_IDX]
             answer_end_indices = [self.SPAN_PAD_IDX]
 
