@@ -449,17 +449,20 @@ class Trainer(TrainerBase):
                 self.save_checkpoint(state, train_config)
 
         if self.optimizer.finalize():
-            state.stage = Stage.EVAL
-            model.eval(Stage.EVAL)
-            print(f"start evaluating finalized state")
-            with torch.no_grad():
-                eval_metric = self.run_epoch(state, eval_data, metric_reporter)
-            better_model = metric_reporter.compare_metric(
-                eval_metric, state.best_model_metric
-            )
-            if better_model:
+            should_update_model = True
+            eval_metric = None
+            if self.config.do_eval:
+                state.stage = Stage.EVAL
+                model.eval(Stage.EVAL)
+                print(f"start evaluating finalized state")
+                with torch.no_grad():
+                    eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+                should_update_model = metric_reporter.compare_metric(
+                    eval_metric, state.best_model_metric
+                )
+            if should_update_model:
                 self.update_best_model(state, train_config, eval_metric)
-            if better_model or train_config.save_all_checkpoints:
+            if should_update_model or train_config.save_all_checkpoints:
                 self.save_checkpoint(state, train_config)
         # Only bother loading the best model for master worker
         if rank == 0 and state.best_model_state is not None:
