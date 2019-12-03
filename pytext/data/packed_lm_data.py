@@ -9,7 +9,6 @@ from pytext.data.bert_tensorizer import BERTTensorizerBase
 from pytext.data.data import RowData
 from pytext.data.sources import DataSource
 from pytext.data.tensorizers import Tensorizer, TokenTensorizer
-from pytext.data.xlm_tensorizer import XLMTensorizer
 
 
 class PackedLMData(Data):
