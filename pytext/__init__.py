@@ -31,6 +31,13 @@ def _predict(workspace_id, predict_net, model, tensorizers, input):
         for name, tensorizer in tensorizers.items()
     }
     model_inputs = model.arrange_model_inputs(tensor_dict)
+    flat_model_inputs = []
+    for model_input in model_inputs:
+        if isinstance(model_input, tuple):
+            flat_model_inputs.extend(model_input)
+        else:
+            flat_model_inputs.append(model_input)
+    model_inputs = flat_model_inputs
     model_input_names = model.get_export_input_names(tensorizers)
     vocab_to_export = model.vocab_to_export(tensorizers)
     for blob_name, model_input in zip(model_input_names, model_inputs):
@@ -93,12 +100,14 @@ def batch_predict_caffe2_model(
     db_type: str = CAFFE2_DB_TYPE,
     data_source: Optional[DataSource] = None,
     use_cuda=False,
+    task: Optional[NewTask] = None,
+    train_config: Optional[PyTextConfig] = None,
 ):
     logging.info(f"Loading data processing config from {pytext_model_file}")
 
     _set_cuda(use_cuda)
-
-    task, train_config, _ = load(pytext_model_file)
+    if task is None or train_config is None:
+        task, train_config, _ = load(pytext_model_file)
 
     data_source = data_source or task.data.data_source
     logging.info("Loading Caffe2 model")

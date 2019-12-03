@@ -331,7 +331,7 @@ class TokenTensorizer(Tensorizer):
         """Tokenize, look up in vocabulary, return tokenized_texts in raw text"""
         tokenized_texts, start_idx, end_idx = self._tokenize(row[self.text_column])
         token_ranges = list(zip(start_idx, end_idx))
-        return tokenized_texts, len(tokenized_texts), token_ranges
+        return list(tokenized_texts), len(tokenized_texts), token_ranges
 
     def tensorize(self, batch):
         tokens, seq_lens, token_ranges = zip(*batch)
