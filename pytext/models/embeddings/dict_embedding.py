@@ -10,6 +10,7 @@ from pytext.config.module_config import PoolingType
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import PAD_INDEX, UNK_INDEX, Vocabulary
 from pytext.fields import FieldMeta
+from pytext.utils import cuda
 
 from .embedding_base import EmbeddingBase
 
@@ -132,9 +133,12 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
         max_toks = torch.onnx.operators.shape_as_tensor(lengths)[1]
 
-        # convert all unk indicec to pad indices so
-        # there vector was the 0 vector
-        feats[feats == self.unk_index] = self.pad_index
+        # convert all unk indices to pad indices
+        feats = torch.where(
+            feats == self.unk_index,
+            cuda.GetTensor(torch.full_like(feats, self.pad_index)),
+            feats,
+        )
 
         dict_emb = super().forward(feats)
 
