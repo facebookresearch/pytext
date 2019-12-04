@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
+from typing import Optional
 
 import torch
 from pytext.config import ConfigBase
@@ -8,6 +9,7 @@ from pytext.config.component import Component, ComponentType
 from pytext.optimizer import Optimizer
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR as TorchCosineAnnealingLR,
+    CyclicLR as TorchCyclicLR,
     ExponentialLR as TorchExponentialLR,
     ReduceLROnPlateau as TorchReduceLROnPlateau,
     StepLR as TorchStepLR,
@@ -279,6 +281,46 @@ class CosineAnnealingLR(TorchCosineAnnealingLR, BatchScheduler):
     @classmethod
     def from_config(cls, config: Config, optimizer: Optimizer):
         return cls(optimizer, config.t_max, config.eta_min)
+
+    def step_batch(self, metrics=None, epoch=None):
+        self.step(epoch)
+
+
+class CyclicLR(TorchCyclicLR, BatchScheduler):
+    """
+    Wrapper around `torch.optim.lr_scheduler.CyclicLR`
+    See the original documentation for more details
+    """
+
+    class Config(Scheduler.Config):
+        base_lr: float = 0.001
+        max_lr: float = 0.002
+        step_size_up: int = 2000
+        step_size_down: Optional[int] = None
+        mode: str = "triangular"
+        gamma: float = 1.0
+        scale_mode: str = "cycle"
+        cycle_momentum: bool = True
+        base_momentum: float = 0.8
+        max_momentum: float = 0.9
+        last_epoch: int = -1
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        return cls(
+            optimizer=optimizer,
+            base_lr=config.base_lr,
+            max_lr=config.max_lr,
+            step_size_up=config.step_size_up,
+            step_size_down=config.step_size_down,
+            mode=config.mode,
+            gamma=config.gamma,
+            scale_mode=config.scale_mode,
+            cycle_momentum=config.cycle_momentum,
+            base_momentum=config.base_momentum,
+            max_momentum=config.max_momentum,
+            last_epoch=config.last_epoch,
+        )
 
     def step_batch(self, metrics=None, epoch=None):
         self.step(epoch)
