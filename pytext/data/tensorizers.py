@@ -1326,7 +1326,7 @@ class AnnotationNumberizer(Tensorizer):
 
     @property
     def column_schema(self):
-        return [(self.column, List[str])]
+        return [(self.column, str)]
 
     def initialize(self, vocab_builder=None, from_scratch=True):
         """Build vocabulary based on training corpus."""
