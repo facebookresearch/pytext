@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import math
-from typing import Optional
+from typing import Optional, Union
 
 import torch
 from pytext.config import ConfigBase
-from pytext.config.component import Component, ComponentType
+from pytext.config.component import Component, ComponentType, create_scheduler
 from pytext.optimizer import Optimizer
 from torch.optim.lr_scheduler import (
     CosineAnnealingLR as TorchCosineAnnealingLR,
@@ -470,3 +470,70 @@ class PolynomialDecayScheduler(_LRScheduler, BatchScheduler):
         self.current_steps += 1
         # update optimizer.param_groups's learning rate
         self.step()
+
+
+class SchedulerWithWarmup(_LRScheduler, BatchScheduler):
+    """
+    Wraps another scheduler with a warmup phase. After `warmup_steps` defined in
+    warmup_scheduler.warmup_steps, the scheduler will switch to use the specified
+    scheduler in `scheduler`.
+
+    `warmup_scheduler`: is the configuration for the WarmupScheduler, that warms up
+    learning rate over `warmup_steps` linearly.
+
+    `scheduler`: is the main scheduler that will be applied after the warmup phase
+    (once `warmup_steps` have passed)
+    """
+
+    class Config(BatchScheduler.Config):
+        # the definition of the warmup scheduler for the warmup phase
+        warmup_scheduler: WarmupScheduler.Config = WarmupScheduler.Config()
+
+        # the definition of the main scheduler to apply once the warmup phase
+        # has passed
+        scheduler: Union[
+            ExponentialLR.Config,
+            CosineAnnealingLR.Config,
+            ReduceLROnPlateau.Config,
+            LmFineTuning.Config,
+            CyclicLR.Config,
+        ]
+
+    @classmethod
+    def from_config(cls, config: Config, optimizer: Optimizer):
+        warmup_scheduler = create_scheduler(config.warmup_scheduler, optimizer)
+        scheduler = create_scheduler(config.scheduler, optimizer)
+        return cls(
+            optimizer, warmup_scheduler, scheduler, config.warmup_scheduler.warmup_steps
+        )
+
+    def prepare(self, train_iter, total_epochs):
+        super().prepare(train_iter, total_epochs)
+        self.warmup_scheduler.prepare(train_iter, total_epochs)
+        self.scheduler.prepare(train_iter, total_epochs)
+
+    def __init__(self, optimizer, warmup_scheduler, scheduler, switch_steps):
+        self.optimizer = optimizer
+        self.warmup_scheduler = warmup_scheduler
+        self.scheduler = scheduler
+        self.switch_steps = switch_steps
+        self.curr_steps = 0
+
+    def step_batch(self):
+        if self.curr_steps < self.switch_steps:
+            self.curr_steps += 1
+            return self.warmup_scheduler.step_batch()
+        else:
+            return self.scheduler.step_batch()
+
+    def step_epoch(self, metrics, epoch):
+        if self.curr_steps < self.switch_steps:
+            return self.warmup_scheduler.step_epoch(metrics=metrics, epoch=epoch)
+        else:
+            return self.scheduler.step_epoch(metrics=metrics, epoch=None)
+
+    def get_lr(self):
+        if self.curr_steps < self.switch_steps:
+            return self.warmup_scheduler.get_lr()
+        else:
+            return self.scheduler.get_lr()
