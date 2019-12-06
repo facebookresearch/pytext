@@ -10,7 +10,7 @@ import warnings
 from unittest import TestCase
 
 import torch
-from pytext.optimizer import StochasticWeightAveraging
+from pytext.optimizer import Lamb, StochasticWeightAveraging
 from torch import nn, optim, sparse
 from torch.autograd import Variable
 from torch.utils import data
@@ -675,3 +675,11 @@ class TestSWA(TestCase):
         test(CNN, (objects, channels, height, width), objects, "cpu")
         if torch.cuda.is_available():
             test(CNN, (objects, channels, height, width), objects, "cuda")
+
+    def test_lamb(self):
+        def lamb_constructor(params):
+            return StochasticWeightAveraging(
+                Lamb(params, weight_decay=0.01), swa_start=1000, swa_freq=1, swa_lr=1e-2
+            )
+
+        self._test_rosenbrock(lamb_constructor, automode=False)
