@@ -6,6 +6,7 @@ from pytext.optimizer.fp16_optimizer import (  # noqa
     FP16OptimizerApex,
     FP16OptimizerFairseq,
 )
+from pytext.optimizer.lamb import Lamb  # noqa
 from pytext.optimizer.optimizers import (  # noqa
     SGD,
     Adagrad,
