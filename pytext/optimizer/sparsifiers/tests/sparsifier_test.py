@@ -89,7 +89,9 @@ class TestSparsifier(unittest.TestCase):
         block_sz = 3
         blockwise_sparsifier = self._get_blockwise_sparsifier(block_sz, sparsity)
         param = torch.tensor([i for i in range(100)], dtype=float).view(10, 10)
-        pre_mask = torch.tensor([i % 2 for i in range(100)], dtype=float).view(10, 10)
+        param = param - param.new_ones(param.shape) * 50
+        pre_mask = param.new_zeros(param.shape)
+        pre_mask[5:, :] = torch.ones(pre_mask[5:, :].shape)
         block_l1_norms = param.new_zeros(param.shape)
         # loop-based implementation to compute blockwise l1norm
         abs_vals = []
@@ -97,14 +99,21 @@ class TestSparsifier(unittest.TestCase):
             for j in range(0, 10, block_sz):
                 block_l1_norms[i, j : j + block_sz] = torch.sum(
                     torch.abs(param[i, j : j + block_sz])
+                    * pre_mask[i, j : j + block_sz]
                 )
-                abs_vals.append(torch.sum(torch.abs(param[i, j : j + block_sz])))
+                abs_vals.append(
+                    torch.sum(
+                        torch.abs(param[i, j : j + block_sz])
+                        * pre_mask[i, j : j + block_sz]
+                    )
+                )
 
-        nnz = math.ceil(100 * (1 - sparsity))
-        nnz_blocks = math.ceil(nnz / block_sz)
+        nnz_unpruned = torch.nonzero(pre_mask).size(0)
+        max_num_nonzeros = math.ceil(nnz_unpruned * (1 - sparsity))
+        nnz_blocks = math.ceil(max_num_nonzeros / block_sz)
         abs_vals.sort(reverse=True)
         threshold = abs_vals[nnz_blocks - 1]
-        true_mask = (block_l1_norms >= threshold).to(param.dtype) * pre_mask
+        true_mask = (block_l1_norms >= threshold).to(param.dtype)
         mask = blockwise_sparsifier._compute_param_mask(param, pre_mask)
         diff = torch.sum(torch.abs(mask - true_mask)).item()
         self.assertTrue(diff <= 0.00000001)

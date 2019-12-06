@@ -76,7 +76,7 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
         self.block_size = block_size
         self.columnwise_blocking = columnwise_blocking
         self.accumulate_mask = accumulate_mask
-        self._pre_masks = None
+        self._masks = None
         assert self.layerwise_pruning, "layerwise pruning is forced"
 
     @classmethod
@@ -98,8 +98,11 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
         padded_param[:nrows, :ncols] = param
         return padded_param
 
-    def _num_blocks_kept(self, param):
-        max_num_nonzeros = math.ceil(param.numel() * (1 - self.sparsity))
+    def _num_blocks_kept(self, param, mask):
+        if mask is None:
+            mask = param.new_ones(param.shape)
+        unpruned_param_sz = torch.nonzero(mask).size(0)
+        max_num_nonzeros = math.ceil(unpruned_param_sz * (1 - self.sparsity))
         return math.ceil(max_num_nonzeros / self.block_size)
 
     def _compute_param_mask(
@@ -114,11 +117,14 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
                 pre_mask=(pre_mask.transpose(1, 0) if pre_mask else None),
             ).transpose(1, 0)
         padded_param = self._padding_into_full_blocks(param)
+        if pre_mask is not None:
+            padded_mask = self._padding_into_full_blocks(pre_mask)
+            padded_param.data = padded_param.data * padded_mask
+
         block_l1norms = (
             torch.abs(padded_param).reshape(-1, 1, self.block_size).sum(dim=2)
         )
-        max_num_blocks = self._num_blocks_kept(param)
-
+        max_num_blocks = self._num_blocks_kept(param, pre_mask)
         topk_threshold = (
             torch.topk(block_l1norms.flatten(), max_num_blocks).values.min().item()
         )
@@ -137,27 +143,27 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
 
         learnableparams = [p for p in model.parameters() if p.requires_grad]
         if pre_masks:
-            self._pre_masks = pre_masks
+            self._masks = pre_masks
 
-        if self._pre_masks:
+        if self._masks:
             assert len(learnableparams) == len(
-                self._pre_masks
+                self._masks
             ), "parameter dimension and mask dimension does not match"
-            for m, w in zip(self._pre_masks, learnableparams):
+            for m, w in zip(self._masks, learnableparams):
                 # check only for non-empty mask
                 if len(m.size()):
                     assert (
                         m.size() == w.size()
                     ), "parameter dimension and mask dimension does not match"
 
-        if self._pre_masks is not None:
+        if self._masks is not None:
             # sparsifying 2D tensor only, skip mask for unlearnable
             # and unsparsifierable param
             masks = [
                 self._compute_param_mask(p, m, self.columnwise_blocking)
                 if len(p.shape) == 2 and p.requires_grad
                 else p.new_empty(())
-                for p, m in zip(learnableparams, self._pre_masks)
+                for p, m in zip(learnableparams, self._masks)
             ]
         else:
             # sparsifying 2D tensor only, skip mask for unlearnable
@@ -171,5 +177,5 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
                 for p in learnableparams
             ]
         if self.accumulate_mask:
-            self._pre_masks = masks
+            self._masks = masks
         return masks
