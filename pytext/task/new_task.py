@@ -157,7 +157,9 @@ class _NewTask(TaskBase):
             ComponentType.MODEL, model_config, tensorizers=tensorizers
         )
         if model_state:
+            print("Loading model from model state dict...")
             model.load_state_dict(model_state)
+            print("Loaded!")
 
         if cuda.CUDA_ENABLED:
             model = model.cuda()

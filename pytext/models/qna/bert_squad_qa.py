@@ -98,17 +98,18 @@ class BertSquadQAModel(NewBertModel):
             answer_start_indices,
             answer_end_indices,
         ) = tensor_dict["squad_input"]
-        # label = True if answer exists
-        label = tensor_dict["has_answer"]
-        return answer_start_indices, answer_end_indices, label
+        # has_answer = True if answer exists
+        has_answer = tensor_dict["has_answer"]
+        return answer_start_indices, answer_end_indices, has_answer
 
     def forward(self, *inputs):
+        tokens, pad_mask, segment_labels, _ = inputs  # See arrange_model_inputs()
         encoded_layers, cls_embed = self.encoder(inputs)
         pos_logits = self.decoder(encoded_layers[-1])
         if isinstance(pos_logits, (list, tuple)):
             pos_logits = pos_logits[0]
 
-        has_ans_logits = (
+        has_answer_logits = (
             torch.zeros((pos_logits.size(0), 2))  # dummy tensor
             if self.output_layer.ignore_impossible
             else self.has_ans_decoder(cls_embed)
@@ -122,4 +123,4 @@ class BertSquadQAModel(NewBertModel):
         start_logits = start_logits.squeeze(-1)
         end_logits = end_logits.squeeze(-1)
 
-        return start_logits, end_logits, has_ans_logits
+        return start_logits, end_logits, has_answer_logits, pad_mask, segment_labels

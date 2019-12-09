@@ -149,4 +149,9 @@ class TestConfig(ConfigBase):
     test_out_path: str = ""
 
 
+class LogitsConfig(TestConfig):
+    # Whether to dump the raw input to output file.
+    dump_raw_input: bool = False
+
+
 LATEST_VERSION = 18
