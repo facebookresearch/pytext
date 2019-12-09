@@ -105,7 +105,7 @@ class SquadOutputLayer(OutputLayerBase):
         targets: torch.Tensor,
         contexts: Dict[str, List[Any]],
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor]]:
-        start_pos_logits, end_pos_logits, has_answer_logits = logits
+        start_pos_logits, end_pos_logits, has_answer_logits, _, _ = logits
         start_pos_preds, end_pos_preds = self.get_position_preds(
             start_pos_logits, end_pos_logits, self.max_answer_len
         )
@@ -133,7 +133,7 @@ class SquadOutputLayer(OutputLayerBase):
 
     def get_loss(
         self,
-        logits: Tuple[torch.Tensor, torch.Tensor],
+        logits: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         targets: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         contexts: Dict[str, Any] = None,
         *args,
@@ -152,7 +152,7 @@ class SquadOutputLayer(OutputLayerBase):
             torch.Tensor: Model loss.
 
         """
-        start_pos_logit, end_pos_logit, has_answer_logit = logits
+        start_pos_logit, end_pos_logit, has_answer_logit, _, _ = logits
         start_pos_target, end_pos_target, has_answer_target = targets
 
         num_answers = start_pos_target.size()[-1]

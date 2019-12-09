@@ -3,6 +3,7 @@
 
 import json
 import math
+import os
 from typing import List, Optional
 
 from pytext.data.sources.data_source import (
@@ -70,6 +71,10 @@ def _split_document(
 def process_squad_json(fname, ignore_impossible, max_character_length, min_overlap):
     if not fname:
         return
+    if not os.path.exists(fname):
+        print(f"{fname} does not exist. Not unflattening.")
+        return
+
     with open(fname) as infile:
         dump = json.load(infile)
 
