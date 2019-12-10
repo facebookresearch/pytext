@@ -87,6 +87,10 @@ EOS = SpecialToken("__END_OF_SENTENCE__")
 BOL = SpecialToken("__BEGIN_OF_LIST__")
 EOL = SpecialToken("__END_OF_LIST__")
 MASK = SpecialToken("__MASK__")
+# BOS and EOS is too long for Byte-level Language Model.
+# Todo: find out conbination of bytes with low-frequency and shorter length
+BYTE_BOS = SpecialToken("^")
+BYTE_EOS = SpecialToken("#")
 
 UNK_INDEX = 0
 PAD_INDEX = 1

@@ -49,6 +49,7 @@ class LanguageModelMetricReporter(MetricReporter):
     UTTERANCE_COLUMN = "utterance"
     RAW_TEXT_COLUMN = "text"
     TOKENS_COLUMN = "tokens"
+    LABELS_COLUMN = "labels"
     lower_is_better = True
 
     class Config(MetricReporter.Config):
@@ -84,7 +85,14 @@ class LanguageModelMetricReporter(MetricReporter):
         if metadata:
             self.pad_index = metadata.target.pad_token_idx
         if tensorizers:
-            self.pad_index = tensorizers[self.TOKENS_COLUMN].vocab.get_pad_index()
+            if self.TOKENS_COLUMN in tensorizers:
+                column = self.TOKENS_COLUMN
+            elif self.LABELS_COLUMN in tensorizers:
+                column = self.LABELS_COLUMN
+            if hasattr(tensorizers[column], "vocab"):
+                self.pad_index = tensorizers[column].vocab.get_pad_index()
+            else:
+                self.pad_index = tensorizers[column].PAD_BYTE
         self.perplexity_func = get_perplexity_func(perplexity_type)
 
     def add_batch_stats(
