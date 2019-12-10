@@ -24,6 +24,8 @@ from pytext.utils.data import Slot
 from .utils import (
     BOL,
     BOS,
+    BYTE_BOS,
+    BYTE_EOS,
     EOL,
     EOS,
     PAD,
@@ -360,15 +362,36 @@ class ByteTensorizer(Tensorizer):
         column: str = "text"
         lower: bool = True
         max_seq_len: Optional[int] = None
+        add_bos_token: Optional[bool] = False
+        add_eos_token: Optional[bool] = False
+        use_eos_token_for_bos: Optional[bool] = False
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.lower, config.max_seq_len)
+        return cls(
+            config.column,
+            config.lower,
+            config.max_seq_len,
+            config.add_bos_token,
+            config.add_eos_token,
+            config.use_eos_token_for_bos,
+        )
 
-    def __init__(self, text_column, lower=True, max_seq_len=None):
+    def __init__(
+        self,
+        text_column,
+        lower=True,
+        max_seq_len=None,
+        add_bos_token=Config.add_bos_token,
+        add_eos_token=Config.add_eos_token,
+        use_eos_token_for_bos=Config.use_eos_token_for_bos,
+    ):
         self.text_column = text_column
         self.lower = lower
         self.max_seq_len = max_seq_len
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
 
     @property
     def column_schema(self):
@@ -376,12 +399,19 @@ class ByteTensorizer(Tensorizer):
 
     def numberize(self, row):
         """Convert text to characters."""
-        text = row[self.text_column]
+        text = row[self.text_column].strip()
         if self.lower:
             text = text.lower()
+
         bytes = list(text.encode())
+
         if self.max_seq_len:
             bytes = bytes[: self.max_seq_len]
+        if self.add_bos_token:
+            bos = BYTE_EOS if self.use_eos_token_for_bos else BYTE_BOS
+            bytes = list(bos.encode()) + bytes
+        if self.add_eos_token:
+            bytes = bytes + list(BYTE_EOS.encode())
         return bytes, len(bytes)
 
     def tensorize(self, batch):
