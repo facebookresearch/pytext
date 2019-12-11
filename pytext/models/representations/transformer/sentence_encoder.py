@@ -4,6 +4,7 @@
 import re
 from typing import Optional
 
+import torch
 from torch import nn
 
 from .transformer import Transformer
@@ -75,6 +76,47 @@ def rename_component_from_root(state, old_name, new_name):
     )
 
 
+def merge_input_projection(state):
+    """
+    New checkpoints of fairseq multihead attention split in_projections into
+    k,v,q projections. This function merge them back to to make it compatible.
+    """
+    items_to_add = {}
+    keys_to_remove = []
+    bias_suffix = ["q_proj.bias", "k_proj.bias", "v_proj.bias"]
+    weight_suffix = ["q_proj.weight", "k_proj.weight", "v_proj.weight"]
+
+    def override_state(k, suffix, new_suffix, idx):
+        new_key = k[: -len(suffix)] + new_suffix
+        dim = state[k].shape[0]
+        if new_key not in items_to_add:
+            items_to_add[new_key] = (
+                torch.zeros_like(state[k]).repeat(3, 1)
+                if len(state[k].shape) > 1
+                else torch.zeros_like(state[k]).repeat(3)
+            )
+        items_to_add[new_key][idx * dim : (idx + 1) * dim] = state[k]
+        keys_to_remove.append(k)
+
+    for k in state.keys():
+        # weights
+        for idx, suffix in enumerate(weight_suffix):
+            if k.endswith(suffix):
+                override_state(k, suffix, "in_proj_weight", idx)
+        # bias
+        for idx, suffix in enumerate(bias_suffix):
+            if k.endswith(suffix):
+                override_state(k, suffix, "in_proj_bias", idx)
+
+    for k in keys_to_remove:
+        del state[k]
+
+    for key, value in items_to_add.items():
+        state[key] = value
+
+    return state
+
+
 def translate_roberta_state_dict(state_dict):
     """Translate the public RoBERTa weights to ones which match SentenceEncoder."""
     new_state = rename_component_from_root(
@@ -87,11 +129,13 @@ def translate_roberta_state_dict(state_dict):
     )
     new_state = rename_state_keys(new_state, "emb_layer_norm", "embedding_layer_norm")
     new_state = rename_state_keys(new_state, "self_attn", "attention")
+    new_state = merge_input_projection(new_state)
     new_state = rename_state_keys(new_state, "_proj.(.*)", r"put_projection.\1")
     new_state = rename_state_keys(new_state, "fc1", "residual_mlp.mlp.0")
     new_state = rename_state_keys(new_state, "fc2", "residual_mlp.mlp.3")
 
     new_state = remove_state_keys(new_state, "^sentence_")
+    new_state = remove_state_keys(new_state, "_classification_head.")
     new_state = remove_state_keys(new_state, r"^decoder\.lm_head")
     new_state = remove_state_keys(new_state, r"segment_embedding")
     return new_state
