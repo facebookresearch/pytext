@@ -91,7 +91,7 @@ MASK = SpecialToken("__MASK__")
 # Todo: find out conbination of bytes with low-frequency and shorter length
 BYTE_BOS = SpecialToken("^")
 BYTE_EOS = SpecialToken("#")
-
+BYTE_SPACE = SpecialToken(" ")
 UNK_INDEX = 0
 PAD_INDEX = 1
 
