@@ -176,4 +176,12 @@ class ScriptXLMTensorizer(ScriptTensorizer):
             pad_2d(positions_2d, seq_lens=seq_len_2d, pad_idx=0), dtype=torch.long
         )
 
-        return tokens, pad_mask, languages, positions
+        if self.device == "":
+            return tokens, pad_mask, languages, positions
+        else:
+            return (
+                tokens.to(self.device),
+                pad_mask.to(self.device),
+                languages.to(self.device),
+                positions.to(self.device),
+            )

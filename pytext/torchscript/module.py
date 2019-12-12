@@ -17,7 +17,13 @@ def get_script_module_cls(input_type: ScriptInputType) -> torch.jit.ScriptModule
         raise RuntimeError("Only support text or token input type...")
 
 
-class ScriptTextModule(torch.jit.ScriptModule):
+class ScriptModule(torch.jit.ScriptModule):
+    @torch.jit.script_method
+    def set_device(self, device: str):
+        self.tensorizer.set_device(device)
+
+
+class ScriptTextModule(ScriptModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -36,7 +42,7 @@ class ScriptTextModule(torch.jit.ScriptModule):
         return self.output_layer(logits)
 
 
-class ScriptTokenModule(torch.jit.ScriptModule):
+class ScriptTokenModule(ScriptModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -55,7 +61,7 @@ class ScriptTokenModule(torch.jit.ScriptModule):
         return self.output_layer(logits)
 
 
-class ScriptTokenLanguageModule(torch.jit.ScriptModule):
+class ScriptTokenLanguageModule(ScriptModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -76,7 +82,7 @@ class ScriptTokenLanguageModule(torch.jit.ScriptModule):
         return self.output_layer(logits)
 
 
-class ScriptTokenLanguageModuleWithDenseFeature(torch.jit.ScriptModule):
+class ScriptTokenLanguageModuleWithDenseFeature(ScriptModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,

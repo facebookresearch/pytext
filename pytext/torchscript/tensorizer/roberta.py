@@ -98,4 +98,13 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
             dtype=torch.long,
         )
 
-        return tokens, pad_mask, start_indices, end_indices, positions
+        if self.device == "":
+            return tokens, pad_mask, start_indices, end_indices, positions
+        else:
+            return (
+                tokens.to(self.device),
+                pad_mask.to(self.device),
+                start_indices.to(self.device),
+                end_indices.to(self.device),
+                positions.to(self.device),
+            )

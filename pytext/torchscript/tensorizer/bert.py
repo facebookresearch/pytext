@@ -103,7 +103,15 @@ class ScriptBERTTensorizerBase(ScriptTensorizer):
             dtype=torch.long,
         )
 
-        return tokens, pad_mask, segment_labels, positions
+        if self.device == "":
+            return tokens, pad_mask, segment_labels, positions
+        else:
+            return (
+                tokens.to(self.device),
+                pad_mask.to(self.device),
+                segment_labels.to(self.device),
+                positions.to(self.device),
+            )
 
 
 class ScriptBERTTensorizer(ScriptBERTTensorizerBase):

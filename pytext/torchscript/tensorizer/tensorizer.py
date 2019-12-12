@@ -8,6 +8,14 @@ from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class ScriptTensorizer(torch.jit.ScriptModule):
+    def __init__(self):
+        super().__init__()
+        self.device = torch.jit.Attribute("", str)
+
+    @torch.jit.script_method
+    def set_device(self, device: str):
+        self.device = device
+
     @torch.jit.script_method
     def tokenize(
         self, text_row: Optional[List[str]], token_row: Optional[List[List[str]]]
