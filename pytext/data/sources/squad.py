@@ -345,8 +345,8 @@ class SquadDataSourceForKD(SquadDataSource):
     """
     Squad-like data along with soft labels (logits).
     Will return tuples of (
-        doc, question, answer, answer_start, has_answer,
-        start_logits, end_logits, has_answer_logits, pad_mask, segment_labels
+    doc, question, answer, answer_start, has_answer,
+    start_logits, end_logits, has_answer_logits, pad_mask, segment_labels
     )
     """
 
