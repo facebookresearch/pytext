@@ -31,6 +31,8 @@ class TSV:
         self.delimiter = delimiter
         self.quoted = quoted
         self.drop_incomplete_rows = drop_incomplete_rows
+        self.total_rows_count = 0
+        self.incomplete_rows_count = 0
         self._access_lock = threading.Lock()
         csv.field_size_limit(sys.maxsize)
 
@@ -48,13 +50,20 @@ class TSV:
             )
             if self.drop_incomplete_rows:
                 for row in reader:
+                    self.total_rows_count += 1
                     if any(map(lambda v: v is None, row.values())):  # drop!
+                        self.incomplete_rows_count += 1
                         continue
                     yield row
             else:
                 yield from reader
         finally:
             self._access_lock.release()
+
+    def __del__(self):
+        print("Destroying TSV object")
+        print(f"Total number of rows read: {self.total_rows_count}")
+        print(f"Total number of rows dropped: {self.incomplete_rows_count}")
 
 
 class TSVDataSource(RootDataSource):

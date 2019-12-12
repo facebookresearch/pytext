@@ -3,6 +3,7 @@
 from typing import Union
 
 import torch
+import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.data.squad_for_bert_tensorizer import (
     SquadForBERTTensorizer,
@@ -44,6 +45,7 @@ class BertSquadQAModel(NewBertModel):
         pos_decoder: MLPDecoder.Config = MLPDecoder.Config(out_dim=2)
         has_ans_decoder: MLPDecoder.Config = MLPDecoder.Config(out_dim=2)
         output_layer: SquadOutputLayer.Config = SquadOutputLayer.Config()
+        is_kd: bool = False
 
     @classmethod
     def from_config(cls, config: Config, tensorizers):
@@ -67,40 +69,60 @@ class BertSquadQAModel(NewBertModel):
             out_dim=len(has_answer_labels),
         )
 
-        output_layer = create_module(config.output_layer, labels=has_answer_labels)
+        output_layer = create_module(
+            config.output_layer, labels=has_answer_labels, is_kd=config.is_kd
+        )
 
-        return cls(encoder, pos_decoder, has_ans_decoder, output_layer)
+        return cls(
+            encoder, pos_decoder, has_ans_decoder, output_layer, is_kd=config.is_kd
+        )
 
     def __init__(
-        self, encoder, decoder, has_ans_decoder, output_layer, stage=Stage.TRAIN
+        self,
+        encoder: nn.Module,
+        decoder: nn.Module,
+        has_ans_decoder: nn.Module,
+        output_layer: nn.Module,
+        stage: Stage = Stage.TRAIN,
+        is_kd: bool = Config.is_kd,
     ) -> None:
         super().__init__(encoder, decoder, output_layer, stage)
         self.has_ans_decoder = has_ans_decoder
         self.module_list.append(has_ans_decoder)
+        self.is_kd = is_kd
 
     def arrange_model_inputs(self, tensor_dict):
-        (
-            tokens,
-            pad_mask,
-            segment_labels,
-            positions,
-            answer_start_indices,
-            answer_end_indices,
-        ) = tensor_dict["squad_input"]
+        tokens, pad_mask, segment_labels, positions, *ignore = tensor_dict[
+            "squad_input"
+        ]
         return tokens, pad_mask, segment_labels, positions
 
     def arrange_targets(self, tensor_dict):
-        (
-            tokens,
-            pad_mask,
-            segment_labels,
-            positions,
-            answer_start_indices,
-            answer_end_indices,
-        ) = tensor_dict["squad_input"]
         # has_answer = True if answer exists
         has_answer = tensor_dict["has_answer"]
-        return answer_start_indices, answer_end_indices, has_answer
+        if not self.is_kd:
+            _, _, _, _, answer_start_idx, answer_end_idx = tensor_dict["squad_input"]
+            return answer_start_idx, answer_end_idx, has_answer
+        else:
+            (
+                _,
+                _,
+                _,
+                _,
+                answer_start_idx,
+                answer_end_idx,
+                start_logits,
+                end_logits,
+                has_answer_logits,
+            ) = tensor_dict["squad_input"]
+            return (
+                answer_start_idx,
+                answer_end_idx,
+                has_answer,
+                start_logits,
+                end_logits,
+                has_answer_logits,
+            )
 
     def forward(self, *inputs):
         tokens, pad_mask, segment_labels, _ = inputs  # See arrange_model_inputs()

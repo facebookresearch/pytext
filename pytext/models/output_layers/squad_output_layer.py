@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
 from pytext.config.component import create_loss
 from pytext.fields import FieldMeta
-from pytext.loss import CrossEntropyLoss, Loss
+from pytext.loss import CrossEntropyLoss, KLDivergenceCELoss, Loss
 from pytext.models.output_layers import OutputLayerBase
 
 
 class SquadOutputLayer(OutputLayerBase):
     class Config(OutputLayerBase.Config):
-        loss: CrossEntropyLoss.Config = CrossEntropyLoss.Config()
+        loss: Union[
+            CrossEntropyLoss.Config, KLDivergenceCELoss.Config
+        ] = CrossEntropyLoss.Config()
         ignore_impossible: bool = True
         pos_loss_weight: float = 0.5
         has_answer_loss_weight: float = 0.5
         false_label: str = "False"
         max_answer_len: int = 30
+        # For knowledge distillation we have soft and hard labels. This specifies
+        # the weight on loss against hard labels.
+        hard_weight: float = 0.0
 
     @classmethod
     def from_config(
@@ -26,6 +31,7 @@ class SquadOutputLayer(OutputLayerBase):
         config,
         metadata: Optional[FieldMeta] = None,
         labels: Optional[Iterable[str]] = None,
+        is_kd: bool = False,
     ):
         return cls(
             loss_fn=create_loss(config.loss, ignore_index=-100),
@@ -35,6 +41,8 @@ class SquadOutputLayer(OutputLayerBase):
             has_answer_labels=labels,
             false_label=config.false_label,
             max_answer_len=config.max_answer_len,
+            hard_weight=config.hard_weight,
+            is_kd=is_kd,
         )
 
     def __init__(
@@ -46,6 +54,8 @@ class SquadOutputLayer(OutputLayerBase):
         has_answer_labels: Iterable[str] = ("False", "True"),
         false_label: str = Config.false_label,
         max_answer_len: int = Config.max_answer_len,
+        hard_weight: float = Config.hard_weight,
+        is_kd: bool = False,
     ) -> None:
         super().__init__(loss_fn=loss_fn)
         self.pos_loss_weight = pos_loss_weight
@@ -56,6 +66,8 @@ class SquadOutputLayer(OutputLayerBase):
         if not ignore_impossible:
             self.false_idx = 1 if has_answer_labels[1] == false_label else 0
             self.true_idx = 1 - self.false_idx
+        self.is_kd = is_kd
+        self.hard_weight = hard_weight
 
     def get_position_preds(
         self,
@@ -133,9 +145,9 @@ class SquadOutputLayer(OutputLayerBase):
 
     def get_loss(
         self,
-        logits: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-        targets: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
-        contexts: Dict[str, Any] = None,
+        logits: Tuple[torch.Tensor, ...],
+        targets: Tuple[torch.Tensor, ...],
+        contexts: Optional[Dict[str, Any]] = None,
         *args,
         **kwargs,
     ) -> torch.Tensor:
@@ -152,21 +164,31 @@ class SquadOutputLayer(OutputLayerBase):
             torch.Tensor: Model loss.
 
         """
-        start_pos_logit, end_pos_logit, has_answer_logit, _, _ = logits
-        start_pos_target, end_pos_target, has_answer_target = targets
+        return (
+            self._get_soft_hard_loss(logits, targets)
+            if self.is_kd
+            else self._get_hard_loss(logits, targets)
+        )
 
+    def _get_hard_loss(
+        self,
+        logits: Tuple[torch.Tensor, torch.Tensor],
+        targets: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    ):
+        start_pos_logits, end_pos_logits, has_answer_logits, _, _ = logits
+        start_pos_target, end_pos_target, has_answer_target = targets
         num_answers = start_pos_target.size()[-1]
         if num_answers == 0:
-            start_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logit)
-            end_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logit)
+            start_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logits)
+            end_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logits)
         else:
             start_loss = self.loss_fn(
-                start_pos_logit.repeat((num_answers, 1)),
+                start_pos_logits.repeat((num_answers, 1)),
                 start_pos_target.transpose(1, 0).flatten(),
                 reduce=False,
             )
             end_loss = self.loss_fn(
-                end_pos_logit.repeat((num_answers, 1)),
+                end_pos_logits.repeat((num_answers, 1)),
                 end_pos_target.transpose(1, 0).flatten(),
                 reduce=False,
             )
@@ -176,9 +198,89 @@ class SquadOutputLayer(OutputLayerBase):
                 has_answer_target.repeat((num_answers,)) == self.true_idx
             ).float()
             position_loss = (has_answer_mask * (start_loss + end_loss)).mean()
-            has_answer_loss = self.loss_fn(has_answer_logit, has_answer_target)
+            has_answer_loss = self.loss_fn(has_answer_logits, has_answer_target)
             loss = (
                 self.has_answer_loss_weight * has_answer_loss
                 + self.pos_loss_weight * position_loss
             )
         return loss
+
+    def _get_soft_hard_loss(
+        self,
+        logits: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        targets: Tuple[
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+        ],
+    ):
+        start_pos_logits, end_pos_logits, has_answer_logits, _, _ = logits
+        (
+            start_pos_target,
+            end_pos_target,
+            has_answer_target,
+            start_pos_target_logits,
+            end_pos_target_logits,
+            has_answer_target_logits,
+        ) = targets
+        num_answers = start_pos_target.size()[-1]
+
+        # Start and end position losses
+        start_soft_loss, start_hard_loss = self.loss_fn(
+            start_pos_logits.repeat((num_answers, 1)),
+            (
+                start_pos_target.transpose(1, 0).flatten(),
+                None,
+                start_pos_target_logits.repeat((num_answers, 1)),
+            ),
+            reduce=False,
+            combine_loss=False,
+        )
+        end_soft_loss, end_hard_loss = self.loss_fn(
+            end_pos_logits.repeat((num_answers, 1)),
+            (
+                end_pos_target.transpose(1, 0).flatten(),
+                None,
+                end_pos_target_logits.repeat((num_answers, 1)),
+            ),
+            reduce=False,
+            combine_loss=False,
+        )
+
+        # Sum up along sequence length dimension.
+        # Example for KL-divergence: we need to sum up p_i * log(q_i) over i.
+        start_soft_loss = torch.sum(start_soft_loss, dim=1)
+        end_soft_loss = torch.sum(end_soft_loss, dim=1)
+
+        # Weighted sum of soft and hard loss of start and end positions.
+        start_loss = self._weighted_loss(start_soft_loss, start_hard_loss)
+        end_loss = self._weighted_loss(end_soft_loss, end_hard_loss)
+        loss = (start_loss + end_loss).mean()
+
+        if not self.ignore_impossible:
+            has_answer_mask = (
+                has_answer_target.repeat((num_answers,)) == self.true_idx
+            ).float()
+            position_loss = (has_answer_mask * (start_loss + end_loss)).mean()
+
+            has_answer_soft_loss, has_answer_hard_loss = self.loss_fn(
+                has_answer_logits,
+                (has_answer_target, None, has_answer_target_logits),
+                reduce=False,
+                combine_loss=False,
+            )
+            has_answer_loss = self._weighted_loss(
+                has_answer_soft_loss.mean(), has_answer_hard_loss
+            )
+            loss = (
+                self.has_answer_loss_weight * has_answer_loss
+                + self.pos_loss_weight * position_loss
+            )
+
+        return loss
+
+    def _weighted_loss(self, soft_loss, hard_loss):
+        return (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
