@@ -55,6 +55,9 @@ class DrQAModel(BaseModel):
         # Output layer.
         output_layer: SquadOutputLayer.Config = SquadOutputLayer.Config()
 
+        # Is model traning distilling knowledg from a teacher model?
+        is_kd: bool = False
+
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         # Although the RNN params are configurable, for DrQA we want to set
@@ -84,7 +87,9 @@ class DrQAModel(BaseModel):
             in_dim=doc_rnn.representation_dim,
             out_dim=len(has_answer_labels),
         )
-        output_layer = create_module(config.output_layer, labels=has_answer_labels)
+        output_layer = create_module(
+            config.output_layer, labels=has_answer_labels, is_kd=config.is_kd
+        )
         return cls(
             dropout=nn.Dropout(config.dropout),
             embedding=embedding,
@@ -97,6 +102,7 @@ class DrQAModel(BaseModel):
             doc_rep_pool=doc_rep_pool,
             has_ans_decoder=has_ans_decoder,
             output_layer=output_layer,
+            is_kd=config.is_kd,
         )
 
     @classmethod
@@ -114,17 +120,18 @@ class DrQAModel(BaseModel):
 
     def __init__(
         self,
-        dropout,
-        embedding,
-        ques_rnn,
-        doc_rnn,
-        ques_self_attn,
-        ques_aligned_doc_attn,
-        start_attn,
-        end_attn,
-        doc_rep_pool,
-        has_ans_decoder,
-        output_layer,
+        dropout: nn.Module,
+        embedding: nn.Module,
+        ques_rnn: nn.Module,
+        doc_rnn: nn.Module,
+        ques_self_attn: nn.Module,
+        ques_aligned_doc_attn: nn.Module,
+        start_attn: nn.Module,
+        end_attn: nn.Module,
+        doc_rep_pool: nn.Module,
+        has_ans_decoder: nn.Module,
+        output_layer: nn.Module,
+        is_kd: bool = Config.is_kd,
     ) -> None:
         super().__init__()
         self.dropout = dropout
@@ -149,6 +156,7 @@ class DrQAModel(BaseModel):
             end_attn,
             has_ans_decoder,
         ]
+        self.is_kd = is_kd
 
     def arrange_model_inputs(self, tensor_dict):
         (
@@ -158,15 +166,39 @@ class DrQAModel(BaseModel):
             ques_tokens,
             ques_seq_len,
             ques_mask,
-            _,
-            _,
+            *ignore,
         ) = tensor_dict["squad_input"]
         return (doc_tokens, doc_seq_len, doc_mask, ques_tokens, ques_seq_len, ques_mask)
 
     def arrange_targets(self, tensor_dict):
-        _, _, _, _, _, _, answer_start_idx, answer_end_idx = tensor_dict["squad_input"]
         has_answer = tensor_dict["has_answer"]
-        return answer_start_idx, answer_end_idx, has_answer
+        if not self.is_kd:
+            _, _, _, _, _, _, answer_start_idx, answer_end_idx = tensor_dict[
+                "squad_input"
+            ]
+            return answer_start_idx, answer_end_idx, has_answer
+        else:
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                answer_start_idx,
+                answer_end_idx,
+                start_logits,
+                end_logits,
+                has_answer_logits,
+            ) = tensor_dict["squad_input"]
+            return (
+                answer_start_idx,
+                answer_end_idx,
+                has_answer,
+                start_logits,
+                end_logits,
+                has_answer_logits,
+            )
 
     def forward(
         self,

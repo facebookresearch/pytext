@@ -3,6 +3,7 @@
 
 from typing import List
 
+import torch
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import TokenTensorizer
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
@@ -21,6 +22,7 @@ from pytext.data.utils import (
 class SquadTensorizer(TokenTensorizer):
     """Produces inputs and answer spans for Squad."""
 
+    __EXPANSIBLE__ = True
     SPAN_PAD_IDX = -100
 
     class Config(TokenTensorizer.Config):
@@ -67,8 +69,8 @@ class SquadTensorizer(TokenTensorizer):
             max_seq_len=config.max_ques_seq_len,
         )
         return cls(
-            doc_tensorizer,
-            ques_tensorizer,
+            doc_tensorizer=doc_tensorizer,
+            ques_tensorizer=ques_tensorizer,
             doc_column=config.doc_column,
             ques_column=config.ques_column,
             answers_column=config.answers_column,
@@ -217,3 +219,93 @@ class SquadTensorizer(TokenTensorizer):
             if token_id != self.SPAN_PAD_IDX:
                 return False
         return True
+
+
+class SquadTensorizerForKD(SquadTensorizer):
+    class Config(SquadTensorizer.Config):
+        start_logits_column: str = "start_logits"
+        end_logits_column: str = "end_logits"
+        has_answer_logits_column: str = "has_answer_logits"
+        pad_mask_column: str = "pad_mask"
+        segment_labels_column: str = "segment_labels"
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return super().from_config(
+            config,
+            start_logits_column=config.start_logits_column,
+            end_logits_column=config.end_logits_column,
+            has_answer_logits_column=config.has_answer_logits_column,
+            pad_mask_column=config.pad_mask_column,
+            segment_labels_column=config.segment_labels_column,
+        )
+
+    def __init__(
+        self,
+        start_logits_column=Config.start_logits_column,
+        end_logits_column=Config.end_logits_column,
+        has_answer_logits_column=Config.has_answer_logits_column,
+        pad_mask_column=Config.pad_mask_column,
+        segment_labels_column=Config.segment_labels_column,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.start_logits_column = start_logits_column
+        self.end_logits_column = end_logits_column
+        self.has_answer_logits_column = has_answer_logits_column
+        self.pad_mask_column = pad_mask_column
+        self.segment_labels_column = segment_labels_column
+
+    def numberize(self, row):
+        numberized_row_tuple = super().numberize(row)
+        start_logits = self._get_doc_logits(
+            row[self.start_logits_column],
+            row[self.pad_mask_column],
+            row[self.segment_labels_column],
+        )
+        end_logits = self._get_doc_logits(
+            row[self.end_logits_column],
+            row[self.pad_mask_column],
+            row[self.segment_labels_column],
+        )
+        return numberized_row_tuple + (
+            start_logits,
+            end_logits,
+            row[self.has_answer_logits_column],
+        )
+
+    def tensorize(self, batch):
+        (
+            doc_tokens,
+            doc_seq_len,
+            ques_tokens,
+            ques_seq_len,
+            answer_start_idx,
+            answer_end_idx,
+            start_logits,
+            end_logits,
+            has_answer_logits,
+        ) = zip(*batch)
+        tensor_tuple = super().tensorize(
+            zip(
+                doc_tokens,
+                doc_seq_len,
+                ques_tokens,
+                ques_seq_len,
+                answer_start_idx,
+                answer_end_idx,
+            )
+        )
+        return tensor_tuple + (
+            pad_and_tensorize(start_logits, dtype=torch.float),
+            pad_and_tensorize(end_logits, dtype=torch.float),
+            pad_and_tensorize(has_answer_logits, dtype=torch.float),
+        )
+
+    def _get_doc_logits(self, logits, pad_mask, segment_labels):
+        ques_seq_len = segment_labels.index(1)
+        try:
+            pad_start = pad_mask.index(0)
+        except ValueError:  # 0 doesn't exits in pad_mask
+            pad_start = len(logits)
+        return logits[ques_seq_len : pad_start - 1]  # Last non-pad token is [SEP]

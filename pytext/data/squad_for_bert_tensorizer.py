@@ -4,6 +4,7 @@
 import itertools
 from typing import List
 
+import torch
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
@@ -17,6 +18,7 @@ from pytext.utils.file_io import PathManager
 class SquadForBERTTensorizer(BERTTensorizer):
     """Produces BERT inputs and answer spans for Squad."""
 
+    __EXPANSIBLE__ = True
     SPAN_PAD_IDX = -100
 
     class Config(BERTTensorizer.Config):
@@ -27,13 +29,14 @@ class SquadForBERTTensorizer(BERTTensorizer):
         max_seq_len: int = 256
 
     @classmethod
-    def from_config(cls, config: Config):
+    def from_config(cls, config: Config, **kwargs):
         # reuse parent class's from_config, which will pass extra args
         # in **kwargs to cls.__init__
         return super().from_config(
             config,
             answers_column=config.answers_column,
             answer_starts_column=config.answer_starts_column,
+            **kwargs,
         )
 
     def __init__(
@@ -116,6 +119,115 @@ class SquadForBERTTensorizer(BERTTensorizer):
             answer_start_idx,
             answer_end_idx,
         )
+
+
+class SquadForBERTTensorizerForKD(SquadForBERTTensorizer):
+    class Config(SquadForBERTTensorizer.Config):
+        start_logits_column: str = "start_logits"
+        end_logits_column: str = "end_logits"
+        has_answer_logits_column: str = "has_answer_logits"
+        pad_mask_column: str = "pad_mask"
+        segment_labels_column: str = "segment_labels"
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return super().from_config(
+            config,
+            start_logits_column=config.start_logits_column,
+            end_logits_column=config.end_logits_column,
+            has_answer_logits_column=config.has_answer_logits_column,
+            pad_mask_column=config.pad_mask_column,
+            segment_labels_column=config.segment_labels_column,
+        )
+
+    def __init__(
+        self,
+        start_logits_column=Config.start_logits_column,
+        end_logits_column=Config.end_logits_column,
+        has_answer_logits_column=Config.has_answer_logits_column,
+        pad_mask_column=Config.pad_mask_column,
+        segment_labels_column=Config.segment_labels_column,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.start_logits_column = start_logits_column
+        self.end_logits_column = end_logits_column
+        self.has_answer_logits_column = has_answer_logits_column
+        self.pad_mask_column = pad_mask_column
+        self.segment_labels_column = segment_labels_column
+
+        # For logging
+        self.total = 0
+        self.mismatches = 0
+
+    def __del__(self):
+        print("Destroying SquadForBERTTensorizerForKD object")
+        print(f"SquadForBERTTensorizerForKD: Number of rows read: {self.total}")
+        print(f"SquadForBERTTensorizerForKD: Number of rows dropped: {self.mismatches}")
+
+    def numberize(self, row):
+        self.total += 1
+        numberized_row_tuple = super().numberize(row)
+        tup = numberized_row_tuple + (
+            self._get_token_logits(
+                row[self.start_logits_column], row[self.pad_mask_column]
+            ),
+            self._get_token_logits(
+                row[self.end_logits_column], row[self.pad_mask_column]
+            ),
+            row[self.has_answer_logits_column],
+        )
+
+        try:
+            assert len(tup[0]) == len(tup[6])
+        except AssertionError:
+            self.mismatches += 1
+            print(
+                f"len(tup[0]) = {len(tup[0])} and len(tup[6]) = {len(tup[6])}",
+                flush=True,
+            )
+            raise
+        return tup
+
+    def tensorize(self, batch):
+        (
+            tokens,
+            segment_labels,
+            seq_lens,
+            positions,
+            answer_start_idx,
+            answer_end_idx,
+            start_logits,
+            end_logits,
+            has_answer_logits,
+        ) = zip(*batch)
+
+        tensor_tuple = super().tensorize(
+            zip(
+                tokens,
+                segment_labels,
+                seq_lens,
+                positions,
+                answer_start_idx,
+                answer_end_idx,
+            )
+        )
+        return tensor_tuple + (
+            pad_and_tensorize(start_logits, dtype=torch.float),
+            pad_and_tensorize(end_logits, dtype=torch.float),
+            pad_and_tensorize(
+                has_answer_logits,
+                dtype=torch.float,
+                pad_shape=[len(has_answer_logits), len(has_answer_logits[0])],
+            ),
+        )
+
+    def _get_token_logits(self, logits, pad_mask):
+        try:
+            pad_start = pad_mask.index(self.vocab.get_pad_index())
+        except ValueError:  # pad_index doesn't exits in pad_mask
+            pad_start = len(logits)
+        return logits[:pad_start]
 
 
 class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
