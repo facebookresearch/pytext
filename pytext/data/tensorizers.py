@@ -460,7 +460,7 @@ class ByteTensorizer(Tensorizer):
             config.add_bos_token,
             config.add_eos_token,
             config.use_eos_token_for_bos,
-            config.is_input
+            config.is_input,
         )
 
     def __init__(
@@ -471,7 +471,7 @@ class ByteTensorizer(Tensorizer):
         add_bos_token=Config.add_bos_token,
         add_eos_token=Config.add_eos_token,
         use_eos_token_for_bos=Config.use_eos_token_for_bos,
-        is_input=Config.is_input
+        is_input=Config.is_input,
     ):
         self.text_column = text_column
         self.lower = lower
