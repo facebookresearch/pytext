@@ -201,11 +201,17 @@ class Vocabulary:
         else:
             return self.idx.get(self.pad_token, value)
 
-    def get_bos_index(self):
-        return self.idx[self.bos_token]
+    def get_bos_index(self, value=None):
+        if value is None:
+            return self.idx[self.bos_token]
+        else:
+            return self.idx.get(self.bos_token, value)
 
-    def get_eos_index(self):
-        return self.idx[self.eos_token]
+    def get_eos_index(self, value=None):
+        if value is None:
+            return self.idx[self.eos_token]
+        else:
+            return self.idx.get(self.eos_token, value)
 
     def __getitem__(self, item):
         return self._vocab[item]
