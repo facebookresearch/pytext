@@ -93,6 +93,82 @@ def lookup_tokens(
     return tokens, start_idx, end_idx
 
 
+class TensorizerScriptImpl(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.device: str = ""
+
+    @torch.jit.export
+    def set_device(self, device: str):
+        self.device = device
+
+    def batch_size(
+        self, texts: Optional[List[List[str]]], tokens: Optional[List[List[List[str]]]]
+    ) -> int:
+        if texts is not None:
+            return len(texts)
+        elif tokens is not None:
+            return len(tokens)
+        else:
+            raise RuntimeError("Empty input for both texts and tokens.")
+
+    def row_size(
+        self, texts: Optional[List[List[str]]], tokens: Optional[List[List[List[str]]]]
+    ) -> int:
+        if texts is not None:
+            return len(texts[0])
+        elif tokens is not None:
+            return len(tokens[0])
+        else:
+            raise RuntimeError("Empty input for both texts and tokens.")
+
+    def get_texts_by_index(
+        self, texts: Optional[List[List[str]]], index: int
+    ) -> Optional[List[str]]:
+        if texts is None:
+            return None
+        return texts[index]
+
+    def get_tokens_by_index(
+        self, tokens: Optional[List[List[List[str]]]], index: int
+    ) -> Optional[List[List[str]]]:
+        if tokens is None:
+            return None
+        return tokens[index]
+
+    def tokenize(self, *args, **kwargs):
+        """
+        This functions will receive the inputs from Clients, usually there are
+        two possible inputs
+        1) a row of texts: List[str]
+        2) a row of pre-processed tokens: List[List[str]]
+
+        Override this function to be TorchScriptable, e.g you need to declare
+        concrete input arguments with type hints.
+        """
+        raise NotImplementedError
+
+    def numberize(self, *args, **kwargs):
+        """
+        This functions will receive the outputs from function: tokenize() or
+        will be called directly from PyTextTensorizer function: numberize().
+
+        Override this function to be TorchScriptable, e.g you need to declare
+        concrete input arguments with type hints.
+        """
+        raise NotImplementedError
+
+    def tensorize(self, *args, **kwargs):
+        """
+        This functions will receive a list(e.g a batch) of outputs
+        from function numberize(), padding and convert to output tensors.
+
+        Override this function to be TorchScriptable, e.g you need to declare
+        concrete input arguments with type hints.
+        """
+        raise NotImplementedError
+
+
 class Tensorizer(Component):
     """Tensorizers are a component that converts from batches of
     `pytext.data.type.DataType` instances to tensors. These tensors will eventually
@@ -108,6 +184,7 @@ class Tensorizer(Component):
 
     __COMPONENT_TYPE__ = ComponentType.TENSORIZER
     __EXPANSIBLE__ = True
+    __TENSORIZER_SCRIPT_IMPL__ = None
 
     class Config(Component.Config):
         pass
