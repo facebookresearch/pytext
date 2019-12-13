@@ -2,11 +2,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import itertools
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+import torch
 from fairseq.data.legacy.masked_lm_dictionary import MaskedLMDictionary
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizerBase, build_fairseq_vocab
+from pytext.data.bert_tensorizer import (
+    BERTTensorizerBase,
+    BERTTensorizerBaseScriptImpl,
+    build_fairseq_vocab,
+)
 from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
@@ -16,11 +21,106 @@ from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 
 
+class XLMTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
+    def __init__(
+        self,
+        tokenizer: Tokenizer,
+        vocab: Vocabulary,
+        max_seq_len: int,
+        language_vocab: List[str],
+        default_language: str,
+    ):
+        super().__init__(tokenizer, vocab, max_seq_len)
+        self.language_vocab = ScriptVocabulary(language_vocab)
+        self.default_language = torch.jit.Attribute(default_language, str)
+
+    def _lookup_tokens(
+        self, tokens: List[Tuple[str, int, int]], max_seq_len: Optional[int] = None
+    ) -> Tuple[List[int], List[int], List[int]]:
+        if max_seq_len is None:
+            max_seq_len = self.max_seq_len
+
+        return self.vocab_lookup(
+            tokens,
+            bos_idx=self.vocab.eos_idx,
+            eos_idx=self.vocab.eos_idx,
+            use_eos_token_for_bos=True,
+            max_seq_len=max_seq_len,
+        )
+
+    def numberize(
+        self,
+        per_sentence_tokens: List[List[Tuple[str, int, int]]],
+        per_sentence_languages: List[int],
+    ) -> Tuple[List[int], List[int], int, List[int]]:
+        tokens: List[int] = []
+        segment_labels: List[int] = []  # e.g language_ids
+        seq_len: int = 0
+        positions: List[int] = []
+        max_seq_len: int = self.max_seq_len // len(per_sentence_tokens)
+
+        for idx, single_sentence_tokens in enumerate(per_sentence_tokens):
+            lookup_ids: List[int] = self._lookup_tokens(
+                single_sentence_tokens, max_seq_len=max_seq_len
+            )[0]
+            lookup_ids = self._wrap_numberized_tokens(lookup_ids, idx)
+
+            tokens.extend(lookup_ids)
+            segment_labels.extend([per_sentence_languages[idx]] * len(lookup_ids))
+        seq_len = len(tokens)
+        positions = [i for i in range(seq_len)]
+
+        return tokens, segment_labels, seq_len, positions
+
+    def forward(
+        self,
+        texts: Optional[List[List[str]]] = None,
+        pre_tokenized: Optional[List[List[List[str]]]] = None,
+        languages: Optional[List[List[str]]] = None,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Wire up tokenize(), numberize() and tensorize() functions for data
+        processing.
+        """
+        batch_size: int = self.batch_size(texts, pre_tokenized)
+        row_size: int = self.row_size(texts, pre_tokenized)
+        if languages is None:
+            languages = [[self.default_language] * row_size] * batch_size
+
+        tokens_2d: List[List[int]] = []
+        segment_labels_2d: List[List[int]] = []
+        seq_lens_1d: List[int] = []
+        positions_2d: List[List[int]] = []
+
+        for idx in range(self.batch_size(texts, pre_tokenized)):
+            tokens: List[List[Tuple[str, int, int]]] = self.tokenize(
+                self.get_texts_by_index(texts, idx),
+                self.get_tokens_by_index(pre_tokenized, idx),
+            )
+            language_ids: List[int] = [
+                self.language_vocab.idx.get(
+                    languages[idx][0], self.language_vocab.unk_idx
+                )
+            ] * row_size
+
+            numberized: Tuple[List[int], List[int], int, List[int]] = self.numberize(
+                tokens, language_ids
+            )
+            tokens_2d.append(numberized[0])
+            segment_labels_2d.append(numberized[1])
+            seq_lens_1d.append(numberized[2])
+            positions_2d.append(numberized[3])
+
+        return self.tensorize(tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d)
+
+
 class XLMTensorizer(BERTTensorizerBase):
     """
     Tensorizer for Cross-lingual LM tasks. Works for single sentence as well
     as sentence pair.
     """
+
+    __TENSORIZER_SCRIPT_IMPL__ = XLMTensorizerScriptImpl
 
     class Config(BERTTensorizerBase.Config):
         vocab_file: str = "/mnt/vol/nlp_technologies/xlm/vocab_xnli_15"
