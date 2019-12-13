@@ -10,6 +10,12 @@ from pytext.common.constants import Stage
 from torch.utils.tensorboard import SummaryWriter
 
 
+try:
+    from torch.utils.tensorboard.fb.profile import profile_graph
+except ImportError:
+    profile_graph = None
+
+
 class Channel:
     """
     Channel defines how to format and report the result of a PyText job to an output
@@ -290,6 +296,16 @@ class TensorBoardChannel(Channel):
         except Exception:
             print(
                 "WARNING: Unable to export neural network graph to TensorBoard.",
+                file=sys.stderr,
+            )
+            traceback.print_exc(file=sys.stderr)
+
+        try:
+            if profile_graph is not None:
+                profile_graph(self.summary_writer, model, input_to_model)
+        except Exception:
+            print(
+                "WARNING: Unable to export performance graph to Tensor Board.",
                 file=sys.stderr,
             )
             traceback.print_exc(file=sys.stderr)
