@@ -2,7 +2,11 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizerBase, build_fairseq_vocab
+from pytext.data.bert_tensorizer import (
+    BERTTensorizerBase,
+    BERTTensorizerBaseScriptImpl,
+    build_fairseq_vocab,
+)
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
@@ -10,7 +14,13 @@ from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 
 
+RoBERTaTensorizerScriptImpl = BERTTensorizerBaseScriptImpl
+
+
 class RoBERTaTensorizer(BERTTensorizerBase):
+
+    __TENSORIZER_SCRIPT_IMPL__ = RoBERTaTensorizerScriptImpl
+
     class Config(BERTTensorizerBase.Config):
         vocab_file: str = (
             "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
