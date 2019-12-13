@@ -368,12 +368,36 @@ class BERTTensorizerBase(Tensorizer):
         return row[2]
 
 
+class BERTTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
+    def _lookup_tokens(
+        self, tokens: List[Tuple[str, int, int]], max_seq_len: Optional[int] = None
+    ) -> Tuple[List[int], List[int], List[int]]:
+        if max_seq_len is None:
+            max_seq_len = self.max_seq_len
+
+        return self.vocab_lookup(
+            tokens,
+            bos_idx=None,
+            eos_idx=self.vocab.eos_idx,
+            use_eos_token_for_bos=False,
+            max_seq_len=max_seq_len,
+        )
+
+    def _wrap_numberized_tokens(
+        self, numberized_tokens: List[int], idx: int
+    ) -> List[int]:
+        if idx == 0:
+            numberized_tokens = [self.vocab.bos_idx] + numberized_tokens
+        return numberized_tokens
+
+
 class BERTTensorizer(BERTTensorizerBase):
     """
     Tensorizer for BERT tasks.  Works for single sentence, sentence pair, triples etc.
     """
 
     __EXPANSIBLE__ = True
+    __TENSORIZER_SCRIPT_IMPL__ = BERTTensorizerScriptImpl
 
     class Config(BERTTensorizerBase.Config):
         tokenizer: Tokenizer.Config = WordPieceTokenizer.Config()

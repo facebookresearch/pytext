@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 import torch
-from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.bert_tensorizer import BERTTensorizer, BERTTensorizerScriptImpl
 from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
     RoBERTaTensorizerScriptImpl,
@@ -732,6 +732,14 @@ class BERTTensorizerTest(unittest.TestCase):
                 )
             )
         )
+        tensorizer_impl = torch.jit.script(
+            BERTTensorizerScriptImpl(
+                tokenizer=DoNothingTokenizer(),
+                vocab=tensorizer.vocab,
+                max_seq_len=tensorizer.max_seq_len,
+            )
+        )
+
         tokens, segment_label, seq_len, positions = tensorizer.numberize(row)
         self.assertEqual(tokens, expected)
         self.assertEqual(seq_len, len(expected))
@@ -739,6 +747,19 @@ class BERTTensorizerTest(unittest.TestCase):
 
         tokens, pad_mask, segment_labels, _ = tensorizer.tensorize(
             [(tokens, segment_label, seq_len, positions)]
+        )
+        self.assertEqual(pad_mask[0].tolist(), [1] * len(expected))
+
+        per_sentence_tokens = [tensorizer.tokenizer.tokenize(sentence)]
+        tokens, segment_label, seq_len, positions = tensorizer_impl.numberize(
+            per_sentence_tokens
+        )
+        self.assertEqual(tokens, expected)
+        self.assertEqual(seq_len, len(expected))
+        self.assertEqual(segment_label, [0] * len(expected))
+
+        tokens, pad_mask, segment_labels, _ = tensorizer_impl.tensorize(
+            [tokens], [segment_label], [seq_len], [positions]
         )
         self.assertEqual(pad_mask[0].tolist(), [1] * len(expected))
 
