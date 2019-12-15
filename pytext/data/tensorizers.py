@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import contextlib
 from typing import List, Optional
 
 import torch
@@ -35,6 +36,14 @@ from .utils import (
     align_target_label,
     pad_and_tensorize,
 )
+
+
+@contextlib.contextmanager
+def to_device(tensorizer_script_impl, device):
+    cur_device = tensorizer_script_impl.device
+    tensorizer_script_impl.device = device
+    yield
+    tensorizer_script_impl.device = cur_device
 
 
 def tokenize(
@@ -167,6 +176,22 @@ class TensorizerScriptImpl(torch.nn.Module):
         concrete input arguments with type hints.
         """
         raise NotImplementedError
+
+    @torch.jit.ignore
+    def cuda_tensorize(self, *args, **kwargs):
+        """
+        This functions will receive a list(e.g a batch) of outputs
+        from function numberize(), padding and convert to output tensors.
+
+        It will be called in PyText Tensorizer during training time, it is
+        not able to implement in TorchScript because it is unable to script
+        cuda.device().
+        """
+        with to_device(self, cuda.device()):
+            return self.tensorize(*args, **kwargs)
+
+    def torchscriptify(self):
+        return torch.jit.script(self)
 
 
 class Tensorizer(Component):

@@ -732,13 +732,11 @@ class BERTTensorizerTest(unittest.TestCase):
                 )
             )
         )
-        tensorizer_impl = torch.jit.script(
-            BERTTensorizerScriptImpl(
-                tokenizer=DoNothingTokenizer(),
-                vocab=tensorizer.vocab,
-                max_seq_len=tensorizer.max_seq_len,
-            )
-        )
+        tensorizer_impl = BERTTensorizerScriptImpl(
+            tokenizer=DoNothingTokenizer(),
+            vocab=tensorizer.vocab,
+            max_seq_len=tensorizer.max_seq_len,
+        ).torchscriptify()
 
         tokens, segment_label, seq_len, positions = tensorizer.numberize(row)
         self.assertEqual(tokens, expected)
@@ -805,13 +803,11 @@ class RobertaTensorizerTest(unittest.TestCase):
         for tensor, expect in zip(tensors, expected):
             self.assertEqual(tensor.tolist(), expect)
 
-        tensorizer_impl = torch.jit.script(
-            RoBERTaTensorizerScriptImpl(
-                tokenizer=DoNothingTokenizer(),
-                vocab=tensorizer.vocab,
-                max_seq_len=tensorizer.max_seq_len,
-            )
-        )
+        tensorizer_impl = RoBERTaTensorizerScriptImpl(
+            tokenizer=DoNothingTokenizer(),
+            vocab=tensorizer.vocab,
+            max_seq_len=tensorizer.max_seq_len,
+        ).torchscriptify()
         per_sentence_tokens = [tensorizer.tokenizer.tokenize(text)]
         tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d = zip(
             *[tensorizer_impl.numberize(per_sentence_tokens)]

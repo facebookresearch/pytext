@@ -52,7 +52,7 @@ def build_fairseq_vocab(
 class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
     def __init__(self, tokenizer: Tokenizer, vocab: Vocabulary, max_seq_len: int):
         super().__init__()
-        self.tokenizer = tokenizer.torchscriptify()
+        self.tokenizer = tokenizer
         self.vocab = ScriptVocabulary(
             list(vocab),
             pad_idx=vocab.get_pad_index(),
@@ -248,6 +248,11 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
             positions_2d.append(numberized[3])
 
         return self.tensorize(tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d)
+
+    def torchscriptify(self):
+        # Don't need torchscriptified tokenizer during training
+        self.tokenizer = self.tokenizer.torchscriptify()
+        return super().torchscriptify()
 
 
 class BERTTensorizerBase(Tensorizer):
