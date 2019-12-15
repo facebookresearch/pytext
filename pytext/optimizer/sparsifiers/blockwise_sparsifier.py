@@ -141,7 +141,7 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
         self, model: nn.Module, pre_masks: List[torch.Tensor] = None
     ) -> List[torch.Tensor]:
 
-        learnableparams = [p for p in model.parameters() if p.requires_grad]
+        learnableparams = self.get_sparsifiable_params(model)
         if pre_masks:
             self._masks = pre_masks
 

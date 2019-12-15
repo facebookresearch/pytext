@@ -25,6 +25,9 @@ class Sparsifier(Component):
     def sparsification_condition(self, *args, **kwargs):
         pass
 
+    def get_sparsifiable_params(self, *args, **kwargs):
+        pass
+
     def get_current_sparsity(self, model: Model) -> float:
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         nonzero_params = sum(
@@ -101,11 +104,15 @@ class L0_projection_sparsifier(Sparsifier):
         if self.accumulate_mask and self._masks is not None:
             self.apply_masks(model, self._masks)
 
+    def get_sparsifiable_params(self, model: Model):
+        sparsifiable_params = [p for p in model.parameters() if p.requires_grad]
+        return sparsifiable_params
+
     def apply_masks(self, model: Model, masks: List[torch.Tensor]):
         """
         apply given masks to zero-out learnable weights in model
         """
-        learnableparams = [p for p in model.parameters() if p.requires_grad]
+        learnableparams = self.get_sparsifiable_params(model)
         assert len(learnableparams) == len(masks)
         for m, w in zip(masks, learnableparams):
             if len(m.size()):
@@ -134,7 +141,7 @@ class L0_projection_sparsifier(Sparsifier):
             masks: List[torch.Tensor], intersection of new masks and pre_masks, so
             that "1" only if the weight is selected after new masking and pre_mask
         """
-        learnableparams = [p for p in model.parameters() if p.requires_grad]
+        learnableparams = self.get_sparsifiable_params(model)
         if pre_masks:
             self._masks = pre_masks
         if self._masks is None:
@@ -218,7 +225,7 @@ class CRF_SparsifierBase(Sparsifier):
             and state.step_counter % self.frequency == 0
         )
 
-    def get_CRF_transition(self, model: nn.Module):
+    def get_sparsifiable_params(self, model: nn.Module):
         for m in model.modules():
             if isinstance(m, CRF):
                 return m.transitions.data
@@ -257,7 +264,7 @@ class CRF_L1_SoftThresholding(CRF_SparsifierBase):
         if not self.sparsification_condition(state):
             return
         model = state.model
-        transition_matrix = self.get_CRF_transition(model)
+        transition_matrix = self.get_sparsifiable_params(model)
         transition_matrix_abs = torch.abs(transition_matrix)
         assert (
             len(state.optimizer.param_groups) == 1
@@ -305,7 +312,7 @@ class CRF_MagnitudeThresholding(CRF_SparsifierBase):
         if not self.sparsification_condition(state):
             return
         model = state.model
-        transition_matrix = self.get_CRF_transition(model)
+        transition_matrix = self.get_sparsifiable_params(model)
         num_rows, num_cols = transition_matrix.shape
         trans_abs = torch.abs(transition_matrix)
         if self.grouping == "row":
