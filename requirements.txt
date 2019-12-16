@@ -9,9 +9,10 @@ onnx==1.5.0
 python-dateutil==2.8.0
 pandas
 pytorch-pretrained-bert
+regex==2019.11.1
 requests
 scipy
-torchtext
+sentencepiece
 tensorboard==1.14
 torch
-sentencepiece
+torchtext
