@@ -70,7 +70,11 @@ class NewBertModel(BaseModel):
     def forward(
         self, encoder_inputs: Tuple[torch.Tensor, ...], *args
     ) -> List[torch.Tensor]:
-        representation = self.encoder(encoder_inputs)[0]
+        if self.encoder.output_encoded_layers:
+            # if encoded layers are returned, discard them
+            representation = self.encoder(encoder_inputs)[1]
+        else:
+            representation = self.encoder(encoder_inputs)[0]
         return self.decoder(representation, *args)
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
