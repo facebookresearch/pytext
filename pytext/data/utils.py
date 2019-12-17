@@ -131,6 +131,7 @@ class Vocabulary:
             idx = self.idx.pop(token, len(self._vocab))
             if idx == len(self._vocab):
                 self._vocab.append(replacement)
+                self.counts.append(1)
             else:
                 self._vocab[idx] = replacement
             self.idx[replacement] = idx
