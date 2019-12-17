@@ -15,12 +15,14 @@ from pytext.metric_reporters import (
     CompositionalMetricReporter,
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
+    NERMetricReporter,
     PairwiseRankingMetricReporter,
     PureLossMetricReporter,
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
     SquadMetricReporter,
 )
+from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.language_model_metric_reporter import (
     MaskedLMMetricReporter,
 )
@@ -41,6 +43,7 @@ from pytext.models.query_document_pairwise_ranking_model import (
 from pytext.models.representations.sparse_transformer_sentence_encoder import (  # noqa f401
     SparseTransformerSentenceEncoder,
 )
+from pytext.models.roberta import RoBERTaWordTaggingModel
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
@@ -181,6 +184,20 @@ class PairwiseClassificationTask(NewTask):
         model: BasePairwiseModel.Config = PairwiseModel.Config()
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
+        )
+
+
+class RoBERTaNERTask(NewTask):
+    class Config(NewTask.Config):
+        model: RoBERTaWordTaggingModel.Config = RoBERTaWordTaggingModel.Config()
+        metric_reporter: NERMetricReporter.Config = NERMetricReporter.Config()
+
+    @classmethod
+    def create_metric_reporter(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        return NERMetricReporter(
+            channels=[ConsoleChannel()],
+            label_names=list(tensorizers["tokens"].labels_vocab._vocab),
+            pad_idx=tensorizers["tokens"].labels_pad_idx,
         )
 
 

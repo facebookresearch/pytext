@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import torch
+from pytext.common.constants import Stage
 from pytext.config import ConfigBase
-from pytext.data.roberta_tensorizer import RoBERTaTensorizer
-from pytext.data.tensorizers import LabelTensorizer
+from pytext.data.roberta_tensorizer import (
+    RoBERTaTensorizer,
+    RoBERTaTokenLevelTensorizer,
+)
+from pytext.data.tensorizers import LabelTensorizer, Tensorizer
 from pytext.models.bert_classification_models import NewBertModel
+from pytext.models.decoders.mlp_decoder import MLPDecoder
+from pytext.models.model import BaseModel
 from pytext.models.module import Module, create_module
+from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadSelfAttention,
     SentenceEncoder,
@@ -151,3 +158,62 @@ class RoBERTa(NewBertModel):
             output_layer=self.output_layer.torchscript_predictions(),
             tensorizer=script_tensorizer,
         )
+
+
+class RoBERTaWordTaggingModel(BaseModel):
+    """
+    Single Sentence Token-level Classification Model using XLM.
+    """
+
+    class Config(BaseModel.Config):
+        class InputConfig(ConfigBase):
+            tokens: RoBERTaTokenLevelTensorizer.Config = (
+                RoBERTaTokenLevelTensorizer.Config()
+            )
+
+        inputs: InputConfig = InputConfig()
+        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
+        decoder: MLPDecoder.Config = MLPDecoder.Config()
+        output_layer: WordTaggingOutputLayer.Config = WordTaggingOutputLayer.Config()
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        label_vocab = tensorizers["tokens"].labels_vocab
+        vocab = tensorizers["tokens"].vocab
+
+        encoder = create_module(
+            config.encoder,
+            output_encoded_layers=True,
+            padding_idx=vocab.get_pad_index(),
+            vocab_size=vocab.__len__(),
+        )
+        decoder = create_module(
+            config.decoder, in_dim=encoder.representation_dim, out_dim=len(label_vocab)
+        )
+        output_layer = create_module(config.output_layer, labels=label_vocab)
+        return cls(encoder, decoder, output_layer)
+
+    def __init__(self, encoder, decoder, output_layer, stage=Stage.TRAIN) -> None:
+        super().__init__(stage=stage)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.module_list = [encoder, decoder]
+        self.output_layer = output_layer
+        self.stage = stage
+
+    def arrange_model_inputs(self, tensor_dict):
+        tokens, pad_mask, segment_labels, positions, _ = tensor_dict["tokens"]
+        model_inputs = (tokens, pad_mask, segment_labels, positions)
+        return (model_inputs,)
+
+    def arrange_targets(self, tensor_dict):
+        _, _, _, _, labels = tensor_dict["tokens"]
+        return labels
+
+    def forward(self, encoder_inputs: Tuple[torch.Tensor, ...], *args) -> torch.Tensor:
+        # The encoder outputs a list of representations for each token where
+        # every element of the list corresponds to a layer in the transformer.
+        # We extract and pass the representations associated with the last layer
+        # of the transformer.
+        representation = self.encoder(encoder_inputs)[0][-1]
+        return self.decoder(representation, *args)
