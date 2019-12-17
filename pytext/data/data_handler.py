@@ -29,6 +29,7 @@ from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
 from pytext.utils import cuda, distributed, embeddings as embeddings_utils
 from pytext.utils.data import parse_json_array
+from pytext.utils.path import get_absolute_path
 from torchtext import data as textdata
 
 from .utils import align_target_labels
@@ -249,6 +250,7 @@ class DataHandler(Component):
             lowercase_tokens (bool): if the tokens should be lowercased
         """
         vocab: Set[str] = set()
+        vocab_file = get_absolute_path(vocab_file)
         if os.path.isfile(vocab_file):
             with open(vocab_file, "r") as f:
                 for i, line in enumerate(f):
@@ -727,6 +729,7 @@ class DataHandler(Component):
             columns_to_use (Union[Dict[str, int], List[str]]): either a list of
                 column names or a dict of column name -> column index in the file
         """
+        file_name = get_absolute_path(file_name)
         print("reading data from {}".format(file_name))
         if isinstance(columns_to_use, list):
             columns_to_use = {

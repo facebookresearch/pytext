@@ -9,6 +9,7 @@ import torch
 from pytext.common.constants import PackageFileName
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils.file_io import PathManager
+from pytext.utils.path import get_absolute_path
 
 
 class PretrainedEmbedding(object):
@@ -24,6 +25,7 @@ class PretrainedEmbedding(object):
         delimiter: str = " ",
     ) -> None:
         if embeddings_path:
+            embeddings_path = get_absolute_path(embeddings_path)
             if PathManager.isdir(embeddings_path):
                 serialized_embed_path = os.path.join(
                     embeddings_path, PackageFileName.SERIALIZED_EMBED
