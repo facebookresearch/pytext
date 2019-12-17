@@ -8,6 +8,7 @@ import torch
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
+from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizerWithIndices
@@ -50,6 +51,16 @@ class SquadForBERTTensorizer(BERTTensorizer):
         super().__init__(**kwargs)
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
+
+    def _lookup_tokens(self, text: str, seq_len: int = None):
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            bos_token=None,
+            eos_token=self.vocab.eos_token,
+            max_seq_len=seq_len if seq_len else self.max_seq_len,
+        )
 
     def numberize(self, row):
         question_column, doc_column = self.columns
@@ -283,8 +294,15 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
         self.answer_starts_column = answer_starts_column
         self.wrap_special_tokens = False
 
-    def _lookup_tokens(self, text):
-        return RoBERTaTensorizer._lookup_tokens(self, text)
+    def _lookup_tokens(self, text: str, seq_len: int = None):
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            bos_token=self.vocab.bos_token,
+            eos_token=self.vocab.eos_token,
+            max_seq_len=seq_len if seq_len else self.max_seq_len,
+        )
 
     def torchscriptify(self):
         return ScriptRoBERTaTensorizerWithIndices(
