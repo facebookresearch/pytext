@@ -653,6 +653,22 @@ def rename_fl_task(json_config):
     return json_config
 
 
+@register_adapter(from_version=18)
+def upgrade_if_xlm(json_config):
+    """
+    Make `XLMModel` Union changes for encoder and tokens config.
+    Since they are now unions, insert the old class into the config if
+    no class name is mentioned.
+    """
+    _, _, model = find_parameter(json_config, "task.model")
+    if model and "XLMModel" in model:
+        _, inputs, tokens = find_parameter(json_config, "task.model.inputs.tokens")
+        inputs["tokens"] = {}
+        inputs["tokens"]["XLMTensorizer"] = tokens
+
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
