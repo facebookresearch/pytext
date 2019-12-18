@@ -28,6 +28,7 @@ from pytext.task.tasks import (
     SquadQATask,
     WordTaggingTask,
 )
+from pytext.utils.file_io import PathManager
 
 
 USER_TASKS_DIR = "user_tasks"
@@ -42,7 +43,7 @@ def add_include(path):
     all = [
         os.path.basename(f)[:-3].replace("/", ".")
         for f in modules
-        if os.path.isfile(f) and not f.endswith("__init__.py")
+        if PathManager.isfile(f) and not f.endswith("__init__.py")
     ]
     for mod_name in all:
         mod_path = path.replace("/", ".") + "." + mod_name

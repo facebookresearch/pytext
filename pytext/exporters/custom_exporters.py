@@ -11,10 +11,11 @@ from pytext.config.module_config import ExporterType
 from pytext.exporters.exporter import ModelExporter
 from pytext.fields import FieldMeta
 from pytext.utils import mobile_onnx
+from pytext.utils.file_io import PathManager
 
 
 def save_caffe2_pb_net(path, model):
-    with open(path, "wb") as f:
+    with PathManager.open(path, "wb") as f:
         f.write(model.SerializeToString())
 
 

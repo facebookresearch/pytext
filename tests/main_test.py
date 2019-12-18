@@ -6,6 +6,7 @@ import unittest
 from click.testing import CliRunner
 from pytext.main import main
 from pytext.utils import test
+from pytext.utils.file_io import PathManager
 from pytext.utils.path import PYTEXT_HOME
 
 
@@ -19,7 +20,7 @@ class TestMain(unittest.TestCase):
     def run_from_command(self, args, config_filename):
         runner = CliRunner()
         config_path = os.path.join(tests_module.TEST_CONFIG_DIR, config_filename)
-        with open(config_path, "r") as f:
+        with PathManager.open(config_path, "r") as f:
             config_str = f.read()
         return runner.invoke(main, args=args, input=config_str)
 

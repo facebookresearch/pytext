@@ -11,6 +11,7 @@ from caffe2.python.predictor import predictor_exporter
 from pytext.data.sources.data_source import DataSource
 from pytext.task import load
 from pytext.task.new_task import NewTask
+from pytext.utils.file_io import PathManager
 from pytext.workflow import _set_cuda
 
 from .builtin_task import register_builtin_tasks
@@ -59,7 +60,7 @@ def load_config(filename: str) -> PyTextConfig:
     Load a PyText configuration file from a file path.
     See pytext.config.pytext_config for more info on configs.
     """
-    with open(filename) as file:
+    with PathManager.open(filename) as file:
         config_json = json.loads(file.read())
     if "config" not in config_json:
         return pytext_config_from_json(config_json)

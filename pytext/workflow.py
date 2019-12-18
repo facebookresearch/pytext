@@ -310,7 +310,9 @@ def get_logits(
         task.data.sort_key = None
         batches = task.data.batches(Stage.TEST, data_source=data_source)
 
-        with open(output_path, "w", encoding="utf-8") as fout, torch.no_grad():
+        with PathManager.open(
+            output_path, "w", encoding="utf-8"
+        ) as fout, torch.no_grad():
             for (raw_batch, tensor_dict) in batches:
                 raw_input_tuple = (
                     dict_zip(*raw_batch, value_only=True) if dump_raw_input else ()

@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import torch
 from pytext.torchscript.utils import utf8_chars
+from pytext.utils.file_io import PathManager
 
 
 class ScriptBPE(torch.jit.ScriptModule):
@@ -64,7 +65,7 @@ class ScriptBPE(torch.jit.ScriptModule):
 
     @classmethod
     def from_vocab_filename(cls, vocab_filename: str) -> "ScriptBPE":
-        with open(vocab_filename) as vocab_file:
+        with PathManager.open(vocab_filename) as vocab_file:
             return cls(cls.load_vocab(vocab_file))
 
     @staticmethod

@@ -8,6 +8,7 @@ import unittest
 
 from pytext.builtin_task import register_builtin_tasks
 from pytext.config.serialize import parse_config
+from pytext.utils.file_io import PathManager
 from pytext.utils.path import PYTEXT_HOME, get_absolute_path
 
 
@@ -43,7 +44,7 @@ class LoadAllConfigTest(unittest.TestCase):
             if any(filepath.startswith(prefix) for prefix in exclude_json_dir):
                 continue
             print("--- loading:", filepath)
-            with open(filepath) as file:
+            with PathManager.open(filepath) as file:
                 config_json = json.load(file)
                 config = parse_config(config_json)
                 self.assertIsNotNone(config)

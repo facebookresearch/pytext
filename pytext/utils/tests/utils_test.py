@@ -15,6 +15,7 @@ from pytext.utils.data import (
     unkify,
 )
 from pytext.utils.distributed import get_shard_range
+from pytext.utils.file_io import PathManager
 from pytext.utils.meter import TimeMeter
 from pytext.utils.test import import_tests_module
 
@@ -24,7 +25,7 @@ RAW_TEST_PATH = tests_module.test_file("test_music_samples.json")
 
 
 def get_test_sample():
-    with open(RAW_TEST_PATH, "r") as f:
+    with PathManager.open(RAW_TEST_PATH, "r") as f:
         data = json.load(f)
     return data
 

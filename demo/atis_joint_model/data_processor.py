@@ -5,6 +5,7 @@ import os
 import random
 
 import click
+from pytext.utils.file_io import PathManager
 
 
 VALIDATION_SPLIT = 0.25
@@ -17,7 +18,7 @@ def read_vocab(file_path):
     (line_no - 1) is the key
     """
     vocab = {}
-    with open(file_path, "r") as file_contents:
+    with PathManager.open(file_path, "r") as file_contents:
         for idx, word in enumerate(file_contents):
             vocab[idx] = word.strip()
     return vocab
@@ -99,15 +100,15 @@ def process_train_set(
     train_file_name = os.path.join(output_directory, "atis.processed.train.csv")
     validation_file_name = os.path.join(output_directory, "atis.processed.val.csv")
 
-    with open(
+    with PathManager.open(
         os.path.join(download_folder, "atis.train.intent.csv"), "r"
-    ) as intents, open(
+    ) as intents, PathManager.open(
         os.path.join(download_folder, "atis.train.slots.csv"), "r"
-    ) as slots, open(
+    ) as slots, PathManager.open(
         os.path.join(download_folder, "atis.train.query.csv"), "r"
-    ) as queries, open(
+    ) as queries, PathManager.open(
         train_file_name, "w"
-    ) as train_file, open(
+    ) as train_file, PathManager.open(
         validation_file_name, "w"
     ) as validation_file:
 
@@ -135,13 +136,13 @@ def process_test_set(
 ):
     test_file_name = os.path.join(output_directory, "atis.processed.test.csv")
 
-    with open(
+    with PathManager.open(
         os.path.join(download_folder, "atis.test.intent.csv"), "r"
-    ) as intents, open(
+    ) as intents, PathManager.open(
         os.path.join(download_folder, "atis.test.slots.csv"), "r"
-    ) as slots, open(
+    ) as slots, PathManager.open(
         os.path.join(download_folder, "atis.test.query.csv"), "r"
-    ) as queries, open(
+    ) as queries, PathManager.open(
         test_file_name, "w"
     ) as test_file:
         for _idx, (intent, slot, query) in enumerate(zip(intents, slots, queries)):
@@ -159,7 +160,7 @@ def process_test_set(
 
 
 def print_sample(file_name):
-    with open(file_name, "r") as given_file:
+    with PathManager.open(file_name, "r") as given_file:
         for _i in range(SAMPLE_PRINT_COUNT):
             line = next(given_file).strip()
             print(line)

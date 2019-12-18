@@ -4,7 +4,6 @@
 import csv
 import math
 import multiprocessing
-import os
 from copy import deepcopy
 from typing import (
     Any,
@@ -29,6 +28,7 @@ from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
 from pytext.utils import cuda, distributed, embeddings as embeddings_utils
 from pytext.utils.data import parse_json_array
+from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
 from torchtext import data as textdata
 
@@ -251,8 +251,8 @@ class DataHandler(Component):
         """
         vocab: Set[str] = set()
         vocab_file = get_absolute_path(vocab_file)
-        if os.path.isfile(vocab_file):
-            with open(vocab_file, "r") as f:
+        if PathManager.isfile(vocab_file):
+            with PathManager.open(vocab_file, "r") as f:
                 for i, line in enumerate(f):
                     if vocab_size > 0 and len(vocab) == vocab_size:
                         print(
@@ -737,7 +737,9 @@ class DataHandler(Component):
                 for name, idx in zip(columns_to_use, range(len(columns_to_use)))
             }
 
-        with open(file_name, "r", encoding="utf-8", errors="replace") as f_handle:
+        with PathManager.open(
+            file_name, "r", encoding="utf-8", errors="replace"
+        ) as f_handle:
             csv_reader = csv.reader(f_handle, delimiter="\t", quoting=csv.QUOTE_NONE)
             i = 0
             while True:

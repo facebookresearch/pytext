@@ -32,6 +32,7 @@ from pytext.utils.documentation import (
     pretty_print_config_class,
     replace_components,
 )
+from pytext.utils.file_io import PathManager
 from pytext.workflow import (
     export_saved_model_to_caffe2,
     export_saved_model_to_torchscript,
@@ -206,7 +207,7 @@ def main(context, config_file, config_json, config_module, include):
                 context.obj.config = import_module(config_module).config
             else:
                 if config_file:
-                    with open(config_file) as file:
+                    with PathManager.open(config_file) as file:
                         config = json.load(file)
                 elif config_json:
                     config = json.loads(config_json)
