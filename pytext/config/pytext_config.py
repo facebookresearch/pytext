@@ -154,4 +154,4 @@ class LogitsConfig(TestConfig):
     dump_raw_input: bool = False
 
 
-LATEST_VERSION = 18
+LATEST_VERSION = 19
