@@ -83,7 +83,7 @@ class Slot:
 
 
 def parse_slot_string(slots_field: str) -> List[Slot]:
-    slots = slots_field.split(",")
+    slots = slots_field.split(",") if slots_field is not None else []
     slot_list = []
     for slot in slots:
         slot_toks = slot.split(":", 2)
