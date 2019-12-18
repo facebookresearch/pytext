@@ -230,12 +230,28 @@ class TensorBoardChannel(Channel):
                     limit = 9.9e19
                     grad = val.grad
                     val = torch.clamp(val.float(), -limit, limit)
-                    self.summary_writer.add_histogram(key, val, epoch)
+                    try:
+                        self.summary_writer.add_histogram(key, val, epoch)
+                    except Exception:
+                        print(
+                            f"WARNING: Param {key} cannot be sent to Tensorboard",
+                            file=sys.stderr,
+                        )
+                        traceback.print_exc(file=sys.stderr)
+
                     if grad is not None and len(grad) > 0 and not (grad == 0).all():
                         grad = torch.clamp(grad.float(), -limit, limit)
-                        self.summary_writer.add_histogram(
-                            key + "_gradients", grad, epoch
-                        )
+                        try:
+                            self.summary_writer.add_histogram(
+                                key + "_gradients", grad, epoch
+                            )
+                        except Exception:
+                            print(
+                                f"WARNING: Grad for param {key} "
+                                "cannot be sent to Tensorboard",
+                                file=sys.stderr,
+                            )
+                            traceback.print_exc(file=sys.stderr)
 
     def add_texts(self, tag, metrics):
         """
