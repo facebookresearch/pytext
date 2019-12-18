@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import itertools
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -12,13 +11,12 @@ from pytext.data.bert_tensorizer import (
     BERTTensorizerBaseScriptImpl,
     build_fairseq_vocab,
 )
-from pytext.data.tensorizers import lookup_tokens
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
 from pytext.data.xlm_constants import LANG2ID_15
-from pytext.torchscript.tensorizer import ScriptXLMTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
+from pytext.utils.lazy import lazy_property
 
 
 class XLMTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
@@ -198,6 +196,19 @@ class XLMTensorizer(BERTTensorizerBase):
             schema += [(self.language_column, str)]
         return schema
 
+    @lazy_property
+    def tensorizer_script_impl(self):
+        languages = [0] * (max(list(self.lang2id.values())) + 1)
+        for k, v in self.lang2id.items():
+            languages[v] = k
+        return self.__TENSORIZER_SCRIPT_IMPL__(
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            language_vocab=languages,
+            max_seq_len=self.max_seq_len,
+            default_language=self.default_language,
+        )
+
     def get_lang_id(self, row: Dict, col: str) -> int:
         # generate lang embeddings. if training without lang embeddings, use
         # the first language as the lang_id (there will always be one lang)
@@ -210,54 +221,13 @@ class XLMTensorizer(BERTTensorizerBase):
             # use En as default
             return self.lang2id.get(self.default_language, 0)
 
-    def _lookup_tokens(self, text: str, seq_len: int) -> List[str]:
-        return lookup_tokens(
-            text,
-            tokenizer=self.tokenizer,
-            vocab=self.vocab,
-            bos_token=self.vocab.eos_token,
-            eos_token=self.vocab.eos_token,
-            use_eos_token_for_bos=True,
-            max_seq_len=seq_len,
-        )
-
     def numberize(self, row: Dict) -> Tuple[Any, ...]:
-        sentences = []
-        language_column = self.language_column
-        columns = self.columns
-
-        # sequence_length is adjusted based on the number of text fields and needs
-        # to account for the special tokens which we will be wrapping
-        seq_len = self.max_seq_len // len(columns)
-        sentences = [
-            self._lookup_tokens(row[column], seq_len)[0] for column in self.columns
+        per_sentence_tokens = [
+            self.tokenizer.tokenize(row[column]) for column in self.columns
         ]
-        seq_lens = [len(sentence) for sentence in sentences]
-        lang_ids = [self.get_lang_id(row, language_column)] * len(self.columns)
-        # expand the language ids to each token
-        lang_ids = ([lang_id] * seq_len for lang_id, seq_len in zip(lang_ids, seq_lens))
-
-        tokens = list(itertools.chain(*sentences))
-        segment_labels = list(itertools.chain(*lang_ids))
-        seq_len = len(tokens)
-        positions = [index for index in range(seq_len)]
-        return tokens, segment_labels, seq_len, positions
-
-    def torchscriptify(self):
-        languages = [0] * (max(list(self.lang2id.values())) + 1)
-        for k, v in self.lang2id.items():
-            languages[v] = k
-
-        return ScriptXLMTensorizer(
-            tokenizer=self.tokenizer.torchscriptify(),
-            token_vocab=ScriptVocabulary(
-                list(self.vocab),
-                pad_idx=self.vocab.get_pad_index(),
-                bos_idx=self.vocab.get_eos_index(),
-                eos_idx=self.vocab.get_eos_index(),
-                unk_idx=self.vocab.get_unk_index(),
-            ),
-            language_vocab=ScriptVocabulary(languages),
-            max_seq_len=self.max_seq_len,
-            default_language=self.default_language,
+        per_sentence_languages = [self.get_lang_id(row, self.language_column)] * len(
+            self.columns
+        )
+        return self.tensorizer_script_impl.numberize(
+            per_sentence_tokens, per_sentence_languages
         )

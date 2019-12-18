@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import contextlib
+import copy
 from typing import List, Optional
 
 import torch
@@ -21,6 +22,7 @@ from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
+from pytext.utils.lazy import lazy_property
 
 from .utils import (
     BOL,
@@ -269,8 +271,20 @@ class Tensorizer(Component):
         # we need yield here to make this function a generator
         yield
 
-    def torchscriptify(self):
+    @lazy_property
+    def tensorizer_script_impl(self):
+        # Script tensorizer is unpickleable, we use lazy_property for
+        # lazy initialization to construct the object during run time.
         raise NotImplementedError
+
+    def __getstate__(self):
+        # make a shallow copy of state to avoid side effect on the original object
+        state = copy.copy(vars(self))
+        state.pop("tensorizer_script_impl", None)
+        return state
+
+    def torchscriptify(self):
+        return self.tensorizer_script_impl.torchscriptify()
 
 
 class VocabFileConfig(Component.Config):
