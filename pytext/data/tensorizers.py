@@ -2,6 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import contextlib
+import copy
+import sys
 from typing import List, Optional
 
 import torch
@@ -513,6 +515,7 @@ class ByteTensorizer(Tensorizer):
     def numberize(self, row):
         """Convert text to characters."""
         text = row[self.text_column].strip()
+
         if self.lower:
             text = text.lower()
 
@@ -522,8 +525,18 @@ class ByteTensorizer(Tensorizer):
             bytes = bytes[: self.max_seq_len]
         if self.add_bos_token:
             bos = BYTE_EOS if self.use_eos_token_for_bos else BYTE_BOS
+            if bos in text:
+                print('Special token "{}" exists in text "{}". Exit.'.format(bos, text))
+                sys.exit(1)
             bytes = list(bos.encode()) + bytes
         if self.add_eos_token:
+            if BYTE_EOS in text:
+                print(
+                    'Special token "{}" exists in text "{}". Exit.'.format(
+                        BYTE_EOS, text
+                    )
+                )
+                sys.exit(1)
             bytes = bytes + list(BYTE_EOS.encode())
         return bytes, len(bytes)
 

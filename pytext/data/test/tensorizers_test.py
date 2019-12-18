@@ -248,6 +248,21 @@ class TensorizersTest(unittest.TestCase):
         tensors = [tensorizer.numberize(row) for row in rows]
         self.assertEqual([(bytes, len(bytes)) for bytes in expected], tensors)
 
+    def test_byte_tensors_error_code(self):
+        tensorizer = ByteTensorizer(
+            text_column="text", lower=False, add_bos_token=True, add_eos_token=True
+        )
+        s1 = "I want some coffee#"
+        s2 = "This is ^the best show I've ever seen"
+
+        rows = [{"text": s1}, {"text": s2}]
+        expected_error_code = 1
+        with self.assertRaises(SystemExit) as cm:
+            for row in rows:
+                tensorizer.numberize(row)
+
+        self.assertEqual(cm.exception.code, expected_error_code)
+
     def test_create_byte_token_tensors(self):
         tensorizer = ByteTokenTensorizer(
             text_column="text", max_seq_len=4, max_byte_len=5
