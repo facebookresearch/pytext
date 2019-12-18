@@ -1,20 +1,30 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import itertools
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from fairseq.data.dictionary import Dictionary
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext.config.component import ComponentType, create_component
-from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl
+from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl, lookup_tokens
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, SpecialToken, Vocabulary
+from pytext.data.utils import (
+    BOS,
+    EOS,
+    MASK,
+    PAD,
+    UNK,
+    SpecialToken,
+    Vocabulary,
+    pad_and_tensorize,
+)
+from pytext.torchscript.tensorizer import ScriptBERTTensorizer
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
 from pytext.torchscript.utils import pad_2d, pad_2d_mask
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
-from pytext.utils.lazy import lazy_property
 
 
 def build_fairseq_vocab(
@@ -284,11 +294,46 @@ class BERTTensorizerBase(Tensorizer):
     def column_schema(self):
         return [(column, str) for column in self.columns]
 
-    @lazy_property
-    def tensorizer_script_impl(self):
-        return self.__TENSORIZER_SCRIPT_IMPL__(
-            tokenizer=self.tokenizer, vocab=self.vocab, max_seq_len=self.max_seq_len
+    def _lookup_tokens(self, text: str, seq_len: int = None):
+        """
+        This function knows how to call lookup_tokens with the correct
+        settings for this model. The default behavior is to wrap the
+        numberized text with distinct BOS and EOS tokens. The resulting
+        vector would look something like this:
+            [BOS, token1_id, . . . tokenN_id, EOS]
+
+        The function also takes an optional seq_len parameter which is
+        used to customize truncation in case we have multiple text fields.
+        By default max_seq_len is used. It's upto the numberize function of
+        the class to decide how to use the seq_len param.
+
+        For example:
+        - In the case of sentence pair classification, we might want both
+        pieces of text have the same length which is half of the
+        max_seq_len supported by the model.
+        - In the case of QA, we might want to truncate the context by a
+        seq_len which is longer than what we use for the question.
+        """
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            bos_token=self.vocab.bos_token,
+            eos_token=self.vocab.eos_token,
+            max_seq_len=seq_len if seq_len else self.max_seq_len,
         )
+
+    def _wrap_numberized_text(
+        self, numberized_sentences: List[List[str]]
+    ) -> List[List[str]]:
+        """
+        If a class has a non-standard way of generating the final numberized text
+        (eg: BERT) then a class specific version of wrap_numberized_text function
+        should be implemented. This allows us to share the numberize
+        function across classes without having to copy paste code. The default
+        implementation doesnt do anything.
+        """
+        return numberized_sentences
 
     def numberize(self, row: Dict) -> Tuple[Any, ...]:
         """
@@ -296,16 +341,27 @@ class BERTTensorizerBase(Tensorizer):
         the specified vocab. It also outputs, for each instance, the vectors
         needed to run the actual model.
         """
-        per_sentence_tokens = [
-            self.tokenizer.tokenize(row[column]) for column in self.columns
-        ]
-        return self.tensorizer_script_impl.numberize(per_sentence_tokens)
+        sentences = [self._lookup_tokens(row[column])[0] for column in self.columns]
+        sentences = self._wrap_numberized_text(sentences)
+        seq_lens = (len(sentence) for sentence in sentences)
+        segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
+        tokens = list(itertools.chain(*sentences))
+        segment_labels = list(itertools.chain(*segment_labels))
+        seq_len = len(tokens)
+        positions = list(range(seq_len))
+        # tokens, segment_label, seq_len
+        return tokens, segment_labels, seq_len, positions
 
     def tensorize(self, batch) -> Tuple[torch.Tensor, ...]:
         """
         Convert instance level vectors into batch level tensors.
         """
-        return self.tensorizer_script_impl.tensorize_wrapper(*zip(*batch))
+        tokens, segment_labels, seq_lens, positions = zip(*batch)
+        tokens = pad_and_tensorize(tokens, self.vocab.get_pad_index())
+        pad_mask = (tokens != self.vocab.get_pad_index()).long()
+        segment_labels = pad_and_tensorize(segment_labels)
+        positions = pad_and_tensorize(positions)
+        return tokens, pad_mask, segment_labels, positions
 
     def initialize(self, vocab_builder=None, from_scratch=True):
         # vocab for BERT is already set
@@ -398,4 +454,32 @@ class BERTTensorizer(BERTTensorizerBase):
     ) -> None:
         super().__init__(
             columns=columns, vocab=vocab, tokenizer=tokenizer, max_seq_len=max_seq_len
+        )
+
+    def _lookup_tokens(self, text: str, seq_len: int = None):
+        return lookup_tokens(
+            text,
+            tokenizer=self.tokenizer,
+            vocab=self.vocab,
+            bos_token=None,
+            eos_token=self.vocab.eos_token,
+            max_seq_len=seq_len if seq_len else self.max_seq_len,
+        )
+
+    def _wrap_numberized_text(
+        self, numberized_sentences: List[List[str]]
+    ) -> List[List[str]]:
+        numberized_sentences[0] = [self.vocab.get_bos_index()] + numberized_sentences[0]
+        return numberized_sentences
+
+    def torchscriptify(self):
+        return ScriptBERTTensorizer(
+            tokenizer=self.tokenizer.torchscriptify(),
+            vocab=ScriptVocabulary(
+                list(self.vocab),
+                pad_idx=self.vocab.get_pad_index(),
+                bos_idx=self.vocab.get_bos_index(),
+                eos_idx=self.vocab.get_eos_index(),
+            ),
+            max_seq_len=self.max_seq_len,
         )
