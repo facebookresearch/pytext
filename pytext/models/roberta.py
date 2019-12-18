@@ -166,12 +166,12 @@ class RoBERTaWordTaggingModel(BaseModel):
     """
 
     class Config(BaseModel.Config):
-        class InputConfig(ConfigBase):
+        class WordTaggingInputConfig(ConfigBase):
             tokens: RoBERTaTokenLevelTensorizer.Config = (
                 RoBERTaTokenLevelTensorizer.Config()
             )
 
-        inputs: InputConfig = InputConfig()
+        inputs: WordTaggingInputConfig = WordTaggingInputConfig()
         encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: WordTaggingOutputLayer.Config = WordTaggingOutputLayer.Config()
