@@ -91,6 +91,28 @@ class BlockwiseMagnitudeSparsifier(L0_projection_sparsifier):
             config.layerwise_pruning,
         )
 
+    def get_sparsifiable_params(self, model, requires_name=False):
+        sparsifiable_params = [
+            p
+            for n, p in model.named_parameters()
+            if p.requires_grad and len(p.shape) == 2
+        ]
+        sparsifiable_params_name = [
+            n
+            for n, p in model.named_parameters()
+            if p.requires_grad and len(p.shape) == 2
+        ]
+        if requires_name:
+            return sparsifiable_params_name, sparsifiable_params
+        else:
+            return sparsifiable_params
+
+    def get_current_sparsity(self, model):
+        sparsifiable_params = self.get_sparsifiable_params(model)
+        sparsifiable_params_count = sum(p.numel() for p in sparsifiable_params)
+        nonzero_params = sum(p.nonzero().size(0) for p in sparsifiable_params)
+        return (sparsifiable_params_count - nonzero_params) / sparsifiable_params_count
+
     def _padding_into_full_blocks(self, param):
         nrows, ncols = param.shape
         ncols_pad = math.ceil(ncols / self.block_size) * self.block_size

@@ -96,6 +96,9 @@ class Trainer(TrainerBase):
         target_time_limit_seconds: Optional[int] = None
         #: Whether to do evaluation and model selection based on it.
         do_eval: bool = True
+        #: if do_eval, do we load the best model state dict after training or just
+        # use the latest model state
+        load_best_model_after_train: bool = True
         #: Number of samples for logging training progress.
         num_samples_to_log_progress: int = 1000
         #: Number of forward & backward per batch before update gradients, the
@@ -465,7 +468,11 @@ class Trainer(TrainerBase):
             if should_update_model or train_config.save_all_checkpoints:
                 self.save_checkpoint(state, train_config)
         # Only bother loading the best model for master worker
-        if rank == 0 and state.best_model_state is not None:
+        if (
+            rank == 0
+            and state.best_model_state is not None
+            and self.config.load_best_model_after_train
+        ):
             self.load_best_model(state)
 
         return state.model, state.best_model_metric
