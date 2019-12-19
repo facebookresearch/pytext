@@ -16,13 +16,13 @@ except ImportError:
 
     class PathManager:
         @staticmethod
-        def open(path: str, mode: str = "r"):
-            return open(path, mode)
+        def open(*args, **kwargs):
+            return open(*args, **kwargs)
 
         @staticmethod
-        def copy(src_path: str, dst_path: str, overwrite: bool = False) -> bool:
+        def copy(*args, **kwargs) -> bool:
             try:
-                shutil.copyfile(src_path, dst_path)
+                shutil.copyfile(*args, **kwargs)
                 return True
             except Exception as e:
                 print("Error in file copy - {}".format(str(e)))
@@ -49,9 +49,9 @@ except ImportError:
             return os.listdir(path)
 
         @staticmethod
-        def mkdirs(path: str):
-            os.makedirs(path, exist_ok=True)
+        def mkdirs(*args, **kwargs):
+            os.makedirs(*args, exist_ok=True, **kwargs)
 
         @staticmethod
-        def rm(path: str):
-            os.remove(path)
+        def rm(*args, **kwargs):
+            os.remove(*args, **kwargs)
