@@ -37,7 +37,7 @@ class ScriptTextModule(ScriptModule):
 
     @torch.jit.script_method
     def forward(self, texts: List[str]):
-        input_tensors = self.tensorizer.tensorize(texts=squeeze_1d(texts))
+        input_tensors = self.tensorizer(texts=squeeze_1d(texts))
         logits = self.model(input_tensors)
         return self.output_layer(logits)
 
@@ -56,7 +56,7 @@ class ScriptTokenModule(ScriptModule):
 
     @torch.jit.script_method
     def forward(self, tokens: List[List[str]]):
-        input_tensors = self.tensorizer.tensorize(tokens=squeeze_2d(tokens))
+        input_tensors = self.tensorizer(pre_tokenized=squeeze_2d(tokens))
         logits = self.model(input_tensors)
         return self.output_layer(logits)
 
@@ -75,8 +75,8 @@ class ScriptTokenLanguageModule(ScriptModule):
 
     @torch.jit.script_method
     def forward(self, tokens: List[List[str]], languages: Optional[List[str]] = None):
-        input_tensors = self.tensorizer.tensorize(
-            tokens=squeeze_2d(tokens), languages=squeeze_1d(languages)
+        input_tensors = self.tensorizer(
+            pre_tokenized=squeeze_2d(tokens), languages=squeeze_1d(languages)
         )
         logits = self.model(input_tensors)
         return self.output_layer(logits)
@@ -101,8 +101,8 @@ class ScriptTokenLanguageModuleWithDenseFeature(ScriptModule):
         dense_feat: List[List[float]],
         languages: Optional[List[str]] = None,
     ):
-        input_tensors = self.tensorizer.tensorize(
-            tokens=squeeze_2d(tokens), languages=squeeze_1d(languages)
+        input_tensors = self.tensorizer(
+            pre_tokenized=squeeze_2d(tokens), languages=squeeze_1d(languages)
         )
         logits = self.model(input_tensors, torch.tensor(dense_feat).float())
         return self.output_layer(logits)
