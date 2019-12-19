@@ -9,6 +9,7 @@ from pytext.config import ConfigBase
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.utils.file_io import PathManager
 from pytorch_pretrained_bert.modeling import BertConfig, BertModel
 
 
@@ -35,7 +36,7 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
         model = BertModel(bert_config)
         weights_path = os.path.join(config.bert_cpt_dir, "pytorch_model.bin")
         # load pre-trained weights if weights_path exists
-        if config.load_weights and os.path.isfile(weights_path):
+        if config.load_weights and PathManager.isfile(weights_path):
             state_dict = torch.load(weights_path)
 
             missing_keys: List[str] = []

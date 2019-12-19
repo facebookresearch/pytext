@@ -7,6 +7,7 @@ from typing import Tuple
 
 import torch
 from pytext.common.constants import Stage
+from pytext.utils.file_io import PathManager
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -119,7 +120,7 @@ class FileChannel(Channel):
         *args,
     ):
         print(f"saving result to file {self.file_path}")
-        with open(self.file_path, "w", encoding="utf-8") as of:
+        with PathManager.open(self.file_path, "w", encoding="utf-8") as of:
             tsv_writer = csv.writer(
                 of,
                 delimiter="\t",

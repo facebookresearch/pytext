@@ -11,6 +11,7 @@ import typing
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import Registry
 from pytext.config.serialize import config_to_json
+from pytext.utils.file_io import PathManager
 from sphinx.ext.napoleon import GoogleDocstring
 from sphinx.pycode import ModuleAnalyzer
 
@@ -320,13 +321,13 @@ def main():
     for config_path, config in ALL_CONFIGS.items():
         file_path = os.path.join(CONFIG_DIR, f"{config_path}.rst")
         print("Creating file", os.path.relpath(file_path, common_prefix))
-        with open(file_path, "w") as config_rst:
+        with PathManager.open(file_path, "w") as config_rst:
             config_rst.write(format_config_rst(config))
 
     for package, subpackages, configs in toctree_files(ALL_CONFIGS):
         file_path = os.path.join(CONFIG_DIR, f"{package}.rst")
         print("Creating file", os.path.relpath(file_path, common_prefix))
-        with open(file_path, "w") as toctree_file:
+        with PathManager.open(file_path, "w") as toctree_file:
             toctree_file.write(format_toctree_rst(package, subpackages, configs))
 
 

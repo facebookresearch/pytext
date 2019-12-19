@@ -7,6 +7,7 @@ from typing import Dict, List, Type
 
 from pytext.data.sources.data_source import RootDataSource
 from pytext.data.utils import UNK
+from pytext.utils.file_io import PathManager
 
 
 def load_vocab(file_path):
@@ -15,14 +16,14 @@ def load_vocab(file_path):
     (line_no - 1) is the key
     """
     vocab = {}
-    with open(file_path, "r") as file_contents:
+    with PathManager.open(file_path, "r") as file_contents:
         for idx, word in enumerate(file_contents):
             vocab[str(idx)] = word.strip()
     return vocab
 
 
 def reader(file_path, vocab):
-    with open(file_path, "r") as r:
+    with PathManager.open(file_path, "r") as r:
         for line in r:
             yield " ".join(
                 vocab.get(s.strip(), UNK)
@@ -32,7 +33,7 @@ def reader(file_path, vocab):
 
 
 def reader_raw(file_path, vocab):
-    with open(file_path, "r") as r:
+    with PathManager.open(file_path, "r") as r:
         for line in r:
             yield vocab[line.strip()]
 

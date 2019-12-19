@@ -7,6 +7,7 @@ from logging import getLogger
 
 import numpy as np
 import torch
+from pytext.utils.file_io import PathManager
 
 
 logger = getLogger()
@@ -134,12 +135,12 @@ class Dictionary(object):
         Create a dictionary from a vocabulary file.
         """
         skipped = 0
-        assert os.path.isfile(vocab_path), vocab_path
+        assert PathManager.isfile(vocab_path), vocab_path
         word2id = {BOS_WORD: 0, EOS_WORD: 1, PAD_WORD: 2, UNK_WORD: 3}
         for i in range(SPECIAL_WORDS):
             word2id[SPECIAL_WORD % i] = 4 + i
         counts = {k: 0 for k in word2id.keys()}
-        f = open(vocab_path, "r", encoding="utf-8")
+        f = PathManager.open(vocab_path, "r", encoding="utf-8")
         for i, line in enumerate(f):
             if "\u2028" in line:
                 skipped += 1
@@ -175,7 +176,7 @@ class Dictionary(object):
         """
         Index sentences with a dictionary.
         """
-        if bin_path is not None and os.path.isfile(bin_path):
+        if bin_path is not None and PathManager.isfile(bin_path):
             print("Loading data from %s ..." % bin_path)
             data = torch.load(bin_path)
             assert dico == data["dico"]
@@ -186,7 +187,7 @@ class Dictionary(object):
         unk_words = {}
 
         # index sentences
-        f = open(path, "r", encoding="utf-8")
+        f = PathManager.open(path, "r", encoding="utf-8")
         for i, line in enumerate(f):
             if i % 1000000 == 0 and i > 0:
                 print(i)

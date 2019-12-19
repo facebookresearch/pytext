@@ -9,6 +9,7 @@ import unittest
 from pytext.builtin_task import register_builtin_tasks
 from pytext.config import LATEST_VERSION, pytext_config_from_json
 from pytext.config.config_adapter import ADAPTERS, upgrade_one_version
+from pytext.utils.file_io import PathManager
 
 
 register_builtin_tasks()
@@ -31,7 +32,7 @@ class ConfigAdapterTest(unittest.TestCase):
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
         ):
             print("Trying to upgrade file:" + p)
-            with open(p) as f:
+            with PathManager.open(p) as f:
                 test_data = json.load(f)
                 for test_case in test_data:
                     old_config = test_case["original"]
@@ -44,7 +45,7 @@ class ConfigAdapterTest(unittest.TestCase):
             os.path.join(os.path.dirname(__file__), "json_config/*.json")
         ):
             print("Trying to upgrade file:" + p)
-            with open(p) as f:
+            with PathManager.open(p) as f:
                 test_data = json.load(f)
                 for test_case in test_data:
                     # make sure the config can be instantiated, don't need return value

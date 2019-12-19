@@ -23,6 +23,7 @@ from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
+from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
 
 from .utils import (
@@ -440,7 +441,7 @@ class TokenTensorizer(Tensorizer):
 
     def _add_vocab_from_files(self):
         for vocab_file in self.vocab_config.vocab_files:
-            with open(vocab_file.filepath) as f:
+            with PathManager.open(vocab_file.filepath) as f:
                 self.vocab_builder.add_from_file(
                     f,
                     vocab_file.skip_header_line,

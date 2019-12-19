@@ -3,7 +3,6 @@
 
 import json
 import math
-import os
 from typing import List, Optional
 
 from pytext.data.sources.data_source import (
@@ -13,6 +12,7 @@ from pytext.data.sources.data_source import (
     generator_property,
 )
 from pytext.data.sources.tsv import TSV
+from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
 
 
@@ -72,11 +72,11 @@ def _split_document(
 def process_squad_json(fname, ignore_impossible, max_character_length, min_overlap):
     if not fname:
         return
-    if not os.path.exists(fname):
+    if not PathManager.exists(fname):
         print(f"{fname} does not exist. Not unflattening.")
         return
 
-    with open(fname) as infile:
+    with PathManager.open(fname) as infile:
         dump = json.load(infile)
 
     id = 0
