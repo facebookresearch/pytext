@@ -119,6 +119,9 @@ class PoolingBatcher(Batcher):
         self.pool_num_batches = pool_num_batches
         self.num_shuffled_pools = num_shuffled_pools
 
+    def get_batch_size(self, stage: Stage) -> int:
+        return self._batch_sizes[stage]
+
     def batchify(
         self, iterable: Iterable[RawExample], sort_key=None, stage=Stage.TRAIN
     ):
@@ -130,7 +133,7 @@ class PoolingBatcher(Batcher):
         3. Sort rows, if necessary.
         4. Shuffle the order in which the batches are returned, if necessary.
         """
-        batch_size = self._batch_sizes[stage]
+        batch_size = self.get_batch_size(stage)
         pool_size = batch_size * self.pool_num_batches
         super_pool_size = pool_size * self.num_shuffled_pools
 
