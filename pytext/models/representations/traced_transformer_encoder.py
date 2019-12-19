@@ -4,6 +4,7 @@
 from typing import Tuple
 
 import torch
+import torch.cuda
 import torch.nn as nn
 from fairseq.modules import (
     TransformerSentenceEncoder as TransformerSentenceEncoderModule,
@@ -34,17 +35,32 @@ class TracedTransformerEncoder(nn.Module):
         tokens: torch.Tensor,
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
-    ):
+    ) -> None:
         super().__init__()
         traceable_encoder = TraceableTransformerWrapper(eager_encoder)
         traced_encoder_inputs = self._prepare_inputs(tokens, segment_labels, positions)
         self.has_segment_labels = segment_labels is not None
         self.has_positions = positions is not None
 
+        self.iter_ = 0
+
         # do not check trace because of non-deterministic ops (e.g. dropout)
         self.traced_encoder = torch.jit.trace(
             traceable_encoder, tuple(traced_encoder_inputs), check_trace=False
         )
+        if torch.cuda.is_available():
+            try:
+                import torch_tvm
+
+                torch_tvm.enable(
+                    device_type="gpu",
+                    device="cuda",
+                    device_id=torch.cuda.current_device(),
+                    is_training=True,
+                )
+                print("Using TVM in traced transformer")
+            except ImportError:
+                print("Not using TVM in traced transformer")
 
     def forward(
         self,
@@ -56,7 +72,21 @@ class TracedTransformerEncoder(nn.Module):
         assert self.has_positions == (positions is not None)
 
         traced_encoder_inputs = self._prepare_inputs(tokens, segment_labels, positions)
-        encoded_layers, pooled_output = self.traced_encoder(*traced_encoder_inputs)
+        self.iter_ += 1
+        if self.iter_ % 100 == 0:
+            print("Iter: ", self.iter_)
+            with torch.autograd.profiler.profile(
+                enabled=True, use_cuda=True, record_shapes=True
+            ) as prof:
+                encoded_layers, pooled_output = self.traced_encoder(
+                    *traced_encoder_inputs
+                )
+            print(
+                prof.key_averages(group_by_input_shape=True).table(sort_by="cuda_time")
+            )
+        else:
+            encoded_layers, pooled_output = self.traced_encoder(*traced_encoder_inputs)
+
         encoded_layers = list(torch.unbind(encoded_layers))
         return encoded_layers, pooled_output
 
