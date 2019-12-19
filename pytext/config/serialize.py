@@ -53,11 +53,7 @@ def _extend_tuple_type(cls, value):
     return sub_cls_list
 
 
-def _union_from_json(subclasses, json_obj):
-    if not _is_dict(json_obj):
-        raise IncorrectTypeError(
-            f"incorrect Union value {json_obj} for union {subclasses}"
-        )
+def build_subclass_dict(subclasses):
     subclasses_dict = {}
     for subclass in subclasses:
         if type(None) != subclass:
@@ -67,6 +63,15 @@ def _union_from_json(subclasses, json_obj):
                     subclasses_dict[_canonical_typename(child).lower()] = child
             else:
                 subclasses_dict[_canonical_typename(subclass).lower()] = subclass
+    return subclasses_dict
+
+
+def _union_from_json(subclasses, json_obj):
+    if not _is_dict(json_obj):
+        raise IncorrectTypeError(
+            f"incorrect Union value {json_obj} for union {subclasses}"
+        )
+    subclasses_dict = build_subclass_dict(subclasses)
 
     type_name = list(json_obj)[0].lower()
     if len(json_obj) == 1 and type_name in subclasses_dict:
