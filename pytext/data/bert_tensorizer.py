@@ -240,8 +240,10 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         return self.tensorize(tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d)
 
     def torchscriptify(self):
-        # Don't need torchscriptified tokenizer during training
-        self.tokenizer = self.tokenizer.torchscriptify()
+        # tokenizer will only be used in Inference, so we hold its torchscriptify
+        # by end of the training.
+        if not isinstance(self.tokenizer, torch.jit.ScriptModule):
+            self.tokenizer = self.tokenizer.torchscriptify()
         return super().torchscriptify()
 
 
