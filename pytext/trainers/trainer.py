@@ -27,7 +27,7 @@ from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
-from pytext.utils import cuda, precision, timing
+from pytext.utils import cuda, distributed, precision, timing
 
 
 class TrainerBase(Component):
@@ -173,6 +173,7 @@ class Trainer(TrainerBase):
                 output_device=device_id,
                 broadcast_buffers=False,
                 find_unused_parameters=state.model.find_unused_parameters,
+                process_group=distributed._round_robin_process_group,
             )
         state.start_time = time.time()
 

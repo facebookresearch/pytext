@@ -66,10 +66,12 @@ def _set_fp16(use_fp16: bool, rank: int) -> None:
 
 
 def _set_distributed(
-    rank: int, world_size: int, dist_init_url: str, device_id: int
+    rank: int, world_size: int, dist_init_url: str, device_id: int, gpu_streams: int = 1
 ) -> None:
     if dist_init_url and world_size > 1:
-        distributed.dist_init(rank, world_size, dist_init_url, device_id)
+        distributed.dist_init(
+            rank, world_size, dist_init_url, device_id, gpu_streams=gpu_streams
+        )
 
 
 def prepare_task_metadata(config: PyTextConfig) -> CommonMetadata:
@@ -120,7 +122,13 @@ def prepare_task(
         print("\nParameters: {}\n".format(config), flush=True)
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     _set_fp16(config.use_fp16, rank)
-    _set_distributed(rank, world_size, dist_init_url, device_id)
+    _set_distributed(
+        rank,
+        world_size,
+        dist_init_url,
+        device_id,
+        config.gpu_streams_for_distributed_training,
+    )
 
     if config.random_seed is not None:
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)
