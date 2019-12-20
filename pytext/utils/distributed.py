@@ -6,12 +6,16 @@ import torch
 import torch.distributed as dist_c10d
 
 
+_round_robin_process_group = None
+
+
 def dist_init(
     distributed_rank: int,
     world_size: int,
     init_method: str,
     device_id: int,
     backend: str = "nccl",
+    gpu_streams: int = 1,
 ):
     """
     1. After spawn process per GPU, we want all workers to call init_process_group
@@ -19,6 +23,8 @@ def dist_init(
     2. After dist_init, we want all workers to start calling all_reduce/barrier
     around the same time or NCCL timeouts.
     """
+    global _round_robin_process_group
+
     if init_method and world_size > 1 and torch.cuda.is_available():
         dist_c10d.init_process_group(
             backend=backend,
@@ -31,6 +37,18 @@ def dist_init(
             [1], dtype=torch.float32, device="cuda:{}".format(device_id)
         )
         dist_c10d.all_reduce(dist_tensor)
+
+        if gpu_streams >= 1:
+            _round_robin_process_group = dist_c10d._round_robin_process_groups(
+                [dist_c10d.new_group(backend=backend) for _ in range(gpu_streams)]
+            )
+
+            for _ in range(gpu_streams):
+                dist_tensor = torch.tensor(
+                    [1], dtype=torch.float32, device="cuda:{}".format(device_id)
+                )
+                _round_robin_process_group.allreduce(dist_tensor)
+            print(f"Using {gpu_streams} GPU streams for gradient sync.")
 
         if distributed_rank != 0:
             suppress_output()
