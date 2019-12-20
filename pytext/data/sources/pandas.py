@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Optional
+from typing import Dict, Optional, Type
 
 from pandas import DataFrame
 from pytext.data.sources.data_source import RootDataSource
+
+from .session import SessionDataSource
 
 
 class PandasDataSource(RootDataSource):
@@ -52,3 +54,25 @@ class PandasDataSource(RootDataSource):
 
     def raw_test_data_generator(self):
         return self.raw_generator(self.test_df)
+
+
+class SessionPandasDataSource(PandasDataSource, SessionDataSource):
+    def __init__(
+        self,
+        schema: Dict[str, Type],
+        id_col: str,
+        train_df: Optional[DataFrame] = None,
+        eval_df: Optional[DataFrame] = None,
+        test_df: Optional[DataFrame] = None,
+        column_mapping: Dict[str, str] = (),
+    ):
+        schema[id_col] = str
+        super().__init__(
+            schema=schema,
+            train_df=train_df,
+            test_df=test_df,
+            eval_df=eval_df,
+            column_mapping=column_mapping,
+            id_col=id_col,
+        )
+        self._validate_schema()
