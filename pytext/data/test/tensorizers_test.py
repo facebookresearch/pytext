@@ -822,16 +822,19 @@ class RobertaTensorizerTest(unittest.TestCase):
             tokenizer=DoNothingTokenizer(),
             vocab=tensorizer.vocab,
             max_seq_len=tensorizer.max_seq_len,
-        ).torchscriptify()
+        )
+        script_tensorizer_impl = tensorizer_impl.torchscriptify()
         per_sentence_tokens = [tensorizer.tokenizer.tokenize(text)]
         tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d = zip(
-            *[tensorizer_impl.numberize(per_sentence_tokens)]
+            *[script_tensorizer_impl.numberize(per_sentence_tokens)]
         )
-        script_tensors = tensorizer_impl.tensorize(
+        script_tensors = script_tensorizer_impl.tensorize(
             tokens_2d, segment_labels_2d, seq_lens_1d, positions_2d
         )
         for tensor, expect in zip(script_tensors, expected):
             self.assertEqual(tensor.tolist(), expect)
+        # test it is able to call torchscriptify multiple time
+        tensorizer_impl.torchscriptify()
 
 
 class SquadForRobertaTensorizerTest(unittest.TestCase):
