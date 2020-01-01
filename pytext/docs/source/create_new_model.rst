@@ -103,7 +103,7 @@ The ``forward`` method contains the execution logic calling each of those compon
 
 To finish this class, we need to define a few more functions.
 
-All the inputs are placed in a python dict where the key is the name of the tensorizer as defined in ModelInput, and the valus is the tensor for this input row.
+All the inputs are placed in a python dict where the key is the name of the tensorizer as defined in ModelInput, and the value is the tensor for this input row.
 
 First, we define how the inputs will be passed to the ``forward`` function in ``arrange_model_inputs``. In our case, the only input passed to the ``forward`` function is the tensors from the "tokens" input. As explained above, :class:`TokenTensorizer` returns 2 tensors: the tokens and the sequence length. (Actually it returns 3 tensors, we'll ignore the 3rd one, the token ranges, in this tutorial)
 
