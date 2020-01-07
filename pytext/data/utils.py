@@ -172,19 +172,14 @@ class Vocabulary:
             else:
                 return self.idx[value], 0, 1
 
-        def lookup_value(value):
-            return (
-                self.lookup_all_internal(value) if should_iter(value) else lookup(value)
-            )
-
         if not should_iter(nested_values):
-            return lookup_value(nested_values)
+            return lookup(nested_values)
         else:
             indices = []
             unks = 0
             total = 0
             for value in nested_values:
-                v, unk, t = lookup_value(value)
+                v, unk, t = self.lookup_all_internal(value)
                 indices.append(v)
                 unks += unk
                 total += t
