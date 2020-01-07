@@ -191,7 +191,7 @@ def main(context, config_file, config_json, config_module, include):
 
     Example:
 
-      pytext train < demos/docnn.json
+      pytext train < demo/configs/docnn.json
     """
     for path in include or []:
         # remove possible trailing / from autocomplete in --include

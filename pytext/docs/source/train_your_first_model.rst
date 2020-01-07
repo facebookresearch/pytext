@@ -18,7 +18,7 @@ You can use PyText as a library either in your own scripts or in a Jupyter noteb
 
     Example:
 
-      pytext train < demos/docnn.json
+      pytext train < demo/configs/docnn.json
 
   Options:
     --config-file TEXT
