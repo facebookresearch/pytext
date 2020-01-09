@@ -8,6 +8,7 @@ from pytext.config import ConfigBase
 from pytext.config.module_config import SlotAttentionType
 from pytext.models.module import create_module
 
+from .augmented_lstm import AugmentedLSTM
 from .bilstm import BiLSTM
 from .ordered_neuron_lstm import OrderedNeuronLSTM
 from .pooling import MaxPool, MeanPool, SelfAttention
@@ -50,7 +51,9 @@ class BiLSTMDocSlotAttention(RepresentationBase):
 
     class Config(RepresentationBase.Config, ConfigBase):
         dropout: float = 0.4
-        lstm: Union[BiLSTM.Config, OrderedNeuronLSTM.Config] = BiLSTM.Config()
+        lstm: Union[
+            BiLSTM.Config, OrderedNeuronLSTM.Config, AugmentedLSTM.Config
+        ] = BiLSTM.Config()
         pooling: Optional[
             Union[SelfAttention.Config, MaxPool.Config, MeanPool.Config]
         ] = None

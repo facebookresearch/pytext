@@ -35,40 +35,40 @@ class AugmentedLSTMCell(nn.Module):
         self, embed_dim: int, lstm_dim: int, use_highway: bool, use_bias: bool = True
     ):
         super().__init__()
-        self.input_size = embed_dim
-        self.hidden_size = lstm_dim
+        self.embed_dim = embed_dim
+        self.lstm_dim = lstm_dim
         self.use_highway = use_highway
         self.use_bias = use_bias
 
         if use_highway:
-            self._highway_inp_proj_start = 5 * self.hidden_size
-            self._highway_inp_proj_end = 6 * self.hidden_size
+            self._highway_inp_proj_start = 5 * self.lstm_dim
+            self._highway_inp_proj_end = 6 * self.lstm_dim
 
             # fused linearity of input to input_gate,
             # forget_gate, memory_init, output_gate, highway_gate,
             # and the actual highway value
             self.input_linearity = nn.Linear(
-                self.input_size, self._highway_inp_proj_end, bias=self.use_bias
+                self.embed_dim, self._highway_inp_proj_end, bias=self.use_bias
             )
             # fused linearity of input to input_gate,
             # forget_gate, memory_init, output_gate, highway_gate
             self.state_linearity = nn.Linear(
-                self.hidden_size, self._highway_inp_proj_start, bias=True
+                self.lstm_dim, self._highway_inp_proj_start, bias=True
             )
         else:
             # If there's no highway layer then we have a standard
             # LSTM. The 4 comes from fusing input, forget, memory, output
             # gates/inputs.
             self.input_linearity = nn.Linear(
-                self.input_size, 4 * self.hidden_size, bias=self.use_bias
+                self.embed_dim, 4 * self.lstm_dim, bias=self.use_bias
             )
             self.state_linearity = nn.Linear(
-                self.hidden_size, 4 * self.hidden_size, bias=True
+                self.lstm_dim, 4 * self.lstm_dim, bias=True
             )
         self.reset_parameters()
 
     def reset_parameters(self):
-        stdv = 1.0 / math.sqrt(self.hidden_size)
+        stdv = 1.0 / math.sqrt(self.lstm_dim)
         for weight in self.parameters():
             nn.init.uniform_(weight, -stdv, stdv)
 
@@ -100,7 +100,7 @@ class AugmentedLSTMCell(nn.Module):
 
         input_gate = forget_gate = memory_init = output_gate = highway_gate = None
         if self.use_highway:
-            fused_op = projected_input[:, : 5 * self.hidden_size] + projected_state
+            fused_op = projected_input[:, : 5 * self.lstm_dim] + projected_state
             fused_chunked = torch.chunk(fused_op, 5, 1)
             (
                 input_gate,
@@ -140,11 +140,11 @@ class AugmentedLSTMUnidirectional(nn.Module):
     `AugmentedLSTMUnidirectional` implements a one-layer single directional
     AugmentedLSTM layer. AugmentedLSTM is an LSTM which optionally
     appends an optional highway network to the output layer. Furthermore the
-    dropout_rate controlls the level of variational dropout done.
+    dropout controlls the level of variational dropout done.
 
     Args:
-        input_size (int): The number of expected features in the input.
-        hidden_size (int): Number of features in the hidden state of the LSTM.
+        embed_dim (int): The number of expected features in the input.
+        lstm_dim (int): Number of features in the hidden state of the LSTM.
             Defaults to 32.
         go_forward (bool): Whether to compute features left to right (forward)
             or right to left (backward).
@@ -161,8 +161,8 @@ class AugmentedLSTMUnidirectional(nn.Module):
 
     def __init__(
         self,
-        input_size: int,
-        hidden_size: int,
+        embed_dim: int,
+        lstm_dim: int,
         go_forward: bool = True,
         recurrent_dropout_probability: float = 0.0,
         use_highway: bool = True,
@@ -170,18 +170,15 @@ class AugmentedLSTMUnidirectional(nn.Module):
     ):
         super().__init__()
 
-        self.input_size = input_size
-        self.hidden_size = hidden_size
+        self.embed_dim = embed_dim
+        self.lstm_dim = lstm_dim
 
         self.go_forward = go_forward
         self.use_highway = use_highway
         self.recurrent_dropout_probability = recurrent_dropout_probability
 
         self.cell = AugmentedLSTMCell(
-            self.input_size,
-            self.hidden_size,
-            self.use_highway,
-            use_input_projection_bias,
+            self.embed_dim, self.lstm_dim, self.use_highway, use_input_projection_bias
         )
 
     def get_dropout_mask(
@@ -226,14 +223,14 @@ class AugmentedLSTMUnidirectional(nn.Module):
         batch_size = sequence_tensor.size()[0]
         total_timesteps = sequence_tensor.size()[1]
         output_accumulator = sequence_tensor.new_zeros(
-            batch_size, total_timesteps, self.hidden_size
+            batch_size, total_timesteps, self.lstm_dim
         )
         if states is None:
             full_batch_previous_memory = sequence_tensor.new_zeros(
-                batch_size, self.hidden_size
+                batch_size, self.lstm_dim
             )
             full_batch_previous_state = sequence_tensor.data.new_zeros(
-                batch_size, self.hidden_size
+                batch_size, self.lstm_dim
             )
         else:
             full_batch_previous_state = states[0].squeeze(0)
@@ -290,7 +287,7 @@ class AugmentedLSTMUnidirectional(nn.Module):
         )
 
         # Mimic the pytorch API by returning state in the following shape:
-        # (num_layers * num_directions, batch_size, hidden_size). As this
+        # (num_layers * num_directions, batch_size, lstm_dim). As this
         # LSTM cannot be stacked, the first dimension here is just 1.
         final_state = (
             full_batch_previous_state.unsqueeze(0),
@@ -304,11 +301,11 @@ class AugmentedLSTM(RepresentationBase):
     `AugmentedLSTM` implements a generic AugmentedLSTM representation layer.
     AugmentedLSTM is an LSTM which optionally appends
     an optional highway network to the output layer.
-    Furthermore the dropout_rate controlls the level of variational dropout done.
+    Furthermore the dropout controlls the level of variational dropout done.
 
     Args:
         config (Config): Configuration object of type BiLSTM.Config.
-        input_size (int): The number of expected features in the input.
+        embed_dim (int): The number of expected features in the input.
         padding_value (float): Value for the padded elements. Defaults to 0.0.
 
     Attributes:
@@ -326,9 +323,9 @@ class AugmentedLSTM(RepresentationBase):
         Configuration class for `AugmentedLSTM`.
 
         Attributes:
-            dropout_rate (float): Variational dropout probability to use.
+            dropout (float): Variational dropout probability to use.
                 Defaults to 0.0.
-            hidden_size (int): Number of features in the hidden state of the LSTM.
+            lstm_dim (int): Number of features in the hidden state of the LSTM.
                 Defaults to 32.
             num_layers (int): Number of recurrent layers. Eg. setting `num_layers=2`
                 would mean stacking two LSTMs together to form a stacked LSTM,
@@ -342,25 +339,25 @@ class AugmentedLSTM(RepresentationBase):
                 we don't.
         """
 
-        dropout_rate: float = 0.0
-        hidden_size: int = 32
+        dropout: float = 0.0
+        lstm_dim: int = 32
         use_highway: bool = True
         bidirectional: bool = False
         num_layers: int = 1
         use_bias: bool = False
 
     def __init__(
-        self, config: Config, input_size: int, padding_value: float = 0.0
+        self, config: Config, embed_dim: int, padding_value: float = 0.0
     ) -> None:
         super().__init__(config)
 
         self.config = config
-        self.input_size = input_size
+        self.embed_dim = embed_dim
         self.padding_value = padding_value
-        self.hidden_size = self.config.hidden_size
+        self.lstm_dim = self.config.lstm_dim
         self.num_layers = self.config.num_layers
         self.bidirectional = self.config.bidirectional
-        self.dropout_rate = self.config.dropout_rate
+        self.dropout = self.config.dropout
         self.use_highway = self.config.use_highway
         self.use_bias = self.config.use_bias
 
@@ -369,14 +366,14 @@ class AugmentedLSTM(RepresentationBase):
         if self.bidirectional:
             self.backward_layers = nn.ModuleList()
 
-        lstm_input_size = input_size
+        lstm_embed_dim = embed_dim
         for _ in range(self.num_layers):
             self.forward_layers.append(
                 AugmentedLSTMUnidirectional(
-                    lstm_input_size,
-                    self.hidden_size,
+                    lstm_embed_dim,
+                    self.lstm_dim,
                     go_forward=True,
-                    recurrent_dropout_probability=self.dropout_rate,
+                    recurrent_dropout_probability=self.dropout,
                     use_highway=self.use_highway,
                     use_input_projection_bias=self.use_bias,
                 )
@@ -384,17 +381,17 @@ class AugmentedLSTM(RepresentationBase):
             if self.bidirectional:
                 self.backward_layers.append(
                     AugmentedLSTMUnidirectional(
-                        lstm_input_size,
-                        self.hidden_size,
+                        lstm_embed_dim,
+                        self.lstm_dim,
                         go_forward=False,
-                        recurrent_dropout_probability=self.dropout_rate,
+                        recurrent_dropout_probability=self.dropout,
                         use_highway=self.use_highway,
                         use_input_projection_bias=self.use_bias,
                     )
                 )
 
-            lstm_input_size = self.hidden_size * num_directions
-        self.representation_dim = lstm_input_size
+            lstm_embed_dim = self.lstm_dim * num_directions
+        self.representation_dim = lstm_embed_dim
 
     def forward(
         self,
