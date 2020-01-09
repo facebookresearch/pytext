@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from datetime import timedelta
+
 import pytext.utils.cuda as cuda
 import torch
 import torch.distributed as dist_c10d
@@ -31,6 +33,7 @@ def dist_init(
             init_method=init_method,
             world_size=world_size,
             rank=distributed_rank,
+            timeout=timedelta(minutes=60),
         )
         # calling all_reduce for synchronzing all workers
         dist_tensor = torch.tensor(
