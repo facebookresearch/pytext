@@ -129,6 +129,12 @@ class PyTextConfig(ConfigBase):
     include_dirs: Optional[List[str]] = None
     # config version
     version: int
+    # Use CUDA for testing. Set to false for models where testing on CPU is
+    # preferred. This option allows one to train on GPU and test on CPU by
+    # setting use_cuda_if_available=True and use_cuda_for_testing=False. Note
+    # that if use_cuda_if_available=False or CUDA is not available, this
+    # parameter has no effect.
+    use_cuda_for_testing: bool = True
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done

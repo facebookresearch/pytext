@@ -344,7 +344,9 @@ def _get_model_snapshot(context, model_snapshot, use_cuda, use_tensorboard):
         print(f"No model snapshot provided, loading from config")
         config = context.obj.load_config()
         model_snapshot = config.save_snapshot_path
-        use_cuda = config.use_cuda_if_available
+        use_cuda = config.use_cuda_if_available and getattr(
+            config, "use_cuda_for_testing", True
+        )
         use_tensorboard = config.use_tensorboard
         print(f"Configured model snapshot {model_snapshot}")
     return model_snapshot, use_cuda, use_tensorboard
