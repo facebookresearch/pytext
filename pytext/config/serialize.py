@@ -86,7 +86,11 @@ def _union_from_json(subclasses, json_obj):
         return _value_from_json(subclasses_dict[type_name], json_obj)
     except Exception as e:
         raise UnionTypeError(
-            f"failed to parse union {subclasses} from json payload {json_obj}"
+            (
+                f"failed to parse union {subclasses} from"
+                f"json payload {json_obj} \n"
+                f"Reason: {e}"
+            )
         ) from e
 
 
