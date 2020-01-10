@@ -183,7 +183,7 @@ class MultiLabelOutputLayer(ClassificationOutputLayer):
         return preds, scores
 
     def torchscript_predictions(self):
-        return ClassificationScores(self.target_names, F.log_softmax)
+        return ClassificationScores(self.target_names, F.logsigmoid)
 
     def export_to_caffe2(
         self,
