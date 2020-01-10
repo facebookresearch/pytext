@@ -663,8 +663,9 @@ def upgrade_if_xlm(json_config):
     _, _, model = find_parameter(json_config, "task.model")
     if model and "XLMModel" in model:
         _, inputs, tokens = find_parameter(json_config, "task.model.inputs.tokens")
-        inputs["tokens"] = {}
-        inputs["tokens"]["XLMTensorizer"] = tokens
+        if tokens and "XLMTensorizer" not in tokens:
+            inputs["tokens"] = {}
+            inputs["tokens"]["XLMTensorizer"] = tokens
 
     return json_config
 
