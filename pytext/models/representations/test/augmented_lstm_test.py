@@ -10,7 +10,7 @@ class AugmentedLSTMTest(unittest.TestCase):
     def _test_shape(self, use_highway, variational_dropout, num_layers, bidirectional):
         config = AugmentedLSTM.Config()
         config.use_highway = use_highway
-        config.dropout_rate = variational_dropout
+        config.dropout = variational_dropout
         config.num_layers = num_layers
         config.bidirectional = bidirectional
 
@@ -18,18 +18,18 @@ class AugmentedLSTMTest(unittest.TestCase):
 
         batch_size = 3
         time_step = 17
-        input_size = 31
+        embed_dim = 31
 
-        aug_lstm = AugmentedLSTM(config, input_size)
+        aug_lstm = AugmentedLSTM(config, embed_dim)
 
-        input_tensor = torch.randn(batch_size, time_step, input_size)
+        input_tensor = torch.randn(batch_size, time_step, embed_dim)
         input_length = torch.zeros((batch_size,)).long()
         input_states = (
             torch.randn(
-                batch_size, config.num_layers, config.hidden_size * num_directions
+                batch_size, config.num_layers, config.lstm_dim * num_directions
             ),
             torch.randn(
-                batch_size, config.num_layers, config.hidden_size * num_directions
+                batch_size, config.num_layers, config.lstm_dim * num_directions
             ),
         )
         for i in range(batch_size):
@@ -42,16 +42,15 @@ class AugmentedLSTMTest(unittest.TestCase):
 
             # Test Shapes
             self.assertEqual(
-                output.size(),
-                (batch_size, time_step, config.hidden_size * num_directions),
+                output.size(), (batch_size, time_step, config.lstm_dim * num_directions)
             )
             self.assertEqual(
                 hidden_state.size(),
-                (batch_size, config.num_layers * num_directions, config.hidden_size),
+                (batch_size, config.num_layers * num_directions, config.lstm_dim),
             )
             self.assertEqual(
                 cell_state.size(),
-                (batch_size, config.num_layers * num_directions, config.hidden_size),
+                (batch_size, config.num_layers * num_directions, config.lstm_dim),
             )
 
             # Make sure gradients propagate correctly
@@ -65,7 +64,7 @@ class AugmentedLSTMTest(unittest.TestCase):
             s_output, (s_hidden_state, s_cell_state) = aug_lstm(
                 input_tensor, input_length, inp_state
             )
-            if config.dropout_rate == 0.0:
+            if config.dropout == 0.0:
                 assert torch.all(
                     torch.lt(torch.abs(torch.add(s_output, -output)), 1e-12)
                 )
