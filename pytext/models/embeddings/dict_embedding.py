@@ -90,6 +90,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             pooling_type=config.pooling,
             pad_index=pad_index,
             unk_index=unk_index,
+            mobile=config.mobile,
         )
 
     def __init__(
@@ -99,6 +100,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         pooling_type: PoolingType,
         pad_index: int = PAD_INDEX,
         unk_index: int = UNK_INDEX,
+        mobile: bool = False,
     ) -> None:
         self.pad_index = pad_index
         self.unk_index = unk_index
@@ -107,6 +109,24 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             self, num_embeddings, embed_dim, padding_idx=self.pad_index
         )
         self.pooling_type = pooling_type
+        self.mobile = mobile
+
+    def find_and_replace(
+        self, tensor: torch.Tensor, find_val: int, replace_val: int
+    ) -> torch.Tensor:
+        """
+        `torch.where` is not supported for mobile ONNX, this hack allows a mobile
+        exported version of `torch.where` which is computationally more expensive
+        """
+        if self.mobile:
+            mask = torch.eq(tensor, find_val)
+            return tensor * (1 - mask.long()) + mask * replace_val
+        else:
+            return torch.where(
+                tensor == find_val,
+                cuda.GetTensor(torch.full_like(tensor, replace_val)),
+                tensor,
+            )
 
     def forward(
         self, feats: torch.Tensor, weights: torch.Tensor, lengths: torch.Tensor
@@ -133,12 +153,9 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         batch_size = torch.onnx.operators.shape_as_tensor(feats)[0]
         max_toks = torch.onnx.operators.shape_as_tensor(lengths)[1]
 
-        # convert all unk indices to pad indices
-        feats = torch.where(
-            feats == self.unk_index,
-            cuda.GetTensor(torch.full_like(feats, self.pad_index)),
-            feats,
-        )
+        if self.unk_index != self.pad_index:
+            # convert all unk indices to pad indices
+            feats = self.find_and_replace(feats, self.unk_index, self.pad_index)
 
         dict_emb = super().forward(feats)
 
