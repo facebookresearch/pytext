@@ -51,6 +51,7 @@ class DictFeatConfig(ModuleConfig):
     pooling: PoolingType = PoolingType.MEAN
     export_input_names: List[str] = ["dict_vals", "dict_weights", "dict_lens"]
     vocab_from_train_data: bool = True
+    mobile: bool = False
 
 
 class CharFeatConfig(ModuleConfig):
