@@ -1,5 +1,71 @@
 # Changelog
 
+## v0.3.1
+
+## New features
+- Implement SquadQA tensorizer in TorchScript (#1211)
+- Add session data source for df (#1202)
+- Dynamic Batch Scheduler Implementation (#1200)
+- Implement loss aware sparsifier (#1204)
+- Ability to Fine-tune XLM-R for NER on CoNLL Datasets (#1201)
+- TorchScriptify Tokenizer after training (#1191)
+- Linear Layer only blockwise sparsifier (#478)
+- Adding performance graph to pytext models (#1192)
+- Enable inference on GPUs by moving tensors to specified device (#472)
+- Add support for learning from soft labels for Squad (MRC) models (#1188)
+- Create byte-aware model that can make byte predictions (#468)
+- Minimum Trust Lamb (#1186)
+- Allow model to take byte-level input and make byte-level prediction (#1187)
+- Scheduler with Warmup (#1184)
+- Implement LAMB optimizer (#1183)
+- CyclicLRScheduler (#1157)
+- PyText Entity Linking: ELTask and ELMetricReporter (#1165)
+
+## Bug fixes
+- Don't upgrade if Tensorizer already given (#504)
+- avoid torchscriptify on a ScriptModule (#1214)
+- Make tensorboard robust to NaN and Inf in model params (#1206)
+- Fix circleCLI Test broken in D19027834 (#1205)
+- Fix small bug in pytext vocabulary (#401)
+- Fix CircleCI failure caused by black and regex (#1199)
+- Fix CircleCI (#1194)
+- Fix Circle CI Test broken by D18880705 (#1190)
+- fix weight load for new fairseq checkpoints (#1189)
+- Fix Heirarchical intent and slot filling demo is broken (#1012) (#1151)
+- Fix index error in dict embedding when exported to Caffe2 (#1182)
+- Fix zero loss tensor in SquadOutputLayer (#1181)
+- qa fix for ignore_impossible=False
+
+## Other
+
+- Printing out error's underlying reason (#1227)
+- tidy file path in help text for invocation of docnn.json example (#1221)
+- PyText option to disable CUDA when testing. (#1223)
+- make augmented lstm compatible w other lstms (#1224)
+- Vocab recursive lookup (#1222)
+- Fix simple typo: valus -> value (#1219)
+- support using RoundRobin ProcessGroup in Distributed training (#1213)
+- Use PathManager for all I/O (#1198)
+- Make PathManager robust to API changes in fvcore (#1196)
+- Support for TVM training (BERT) (#1210)
+- Exit LM task if special token exists in text for ByteTensorizer (#1207)
+- Config adapter for pytext XLM (#1172)
+- Use TensorizerImpl for both training and inference for BERT, RoBERTa and XLM tensorizer (#1195)
+- Replace gluster paths with local file paths for NLG configs (#1197)
+- Make BERT Classification compatible with TSEs that return Encoded Layers.
+- implement BertTensorizerImpl and XLMTensorizerImpl (#1193)
+- Make is_input field of tensorizer configurable (#474)
+- BERTTensorizerBaseImpl to reimplement BERTTensorizerBase to be TorchScriptable (#1163)
+- Improve LogitsWorkflow to handle dumping of raw inputs and multiple output tensors (#683)
+- Accumulative blockwise pruning (#1170)
+- Patch for UnicodeDecodeError due to BPE. (#1179)
+- Add pre-loaded task as parameter to caffe2 batch prediction API
+- Specify CFLAGS to install fairseq in MacOS (#1175)
+- Resolve dependency conflict by specifying python-dateutil==2.8.0 (#1176)
+- Proper training behavior if setting do_eval=False (#1155)
+- Make DeepCNNRepresentation torchscriptable (#453)
+
+
 ## v0.3.0
 
 ## New Features
