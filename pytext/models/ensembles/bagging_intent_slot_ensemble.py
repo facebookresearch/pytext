@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List
+from typing import List, Tuple
 
 import torch
 from pytext.models.joint_model import IntentSlotModel
@@ -65,7 +65,7 @@ class BaggingIntentSlotEnsembleModel(EnsembleModel):
         )
         self.output_layer.word_output.crf.set_transitions(transition_matrix)
 
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """Call `forward()` method of each intent-slot sub-model by passing all
         arguments and named arguments to the sub-models, collect the logits from
         them and average their values.
@@ -89,4 +89,11 @@ class BaggingIntentSlotEnsembleModel(EnsembleModel):
             else:
                 logit_w_list = torch.cat([logit_w_list, logit_w], dim=3)
 
-        return [torch.mean(logit_d_list, dim=2), torch.mean(logit_w_list, dim=3)]
+        return torch.mean(logit_d_list, dim=2), torch.mean(logit_w_list, dim=3)
+
+    def torchscriptify(self, tensorizers, traced_model):
+        return self.models[0].torchscriptify(
+            tensorizers,
+            traced_model,
+            merged_output_layer=self.output_layer if self.use_crf else None,
+        )
