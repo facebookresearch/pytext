@@ -3,6 +3,7 @@
     "DocClassificationTask": {
       "features" : {
         "dense_feat" : {
+          "column": "dense_feat",
           "dim": 10
         }
       },

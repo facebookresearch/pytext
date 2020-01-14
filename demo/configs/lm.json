@@ -15,6 +15,9 @@
       "model": {
         "tied_weights": true,
         "stateful": true,
+        "embedding": {
+          "embed_dim": 10
+        },
         "decoder": {
           "hidden_dims": [
             10

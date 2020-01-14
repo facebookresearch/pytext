@@ -11,6 +11,9 @@
             "eval_filename": "tests/data/test_data_tiny.tsv"
           }
         }
+      },
+      "trainer": {
+        "epochs": 2
       }
     }
   }

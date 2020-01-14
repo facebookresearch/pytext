@@ -12,6 +12,9 @@
           }
         }
       },
+      "trainer": {
+        "epochs": 2
+      },
       "model": {
         "representation": {
           "doc_representation": {

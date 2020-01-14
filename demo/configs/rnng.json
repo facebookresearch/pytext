@@ -21,7 +21,7 @@
       "model": {
         "lstm": {
           "dropout": 0.34,
-          "lstm_dim": 164,
+          "lstm_dim": 16,
           "num_layers": 2,
           "bidirectional": true
         },
