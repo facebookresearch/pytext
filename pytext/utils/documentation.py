@@ -17,7 +17,7 @@ ROOT_CONFIG = "PyTextConfig"
 
 def get_class_members_recursive(obj):
     """Find all the field names for a given class and their default value."""
-    ret = dict(vars(obj.Config if "Config" in dir(obj) else obj))
+    ret = dict(vars(obj.Config if hasattr(obj, "Config") else obj))
     for b in getattr(obj, "__bases__", []):
         # Only pytext configs.
         # Exclude Module because it adds load_path and save_path.

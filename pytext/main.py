@@ -215,7 +215,7 @@ def main(context, config_file, config_json, config_module, include):
                     eprint("No config file specified, reading from stdin")
                     config = json.load(sys.stdin)
                 # before parsing the config, include the custom components
-                for path in config.get("include_dirs", []):
+                for path in config.get("include_dirs", None) or []:
                     add_include(path.rstrip("/"))
                 context.obj.config = parse_config(config)
         return context.obj.config
