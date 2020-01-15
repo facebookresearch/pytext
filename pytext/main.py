@@ -60,7 +60,7 @@ def train_model_distributed(config, metric_channels: Optional[List[Channel]]):
         or config.distributed_world_size <= torch.cuda.device_count()
     ), (
         f"Only {torch.cuda.device_count()} GPUs are available, "
-        "{config.distributed_world_size} GPUs were requested"
+        f"{config.distributed_world_size} GPUs were requested"
     )
 
     print(f"\n=== Starting training, World size is {config.distributed_world_size}")
