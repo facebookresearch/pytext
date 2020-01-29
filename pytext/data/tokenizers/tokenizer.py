@@ -274,7 +274,15 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
 
     def tokenize(self, input_str: str) -> List[Token]:
         pieces = self.processor.EncodeAsPieces(input_str)
-        return [Token(piece, -1, -1) for piece in pieces]
+        tokens = []
+        # calculate start and end indices of each piece.
+        end = 0
+        for piece in pieces:
+            original_piece = piece.lstrip("\u2581")
+            start = input_str.find(original_piece, end)
+            end = start + len(original_piece)
+            tokens.append(Token(piece, start, end))
+        return tokens
 
     def _load_processor(self):
         self.processor = SentencePieceProcessor()
