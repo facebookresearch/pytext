@@ -69,17 +69,17 @@ class SentencePieceTokenizerTest(unittest.TestCase):
     def test_tokenize(self):
         sentence = "Testing out sentencepiece"
         expected = [
-            "▁T",
-            "est",
-            "ing",
-            "▁out",
-            "▁sen",
-            "t",
-            "ence",
-            "p",
-            "i",
-            "e",
-            "ce",
+            Token(value="▁T", start=0, end=1),
+            Token(value="est", start=1, end=4),
+            Token(value="ing", start=4, end=7),
+            Token(value="▁out", start=8, end=11),
+            Token(value="▁sen", start=12, end=15),
+            Token(value="t", start=15, end=16),
+            Token(value="ence", start=16, end=20),
+            Token(value="p", start=20, end=21),
+            Token(value="i", start=21, end=22),
+            Token(value="e", start=22, end=23),
+            Token(value="ce", start=23, end=25),
         ]
         sp_tokenizer = SentencePieceTokenizer.from_config(
             SentencePieceTokenizer.Config(
@@ -87,5 +87,4 @@ class SentencePieceTokenizerTest(unittest.TestCase):
             )
         )
         tokens = sp_tokenizer.tokenize(sentence)
-        tokens = [token.value for token in tokens]
         self.assertEqual(tokens, expected)
