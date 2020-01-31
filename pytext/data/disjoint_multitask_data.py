@@ -63,24 +63,28 @@ class DisjointMultitaskData(Data):
         # currently the way training is set up is that, the data object needs
         # to specify a data_source which is used at test time. For multitask
         # this is set to the data_source associated with the test_key
-        self.data_source = data_dict[self.test_key].data_source
-        super().__init__(self.data_source, {})
+        data_source = data_dict[self.test_key].data_source
+        tensorizers = data_dict[self.test_key].tensorizers
+        super().__init__(data_source, tensorizers)
         self.data_dict = data_dict
         self.samplers = samplers
         self.task_key = task_key
 
     @generator_iterator
-    def batches(self, stage: Stage, data_source=None):
+    def batches(self, stage: Stage, data_source=None, load_early=False):
         """Yield batches from each task, sampled according to a given sampler.
         This batcher additionally exposes a task name in the batch to allow the model
         to filter examples to the appropriate tasks."""
         if data_source is not None:
             # means being called in test workflow
-            for batch in self.data_dict[self.test_key].batches(stage, data_source):
+            for batch in self.data_dict[self.test_key].batches(
+                stage, data_source, load_early
+            ):
                 yield batch
         else:
             all_batches = {
-                name: task.batches(stage) for name, task in self.data_dict.items()
+                name: task.batches(stage, load_early=load_early)
+                for name, task in self.data_dict.items()
             }
             sampled_batches = self.samplers[stage].batchify(all_batches)
 
