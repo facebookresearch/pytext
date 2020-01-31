@@ -72,25 +72,18 @@ class DoNothingTokenizer(Tokenizer):
 
     class Config(Component.Config):
         do_nothing: str = ""
-        json_input: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.json_input)
+        return cls()
 
-    def __init__(self, json_input: bool = False):
+    def __init__(self):
         super().__init__(None)
-        self.json_input = json_input
 
-    def tokenize(self, input: Union[List[str], str]) -> List[Token]:
-        if self.json_input:
-            # This is needed for student training in fluent2, since the text input is
-            # a list of tokens serialized into a json string
-            assert isinstance(input, str)
-            input = json.loads(input)
-        else:
-            assert isinstance(input, List)
-        tokens = [Token(token_text, -1, -1) for token_text in input if token_text]
+    def tokenize(self, tokens: Union[List[str], str]) -> List[Token]:
+        if isinstance(tokens, str):
+            tokens = json.loads(tokens)
+        tokens = [Token(token_text, -1, -1) for token_text in tokens if token_text]
         return tokens
 
     def torchscriptify(self):
