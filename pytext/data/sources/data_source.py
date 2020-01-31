@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Type, TypeVar
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
 from pytext.utils.data import Slot, parse_slot_string
+from pytext.utils.file_io import PathManager
 
 
 Schema = Dict[str, Type]
@@ -69,7 +70,7 @@ class SafeFileWrapper:
     """
 
     def __init__(self, *args, **kwargs):
-        self._file = open(*args, **kwargs)
+        self._file = PathManager.open(*args, **kwargs)
 
     def __del__(self):
         self._file.close()
