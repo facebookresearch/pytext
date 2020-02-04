@@ -10,12 +10,11 @@ from pytext.config.module_config import PoolingType
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import PAD_INDEX, UNK_INDEX, Vocabulary
 from pytext.fields import FieldMeta
-from pytext.utils import cuda
 
 from .embedding_base import EmbeddingBase
 
 
-class DictEmbedding(EmbeddingBase, nn.Embedding):
+class DictEmbedding(EmbeddingBase):
     """
     Module for dictionary feature embeddings for tokens. Dictionary features are
     also known as gazetteer features. These are per token discrete features that
@@ -102,13 +101,15 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         unk_index: int = UNK_INDEX,
         mobile: bool = False,
     ) -> None:
-        self.pad_index = pad_index
+        super().__init__(embed_dim)
         self.unk_index = unk_index
-        EmbeddingBase.__init__(self, embed_dim)
-        nn.Embedding.__init__(
-            self, num_embeddings, embed_dim, padding_idx=self.pad_index
+        self.pad_index = pad_index
+        self.embedding = nn.Embedding(
+            num_embeddings, embed_dim, padding_idx=self.pad_index
         )
-        self.pooling_type = pooling_type
+        # Temporary workaround till https://github.com/pytorch/pytorch/issues/32840
+        # is resolved
+        self.pooling_type = str(pooling_type)
         self.mobile = mobile
 
     def find_and_replace(
@@ -124,7 +125,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
         else:
             return torch.where(
                 tensor == find_val,
-                cuda.GetTensor(torch.full_like(tensor, replace_val)),
+                torch.full_like(tensor, replace_val, device=tensor.device),
                 tensor,
             )
 
@@ -157,7 +158,7 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             # convert all unk indices to pad indices
             feats = self.find_and_replace(feats, self.unk_index, self.pad_index)
 
-        dict_emb = super().forward(feats)
+        dict_emb = self.embedding(feats)
 
         # Calculate weighted average of the embeddings
         weighted_embds = dict_emb * weights.unsqueeze(2)
@@ -165,15 +166,17 @@ class DictEmbedding(EmbeddingBase, nn.Embedding):
             (
                 batch_size.view(1),
                 max_toks.view(1),
-                torch.LongTensor([-1]),
-                torch.LongTensor([weighted_embds.size()[-1]]),
+                torch.tensor([-1]).long(),
+                torch.tensor([weighted_embds.size()[-1]]).long(),
             )
         )
         weighted_embds = torch.onnx.operators.reshape_from_tensor_shape(
             weighted_embds, new_emb_shape
         )
 
-        if self.pooling_type == PoolingType.MEAN:
+        # Temporary workaround till https://github.com/pytorch/pytorch/issues/32840
+        # is resolved
+        if self.pooling_type == "mean":
             reduced_embeds = (
                 torch.sum(weighted_embds, dim=2) / lengths.unsqueeze(2).float()
             )
