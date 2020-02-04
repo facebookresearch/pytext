@@ -17,8 +17,8 @@ class DictEmbeddingTest(unittest.TestCase):
             embed_dim=output_dim,
             pooling_type=PoolingType.MEAN,
         )
-        self.assertEqual(embedding_module.weight.size(0), num_embeddings)
-        self.assertEqual(embedding_module.weight.size(1), output_dim)
+        self.assertEqual(embedding_module.embedding.weight.size(0), num_embeddings)
+        self.assertEqual(embedding_module.embedding.weight.size(1), output_dim)
 
         # The first and last tokens should be mapped to the zero vector.
         # This is due to the invariant that both unk and pad are considered
