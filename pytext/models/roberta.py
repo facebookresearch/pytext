@@ -27,6 +27,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 )
 from pytext.torchscript.module import get_script_module_cls
 from pytext.utils.file_io import PathManager
+from pytext.utils.usage import log_class_usage
 from torch.serialization import default_restore_location
 
 
@@ -72,6 +73,7 @@ class RoBERTaEncoderJit(RoBERTaEncoderBase):
         assert config.pretrained_encoder.load_path, "Load path cannot be empty."
         self.encoder = create_module(config.pretrained_encoder)
         self.representation_dim = self.encoder.encoder.token_embedding.weight.size(-1)
+        log_class_usage(__class__)
 
     def _embedding(self):
         # used to tie weights in MaskedLM model
@@ -128,6 +130,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 self.load_state_dict(roberta_state)
 
         self.representation_dim = self._embedding().weight.size(-1)
+        log_class_usage(__class__)
 
     def _embedding(self):
         # used to tie weights in MaskedLM model
@@ -200,6 +203,7 @@ class RoBERTaWordTaggingModel(BaseModel):
         self.module_list = [encoder, decoder]
         self.output_layer = output_layer
         self.stage = stage
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, pad_mask, segment_labels, positions, _ = tensor_dict["tokens"]

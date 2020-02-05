@@ -9,6 +9,7 @@ from pytext.data.tensorizers import NumericLabelTensorizer, Tensorizer
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.module import create_module
 from pytext.models.output_layers import RegressionOutputLayer
+from pytext.utils.usage import log_class_usage
 
 
 class NewBertRegressionModel(NewBertModel):
@@ -37,3 +38,7 @@ class NewBertRegressionModel(NewBertModel):
         )
         output_layer = RegressionOutputLayer.from_config(config.output_layer)
         return cls(encoder, decoder, output_layer)
+
+    def __init__(self, encoder, decoder, output_layer) -> None:
+        super().__init__(encoder, decoder, output_layer)
+        log_class_usage(__class__)
