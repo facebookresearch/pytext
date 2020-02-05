@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from pytext.common.utils import eprint
 
@@ -94,6 +94,19 @@ def _union_from_json(subclasses, json_obj):
         ) from e
 
 
+def _any_from_json(cls, json_obj):
+    if _is_dict(json_obj):
+        if len(json_obj) == 1:
+            type_name, value = list(json_obj.keys())[0], list(json_obj.values())[0]
+            assert (
+                type_name == type(value).__name__
+            ), f"type of value mismatches: {type_name} vs. {type(value).__name__} from {value}"
+            return value
+        else:
+            raise TypeError("PyText Config currently don't support this")
+    return json_obj
+
+
 def _is_optional(cls):
     return _get_class_type(cls) == Union and type(None) in cls.__args__
 
@@ -118,6 +131,8 @@ def _value_from_json(cls, value):
     # nested config
     elif hasattr(cls, "_fields"):
         return config_from_json(cls, value)
+    elif cls_type == Any:
+        return _any_from_json(cls, value)
     elif cls_type == Union:
         return _union_from_json(cls.__args__, value)
     elif issubclass(cls_type, Enum):
@@ -221,7 +236,7 @@ def _value_to_json(cls, value):
     elif _is_optional(cls) and len(cls.__args__) == 2:
         sub_cls = cls.__args__[0] if type(None) != cls.__args__[0] else cls.__args__[1]
         return _value_to_json(sub_cls, value)
-    elif cls_type == Union or getattr(cls, "__EXPANSIBLE__", False):
+    elif cls_type == Any or cls_type == Union or getattr(cls, "__EXPANSIBLE__", False):
         real_cls = type(value)
         if hasattr(real_cls, "_fields"):
             value = config_to_json(real_cls, value)
