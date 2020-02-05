@@ -206,7 +206,7 @@ class FP16OptimizerApex(FP16Optimizer):
             return None
 
     def pre_export(self, model):
-        if self._opt_level == "O2":
+        if self.opt_level == "O2":
             # convert model parameters back to fp32
             model.float()
         else:
