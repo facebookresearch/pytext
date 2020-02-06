@@ -32,6 +32,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
 from pytext.utils.label import get_label_weights
+from pytext.utils.usage import log_class_usage
 
 
 class NewBertModel(BaseModel):
@@ -120,6 +121,7 @@ class NewBertModel(BaseModel):
         self.output_layer = output_layer
         self.stage = stage
         self.module_list = [encoder, decoder]
+        log_class_usage(__class__)
 
 
 class BertPairwiseModel(BasePairwiseModel):
@@ -162,6 +164,7 @@ class BertPairwiseModel(BasePairwiseModel):
         self.encoder1 = encoder1
         self.encoder2 = encoder2
         self.encoders = [encoder1, encoder2]
+        log_class_usage(__class__)
 
     @classmethod
     def _create_encoder(
