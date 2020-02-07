@@ -18,18 +18,19 @@ register_builtin_tasks()
 # These JSON files are not parseable configs
 EXCLUDE_JSON = {
     # used by test_merge_token_labels_to_slot
-    "utils/tests/test_samples.json"
+    "utils/tests/test_samples.json",
+    # "pytext/data/test/data/gpt2_encoder.json",
 }
 # TODO: @stevenliu T52746850 include all config files from demo, include
 # as many as possible from fb
-EXCLUDE_DIRS = {"config/test/json_config", "tests/data", "fb", "demo"}
+EXCLUDE_DIRS = {"config/test/json_config", "tests/data", "data/test/data", "fb", "demo"}
 
 
 class LoadAllConfigTest(unittest.TestCase):
     def setUp(self):
         os.chdir(PYTEXT_HOME)
 
-    def DISABLED_test_load_all_configs(self):
+    def test_load_all_configs(self):
         """
             Try an load all the json files in pytext to make sure we didn't
             break the config API.
@@ -39,7 +40,7 @@ class LoadAllConfigTest(unittest.TestCase):
         exclude_json_dir = {*[get_absolute_path(p) for p in EXCLUDE_DIRS]}
         for filename in glob.iglob("./**/*.json", recursive=True):
             filepath = get_absolute_path(filename)
-            if filepath in exclude_json_path:
+            if any(filepath.endswith(suffix) for suffix in exclude_json_path):
                 continue
             if any(filepath.startswith(prefix) for prefix in exclude_json_dir):
                 continue
