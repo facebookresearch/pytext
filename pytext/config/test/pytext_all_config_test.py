@@ -23,7 +23,15 @@ EXCLUDE_JSON = {
 }
 # TODO: @stevenliu T52746850 include all config files from demo, include
 # as many as possible from fb
-EXCLUDE_DIRS = {"config/test/json_config", "tests/data", "data/test/data", "fb", "demo"}
+EXCLUDE_DIRS = {
+    "config/test/json_config",
+    "tests/data",
+    "data/test/data",
+    "fb",
+    "demo",
+    "pytext/config/test/json_config",
+    "pytext/data/test/data",
+}
 
 
 class LoadAllConfigTest(unittest.TestCase):
