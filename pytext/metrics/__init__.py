@@ -914,24 +914,20 @@ def compute_multi_label_classification_metrics(
     num_expected_labels = 0
     per_label_confusions = PerLabelConfusions()
     for _, predicted, expected in predictions:
-        # "predicted" is in the format of n_hot_encoding
-        # Calculate TP & FN
-        for true_label_idx in expected:
-            if true_label_idx < 0:
-                # padded label "-1"
-                break
+        for label_idx, label_name in enumerate(label_names):
             num_expected_labels += 1
-            expected_label = label_names[true_label_idx]
-            if predicted[true_label_idx] == 1:
-                num_correct += 1
-                per_label_confusions.update(expected_label, "TP", 1)
+            # "predicted" is in the format of n_hot_encoding
+            if predicted[label_idx] == 1:
+                if label_idx in expected:  # TP
+                    num_correct += 1
+                    per_label_confusions.update(label_name, "TP", 1)
+                else:  # FP
+                    per_label_confusions.update(label_name, "FP", 1)
             else:
-                per_label_confusions.update(expected_label, "FN", 1)
-        # Calculate FP
-        for idx, pred in enumerate(predicted):
-            if pred == 1 and idx not in expected:
-                predicted_label = label_names[idx]
-                per_label_confusions.update(predicted_label, "FP", 1)
+                if label_idx in expected:  # FN
+                    per_label_confusions.update(label_name, "FN", 1)
+                else:  # TN, update correct num
+                    num_correct += 1
 
     accuracy = safe_division(num_correct, num_expected_labels)
     macro_prf1_metrics = per_label_confusions.compute_metrics()
