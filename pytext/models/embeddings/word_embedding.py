@@ -97,6 +97,7 @@ class WordEmbedding(EmbeddingBase):
             embedding_dim=config.embed_dim,
             embeddings_weight=embeddings_weight,
             init_range=config.embedding_init_range,
+            init_std=config.embeddding_init_std,
             unk_token_idx=unk_token_idx,
             mlp_layer_dims=config.mlp_layer_dims,
             padding_idx=config.padding_idx or vocab_pad_idx,
@@ -109,6 +110,7 @@ class WordEmbedding(EmbeddingBase):
         embedding_dim: int = 300,
         embeddings_weight: Optional[torch.Tensor] = None,
         init_range: Optional[List[int]] = None,
+        init_std: Optional[float] = None,
         unk_token_idx: int = 0,
         mlp_layer_dims: List[int] = (),
         padding_idx: Optional[int] = None,
@@ -124,8 +126,12 @@ class WordEmbedding(EmbeddingBase):
             _weight=embeddings_weight,
             padding_idx=padding_idx,
         )
-        if embeddings_weight is None and init_range:
-            self.word_embedding.weight.data.uniform_(init_range[0], init_range[1])
+        if embeddings_weight is None:
+            if init_range:
+                self.word_embedding.weight.data.uniform_(init_range[0], init_range[1])
+            if init_std:
+                self.word_embedding.weight.data.normal_(mean=0.0, std=init_std)
+
         # Initialize unk embedding with zeros
         # to guard the model against randomized decisions based on unknown words
         self.word_embedding.weight.data[unk_token_idx].fill_(0.0)
