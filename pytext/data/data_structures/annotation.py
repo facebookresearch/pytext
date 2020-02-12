@@ -9,6 +9,7 @@ CLOSE = "]"
 ESCAPE = "\\"
 INTENT_PREFIX = "IN:"
 SLOT_PREFIX = "SL:"
+OOD_TOKEN = "outOfDomain"
 COMBINATION_INTENT_LABEL = INTENT_PREFIX + "COMBINE"
 COMBINATION_SLOT_LABEL = SLOT_PREFIX + "COMBINE"
 SHIFT = "SHIFT"
@@ -107,6 +108,8 @@ class Annotation:
                             node: Union[Intent, Slot, Token] = Intent(word)
                         elif word.startswith(SLOT_PREFIX):
                             node = Slot(word)
+                        elif word == OOD_TOKEN:
+                            node = Intent(word)
                         elif accept_flat_intents_slots:
                             # Temporary, for compatibility with flat annotations that
                             # does not contain IN:, SL: prefixes. This assumes any child
