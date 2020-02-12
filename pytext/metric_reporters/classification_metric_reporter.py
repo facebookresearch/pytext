@@ -196,7 +196,11 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
         Generate human readable predictions
         """
         return [
-            [self.label_names[pred] for pred in predictions]
+            [
+                self.label_names[pred_idx]
+                for pred_idx, pred in enumerate(predictions)
+                if pred == 1
+            ]
             for predictions in self.all_preds
         ]
 
@@ -205,6 +209,6 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
         Generate human readable targets
         """
         return [
-            [self.label_names[target] for target in targets]
+            [self.label_names[target] for target in targets if target != -1]
             for targets in self.all_targets
         ]
