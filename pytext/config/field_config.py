@@ -26,6 +26,7 @@ class WordFeatConfig(ModuleConfig):
     freeze: bool = False  # only freezes embedding lookup, not MLP layers
     embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
     embedding_init_range: Optional[List[float]] = None
+    embeddding_init_std: Optional[float] = 0.02
     export_input_names: List[str] = ["tokens_vals"]
     pretrained_embeddings_path: str = ""
     vocab_file: str = ""
