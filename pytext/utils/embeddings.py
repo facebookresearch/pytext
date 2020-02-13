@@ -64,6 +64,9 @@ class PretrainedEmbedding(object):
             self.stoi = {}  # type: Dict[str, int]
             self.embedding_vectors = None  # type: torch.Tensor
 
+    def filter_criteira(self, token: str) -> bool:
+        return True
+
     def load_pretrained_embeddings(
         self,
         raw_embeddings_path: str,
@@ -108,7 +111,7 @@ class PretrainedEmbedding(object):
                         # lowercase here so that returned matrix doesn't contain
                         # the same token twice (lower and upper cases).
                         token = token.lower()
-                    if token not in tokens:
+                    if token not in tokens and self.filter_criteira(token):
                         chunk_vocab.append(token)
                         for item in split_line[1:]:
                             yield dtype(item)
