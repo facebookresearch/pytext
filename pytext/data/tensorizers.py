@@ -796,6 +796,9 @@ class LabelListTensorizer(LabelTensorizer):
     of tensors (label_idx, list_length).
     """
 
+    class Config(LabelTensorizer.Config):
+        pass
+
     def __init__(self, label_column: str = "label", *args, **kwargs):
         super().__init__(label_column, *args, **kwargs)
 

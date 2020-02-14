@@ -121,6 +121,9 @@ class CosineEmbeddingLoss(Loss):
 
 
 class MultiLabelSoftMarginLoss(Loss):
+    class Config(ConfigBase):
+        pass
+
     def __call__(self, m_out, targets, reduce=True):
         """
         Computes multi-label classification loss

@@ -178,6 +178,9 @@ class ClassificationMetricReporter(MetricReporter):
 
 
 class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
+    class Config(ClassificationMetricReporter.Config):
+        pass
+
     def calculate_metric(self):
         return compute_multi_label_classification_metrics(
             [
