@@ -1,0 +1,188 @@
+#!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import Dict, List, Optional, Tuple
+
+import torch
+from pytext.common.constants import Stage
+from pytext.data.tensorizers import GazetteerTensorizer, Tensorizer, TokenTensorizer
+from pytext.data.utils import Vocabulary
+from pytext.models.embeddings import DictEmbedding, WordEmbedding
+from pytext.models.embeddings.scriptable_embedding_list import ScriptableEmbeddingList
+from pytext.models.model import BaseModel, Model
+from pytext.models.module import create_module
+from pytext.torchscript.seq2seq.scripted_seq2seq_generator import (
+    ScriptedSequenceGenerator,
+)
+from pytext.utils.cuda import GetTensor
+
+from .rnn_encoder_decoder import RNNModel
+from .seq2seq_output_layer import Seq2SeqOutputLayer
+
+
+class Seq2SeqModel(Model):
+    """
+    Sequence to sequence model using an encoder-decoder architecture.
+    """
+
+    class Config(Model.Config):
+        class ModelInput(Model.Config.ModelInput):
+            src_seq_tokens: TokenTensorizer.Config = TokenTensorizer.Config()
+            trg_seq_tokens: TokenTensorizer.Config = TokenTensorizer.Config()
+            dict_feat: Optional[GazetteerTensorizer.Config] = None
+
+        inputs: ModelInput = ModelInput()
+        encoder_decoder: RNNModel.Config = RNNModel.Config()
+        source_embedding: WordEmbedding.Config = WordEmbedding.Config()
+        target_embedding: WordEmbedding.Config = WordEmbedding.Config()
+        dict_embedding: Optional[DictEmbedding.Config] = None
+        output_layer: Seq2SeqOutputLayer.Config = Seq2SeqOutputLayer.Config()
+        sequence_generator: ScriptedSequenceGenerator.Config = (
+            ScriptedSequenceGenerator.Config()
+        )
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        src_tokens = tensorizers["src_seq_tokens"]
+        src_embedding_list = [
+            create_module(config.source_embedding, tensorizer=src_tokens)
+        ]
+        gazetteer_tensorizer = tensorizers.get("dict_feat")
+        if gazetteer_tensorizer:
+            src_embedding_list.append(
+                create_module(config.dict_embedding, tensorizer=gazetteer_tensorizer)
+            )
+        source_embedding = ScriptableEmbeddingList(src_embedding_list)
+
+        trg_tokens = tensorizers["trg_seq_tokens"]
+        target_embedding = ScriptableEmbeddingList(
+            [create_module(config.target_embedding, tensorizer=trg_tokens)]
+        )
+
+        model = create_module(
+            config.encoder_decoder,
+            source_embedding,
+            len(trg_tokens.vocab),
+            target_embedding,
+        )
+        output_layer = create_module(config.output_layer, trg_tokens.vocab)
+
+        dictfeat_tokens = tensorizers.get("dict_feat")
+
+        sequence_generator = create_module(
+            config.sequence_generator, [model], trg_tokens.vocab.get_eos_index()
+        )
+
+        return cls(
+            model=model,
+            output_layer=output_layer,
+            sequence_generator=sequence_generator,
+            src_vocab=src_tokens.vocab,
+            trg_vocab=trg_tokens.vocab,
+            dictfeat_vocab=dictfeat_tokens.vocab if dictfeat_tokens else None,
+        )
+
+    def arrange_model_inputs(
+        self, tensor_dict
+    ) -> Tuple[
+        torch.Tensor,
+        Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+        torch.Tensor,
+        torch.Tensor,
+    ]:
+        src_tokens, src_lengths, _ = tensor_dict["src_seq_tokens"]
+        trg_tokens, trg_lengths, _ = tensor_dict["trg_seq_tokens"]
+
+        def _shift_target(in_sequences, seq_lens, eos_idx, pad_idx):
+            shifted_sequence = GetTensor(
+                torch.LongTensor(in_sequences.size()).fill_(pad_idx)
+            )
+            for i, in_seq in enumerate(in_sequences):
+                shifted_sequence[i, 0] = eos_idx
+                # Copy everything except ones starting from the EOS at the end.
+                shifted_sequence[i, 1 : seq_lens[i].item()] = in_seq[
+                    0 : seq_lens[i].item() - 1
+                ]
+            return shifted_sequence
+
+        # shift target
+        trg_tokens = _shift_target(
+            trg_tokens, trg_lengths, self.trg_eos_index, self.trg_pad_index
+        )
+
+        return (src_tokens, tensor_dict.get("dict_feat"), src_lengths, trg_tokens)
+
+    def arrange_targets(self, tensor_dict):
+        trg_tokens, trg_lengths, _ = tensor_dict["trg_seq_tokens"]
+        return (trg_tokens, trg_lengths)
+
+    def __init__(
+        self,
+        model: RNNModel,
+        output_layer: Seq2SeqOutputLayer,
+        sequence_generator: ScriptedSequenceGenerator,
+        src_vocab: Vocabulary,
+        trg_vocab: Vocabulary,
+        dictfeat_vocab: Vocabulary,
+    ):
+        BaseModel.__init__(self)
+        self.model = model
+        self.encoder = self.model.encoder
+        self.decoder = self.model.decoder
+        self.output_layer = output_layer
+        self.sequence_generator = sequence_generator
+
+        # Target vocab EOS index is useful for recognizing when to stop generating
+        self.trg_eos_index = trg_vocab.get_eos_index()
+
+        # Target vocab PAD index is useful for shifting source/target prior to decoding
+        self.trg_pad_index = trg_vocab.get_pad_index()
+
+        # Source, target and dictfeat vocab are needed for export so that we can handle
+        # string input
+        self.src_dict = src_vocab
+        self.trg_dict = trg_vocab
+        self.dictfeat_dict = dictfeat_vocab
+
+        self.force_eval_predictions = False
+
+    def max_decoder_positions(self):
+        return self.model.max_decoder_positions()
+
+    def forward(
+        self,
+        src_tokens: torch.Tensor,
+        dict_feats: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+        src_lengths: torch.Tensor,
+        trg_tokens: torch.Tensor,
+    ):
+        additional_features: List[List[torch.Tensor]] = []
+
+        if dict_feats:
+            additional_features.append(list(dict_feats))
+
+        logits, output_dict = self.model(
+            src_tokens, additional_features, src_lengths, trg_tokens
+        )
+
+        if dict_feats:
+            (
+                output_dict["dict_tokens"],
+                output_dict["dict_weights"],
+                output_dict["dict_lengths"],
+            ) = dict_feats
+        return logits, output_dict
+
+    def get_pred(self, model_outputs, context=None):
+        preds = (None, None)
+        if context:
+            stage = context.get("stage", None)
+            if stage and (
+                (stage == Stage.TEST)
+                or (self.force_eval_predictions and stage == Stage.EVAL)
+            ):
+                _, model_input = model_outputs
+                preds = self.sequence_generator.generate_hypo(model_input)
+        return preds
+
+    def get_normalized_probs(self, net_output, log_probs, sample=None):
+        return self.model.get_normalized_probs(net_output, log_probs, sample)

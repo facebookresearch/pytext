@@ -26,6 +26,9 @@ from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.language_model_metric_reporter import (
     MaskedLMMetricReporter,
 )
+from pytext.metric_reporters.seq2seq_compositional import (
+    Seq2SeqCompositionalMetricReporter,
+)
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.doc_model import DocModel, DocRegressionModel
@@ -48,6 +51,7 @@ from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
 )
+from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
 from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
 from pytext.models.word_model import WordTaggingModel
 from pytext.task import Task_Deprecated
@@ -239,4 +243,12 @@ class SemanticParsingTask(NewTask):
         assert trainer.config.report_train_metrics is False, (
             "Disable report_train_metrics because trees are not necessarily "
             "valid during training"
+        )
+
+
+class SequenceLabelingTask(NewTask):
+    class Config(NewTask.Config):
+        model: Seq2SeqModel.Config = Seq2SeqModel.Config()
+        metric_reporter: Seq2SeqCompositionalMetricReporter.Config = (
+            Seq2SeqCompositionalMetricReporter.Config()
         )
