@@ -127,9 +127,11 @@ class _NewTask(TaskBase):
     def _init_tensorizers(cls, config: Config, tensorizers=None, rank=0, world_size=1):
         # Pull extra columns from the metric reporter config to pass into
         # the data source schema.
-        extra_columns = list(
-            getattr(config.metric_reporter, "text_column_names", ())
-        ) + list(getattr(config.metric_reporter, "additional_column_names", ()))
+        extra_columns = (
+            getattr(config.metric_reporter, "text_column_names", [])
+            + getattr(config.metric_reporter, "additional_column_names", [])
+            + getattr(config.metric_reporter, "student_column_names", [])
+        )
         extra_schema = {column: Any for column in extra_columns}
 
         init_tensorizers = not tensorizers
