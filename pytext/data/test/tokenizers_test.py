@@ -3,7 +3,12 @@
 
 import unittest
 
-from pytext.data.tokenizers import GPT2BPETokenizer, SentencePieceTokenizer, Tokenizer
+from pytext.data.tokenizers import (
+    GPT2BPETokenizer,
+    SentencePieceTokenizer,
+    Tokenizer,
+    WordPieceTokenizer,
+)
 from pytext.data.tokenizers.tokenizer import Token
 
 
@@ -48,6 +53,26 @@ class TokenizeTest(unittest.TestCase):
         expected = "please buy me a coffee he implored in vain".split()
         tokens = tokenizer.tokenize(sentence)
         self.assertListEqual(expected, [t.value for t in tokens])
+
+
+class WordpieceTokenizerTest(unittest.TestCase):
+    def test_wordpiece_tokenizer(self):
+        text = "Marcó Lopᚠz"
+        expected = [
+            Token("m", 0, 1),
+            Token("##ar", 1, 3),
+            Token("##c", 3, 4),
+            Token(value="##o", start=4, end=5),
+            Token(value="[UNK]", start=6, end=11),
+        ]
+        tokenizer = WordPieceTokenizer.from_config(
+            WordPieceTokenizer.Config(
+                wordpiece_vocab_path="pytext/data/test/data/wordpiece_1k.txt"
+            )
+        )
+        tokens = tokenizer.tokenize(text)
+        print(tokens)
+        self.assertEqual(tokens, expected)
 
 
 class GPT2BPETest(unittest.TestCase):
