@@ -124,9 +124,7 @@ class DictEmbedding(EmbeddingBase):
             return tensor * (1 - mask.long()) + mask * replace_val
         else:
             return torch.where(
-                tensor == find_val,
-                torch.full_like(tensor, replace_val, device=tensor.device),
-                tensor,
+                tensor == find_val, torch.full_like(tensor, replace_val), tensor
             )
 
     def forward(
