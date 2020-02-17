@@ -43,6 +43,7 @@ def create_schema(
         # automatically casts data to string.
         add_to_schema(name, type)
 
+    print(f"PyText data schema: {schema}.")
     return schema
 
 
