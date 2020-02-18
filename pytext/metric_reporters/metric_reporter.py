@@ -49,6 +49,8 @@ class MetricReporter(Component):
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
         pep_format: bool = False
+        #: Useful for KD training, column names that used by student but not teacher.
+        student_column_names: List[str] = []
 
     def __init__(self, channels, pep_format=False) -> None:
         self._reset()
