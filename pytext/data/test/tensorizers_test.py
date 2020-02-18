@@ -419,11 +419,12 @@ class TensorizersTest(unittest.TestCase):
         # only one row in test file:
         # ["where do you wanna meet?", "MPK"]
         for row in data.train:
-            tokens, token_lens = tensorizer.prepare_input(row)
-            idx, lens = tensorizer.numberize(row)
+            tokens, token_lens, seq_lens = tensorizer.prepare_input(row)
+            idx, sentence_lens, lens = tensorizer.numberize(row)
             self.assertEqual(2, lens)
             self.assertEqual([[2, 3, 4, 5, 6], [7, 1, 1, 1, 1]], idx)
-            self.assertEqual(2, token_lens)
+            self.assertEqual([5, 1], sentence_lens)
+            self.assertEqual(2, seq_lens)
             self.assertEqual(
                 [
                     ["where", "do", "you", "wanna", "meet?"],
@@ -431,6 +432,66 @@ class TensorizersTest(unittest.TestCase):
                 ],
                 tokens,
             )
+
+    def test_seq_tensor_max_turn(self):
+        tensorizer = SeqTokenTensorizer(max_turn=1)
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_seq_features.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text_seq"],
+            schema={"text_seq": List[str]},
+        )
+
+        self._initialize_tensorizer(tensorizer, data)
+
+        # only one row in test file:
+        # ["where do you wanna meet?", "MPK"]
+        for row in data.train:
+            idx, sentence_lens, seq_len = tensorizer.numberize(row)
+            self.assertEqual(1, seq_len)
+            self.assertEqual([[2, 3, 4, 5, 6]], idx)
+            self.assertEqual([5], sentence_lens)
+
+    def test_seq_tensor_pad_batch(self):
+        tensorizer = SeqTokenTensorizer()
+
+        data = TSVDataSource(
+            train_file=SafeFileWrapper(
+                tests_module.test_file("train_seq_features.tsv")
+            ),
+            test_file=None,
+            eval_file=None,
+            field_names=["text_seq"],
+            schema={"text_seq": List[str]},
+        )
+
+        self._initialize_tensorizer(tensorizer, data)
+        token_idx_1 = [[2, 3], [2, 1]]
+        token_count_1 = [2, 1]
+        seq_len_1 = 2
+        token_idx_2 = [[2, 3, 4]]
+        token_count_2 = [3]
+        seq_len_2 = 1
+        token_idx_tensor, token_count_tensor, seq_len_tensor = tensorizer.tensorize(
+            [
+                (token_idx_1, token_count_1, seq_len_1),
+                (token_idx_2, token_count_2, seq_len_2),
+            ]
+        )
+        np.testing.assert_array_almost_equal(
+            np.array([[[2, 3, 1], [2, 1, 1]], [[2, 3, 4], [1, 1, 1]]]),
+            token_idx_tensor.detach().numpy(),
+        )
+        np.testing.assert_array_almost_equal(
+            np.array([[2, 1], [3, 1]]), token_count_tensor.detach().numpy()
+        )
+        np.testing.assert_array_almost_equal(
+            np.array([2, 1]), seq_len_tensor.detach().numpy()
+        )
 
     def test_seq_tensor_with_bos_eos_eol_bol(self):
         tensorizer = SeqTokenTensorizer(
@@ -457,10 +518,11 @@ class TensorizersTest(unittest.TestCase):
         # only one row in test file:
         # ["where do you wanna meet?", "MPK"]
         for row in data.train:
-            idx, lens = tensorizer.numberize(row)
-            tokens, token_lens = tensorizer.prepare_input(row)
+            idx, sen_lens, lens = tensorizer.numberize(row)
+            tokens, token_lens, seq_lens = tensorizer.prepare_input(row)
             self.assertEqual(4, lens)
-            self.assertEqual(4, token_lens)
+            self.assertEqual(4, seq_lens)
+            self.assertEqual([3, 7, 3, 3], token_lens)
             self.assertEqual(
                 [
                     [2, 4, 3, 1, 1, 1, 1],
