@@ -1346,6 +1346,7 @@ class SeqTokenTensorizer(Tensorizer):
     ::
 
         idx = [[2, 3, 4, 5, 6], [7, 1, 1, 1, 1]]
+        sentence_len = [5, 1]
         seq_len = [2]
 
     If you're using BOS, EOS, BOL and EOL, the vocab will look like this
@@ -1365,12 +1366,15 @@ class SeqTokenTensorizer(Tensorizer):
             [2, 11, 3, 1, 1,  1, 1],
             [2,  5, 3, 1, 1,  1, 1]
         ]
+        sentence_len = [3, 8, 3, 3]
         seq_len = [4]
 
     """
 
     class Config(Tensorizer.Config):
         column: str = "text_seq"
+        # this is actually the max token count, it's named seq_len beause the variable is used in _tokenize
+        # function from TokenTensorizer
         max_seq_len: Optional[int] = None
         #: sentence markers
         add_bos_token: bool = False
@@ -1382,6 +1386,8 @@ class SeqTokenTensorizer(Tensorizer):
         use_eol_token_for_bol: bool = False
         #: The tokenizer to use to split input text into tokens.
         tokenizer: Tokenizer.Config = Tokenizer.Config()
+        # the max number of turns in one example
+        max_turn = 50
 
     @classmethod
     def from_config(cls, config: Config):
@@ -1397,6 +1403,7 @@ class SeqTokenTensorizer(Tensorizer):
             use_eol_token_for_bol=config.use_eol_token_for_bol,
             max_seq_len=config.max_seq_len,
             is_input=config.is_input,
+            max_turn=config.max_turn,
         )
 
     def __init__(
@@ -1412,6 +1419,7 @@ class SeqTokenTensorizer(Tensorizer):
         max_seq_len=Config.max_seq_len,
         vocab=None,
         is_input: bool = Config.is_input,
+        max_turn=50,
     ):
         self.column = column
         self.tokenizer = tokenizer or Tokenizer()
@@ -1423,7 +1431,10 @@ class SeqTokenTensorizer(Tensorizer):
         self.add_bol_token = add_bol_token
         self.add_eol_token = add_eol_token
         self.use_eol_token_for_bol = use_eol_token_for_bol
+        # this is actually the max token count, it's named seq_len beause the variable is used in _tokenize
+        # function from TokenTensorizer
         self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_turn = max_turn
         super().__init__(is_input)
 
     @property
@@ -1459,9 +1470,9 @@ class SeqTokenTensorizer(Tensorizer):
 
     def prepare_input(self, row):
         """Tokenize, return tokenized_texts in raw text"""
-        seq, seq_lens = self._process(row, raw_token_output=True)
+        seq, sen_lens, seq_lens = self._process(row, raw_token_output=True)
         # convert all special tokens to str
-        return [[str(token) for token in sen] for sen in seq], seq_lens
+        return [[str(token) for token in sen] for sen in seq], sen_lens, seq_lens
 
     def _process(self, row, raw_token_output):
         sentence_process_fn = (
@@ -1477,7 +1488,7 @@ class SeqTokenTensorizer(Tensorizer):
             tokens, _, _ = sentence_process_fn(pre_tokenized=[Token(bol, -1, -1)])
             seq.append(list(tokens))
 
-        for raw_text in row[self.column]:
+        for raw_text in row[self.column][: self.max_turn]:
             tokens, _, _ = sentence_process_fn(raw_text)
             seq.append(list(tokens))
 
@@ -1486,22 +1497,27 @@ class SeqTokenTensorizer(Tensorizer):
             seq.append(list(tokens))
 
         max_len = max(len(sentence) for sentence in seq)
+        sentence_lens = []
         for sentence in seq:
-            pad_len = max_len - len(sentence)
+            sen_len = len(sentence)
+            sentence_lens.append(sen_len)
+            pad_len = max_len - sen_len
             if pad_len:
                 sentence += [pad_token] * pad_len
-        return seq, len(seq)
+        return seq, sentence_lens, len(seq)
 
     def tensorize(self, batch):
-        tokens, seq_lens = zip(*batch)
+        tokens, sentence_lens, seq_lens = zip(*batch)
         return (
             pad_and_tensorize(tokens, self.vocab.get_pad_index()),
-            pad_and_tensorize(seq_lens),
+            # pad with len of 1, because 0 will cause issue in LSTM
+            pad_and_tensorize(sentence_lens, 1),
+            pad_and_tensorize(seq_lens, 0),
         )
 
     def sort_key(self, row):
-        # use seq_len as sort key
-        return row[1]
+        # sort by seq_len first, then max sentence len
+        return row[2] + row[1] / self.max_turn
 
 
 class AnnotationNumberizer(Tensorizer):
