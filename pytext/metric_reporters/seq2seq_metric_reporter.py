@@ -16,8 +16,6 @@ from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics import safe_division
 from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics
 
-from .seq2seq_utils import stringify
-
 
 class Seq2SeqFileChannel(FileChannel):
     def __init__(self, stages, file_path, tensorizers):
@@ -28,15 +26,14 @@ class Seq2SeqFileChannel(FileChannel):
         return ("doc_index", "raw_input", "predictions", "targets")
 
     def gen_content(self, metrics, loss, preds, targets, scores, context):
-        target_vocab = self.tensorizers["trg_seq_tokens"].vocab
         batch_size = len(targets)
         assert batch_size == len(context[DatasetFieldName.RAW_SEQUENCE]) == len(preds)
         for i in range(batch_size):
             yield [
                 context[BatchContext.INDEX][i],
                 context[DatasetFieldName.RAW_SEQUENCE][i],
-                stringify(preds[i][0], target_vocab._vocab),
-                stringify(targets[i], target_vocab._vocab),
+                self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]),
+                self.tensorizers["trg_seq_tokens"].stringify(targets[i]),
             ]
 
 
