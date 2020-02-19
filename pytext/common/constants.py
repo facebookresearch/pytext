@@ -86,6 +86,7 @@ class Stage(Enum):
     TRAIN = "Training"
     EVAL = "Evaluation"
     TEST = "Test"
+    OTHERS = "Others"
 
 
 class RawExampleFieldName:
