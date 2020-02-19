@@ -285,6 +285,16 @@ class Tensorizer(Component):
         state.pop("tensorizer_script_impl", None)
         return state
 
+    def stringify(self, token_indices):
+        # Used in metric reporter to convert from tokens to string
+        res = ""
+        if hasattr(self, "vocab"):
+            res = " ".join([self.vocab._vocab[index] for index in token_indices])
+            if hasattr(self, "tokenizer"):
+                if hasattr(self.tokenizer, "decode"):
+                    res = self.tokenizer.decode(res)
+        return res
+
     def torchscriptify(self):
         return self.tensorizer_script_impl.torchscriptify()
 

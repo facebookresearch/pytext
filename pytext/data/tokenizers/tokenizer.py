@@ -63,6 +63,10 @@ class Tokenizer(Component):
     def torchscriptify(self):
         raise NotImplementedError
 
+    def decode(self, sentence: str):
+        ## To be overridden by subword level tokenizers to convert to string
+        return sentence
+
 
 class DoNothingTokenizer(Tokenizer):
     """
@@ -233,6 +237,13 @@ class GPT2BPETokenizer(Tokenizer):
             if len(tokens) > 1 and end < tokens[-2].end:
                 end = tokens[-2].end
         return [token for token in tokens if token.value]
+
+    def decode(self, sentence: str):
+        bpe_tokens = []
+        for i in sentence.split():
+            if i.isdigit():
+                bpe_tokens.append(int(i))
+        return self.bpe.decode(bpe_tokens)
 
 
 class CppProcessorMixin:
