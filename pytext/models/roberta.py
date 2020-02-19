@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import torch
 from pytext.common.constants import Stage
@@ -25,7 +25,7 @@ from pytext.models.representations.transformer import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
-from pytext.torchscript.module import get_script_module_cls
+from pytext.torchscript.module import ScriptPyTextModule
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch.serialization import default_restore_location
@@ -152,11 +152,7 @@ class RoBERTa(NewBertModel):
         values according to the output layer (eg. as a dict mapping class name to score)
         """
         script_tensorizer = tensorizers["tokens"].torchscriptify()
-        script_module_cls = get_script_module_cls(
-            script_tensorizer.tokenizer.input_type()
-        )
-
-        return script_module_cls(
+        return ScriptPyTextModule(
             model=traced_model,
             output_layer=self.output_layer.torchscript_predictions(),
             tensorizer=script_tensorizer,

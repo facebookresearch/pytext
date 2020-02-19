@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import torch
 
 
-class ScriptInputType(Enum):
-    text = 1  # row contains a single sentence
-    token = 2  # row contains a list of tokens from a single sentence
+class ScriptBatchInput(NamedTuple):
+    """A batch of inputs for TorchScript Module(bundle of Tensorizer and Model)
+    texts or tokens is required but multually exclusive
+    Args:
+        texts: a batch of raw text inputs
+        tokens: a batch of pre-tokenized inputs
+        languages: language for each input in the batch
+    """
 
-    def is_text(self):
-        return self is ScriptInputType.text
-
-    def is_token(self):
-        return self is ScriptInputType.token
+    texts: Optional[List[List[str]]]
+    tokens: Optional[List[List[List[str]]]]
+    languages: Optional[List[List[str]]]
 
 
 # ===== the following section should be replaced once JIT provide native support

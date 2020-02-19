@@ -13,7 +13,7 @@ from pytext.torchscript.tensorizer import (
 )
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
-from pytext.torchscript.tokenizer.tokenizer import ScriptTextTokenizerBase
+from pytext.torchscript.tokenizer.tokenizer import ScriptTokenizerBase
 from pytext.torchscript.utils import squeeze_1d, squeeze_2d
 from pytext.torchscript.vocab import ScriptVocabulary
 
@@ -26,7 +26,7 @@ class TensorizerTest(unittest.TestCase):
         )
 
     def _mock_tokenizer(self):
-        class MockTokenizer(ScriptTextTokenizerBase):
+        class MockTokenizer(ScriptTokenizerBase):
             def __init__(self, tokens: List[Tuple[str, int, int]]):
                 super().__init__()
                 self.tokens = torch.jit.Attribute(tokens, List[Tuple[str, int, int]])

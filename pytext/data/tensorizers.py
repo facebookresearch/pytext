@@ -21,6 +21,7 @@ from pytext.data.data_structures.annotation import (
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
+from pytext.torchscript.utils import ScriptBatchInput
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
@@ -115,9 +116,9 @@ class TensorizerScriptImpl(torch.nn.Module):
     def set_device(self, device: str):
         self.device = device
 
-    def batch_size(
-        self, texts: Optional[List[List[str]]], tokens: Optional[List[List[List[str]]]]
-    ) -> int:
+    def batch_size(self, inputs: ScriptBatchInput) -> int:
+        texts: Optional[List[List[str]]] = inputs.texts
+        tokens: Optional[List[List[List[str]]]] = inputs.tokens
         if texts is not None:
             return len(texts)
         elif tokens is not None:
@@ -125,9 +126,9 @@ class TensorizerScriptImpl(torch.nn.Module):
         else:
             raise RuntimeError("Empty input for both texts and tokens.")
 
-    def row_size(
-        self, texts: Optional[List[List[str]]], tokens: Optional[List[List[List[str]]]]
-    ) -> int:
+    def row_size(self, inputs: ScriptBatchInput) -> int:
+        texts: Optional[List[List[str]]] = inputs.texts
+        tokens: Optional[List[List[List[str]]]] = inputs.tokens
         if texts is not None:
             return len(texts[0])
         elif tokens is not None:
@@ -138,14 +139,14 @@ class TensorizerScriptImpl(torch.nn.Module):
     def get_texts_by_index(
         self, texts: Optional[List[List[str]]], index: int
     ) -> Optional[List[str]]:
-        if texts is None:
+        if texts is None or len(texts) == 0:
             return None
         return texts[index]
 
     def get_tokens_by_index(
         self, tokens: Optional[List[List[List[str]]]], index: int
     ) -> Optional[List[List[str]]]:
-        if tokens is None:
+        if tokens is None or len(tokens) == 0:
             return None
         return tokens[index]
 

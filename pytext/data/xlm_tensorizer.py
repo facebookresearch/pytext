@@ -14,6 +14,7 @@ from pytext.data.bert_tensorizer import (
 from pytext.data.tokenizers import Tokenizer
 from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
 from pytext.data.xlm_constants import LANG2ID_15
+from pytext.torchscript.utils import ScriptBatchInput
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
@@ -71,17 +72,15 @@ class XLMTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
         return tokens, segment_labels, seq_len, positions
 
     def forward(
-        self,
-        texts: Optional[List[List[str]]] = None,
-        pre_tokenized: Optional[List[List[List[str]]]] = None,
-        languages: Optional[List[List[str]]] = None,
+        self, inputs: ScriptBatchInput
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Wire up tokenize(), numberize() and tensorize() functions for data
         processing.
         """
-        batch_size: int = self.batch_size(texts, pre_tokenized)
-        row_size: int = self.row_size(texts, pre_tokenized)
+        batch_size: int = self.batch_size(inputs)
+        row_size: int = self.row_size(inputs)
+        languages: Optional[List[List[str]]] = inputs.languages
         if languages is None:
             languages = [[self.default_language] * row_size] * batch_size
 
@@ -90,10 +89,10 @@ class XLMTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
         seq_lens_1d: List[int] = []
         positions_2d: List[List[int]] = []
 
-        for idx in range(self.batch_size(texts, pre_tokenized)):
+        for idx in range(self.batch_size(inputs)):
             tokens: List[List[Tuple[str, int, int]]] = self.tokenize(
-                self.get_texts_by_index(texts, idx),
-                self.get_tokens_by_index(pre_tokenized, idx),
+                self.get_texts_by_index(inputs.texts, idx),
+                self.get_tokens_by_index(inputs.tokens, idx),
             )
             language_ids: List[int] = [
                 self.language_vocab.idx.get(
