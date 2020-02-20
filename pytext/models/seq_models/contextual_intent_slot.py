@@ -74,7 +74,7 @@ class ContextualIntentSlotModel(IntentSlotModel):
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]
         arranged_inputs = [tokens]
-        seq_emb_inputs, seq_word_lens = tensor_dict.get("seq_tokens")
+        seq_emb_inputs, _, seq_word_lens = tensor_dict.get("seq_tokens")
         arranged_inputs.append(seq_emb_inputs)
         arranged_inputs.append(seq_lens)
         arranged_inputs.append(seq_word_lens)
