@@ -24,6 +24,7 @@ class PretrainedEmbedding(object):
         skip_header: bool = True,
         delimiter: str = " ",
     ) -> None:
+        self.lowercase_tokens = lowercase_tokens
         if embeddings_path:
             embeddings_path = get_absolute_path(embeddings_path)
             if PathManager.isdir(embeddings_path):
@@ -67,6 +68,18 @@ class PretrainedEmbedding(object):
     def filter_criteria(self, token: str) -> bool:
         return True
 
+    def normalize_token(self, token: str) -> str:
+        """
+        Apply normalizations to the input token for the
+        embedding space
+        """
+        if self.lowercase_tokens:
+            # lowercase here so that returned matrix doesn't contain
+            # the same token twice (lower and upper cases).
+            return token.lower()
+        else:
+            return token
+
     def load_pretrained_embeddings(
         self,
         raw_embeddings_path: str,
@@ -107,10 +120,7 @@ class PretrainedEmbedding(object):
                 for line in txtfile:
                     split_line = line.rstrip("\r\n ").split(delimiter)
                     token = split_line[0]
-                    if lowercase_tokens:
-                        # lowercase here so that returned matrix doesn't contain
-                        # the same token twice (lower and upper cases).
-                        token = token.lower()
+                    token = self.normalize_token(token)
                     if token not in tokens and self.filter_criteria(token):
                         chunk_vocab.append(token)
                         for item in split_line[1:]:
