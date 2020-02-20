@@ -6,6 +6,7 @@ from .dict_embedding import DictEmbedding
 from .embedding_base import EmbeddingBase
 from .embedding_list import EmbeddingList
 from .word_embedding import WordEmbedding
+from .word_seq_embedding import WordSeqEmbedding
 
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "DictEmbedding",
     "CharacterEmbedding",
     "ContextualTokenEmbedding",
+    "WordSeqEmbedding",
 ]
