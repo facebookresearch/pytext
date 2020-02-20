@@ -197,6 +197,7 @@ class GPT2BPETokenizer(Tokenizer):
         bpe_vocab_path: str = (
             "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/vocab.bpe"
         )
+        lowercase: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
@@ -209,13 +210,17 @@ class GPT2BPETokenizer(Tokenizer):
         bpe = copy.copy(bpe)
         bpe.__class__ = PickleableGPT2BPEEncoder
 
-        return cls(bpe)
+        return cls(bpe, config.lowercase)
 
-    def __init__(self, bpe: GPT2BPEEncoder):
+    def __init__(self, bpe: GPT2BPEEncoder, lowercase: bool = False):
         self.bpe = bpe
+        self.lowercase = lowercase
 
     def tokenize(self, input_str: str) -> List[Token]:
-        bpe_ids = self.bpe.encode(input_str)
+        if self.lowercase:
+            bpe_ids = self.bpe.encode(input_str.lower())
+        else:
+            bpe_ids = self.bpe.encode(input_str)
         char_tokens = [self.bpe.decoder[id].lstrip(u"\u0120") for id in bpe_ids]
         # fix for incorrect decoding of utf-8 chars
         for i, char_token in enumerate(char_tokens):
