@@ -28,7 +28,8 @@ class Channel:
     """
 
     def __init__(
-        self, stages: Tuple[Stage, ...] = (Stage.TRAIN, Stage.EVAL, Stage.TEST)
+        self,
+        stages: Tuple[Stage, ...] = (Stage.TRAIN, Stage.EVAL, Stage.TEST, Stage.OTHERS),
     ) -> None:
         self.stages = stages
 
@@ -203,6 +204,22 @@ class TensorBoardChannel(Channel):
             meta (Dict[str, Any]): global metadata, such as target names
             model (nn.Module): the PyTorch neural network model
         """
+
+        def stage2prefix(stage: Stage):
+            """
+            mapping a Stage to a specific tag for printing into TB. Sometimes
+            we may have a subclass of Stage that includes additional stages for
+            fine-grained bookkeeping, which is mapped to "other" in TB.
+            """
+            if stage == Stage.TRAIN:
+                return "train"
+            elif stage == Stage.EVAL:
+                return "eval"
+            elif stage == Stage.TEST:
+                return "test"
+            else:
+                return "others"
+
         if stage == Stage.TEST:
             tag = "test"
             self.summary_writer.add_text(tag, f"loss={loss}")
@@ -211,7 +228,7 @@ class TensorBoardChannel(Channel):
             else:
                 self.add_texts(tag, metrics)
         else:
-            prefix = "train" if stage == Stage.TRAIN else "eval"
+            prefix = stage2prefix(stage)
             self.summary_writer.add_scalar(f"{prefix}/loss", loss, epoch)
             if isinstance(metrics, (int, float)):
                 self.summary_writer.add_scalar(

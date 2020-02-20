@@ -48,3 +48,27 @@ class TensorboardTest(TestCase):
             model=model,
             optimizer=optimizer,
         )
+
+    def test_report_metrics_to_others(self):
+        """ Check that tensorboard channel catches errors when model has
+            Inf or NaN weights
+        """
+        tensorboard_channel = TensorBoardChannel()
+        # create simple model and optimizers
+        model = FCModelWithNanAndInfWts()
+
+        optimizer = optim.SGD(model.parameters(), lr=0.1)
+        tensorboard_channel.report(
+            stage=Stage.OTHERS,
+            epoch=1,
+            metrics=0.0,
+            model_select_metric=0.0,
+            loss=1.0,
+            preds=[1],
+            targets=[1],
+            scores=[1],
+            context={},
+            meta={},
+            model=model,
+            optimizer=optimizer,
+        )
