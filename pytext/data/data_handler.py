@@ -30,6 +30,7 @@ from pytext.utils import cuda, distributed, embeddings as embeddings_utils
 from pytext.utils.data import parse_json_array
 from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
+from pytext.utils.usage import log_class_usage
 from torchtext import data as textdata
 
 from .utils import align_target_labels
@@ -235,6 +236,7 @@ class DataHandler(Component):
         self.eval_batch_size = eval_batch_size
         self.test_batch_size = test_batch_size
         self.column_mapping = column_mapping
+        log_class_usage(__class__)
 
     def load_vocab(self, vocab_file, vocab_size, lowercase_tokens: bool = False):
         """
