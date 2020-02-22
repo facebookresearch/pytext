@@ -24,6 +24,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models import Model
 from pytext.trainers import Trainer
 from pytext.utils import cuda
+from pytext.utils.usage import log_class_usage
 
 
 def create_task(
@@ -143,6 +144,7 @@ class TaskBase(Component):
         self.model: Model = model
         self.metric_reporter: MetricReporter = metric_reporter
         self.exporter = exporter
+        log_class_usage(__class__)
 
     def train(self, train_config, rank=0, world_size=1, training_state=None):
         """

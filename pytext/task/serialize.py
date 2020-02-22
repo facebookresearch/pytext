@@ -12,6 +12,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model
 from pytext.trainers.training_state import TrainingState
 from pytext.utils.file_io import PathManager
+from pytext.utils.usage import log_class_usage
 
 
 DATA_STATE = "data_state"
@@ -206,6 +207,7 @@ class CheckpointManager:
         # keep a list of saved checkpoint path
         self._saved_paths: List[str] = []
         self._post_training_snapshot_path = None
+        log_class_usage(__class__)
 
     # generate per epoch checkpoint save path
     def generate_checkpoint_path(self, config: PyTextConfig, identifier: str):
