@@ -11,6 +11,7 @@ from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
 from pytext.utils.file_io import PathManager
+from pytext.utils.usage import log_class_usage
 from pytorch_pretrained_bert.tokenization import (
     BasicTokenizer,
     WordpieceTokenizer,
@@ -111,6 +112,7 @@ class BERTInitialTokenizer(Tokenizer):
 
     def __init__(self, basic_tokenizer) -> None:
         self.tokenizer = basic_tokenizer
+        log_class_usage(__class__)
 
     def tokenize(self, text):
         """Tokenizes a piece of text."""
@@ -139,6 +141,7 @@ class WordPieceTokenizer(Tokenizer):
         self.vocab = wordpiece_vocab
         self.basic_tokenizer = basic_tokenizer
         self.wordpiece_tokenizer = wordpiece_tokenizer
+        log_class_usage(__class__)
 
     @classmethod
     def from_config(cls, config: Config):
@@ -215,6 +218,7 @@ class GPT2BPETokenizer(Tokenizer):
     def __init__(self, bpe: GPT2BPEEncoder, lowercase: bool = False):
         self.bpe = bpe
         self.lowercase = lowercase
+        log_class_usage(__class__)
 
     def tokenize(self, input_str: str) -> List[Token]:
         if self.lowercase:
@@ -276,6 +280,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
     def __init__(self, sp_model_path: str = ""):
         self.sp_model_path = sp_model_path
         self._load_processor()
+        log_class_usage(__class__)
 
     @classmethod
     def from_config(cls, config: Config):
