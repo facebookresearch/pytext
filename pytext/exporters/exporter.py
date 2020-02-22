@@ -12,6 +12,7 @@ from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.utils import onnx
+from pytext.utils.usage import log_class_usage
 
 
 class ModelExporter(Component):
@@ -97,6 +98,7 @@ class ModelExporter(Component):
                     f"{name} is not found in input names {self.input_names}, \
                     there's a mismatch"
                 )
+        log_class_usage(__class__)
 
     def prepend_operators(
         self, c2_prepared: Caffe2Rep, input_names: List[str]
