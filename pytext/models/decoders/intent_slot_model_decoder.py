@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .decoder_base import DecoderBase
 from .mlp_decoder import MLPDecoder
@@ -74,6 +75,7 @@ class IntentSlotModelDecoder(DecoderBase):
         self.word_decoder = create_module(
             config.word_decoder, in_dim=in_dim_word, out_dim=out_dim_word
         )
+        log_class_usage(__class__)
 
     def forward(
         self, x_d: torch.Tensor, x_w: torch.Tensor, dense: Optional[torch.Tensor] = None

@@ -6,6 +6,7 @@ from enum import Enum
 import torch
 import torch.nn as nn
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 
 
 class RnnType(Enum):
@@ -86,6 +87,7 @@ class StackedBidirectionalRNN(Module):
             * config.hidden_size
             * (2 if config.bidirectional else 1)
         )
+        log_class_usage(__class__)
 
     def forward(self, tokens, tokens_mask):
         """

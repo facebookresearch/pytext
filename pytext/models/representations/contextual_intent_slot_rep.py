@@ -5,6 +5,7 @@ from typing import List, Tuple, Union
 
 import torch
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .bilstm_doc_slot_attention import BiLSTMDocSlotAttention
 from .docnn import DocNNRepresentation
@@ -56,6 +57,7 @@ class ContextualIntentSlotRepresentation(RepresentationBase):
         )
         self.doc_representation_dim = self.joint_rep.doc_representation_dim
         self.word_representation_dim = self.joint_rep.word_representation_dim
+        log_class_usage(__class__)
 
     def forward(
         self,

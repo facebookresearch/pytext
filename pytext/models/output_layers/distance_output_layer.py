@@ -17,6 +17,7 @@ from pytext.loss import (
 )
 from pytext.models.output_layers.output_layer_base import OutputLayerBase
 from pytext.utils.label import get_label_weights
+from pytext.utils.usage import log_class_usage
 
 
 @unique
@@ -75,6 +76,7 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
         super().__init__(target_names, loss_fn)
         self.score_threshold = score_threshold
         self.score_type = score_type
+        log_class_usage(__class__)
 
     def get_loss(
         self,

@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import torch
 import torch.nn.functional as F
 from pytext.config import ConfigBase
+from pytext.utils.usage import log_class_usage
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .base import PyTextSeq2SeqModule
@@ -52,6 +53,7 @@ class BiLSTM(torch.nn.Module):
                     bidirectional=is_layer_bidirectional,
                 )
             )
+        log_class_usage(__class__)
 
     def forward(
         self,
@@ -152,6 +154,7 @@ class LSTMSequenceEncoder(PyTextSeq2SeqModule):
             hidden_dim=hidden_dim,
             dropout=dropout_out,
         )
+        log_class_usage(__class__)
 
     @classmethod
     def from_config(cls, config):

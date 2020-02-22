@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from pytext.common.constants import BatchContext
 from pytext.models.model import Model
+from pytext.utils.usage import log_class_usage
 
 
 class DisjointMultitaskModel(Model):
@@ -31,6 +32,7 @@ class DisjointMultitaskModel(Model):
         # make this a list to prevent registering in state_dict
         self._current_model = [next(iter(models.values()))]
         self.loss_weights = loss_weights
+        log_class_usage(__class__)
 
     def contextualize(self, context):
         self._current_model[0] = self.models[context[BatchContext.TASK_NAME]]

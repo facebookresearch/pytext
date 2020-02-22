@@ -4,6 +4,7 @@
 from typing import Optional
 
 import torch
+from pytext.utils.usage import log_class_usage
 from torch import nn
 
 
@@ -35,6 +36,7 @@ class PositionalEmbedding(nn.Module):
         super().__init__()
         self.embedding = nn.Embedding(num_embeddings, embedding_dim, pad_index)
         self.pad_index = pad_index
+        log_class_usage(__class__)
 
     def forward(self, input):
         """Input is expected to be of size [batch_size x sequence_length]."""

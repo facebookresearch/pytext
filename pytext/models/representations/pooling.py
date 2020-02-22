@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.onnx.operators
 from pytext.config import ConfigBase
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 
 
 class SelfAttention(Module):
@@ -23,6 +24,7 @@ class SelfAttention(Module):
         self.tanh = nn.Tanh()
         self.softmax = nn.Softmax()
         self.init_weights()
+        log_class_usage(__class__)
 
     def init_weights(self, init_range: float = 0.1) -> None:
         self.ws1.weight.data.uniform_(-init_range, init_range)
@@ -54,6 +56,7 @@ class SelfAttention(Module):
 class MaxPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
+        log_class_usage(__class__)
 
     def forward(
         self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
@@ -64,6 +67,7 @@ class MaxPool(Module):
 class MeanPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
+        log_class_usage(__class__)
 
     def forward(self, inputs: torch.Tensor, seq_lengths: torch.Tensor) -> torch.Tensor:
         return torch.sum(inputs, 1) / seq_lengths.unsqueeze(1).float()
@@ -72,6 +76,7 @@ class MeanPool(Module):
 class NoPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
+        log_class_usage(__class__)
 
     def forward(
         self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
@@ -87,6 +92,7 @@ class BoundaryPool(Module):
     def __init__(self, config: Config, n_input: int) -> None:
         super().__init__(config)
         self.boundary_type = config.boundary_type
+        log_class_usage(__class__)
 
     def forward(
         self, inputs: torch.Tensor, seq_lengths: torch.Tensor = None
@@ -110,6 +116,7 @@ class BoundaryPool(Module):
 class LastTimestepPool(Module):
     def __init__(self, config: Module.Config, n_input: int) -> None:
         super().__init__(config)
+        log_class_usage(__class__)
 
     def forward(self, inputs: torch.Tensor, seq_lengths: torch.Tensor) -> torch.Tensor:
         # inputs: (bsz, max_len, dim)

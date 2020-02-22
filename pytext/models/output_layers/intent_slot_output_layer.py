@@ -9,6 +9,7 @@ from caffe2.python import core
 from pytext.common.constants import DatasetFieldName
 from pytext.data.utils import Vocabulary
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 from torch import jit
 
 from .doc_classification_output_layer import ClassificationOutputLayer
@@ -21,6 +22,7 @@ class IntentSlotScores(nn.Module):
         super().__init__()
         self.doc_scores = doc_scores
         self.word_scores = word_scores
+        log_class_usage(__class__)
 
     def forward(
         self,
@@ -85,6 +87,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
         super().__init__()
         self.doc_output = doc_output
         self.word_output = word_output
+        log_class_usage(__class__)
 
     def get_loss(
         self,

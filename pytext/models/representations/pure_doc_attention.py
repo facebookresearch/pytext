@@ -7,6 +7,7 @@ import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .pooling import BoundaryPool, MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
@@ -55,6 +56,7 @@ class PureDocAttention(RepresentationBase):
         if config.mlp_decoder:
             self.dense = MLPDecoder(config.mlp_decoder, in_dim=embed_dim)
             self.representation_dim = self.dense.out_dim
+        log_class_usage(__class__)
 
     def forward(
         self, embedded_tokens: torch.Tensor, seq_lengths: torch.Tensor = None, *args

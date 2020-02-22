@@ -9,6 +9,7 @@ from pytext.config.component import create_loss
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss, KLDivergenceCELoss, Loss
 from pytext.models.output_layers import OutputLayerBase
+from pytext.utils.usage import log_class_usage
 
 
 class SquadOutputLayer(OutputLayerBase):
@@ -68,6 +69,7 @@ class SquadOutputLayer(OutputLayerBase):
             self.true_idx = 1 - self.false_idx
         self.is_kd = is_kd
         self.hard_weight = hard_weight
+        log_class_usage(__class__)
 
     def get_position_preds(
         self,

@@ -3,6 +3,7 @@
 
 import torch.nn as nn
 from pytext.common.constants import Stage
+from pytext.utils.usage import log_class_usage
 
 
 class DistributedModel(nn.parallel.DistributedDataParallel):
@@ -24,6 +25,7 @@ class DistributedModel(nn.parallel.DistributedDataParallel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        log_class_usage(__class__)
 
     def __getattr__(self, name):
         wrapped_module = super().__getattr__("module")

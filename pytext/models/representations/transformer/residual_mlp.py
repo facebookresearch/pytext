@@ -3,6 +3,7 @@
 
 from typing import List
 
+from pytext.utils.usage import log_class_usage
 from torch import nn
 from torch.nn import functional as F
 
@@ -44,6 +45,7 @@ class ResidualMLP(nn.Module):
         modules.extend([nn.Linear(last_dim, input_dim), nn.Dropout(dropout)])
 
         self.mlp = nn.Sequential(*modules)
+        log_class_usage(__class__)
 
     def forward(self, input):
         bias = self.mlp(input)

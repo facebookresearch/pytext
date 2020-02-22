@@ -16,6 +16,7 @@ from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
 from pytext.models.module import create_module
 from pytext.models.representations.pass_through import PassThroughRepresentation
+from pytext.utils.usage import log_class_usage
 
 from .decoders import IntentSlotModelDecoder
 from .embeddings import EmbeddingList
@@ -81,6 +82,7 @@ class IntentSlotModel(Model):
         self.find_unused_parameters = False
         self.default_doc_loss_weight = default_doc_loss_weight
         self.default_word_loss_weight = default_word_loss_weight
+        log_class_usage(__class__)
 
     @classmethod
     def create_embedding(cls, config, tensorizers):

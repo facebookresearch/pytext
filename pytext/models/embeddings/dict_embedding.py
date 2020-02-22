@@ -10,6 +10,7 @@ from pytext.config.module_config import PoolingType
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import PAD_INDEX, UNK_INDEX, Vocabulary
 from pytext.fields import FieldMeta
+from pytext.utils.usage import log_class_usage
 
 from .embedding_base import EmbeddingBase
 
@@ -111,6 +112,7 @@ class DictEmbedding(EmbeddingBase):
         # is resolved
         self.pooling_type = str(pooling_type)
         self.mobile = mobile
+        log_class_usage(__class__)
 
     def find_and_replace(
         self, tensor: torch.Tensor, find_val: int, replace_val: int

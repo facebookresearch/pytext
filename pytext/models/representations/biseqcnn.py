@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.module_config import CNNParams
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.utils.usage import log_class_usage
 
 
 class ContextualWordConvolution(nn.Module):
@@ -21,6 +22,7 @@ class ContextualWordConvolution(nn.Module):
         )
         token_rep_size = len(kernel_sizes) * out_channels
         self.fc = nn.Linear(token_rep_size, token_rep_size)
+        log_class_usage
 
     def forward(self, words: torch.Tensor):
         words = words.transpose(1, 2)
@@ -66,6 +68,7 @@ class BSeqCNNRepresentation(RepresentationBase):
         self.ctxt_pad = nn.ConstantPad1d((self.ctxt_pad_len, self.ctxt_pad_len), 0)
 
         self.representation_dim = 3 * len(kernel_sizes) * out_channels
+        log_class_usage(__class__)
 
     def forward(self, inputs: torch.Tensor, *args) -> torch.Tensor:
         inputs = self._preprocess_inputs(inputs)
