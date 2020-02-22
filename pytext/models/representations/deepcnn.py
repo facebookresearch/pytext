@@ -7,6 +7,7 @@ import torch.nn as nn
 from pytext.config.module_config import Activation, CNNParams, PoolingType
 from pytext.models.representations.representation_base import RepresentationBase
 from pytext.optimizer import get_activation
+from pytext.utils.usage import log_class_usage
 
 
 def pool(pooling_type, words):
@@ -271,6 +272,7 @@ class DeepCNNRepresentation(RepresentationBase):
 
         self.representation_dim = out_channels
         self.dropout = nn.Dropout(p=config.dropout)
+        log_class_usage(__class__)
 
     def forward(self, inputs: torch.Tensor, *args) -> torch.Tensor:
         inputs = self.dropout(inputs)

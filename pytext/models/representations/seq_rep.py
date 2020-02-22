@@ -6,6 +6,7 @@ from typing import Union
 import torch
 from pytext.config import ConfigBase
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .bilstm_doc_attention import BiLSTMDocAttention
 from .docnn import DocNNRepresentation
@@ -34,6 +35,7 @@ class SeqRepresentation(RepresentationBase):
             config.seq_representation, embed_dim=self.doc_representation_dim
         )
         self.representation_dim = self.seq_rep.representation_dim
+        log_class_usage(__class__)
 
     def forward(
         self, embedded_seqs: torch.Tensor, seq_lengths: torch.Tensor, *args

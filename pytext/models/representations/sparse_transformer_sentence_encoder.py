@@ -8,6 +8,7 @@ from pytext.config import ConfigBase
 from pytext.models.representations.transformer_sentence_encoder import (
     TransformerSentenceEncoder,
 )
+from pytext.utils.usage import log_class_usage
 
 
 class SparseTransformerSentenceEncoder(TransformerSentenceEncoder):
@@ -106,3 +107,4 @@ class SparseTransformerSentenceEncoder(TransformerSentenceEncoder):
             stride=config.stride,
             expressivity=config.expressivity,
         )
+        log_class_usage(__class__)

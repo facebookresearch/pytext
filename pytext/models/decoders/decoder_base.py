@@ -3,6 +3,7 @@
 
 from pytext.config import ConfigBase
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 
 
 class DecoderBase(Module):
@@ -22,6 +23,7 @@ class DecoderBase(Module):
         self.input_dim = 0
         self.target_dim = 0
         self.num_decoder_modules = 0
+        log_class_usage(__class__)
 
     def forward(self, *input):
         raise NotImplementedError()

@@ -5,6 +5,7 @@ from typing import Dict, Iterable, List, Tuple, Union
 
 import torch
 import torch.nn as nn
+from pytext.utils.usage import log_class_usage
 from torch.nn import ModuleList
 from torch.utils.tensorboard import SummaryWriter
 
@@ -51,6 +52,7 @@ class EmbeddingList(EmbeddingBase, ModuleList):
         assert len(self) > 0, "must have at least 1 sub embedding"
         embedding_dims = tuple(emb.embedding_dim for emb in self)
         self.embedding_dim = sum(embedding_dims) if concat else embedding_dims
+        log_class_usage(__class__)
 
     def forward(self, *emb_input) -> Union[torch.Tensor, Tuple[torch.Tensor]]:
         """

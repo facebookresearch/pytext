@@ -22,6 +22,7 @@ from pytext.models.representations.pooling import SelfAttention
 from pytext.models.representations.stacked_bidirectional_rnn import (
     StackedBidirectionalRNN,
 )
+from pytext.utils.usage import log_class_usage
 
 
 GLOVE_840B_300D = "/mnt/vol/pytext/users/kushall/pretrained/glove.840B.300d.txt"
@@ -157,6 +158,7 @@ class DrQAModel(BaseModel):
             has_ans_decoder,
         ]
         self.is_kd = is_kd
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         (

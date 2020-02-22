@@ -6,6 +6,7 @@ import torch
 from pytext.models.joint_model import IntentSlotModel
 from pytext.models.model import Model
 from pytext.models.output_layers import CRFOutputLayer
+from pytext.utils.usage import log_class_usage
 
 from .ensemble import EnsembleModel
 
@@ -44,6 +45,7 @@ class BaggingIntentSlotEnsembleModel(EnsembleModel):
     def __init__(self, config: Config, models: List[Model], *args, **kwargs) -> None:
         super().__init__(config, models)
         self.use_crf = isinstance(self.output_layer.word_output, CRFOutputLayer)
+        log_class_usage(__class__)
 
     def merge_sub_models(self) -> None:
         """Merges all sub-models' transition matrices when using CRF.

@@ -3,6 +3,7 @@
 from typing import Dict, Optional
 
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 from torch import Tensor, nn
 
 from .utils import prepare_full_key
@@ -17,6 +18,7 @@ class PyTextSeq2SeqModule(Module):
     def __init__(self):
         super().__init__()
         self.assign_id()
+        log_class_usage(__class__)
 
     def assign_id(self):
         global global_counter

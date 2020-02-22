@@ -10,6 +10,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.fields import FieldMeta
 from pytext.models.embeddings.embedding_base import EmbeddingBase
 from pytext.utils.embeddings import PretrainedEmbedding
+from pytext.utils.usage import log_class_usage
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
@@ -147,6 +148,7 @@ class WordEmbedding(EmbeddingBase):
         )
         self.vocab = vocab
         self.padding_idx = padding_idx
+        log_class_usage(__class__)
 
     def __getattr__(self, name):
         if name == "weight":

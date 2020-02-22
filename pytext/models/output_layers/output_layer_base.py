@@ -7,6 +7,7 @@ import torch
 from caffe2.python import core
 from pytext.loss import Loss
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 
 
 class OutputLayerBase(Module):
@@ -37,6 +38,7 @@ class OutputLayerBase(Module):
         super().__init__()
         self.target_names = target_names
         self.loss_fn = loss_fn
+        log_class_usage(__class__)
 
     def get_loss(
         self,

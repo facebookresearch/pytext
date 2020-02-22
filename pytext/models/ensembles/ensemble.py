@@ -9,6 +9,7 @@ from pytext.config.component import create_model
 from pytext.data.tensorizers import Tensorizer
 from pytext.exporters import ModelExporter
 from pytext.models.model import Model
+from pytext.utils.usage import log_class_usage
 
 
 class EnsembleModel(Model):
@@ -66,6 +67,7 @@ class EnsembleModel(Model):
         nn.Module.__init__(self)
         self.models = nn.ModuleList(models)
         self.output_layer = deepcopy(models[0].output_layer)
+        log_class_usage(__class__)
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError()

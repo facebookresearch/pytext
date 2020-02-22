@@ -14,6 +14,7 @@ from pytext.torchscript.seq2seq.scripted_seq2seq_generator import (
     ScriptedSequenceGenerator,
 )
 from pytext.utils.cuda import GetTensor
+from pytext.utils.usage import log_class_usage
 
 from .rnn_encoder_decoder import RNNModel
 from .seq2seq_output_layer import Seq2SeqOutputLayer
@@ -144,6 +145,7 @@ class Seq2SeqModel(Model):
         self.dictfeat_dict = dictfeat_vocab
 
         self.force_eval_predictions = False
+        log_class_usage(__class__)
 
     def max_decoder_positions(self):
         return self.model.max_decoder_positions()

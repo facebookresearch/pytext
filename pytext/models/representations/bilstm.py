@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.onnx
 from pytext.config import ConfigBase
 from pytext.utils import cuda
+from pytext.utils.usage import log_class_usage
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from .representation_base import RepresentationBase
@@ -70,6 +71,7 @@ class BiLSTM(RepresentationBase):
             2 if config.bidirectional else 1
         )
         self.pack_sequence = config.pack_sequence
+        log_class_usage(__class__)
 
     def forward(
         self,

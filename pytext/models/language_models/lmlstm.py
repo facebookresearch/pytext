@@ -21,6 +21,7 @@ from pytext.models.output_layers.lm_output_layer import LMOutputLayer
 from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.representations.deepcnn import DeepCNNRepresentation as CNN
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.utils.usage import log_class_usage
 
 
 def repackage_hidden(
@@ -124,6 +125,7 @@ class LMLSTM(BaseModel):
         self.module_list = [embedding, representation, decoder]
         self._states: Optional[Tuple] = None
         self.exporter = exporter
+        log_class_usage(__class__)
 
     def cpu(self):
         if self.stateful and self._states:

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.models.module import Module
 from pytext.utils import cuda
+from pytext.utils.usage import log_class_usage
 
 from .representation_base import RepresentationBase
 
@@ -30,6 +31,7 @@ class OrderedNeuronLSTMLayer(Module):
         self.c_hat_gate = nn.Linear(total_size, lstm_dim)
         self.master_forget_no_cumax_gate = nn.Linear(total_size, lstm_dim)
         self.master_input_no_cumax_gate = nn.Linear(total_size, lstm_dim)
+        log_class_usage(__class__)
 
     # embedded_tokens has shape (seq length, batch size, embed size)
     # states = (hidden, context), where both hidden and context have
@@ -119,6 +121,7 @@ class OrderedNeuronLSTM(RepresentationBase):
             lstms.append(lstm)
 
         self.lstms = nn.ModuleList(lstms)
+        log_class_usage(__class__)
 
     # rep has shape (batch size, seq length, embed dim)
     # seq_lengths has sequence lengths for each case in the batch, used to
