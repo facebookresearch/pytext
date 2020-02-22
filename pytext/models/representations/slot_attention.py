@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import SlotAttentionType
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 from torch.nn.utils.rnn import PackedSequence, pad_packed_sequence
 
 
@@ -31,6 +32,7 @@ class SlotAttention(Module):
             )
         elif self.attention_type == SlotAttentionType.MULTIPLY:
             self.attention_mult = nn.Linear(n_input, n_input, bias=False)
+        log_class_usage(__class__)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if isinstance(inputs, PackedSequence):

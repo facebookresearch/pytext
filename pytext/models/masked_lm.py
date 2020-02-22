@@ -25,6 +25,7 @@ from pytext.models.representations.transformer_sentence_encoder import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.utils.usage import log_class_usage
 
 
 class MaskedLanguageModel(BaseModel):
@@ -122,6 +123,7 @@ class MaskedLanguageModel(BaseModel):
                 token_idx = self.vocab.idx.get(token)
                 if token_idx is not None:
                     self.token_sampling_weights[token_idx] = 1e-20
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, *other = tensor_dict["tokens"]

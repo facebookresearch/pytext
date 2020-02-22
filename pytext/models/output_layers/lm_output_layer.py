@@ -8,6 +8,7 @@ from pytext.config.component import create_loss
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 from pytext.loss import CrossEntropyLoss, Loss
+from pytext.utils.usage import log_class_usage
 
 from .output_layer_base import OutputLayerBase
 
@@ -55,6 +56,7 @@ class LMOutputLayer(OutputLayerBase):
     ):
         super().__init__(target_names, loss_fn, config)
         self.pad_token_idx = pad_token_idx
+        log_class_usage(__class__)
 
     def get_loss(
         self,

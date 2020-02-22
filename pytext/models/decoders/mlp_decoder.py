@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from pytext.config.module_config import Activation
 from pytext.optimizer import get_activation
+from pytext.utils.usage import log_class_usage
 
 from .decoder_base import DecoderBase
 
@@ -61,6 +62,7 @@ class MLPDecoder(DecoderBase):
 
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
+        log_class_usage(__class__)
 
     def forward(self, *input: torch.Tensor) -> torch.Tensor:
         return self.mlp(torch.cat(input, 1))

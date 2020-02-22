@@ -22,6 +22,7 @@ from pytext.models.representations.huggingface_bert_sentence_encoder import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.utils.usage import log_class_usage
 
 
 class BertSquadQAModel(NewBertModel):
@@ -90,6 +91,7 @@ class BertSquadQAModel(NewBertModel):
         self.has_ans_decoder = has_ans_decoder
         self.module_list.append(has_ans_decoder)
         self.is_kd = is_kd
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, pad_mask, segment_labels, positions, *ignore = tensor_dict[

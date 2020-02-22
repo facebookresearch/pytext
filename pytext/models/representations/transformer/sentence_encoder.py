@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 import torch
+from pytext.utils.usage import log_class_usage
 from torch import nn
 
 from .transformer import Transformer
@@ -37,6 +38,7 @@ class SentenceEncoder(nn.Module):
     def __init__(self, transformer: Optional[Transformer] = None):
         super().__init__()
         self.transformer = transformer or Transformer()
+        log_class_usage(__class__)
 
     def forward(self, tokens):
         all_layers = self.extract_features(tokens)

@@ -4,6 +4,7 @@
 from typing import List, Optional
 
 import torch
+from pytext.utils.usage import log_class_usage
 from torch import nn
 
 from .multihead_attention import MultiheadSelfAttention
@@ -38,6 +39,7 @@ class TransformerLayer(nn.Module):
 
         self.attention_layer_norm = nn.LayerNorm(embedding_dim)
         self.final_layer_norm = nn.LayerNorm(embedding_dim)
+        log_class_usage(__class__)
 
     def forward(self, input, key_padding_mask):
         attention = self.attention(input, key_padding_mask)
@@ -71,6 +73,7 @@ class Transformer(nn.Module):
         )
         self.embedding_layer_norm = nn.LayerNorm(embedding_dim)
         self.dropout = nn.Dropout(dropout)
+        log_class_usage(__class__)
 
     def forward(self, tokens: torch.Tensor) -> List[torch.Tensor]:
         # compute padding mask. This is needed for multi-head attention

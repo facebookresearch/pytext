@@ -5,6 +5,7 @@ from typing import Dict, List
 
 import torch.nn as nn
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -28,6 +29,7 @@ class EmbeddingBase(Module):
         # can be greater than 1
         self.num_emb_modules = 1
         self.embedding_dim = embedding_dim
+        log_class_usage(__class__)
 
     def get_param_groups_for_optimizer(self) -> List[Dict[str, nn.Parameter]]:
         """

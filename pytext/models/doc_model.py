@@ -44,6 +44,7 @@ from pytext.models.representations.representation_base import RepresentationBase
 from pytext.torchscript.utils import make_byte_inputs, make_sequence_lengths, pad_2d
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.label import get_label_weights
+from pytext.utils.usage import log_class_usage
 from torch import jit
 
 
@@ -390,6 +391,7 @@ class PersonalizedDocModel(DocModel):
     ):
         super().__init__(embedding, representation, decoder, output_layer)
         self.user_embedding = user_embedding
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         model_inputs = super().arrange_model_inputs(tensor_dict)

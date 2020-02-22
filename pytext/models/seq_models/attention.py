@@ -3,6 +3,7 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
+from pytext.utils.usage import log_class_usage
 from torch import nn
 
 
@@ -57,6 +58,7 @@ class DotAttention(nn.Module):
                 decoder_hidden_state_dim, context_dim, bias=True
             )
         self.src_length_masking = src_length_masking
+        log_class_usage(__class__)
 
     def forward(self, decoder_state, source_hids, src_lengths):
         # Reshape to bsz x src_len x context_dim

@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
+from pytext.utils.usage import log_class_usage
 from torch.nn.utils.rnn import PackedSequence, pack_padded_sequence, pad_packed_sequence
 
 from .representation_base import RepresentationBase
@@ -66,6 +67,7 @@ class AugmentedLSTMCell(nn.Module):
                 self.lstm_dim, 4 * self.lstm_dim, bias=True
             )
         self.reset_parameters()
+        log_class_usage(__class__)
 
     def reset_parameters(self):
         stdv = 1.0 / math.sqrt(self.lstm_dim)
@@ -180,6 +182,7 @@ class AugmentedLSTMUnidirectional(nn.Module):
         self.cell = AugmentedLSTMCell(
             self.embed_dim, self.lstm_dim, self.use_highway, use_input_projection_bias
         )
+        log_class_usage(__class__)
 
     def get_dropout_mask(
         self, dropout_probability: float, tensor_for_masking: torch.Tensor
@@ -392,6 +395,7 @@ class AugmentedLSTM(RepresentationBase):
 
             lstm_embed_dim = self.lstm_dim * num_directions
         self.representation_dim = lstm_embed_dim
+        log_class_usage(__class__)
 
     def forward(
         self,

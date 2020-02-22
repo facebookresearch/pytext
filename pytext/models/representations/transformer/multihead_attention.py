@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import torch
+from pytext.utils.usage import log_class_usage
 from torch import nn
 from torch.nn import functional as F
 
@@ -34,6 +35,7 @@ class MultiheadSelfAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.input_projection = nn.Linear(embed_dim, 3 * embed_dim)
         self.output_projection = nn.Linear(embed_dim, embed_dim)
+        log_class_usage(__class__)
 
     def forward(self, query, key_padding_mask):
         """Input shape: Time x Batch x Channel

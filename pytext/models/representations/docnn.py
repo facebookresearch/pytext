@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import CNNParams
+from pytext.utils.usage import log_class_usage
 
 from .representation_base import RepresentationBase
 
@@ -28,6 +29,7 @@ class DocNNRepresentation(RepresentationBase):
         )
         self.dropout = nn.Dropout(config.dropout)
         self.representation_dim = len(config.cnn.kernel_sizes) * config.cnn.kernel_num
+        log_class_usage(__class__)
 
     def forward(self, embedded_tokens: torch.Tensor, *args) -> torch.Tensor:
         # embedded_tokens of size (N,W,D)

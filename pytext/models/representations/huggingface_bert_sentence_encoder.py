@@ -10,6 +10,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
 from pytext.utils.file_io import PathManager
+from pytext.utils.usage import log_class_usage
 from pytorch_pretrained_bert.modeling import BertConfig, BertModel
 
 
@@ -80,6 +81,7 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
                 )
 
         self.bert = model
+        log_class_usage(__class__)
 
     def _encoder(self, input_tuple: Tuple[torch.Tensor, ...]):
         tokens, pad_mask, segment_labels, _ = input_tuple

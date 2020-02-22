@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from pytext.config.field_config import CharFeatConfig
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
+from pytext.utils.usage import log_class_usage
 
 from .embedding_base import EmbeddingBase
 
@@ -105,6 +106,7 @@ class CharacterEmbedding(EmbeddingBase):
         self.projection = None
         if projection_dim:
             self.projection = nn.Linear(conv_out_dim, projection_dim)
+        log_class_usage(__class__)
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
         """

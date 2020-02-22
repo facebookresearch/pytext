@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.utils.usage import log_class_usage
 
 
 class PoolingMethod(Enum):
@@ -81,6 +82,7 @@ class TransformerSentenceEncoderBase(RepresentationBase):
             self.representation_dim = config.embedding_dim * 4
         else:
             self.representation_dim = config.embedding_dim
+        log_class_usage(__class__)
 
     def _encoder(
         self, input_tuple: Tuple[torch.Tensor, ...]

@@ -7,6 +7,7 @@ import torch.nn as nn
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.module import create_module
 from pytext.models.representations.bilstm import BiLSTM
+from pytext.utils.usage import log_class_usage
 
 from .pooling import LastTimestepPool, MaxPool, MeanPool, NoPool, SelfAttention
 from .representation_base import RepresentationBase
@@ -83,6 +84,7 @@ class BiLSTMDocAttention(RepresentationBase):
                 config.mlp_decoder, in_dim=self.lstm.representation_dim
             )
             self.representation_dim = self.dense.out_dim
+        log_class_usage(__class__)
 
     def forward(
         self,

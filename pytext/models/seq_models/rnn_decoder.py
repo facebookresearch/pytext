@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from fairseq import utils as fairseq_utils
 from pytext.config import ConfigBase
 from pytext.models.seq_models.base import PyTextSeq2SeqModule
+from pytext.utils.usage import log_class_usage
 from torch import nn
 
 from .attention import DotAttention
@@ -22,6 +23,7 @@ class DecoderWithLinearOutputProjection(PyTextSeq2SeqModule):
         super().__init__()
         self.linear_projection = nn.Linear(out_embed_dim, out_vocab_size)
         self.reset_parameters()
+        log_class_usage(__class__)
 
     def reset_parameters(self):
         nn.init.uniform_(self.linear_projection.weight, -0.1, 0.1)
@@ -151,6 +153,7 @@ class RNNDecoderBase(PyTextIncrementalDecoderComponent):
             # Using identity layer in place of the bottleneck simplifies torchscript
             # compatibility.
             self.additional_fc = PlaceholderIdentity()
+        log_class_usage(__class__)
 
     def forward_unprojected(
         self,
@@ -407,3 +410,4 @@ class RNNDecoder(RNNDecoderBase, DecoderWithLinearOutputProjection):
             first_layer_attention,
             averaging_encoder,
         )
+        log_class_usage(__class__)
