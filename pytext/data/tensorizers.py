@@ -25,6 +25,7 @@ from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
+from pytext.utils.usage import log_class_usage
 
 from .utils import (
     BOL,
@@ -225,6 +226,7 @@ class Tensorizer(Component):
 
     def __init__(self, is_input: bool = True):
         self.is_input = is_input
+        log_class_usage(__class__)
 
     @property
     def column_schema(self):

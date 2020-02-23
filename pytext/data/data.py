@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, MutableMapping, NamedTuple, Option
 
 from pytext.common.constants import RawExampleFieldName, Stage
 from pytext.config.component import Component, ComponentType, Registry, create_component
+from pytext.utils.usage import log_class_usage
 
 from .sources import DataSource, RawExample, TSVDataSource
 from .sources.data_source import (
@@ -292,6 +293,7 @@ class Data(Component):
                 "Skipped initializing tensorizers since they are loaded from a "
                 "previously saved state."
             )
+        log_class_usage(__class__)
 
     def numberize_rows(self, rows):
         for row in rows:
