@@ -26,6 +26,7 @@ from pytext.models.disjoint_multitask_model import (
 )
 from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda
+from pytext.utils.usage import log_class_usage
 
 from . import NewTask, Task_Deprecated, TaskBase, _NewTask
 
@@ -128,6 +129,7 @@ class DisjointMultitask(TaskBase):
         super().__init__(exporter=None, **kwargs)
         self.exporters = exporters
         self.target_task_name = target_task_name
+        log_class_usage(__class__)
 
     def export(
         self, multitask_model, export_path, metric_channels, export_onnx_path=None
@@ -230,7 +232,7 @@ class NewDisjointMultitask(_NewTask):
             ),
         )
         trainer = create_trainer(task_config.trainer, model)
-
+        log_class_usage(__class__)
         return cls(data, model, metric_reporter, trainer)
 
     def export(self, model, export_path, metric_channels=None, export_onnx_path=None):

@@ -14,6 +14,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda
+from pytext.utils.usage import log_class_usage
 from torch import jit
 
 from .task import TaskBase
@@ -183,6 +184,7 @@ class _NewTask(TaskBase):
             self.Config.metric_reporter, model
         )
         self.trainer = trainer or TaskTrainer()
+        log_class_usage
 
     def train(
         self,
