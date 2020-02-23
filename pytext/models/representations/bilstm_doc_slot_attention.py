@@ -7,6 +7,7 @@ import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.config.module_config import SlotAttentionType
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .augmented_lstm import AugmentedLSTM
 from .bilstm import BiLSTM
@@ -115,6 +116,7 @@ class BiLSTMDocSlotAttention(RepresentationBase):
         self.representation_dim = (
             self.doc_representation_dim
         ) = self.word_representation_dim = lstm_out_dim
+        log_class_usage(__class__)
 
     def forward(
         self,

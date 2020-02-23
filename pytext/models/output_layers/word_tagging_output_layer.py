@@ -22,6 +22,7 @@ from pytext.loss import (
 )
 from pytext.models.crf import CRF
 from pytext.utils.label import get_label_weights
+from pytext.utils.usage import log_class_usage
 
 from .output_layer_base import OutputLayerBase
 from .utils import OutputLayerUtils
@@ -33,6 +34,7 @@ class WordTaggingScores(nn.Module):
     def __init__(self, classes):
         super().__init__()
         self.classes = classes
+        log_class_usage(__class__)
 
     def forward(
         self, logits: torch.Tensor, context: Optional[Dict[str, torch.Tensor]] = None
@@ -46,6 +48,7 @@ class CRFWordTaggingScores(WordTaggingScores):
         super().__init__(classes)
         self.crf = crf
         self.crf.eval()
+        log_class_usage(__class__)
 
     def forward(
         self, logits: torch.Tensor, context: Dict[str, torch.Tensor]
@@ -200,6 +203,7 @@ class CRFOutputLayer(OutputLayerBase):
             ignore_index=labels.get_pad_index(Padding.DEFAULT_LABEL_PAD_IDX),
             default_label_pad_index=Padding.DEFAULT_LABEL_PAD_IDX,
         )
+        log_class_usage(__class__)
 
     def get_loss(
         self,

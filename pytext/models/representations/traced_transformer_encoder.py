@@ -9,6 +9,7 @@ import torch.nn as nn
 from fairseq.modules import (
     TransformerSentenceEncoder as TransformerSentenceEncoderModule,
 )
+from pytext.utils.usage import log_class_usage
 
 
 # Wrapper for TransformerSentenceEncoder to enable tracing
@@ -18,6 +19,7 @@ class TraceableTransformerWrapper(nn.Module):
         assert hasattr(eager_encoder, "traceable")
         assert eager_encoder.traceable
         self.eager_encoder = eager_encoder
+        log_class_usage(__class__)
 
     def forward(
         self,
@@ -61,6 +63,7 @@ class TracedTransformerEncoder(nn.Module):
                 print("Using TVM in traced transformer")
             except ImportError:
                 print("Not using TVM in traced transformer")
+        log_class_usage(__class__)
 
     def forward(
         self,

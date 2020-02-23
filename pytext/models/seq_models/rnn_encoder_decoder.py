@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import torch.jit
 from pytext.config import ConfigBase
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .base import PyTextSeq2SeqModule
 from .rnn_decoder import RNNDecoder
@@ -21,6 +22,7 @@ class RNNModel(PyTextSeq2SeqModule):
         self.source_embeddings = source_embeddings
         self.encoder = encoder
         self.decoder = decoder
+        log_class_usage(__class__)
 
     def forward(
         self,

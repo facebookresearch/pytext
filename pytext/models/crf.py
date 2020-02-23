@@ -6,6 +6,7 @@ import torch
 import torch.jit as jit
 import torch.nn as nn
 from caffe2.python.crf_predict import apply_crf
+from pytext.utils.usage import log_class_usage
 
 
 class CRF(nn.Module):
@@ -32,6 +33,7 @@ class CRF(nn.Module):
         self.reset_parameters()
         self.ignore_index = ignore_index
         self.default_label_pad_index = default_label_pad_index
+        log_class_usage(__class__)
 
     def reset_parameters(self) -> None:
         nn.init.uniform_(self.transitions, -0.1, 0.1)

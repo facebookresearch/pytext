@@ -26,6 +26,7 @@ from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     Element,
     ParserState,
 )
+from pytext.utils.usage import log_class_usage
 
 
 class RNNGParserBase(BaseModel):
@@ -289,6 +290,7 @@ class RNNGParserBase(BaseModel):
 
         self.actions_lookup = nn.Embedding(num_actions, lstm_dim)
         self.loss_func = nn.CrossEntropyLoss()
+        log_class_usage(__class__)
 
     def forward(
         self,

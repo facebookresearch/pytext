@@ -5,6 +5,7 @@ from typing import List
 
 import torch
 import torch.nn as nn
+from pytext.utils.usage import log_class_usage
 
 from .decoder_base import DecoderBase
 
@@ -29,6 +30,7 @@ class MLPDecoderQueryResponse(DecoderBase):
             from_dim, to_dim, config.hidden_dims
         )
         self.out_dim = (3, to_dim)
+        log_class_usage
 
     @staticmethod
     def get_mlp(from_dim: int, to_dim: int, hidden_dims: List[int]):

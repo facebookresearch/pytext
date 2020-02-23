@@ -6,6 +6,7 @@ from typing import List, Union
 import torch
 from pytext.config.module_config import PoolingType
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .biseqcnn import BSeqCNNRepresentation
 from .deepcnn import DeepCNNRepresentation, pool
@@ -26,6 +27,7 @@ class JointCNNRepresentation(RepresentationBase):
         self.word_rep = create_module(config.word_representation, embed_dim)
         self.doc_representation_dim = self.doc_rep.representation_dim
         self.word_representation_dim = self.word_rep.representation_dim
+        log_class_usage(__class__)
 
     def forward(self, embedded_tokens: torch.Tensor, *args) -> List[torch.Tensor]:
         return [self.doc_rep(embedded_tokens), self.word_rep(embedded_tokens)]
@@ -44,6 +46,7 @@ class SharedCNNRepresentation(RepresentationBase):
         self.word_representation_dim = self.word_rep.representation_dim
         self.doc_representation_dim = self.word_rep.representation_dim
         self.pooling_type = config.pooling_type
+        log_class_usage(__class__)
 
     def forward(self, embedded_tokens: torch.Tensor, *args) -> List[torch.Tensor]:
         return [

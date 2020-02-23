@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import torch
 from pytext.config.component import create_loss
 from pytext.loss import MSELoss
+from pytext.utils.usage import log_class_usage
 
 from .output_layer_base import OutputLayerBase
 
@@ -33,6 +34,7 @@ class RegressionOutputLayer(OutputLayerBase):
         super().__init__()
         self.loss_fn = loss_fn
         self.squash_to_unit_range = squash_to_unit_range
+        log_class_usage(__class__)
 
     def get_loss(
         self,

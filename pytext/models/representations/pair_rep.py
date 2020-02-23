@@ -6,6 +6,7 @@ from typing import Optional, Tuple, Union
 import torch
 import torch.nn as nn
 from pytext.models.module import create_module
+from pytext.utils.usage import log_class_usage
 
 from .bilstm_doc_attention import BiLSTMDocAttention
 from .docnn import DocNNRepresentation
@@ -85,6 +86,7 @@ class PairRepresentation(RepresentationBase):
             self.representation_dim *= 4
         else:
             self.representation_dim += self.subrepresentations[1].representation_dim
+        log_class_usage(__class__)
 
     # Takes care of dropping the extra return value of LSTM-based rep's (state).
     @staticmethod

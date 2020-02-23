@@ -19,6 +19,7 @@ from pytext.models.representations.bilstm_slot_attn import BiLSTMSlotAttention
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
 from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.pass_through import PassThroughRepresentation
+from pytext.utils.usage import log_class_usage
 
 
 class WordTaggingModel(Model):
@@ -85,6 +86,7 @@ class WordTaggingModel(Model):
         # function
         if isinstance(self.output_layer, CRFOutputLayer):
             self.find_unused_parameters = False
+        log_class_usage(__class__)
 
     def arrange_model_inputs(self, tensor_dict):
         tokens, seq_lens, _ = tensor_dict["tokens"]

@@ -18,6 +18,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
 from pytext.utils.file_io import PathManager
 from pytext.utils.precision import maybe_float
+from pytext.utils.usage import log_class_usage
 from torch.jit import quantized
 
 from .decoders import DecoderBase
@@ -73,6 +74,7 @@ class BaseModel(nn.Module, Component):
         self.stage = stage
         self.module_list: List[nn.Module] = []
         self.find_unused_parameters = True
+        log_class_usage(__class__)
 
     def train(self, mode=True):
         """Override to explicitly maintain the stage (train, eval, test)."""
@@ -311,6 +313,7 @@ class Model(BaseModel):
         self.representation = representation
         self.decoder = decoder
         self.output_layer = output_layer
+        log_class_usage(__class__)
 
     @classmethod
     def create_sub_embs(

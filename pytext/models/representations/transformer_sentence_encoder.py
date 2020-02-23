@@ -14,6 +14,7 @@ from pytext.models.representations.traced_transformer_encoder import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.utils.usage import log_class_usage
 
 
 class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
@@ -116,6 +117,7 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
             if config.projection_dim > 0
             else None
         )
+        log_class_usage(__class__)
 
     def load_state_dict(self, state_dict):
         self.upgrade_state_dict_named(state_dict)

@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.models.module import Module
+from pytext.utils.usage import log_class_usage
 
 
 class DotProductSelfAttention(Module):
@@ -24,6 +25,7 @@ class DotProductSelfAttention(Module):
     def __init__(self, input_dim):
         super().__init__()
         self.linear = nn.Linear(input_dim, 1)
+        log_class_usage(__class__)
 
     def forward(self, tokens, tokens_mask):
         """
@@ -56,6 +58,7 @@ class SequenceAlignedAttention(Module):
         super().__init__()
         self.linear = nn.Linear(proj_dim, proj_dim)
         self.proj_dim = proj_dim
+        log_class_usage(__class__)
 
     def forward(self, p: torch.Tensor, q: torch.Tensor, q_mask: torch.Tensor):
         """
@@ -101,6 +104,7 @@ class MultiplicativeAttention(Module):
         super().__init__()
         self.normalize = normalize
         self.linear = nn.Linear(p_hidden_dim, q_hidden_dim)
+        log_class_usage(__class__)
 
     def forward(self, p_seq: torch.Tensor, q: torch.Tensor, p_mask: torch.Tensor):
         """
