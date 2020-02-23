@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config import ConfigBase
-from pytext.config.module_config import CNNParams
+from pytext.config.module_config import CNNParams, PoolingType
 from pytext.utils.usage import log_class_usage
 
 from .representation_base import RepresentationBase
@@ -17,6 +17,7 @@ class DocNNRepresentation(RepresentationBase):
     class Config(RepresentationBase.Config):
         dropout: float = 0.4
         cnn: CNNParams = CNNParams()
+        pooling: PoolingType = PoolingType.MAX
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__(config)
@@ -29,6 +30,7 @@ class DocNNRepresentation(RepresentationBase):
         )
         self.dropout = nn.Dropout(config.dropout)
         self.representation_dim = len(config.cnn.kernel_sizes) * config.cnn.kernel_num
+        self.pooling_type = config.pooling
         log_class_usage(__class__)
 
     def forward(self, embedded_tokens: torch.Tensor, *args) -> torch.Tensor:
@@ -42,5 +44,12 @@ class DocNNRepresentation(RepresentationBase):
 
     def conv_and_pool(self, x, conv):
         x = F.relu(conv(x))
-        x, _ = torch.max(x, dim=2)
+        if self.pooling_type == PoolingType.MAX:
+            x, _ = torch.max(x, dim=2)
+        elif self.pooling_type == PoolingType.MEAN:
+            x = torch.mean(x, dim=2)
+        elif self.pooling_type == PoolingType.LOGSUMEXP:
+            x = torch.logsumexp(x, dim=2)
+        else:
+            raise NotImplementedError
         return x

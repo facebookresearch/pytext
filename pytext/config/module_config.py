@@ -33,6 +33,7 @@ class CNNParams(ConfigBase):
 class PoolingType(Enum):
     MEAN = "mean"
     MAX = "max"
+    LOGSUMEXP = "logsumexp"
     NONE = "none"
 
 
