@@ -119,7 +119,15 @@ class DocModel(Model):
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
 
             @jit.script_method
-            def forward(self, tokens: List[List[str]]):
+            def forward(
+                self,
+                texts: Optional[List[str]] = None,
+                tokens: Optional[List[List[str]]] = None,
+                languages: Optional[List[str]] = None,
+            ):
+                if tokens is None:
+                    raise RuntimeError("tokens is required")
+
                 seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
@@ -136,11 +144,23 @@ class DocModel(Model):
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
 
             @jit.script_method
-            def forward(self, tokens: List[List[str]], dense_feat: List[List[float]]):
+            def forward(
+                self,
+                texts: Optional[List[str]] = None,
+                tokens: Optional[List[List[str]]] = None,
+                languages: Optional[List[str]] = None,
+                dense_feat: Optional[List[List[float]]] = None,
+            ):
+                if tokens is None:
+                    raise RuntimeError("tokens is required")
+
                 seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
-                dense_feat = self.normalizer.normalize(dense_feat)
+                if dense_feat is not None:
+                    dense_feat = self.normalizer.normalize(dense_feat)
+                else:
+                    raise RuntimeError("dense is required")
                 logits = self.model(
                     torch.tensor(word_ids),
                     torch.tensor(seq_lens),

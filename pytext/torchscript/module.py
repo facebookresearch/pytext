@@ -1,20 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
 from typing import List, Optional
 
 import torch
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
-from pytext.torchscript.utils import ScriptInputType, squeeze_1d, squeeze_2d
-
-
-def get_script_module_cls(input_type: ScriptInputType) -> torch.jit.ScriptModule:
-    if input_type.is_text():
-        return ScriptTextModule
-    elif input_type.is_token():
-        return ScriptTokenModule
-    else:
-        raise RuntimeError("Only support text or token input type...")
+from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
 
 
 class ScriptModule(torch.jit.ScriptModule):
@@ -23,66 +13,7 @@ class ScriptModule(torch.jit.ScriptModule):
         self.tensorizer.set_device(device)
 
 
-class ScriptTextModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.tensorizer = tensorizer
-
-    @torch.jit.script_method
-    def forward(self, texts: List[str]):
-        input_tensors = self.tensorizer(texts=squeeze_1d(texts))
-        logits = self.model(input_tensors)
-        return self.output_layer(logits)
-
-
-class ScriptTokenModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.tensorizer = tensorizer
-
-    @torch.jit.script_method
-    def forward(self, tokens: List[List[str]]):
-        input_tensors = self.tensorizer(pre_tokenized=squeeze_2d(tokens))
-        logits = self.model(input_tensors)
-        return self.output_layer(logits)
-
-
-class ScriptTokenLanguageModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.tensorizer = tensorizer
-
-    @torch.jit.script_method
-    def forward(self, tokens: List[List[str]], languages: Optional[List[str]] = None):
-        input_tensors = self.tensorizer(
-            pre_tokenized=squeeze_2d(tokens), languages=squeeze_1d(languages)
-        )
-        logits = self.model(input_tensors)
-        return self.output_layer(logits)
-
-
-class ScriptTokenLanguageModuleWithDenseFeature(ScriptModule):
+class ScriptPyTextModule(ScriptModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -97,12 +28,34 @@ class ScriptTokenLanguageModuleWithDenseFeature(ScriptModule):
     @torch.jit.script_method
     def forward(
         self,
-        tokens: List[List[str]],
-        dense_feat: List[List[float]],
+        texts: Optional[List[str]] = None,
+        tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
     ):
-        input_tensors = self.tensorizer(
-            pre_tokenized=squeeze_2d(tokens), languages=squeeze_1d(languages)
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=squeeze_1d(texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
         )
+        input_tensors = self.tensorizer(inputs)
+        logits = self.model(input_tensors)
+        return self.output_layer(logits)
+
+
+class ScriptPyTextModuleWithDense(ScriptPyTextModule):
+    @torch.jit.script_method
+    def forward(
+        self,
+        dense_feat: List[List[float]],
+        texts: Optional[List[str]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=squeeze_1d(texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
         logits = self.model(input_tensors, torch.tensor(dense_feat).float())
         return self.output_layer(logits)

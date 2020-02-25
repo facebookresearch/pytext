@@ -11,7 +11,7 @@ from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, SpecialToken, Vocabulary
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
-from pytext.torchscript.utils import pad_2d, pad_2d_mask
+from pytext.torchscript.utils import ScriptBatchInput, pad_2d, pad_2d_mask
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
@@ -207,9 +207,7 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         return per_sentence_tokens
 
     def forward(
-        self,
-        texts: Optional[List[List[str]]] = None,
-        pre_tokenized: Optional[List[List[List[str]]]] = None,
+        self, inputs: ScriptBatchInput
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Wire up tokenize(), numberize() and tensorize() functions for data
@@ -223,10 +221,10 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         seq_lens_1d: List[int] = []
         positions_2d: List[List[int]] = []
 
-        for idx in range(self.batch_size(texts, pre_tokenized)):
+        for idx in range(self.batch_size(inputs)):
             tokens: List[List[Tuple[str, int, int]]] = self.tokenize(
-                self.get_texts_by_index(texts, idx),
-                self.get_tokens_by_index(pre_tokenized, idx),
+                self.get_texts_by_index(inputs.texts, idx),
+                self.get_tokens_by_index(inputs.tokens, idx),
             )
 
             numberized: Tuple[List[int], List[int], int, List[int]] = self.numberize(
