@@ -306,9 +306,14 @@ class VocabBuilder:
             eos_token=self.eos_token,
         )
 
-    def truncate_to_vocab_size(self, vocab_size) -> None:
+    def truncate_to_vocab_size(self, vocab_size=-1, min_counts=-1) -> None:
         if len(self._counter) > vocab_size > 0:
             self._counter = Counter(dict(self._counter.most_common(vocab_size)))
+
+        if len(self._counter) > 0 and min_counts > 0:
+            self._counter = Counter(
+                {k: v for k, v in self._counter.items() if v >= min_counts}
+            )
 
 
 def align_target_labels(

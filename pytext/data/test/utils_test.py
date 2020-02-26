@@ -69,3 +69,8 @@ class VocabularyTest(unittest.TestCase):
             [["bones unk unk unk unk".split()], ["unk unk unk unk unk".split()]]
         )
         self.assertEqual(0.9, indices[1] / indices[2])
+
+        builder.truncate_to_vocab_size(min_counts=2)
+        self.assertEqual(len(builder._counter), 18)
+        builder.truncate_to_vocab_size(vocab_size=5)
+        self.assertEqual(len(builder._counter), 5)

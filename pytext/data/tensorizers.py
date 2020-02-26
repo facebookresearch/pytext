@@ -320,6 +320,9 @@ class VocabConfig(Component.Config):
     #: Add `size_from_data` most frequent tokens in training data to vocab (if this
     #: is 0, add all tokens from training data).
     size_from_data: int = 0
+    #: Add `min_counts` filter out tokens in training data that with count smaller
+    #: than min_counts.
+    min_counts: int = 0
     vocab_files: List[VocabFileConfig] = []
 
 
@@ -448,7 +451,9 @@ class TokenTensorizer(Tensorizer):
                 tokenized = self.tokenizer.tokenize(raw_text)
                 self.vocab_builder.add_all([t.value for t in tokenized])
         except GeneratorExit:
-            self.vocab_builder.truncate_to_vocab_size(self.vocab_config.size_from_data)
+            self.vocab_builder.truncate_to_vocab_size(
+                self.vocab_config.size_from_data, self.vocab_config.min_counts
+            )
             self._add_vocab_from_files()
             self.vocab = self.vocab_builder.make_vocab()
 
