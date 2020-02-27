@@ -16,3 +16,4 @@ sentencepiece
 tensorboard==1.14
 torch
 torchtext
+torchelastic

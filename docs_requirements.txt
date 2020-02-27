@@ -1,4 +1,4 @@
-https://download.pytorch.org/whl/cpu/torch-1.2.0%2Bcpu-cp37-cp37m-manylinux1_x86_64.whl
+https://download.pytorch.org/whl/cpu/torch-1.4.0%2Bcpu-cp37-cp37m-linux_x86_64.whl
 click
 fairseq
 future
@@ -12,3 +12,4 @@ sentencepiece
 torchtext
 tensorboard==1.14
 pandas
+torchelastic

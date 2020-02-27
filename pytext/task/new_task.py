@@ -12,7 +12,7 @@ from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
-from pytext.trainers import TaskTrainer, TrainingState
+from pytext.trainers import ElasticTrainer, TaskTrainer, TrainingState
 from pytext.utils import cuda
 from pytext.utils.usage import log_class_usage
 from torch import jit
@@ -93,6 +93,7 @@ class _NewTask(TaskBase):
     class Config(ConfigBase):
         data: Data.Config = Data.Config()
         trainer: TaskTrainer.Config = TaskTrainer.Config()
+        use_elastic: Optional[bool] = None
 
     @classmethod
     def from_config(
@@ -114,7 +115,10 @@ class _NewTask(TaskBase):
         # features and tensors are being used. This is a strong tie between
         # the implementation of the model and the metric reporter.
         metric_reporter = cls.create_metric_reporter(config, tensorizers)
-        trainer = create_trainer(config.trainer, model)
+        if hasattr(config, "use_elastic") and config.use_elastic:
+            trainer = create_trainer(ElasticTrainer.Config(config.trainer), model)
+        else:
+            trainer = create_trainer(config.trainer, model)
         return cls(data, model, metric_reporter, trainer)
 
     @classmethod
