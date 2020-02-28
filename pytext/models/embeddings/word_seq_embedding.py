@@ -115,6 +115,7 @@ class WordSeqEmbedding(EmbeddingBase):
         output_embedding_dim = lstm.representation_dim
         EmbeddingBase.__init__(self, embedding_dim=output_embedding_dim)
         self.lstm = lstm
+        self.num_lstm_directions = 2 if lstm_config.bidirectional else 1
 
         # Create word embedding
         self.word_embedding = nn.Embedding(
@@ -145,24 +146,26 @@ class WordSeqEmbedding(EmbeddingBase):
         """
         Args:
             seq_token_idx : shape [batch_size * max_seq_len * max_token_count]
-            seq_token_lens : shape [batch_size * max_seq_len]
-
+            seq_token_count : shape [batch_size * max_seq_len]
         Return:
             embedding : shape (batch_size * max_seq_len * output_dim)
         """
         # batch_size * max_seq_len * max_token_count * emb_dim
         seq_token_emb = self.word_embedding(seq_token_idx)
-        batch_size = seq_token_idx.size()[0]
-        max_seq_len = seq_token_idx.size()[1]
-        seq_token_count_chunk = torch.chunk(seq_token_count, max_seq_len, dim=1)
-        seq_token_emb_chunk = torch.chunk(seq_token_emb, max_seq_len, dim=1)
+        # transpose to  max_seq_len * batch_size * max_token_count * emb_dim
+        seq_token_emb_t = seq_token_emb.transpose(0, 1)
+        # transpose to  max_seq_len * batch_size
+        seq_token_count_t = seq_token_count.transpose(0, 1)
+
         outputs = []
-        for i in range(max_seq_len):
-            token_emb = seq_token_emb_chunk[i].squeeze(dim=1)
-            token_count = seq_token_count_chunk[i].squeeze(dim=1)
+        for i, token_emb in enumerate(seq_token_emb_t):
+            token_count = seq_token_count_t[i]
             rep, (h_t, c_t) = self.lstm(token_emb, token_count)
             h_t_transposed = h_t.transpose(0, 1).view(
-                self.lstm.config.num_layers, -1, batch_size, self.lstm.config.lstm_dim
+                self.lstm.config.num_layers,
+                self.num_lstm_directions,
+                -1,
+                self.lstm.config.lstm_dim,
             )
             if self.lstm.config.bidirectional:
                 # Concat the two directions of the last layer
