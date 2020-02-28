@@ -147,7 +147,8 @@ def prepare_task(
         if latest_snapshot_path:
             config.load_snapshot_path = latest_snapshot_path
 
-    if config.load_snapshot_path and PathManager.isfile(config.load_snapshot_path):
+    if config.load_snapshot_path:
+        assert PathManager.isfile(config.load_snapshot_path)
         if config.use_config_from_snapshot:
             task, _, training_state = load(config.load_snapshot_path)
         else:
