@@ -123,7 +123,7 @@ class BiLSTM(RepresentationBase):
             )
             states = (state, state)
         if torch.onnx.is_in_onnx_export():
-            lstm_in = [embedded_tokens, states[0], states[1]] + [
+            lstm_in = [embedded_tokens.contiguous(), states[0], states[1]] + [
                 param.detach() for param in self.lstm._flat_weights
             ]
             rep, new_state_0, new_state_1 = torch.ops._caffe2.InferenceLSTM(
