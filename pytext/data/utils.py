@@ -249,7 +249,9 @@ class VocabBuilder:
             for value in values:
                 self.add_all(value)
         else:
-            self.add(values)
+            # Don't add None or empty
+            if values:
+                self.add(values)
 
     def add(self, value) -> None:
         """Count a single value in the vocabulary."""
