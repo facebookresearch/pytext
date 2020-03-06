@@ -113,6 +113,8 @@ class LanguageModelMetricReporter(MetricReporter):
             self.aggregate_context(context)
 
     def calculate_loss(self) -> float:
+        if self.total_num_tokens == 0:
+            return 0.0
         return self.aggregate_loss / float(self.total_num_tokens)
 
     def _reset(self):
