@@ -36,6 +36,7 @@ from pytext.data.tensorizers import (
     initialize_tensorizers,
     lookup_tokens,
 )
+from pytext.data.token_tensorizer import ScriptBasedTokenTensorizer
 from pytext.data.tokenizers import (
     DoNothingTokenizer,
     GPT2BPETokenizer,
@@ -248,7 +249,7 @@ class TensorizersTest(unittest.TestCase):
             init.send(None)
         self.assertEqual(7, len(tensorizer.vocab))  # 5 + unk token + pad token
 
-    def test_create_word_tensors(self):
+    def test_numberize_with_token_tensorizer(self):
         tensorizer = TokenTensorizer(text_column="text")
         self._initialize_tensorizer(tensorizer)
 
@@ -263,6 +264,115 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual([13, 47, 9], tokens)
         self.assertEqual(3, seq_len)
         self.assertEqual([(0, 4), (5, 7), (8, 10)], token_ranges)
+
+    def test_numberize_with_script_token_tensorizer(self):
+        rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
+        expected_outputs = [
+            [
+                ("tokens", [24, 0, 0, 0]),
+                ("seq_len", 4),
+                ("token_ranges", [(0, 1), (2, 6), (7, 11), (12, 18)]),
+            ],
+            [
+                ("tokens", [13, 47, 9]),
+                ("seq_len", 3),
+                ("token_ranges", [(0, 4), (5, 7), (8, 10)]),
+            ],
+        ]
+
+        tensorizer = ScriptBasedTokenTensorizer(text_column="text")
+        self._initialize_tensorizer(tensorizer)
+        tensors = (tensorizer.numberize(row) for row in rows)
+
+        for expected, numberized in zip(expected_outputs, tensors):
+            for (field, value), out in zip(expected, numberized):
+                self.assertEqual(value, out, msg=f"{field} didn't match!")
+
+        # Test that EOS / BOS tokens are correctly added
+        tensorizer = ScriptBasedTokenTensorizer(
+            text_column="text", add_eos_token=True, add_bos_token=True
+        )
+        self._initialize_tensorizer(tensorizer)
+        tensors = (tensorizer.numberize(row) for row in rows)
+        bos = tensorizer.vocab.get_bos_index()
+        eos = tensorizer.vocab.get_eos_index()
+        unk = tensorizer.vocab.get_unk_index()
+
+        for expected, (tokens, seq_len, token_ranges) in zip(expected_outputs, tensors):
+            # Token indices are shifted due to the two new tokens, hence x + 2
+            self.assertEqual(
+                [bos] + [x + 2 if x != unk else x for x in expected[0][1]] + [eos],
+                tokens,
+            )
+
+            # We have one extra token at the beginning and one at the end
+            self.assertEqual(expected[1][1] + 2, seq_len)
+
+            # EOS / BOS tokens don't have ranges
+            self.assertEqual([(-1, -1)] + expected[2][1] + [(-1, -1)], token_ranges)
+
+    def test_tensorize_with_script_token_tensorizer(self):
+        rows = [{"text": "I want some coffee"}, {"text": "Turn it up"}]
+
+        tensorizer = ScriptBasedTokenTensorizer(
+            text_column="text", add_eos_token=True, add_bos_token=True
+        )
+        self._initialize_tensorizer(tensorizer)
+
+        def check_results(results):
+            tokens, seq_lens, token_ranges = results
+            self.assertIsInstance(tokens, torch.LongTensor)
+            self.assertIsInstance(seq_lens, torch.LongTensor)
+            self.assertIsInstance(token_ranges, torch.LongTensor)
+
+            self.assertEqual((2, 6), tokens.size())
+            self.assertEqual((2,), seq_lens.size())
+            self.assertEqual((2, 6, 2), token_ranges.size())
+
+            self.assertEqual(
+                [[2, 26, 0, 0, 0, 3], [2, 15, 49, 11, 3, 1]], tokens.tolist()
+            )
+            self.assertEqual([6, 5], seq_lens.tolist())
+            self.assertEqual(
+                [
+                    [[-1, -1], [0, 1], [2, 6], [7, 11], [12, 18], [-1, -1]],
+                    [[-1, -1], [0, 4], [5, 7], [8, 10], [-1, -1], [-1, -1]],
+                ],
+                token_ranges.tolist(),
+            )
+
+        original_results = tensorizer.tensorize(
+            [tensorizer.numberize(row) for row in rows]
+        )
+        check_results(original_results)
+
+        # Make sure all is well after exporting to TorchScript
+        torchscript_tensorizer = tensorizer.torchscriptify()
+
+        # The tokenizer we use by default is not torchscriptifiable so we do
+        # tokenization beforehand and add positions ourselves.
+        tokenized_rows = [
+            torchscript_tensorizer.tokenize(
+                row_text=None, row_pre_tokenized=row["text"].lower().split(" ")
+            )
+            for row in rows
+        ]
+        positions_2d = [
+            [(-1, -1), (0, 1), (2, 6), (7, 11), (12, 18), (-1, -1)],
+            [(-1, -1), (0, 4), (5, 7), (8, 10), (-1, -1)],
+        ]
+
+        tokens_2d = []
+        seq_lens_1d = []
+        for row in tokenized_rows:
+            tokens, seq_len, postion = torchscript_tensorizer.numberize(row)
+            tokens_2d.append(tokens)
+            seq_lens_1d.append(seq_len)
+
+        torchscript_results = torchscript_tensorizer.tensorize(
+            tokens_2d, seq_lens_1d, positions_2d
+        )
+        check_results(torchscript_results)
 
     def test_create_byte_tensors(self):
         tensorizer = ByteTensorizer(text_column="text", lower=False)
