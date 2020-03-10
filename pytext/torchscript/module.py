@@ -59,3 +59,62 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
         input_tensors = self.tensorizer(inputs)
         logits = self.model(input_tensors, torch.tensor(dense_feat).float())
         return self.output_layer(logits)
+
+
+class ScriptPyTextEmbeddingModule(ScriptModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        index: int = 0,
+    ):
+        super().__init__()
+        self.model = model
+        self.tensorizer = tensorizer
+        self.index = torch.jit.Attribute(index, int)
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ) -> torch.Tensor:
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=squeeze_1d(texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
+        # call model
+        return self.model(input_tensors)[self.index]
+
+
+class ScriptPyTextEmbeddingModuleWithDense(ScriptModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        index: int = 0,
+    ):
+        super().__init__()
+        self.model = model
+        self.tensorizer = tensorizer
+        self.index = torch.jit.Attribute(index, int)
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        dense_feat: List[List[float]],
+        texts: Optional[List[str]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ) -> torch.Tensor:
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=squeeze_1d(texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
+        # call model
+        return self.model(input_tensors, torch.tensor(dense_feat).float())[self.index]
