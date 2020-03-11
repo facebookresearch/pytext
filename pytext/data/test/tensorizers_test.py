@@ -144,7 +144,7 @@ class ListTensorizersTest(unittest.TestCase):
         )
         tensorizers = {
             "label": LabelListTensorizer(
-                label_column="label", pad_in_vocab=False, allow_unknown=False
+                pad_missing=True, label_column="label", pad_in_vocab=False, allow_unknown=False
             )
         }
         initialize_tensorizers(tensorizers, ds.test)

@@ -250,7 +250,7 @@ class VocabBuilder:
                 self.add_all(value)
         else:
             # Don't add None or empty
-            if values:
+            if values not in [None, ""]:
                 self.add(values)
 
     def add(self, value) -> None:

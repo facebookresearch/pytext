@@ -816,20 +816,20 @@ class LabelListTensorizer(LabelTensorizer):
 
     class Config(LabelTensorizer.Config):
         # pad missing label in the list, including None and empty
-        pad_missing: bool = True
+        pad_missing: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
         return cls(
-            config.pad_missing,
             config.column,
             config.allow_unknown,
             config.pad_in_vocab,
             config.label_vocab,
             config.is_input,
+            pad_missing=config.pad_missing,
         )
 
-    def __init__(self, pad_missing: bool = True, *args, **kwargs):
+    def __init__(self, *args, pad_missing: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.pad_missing = pad_missing
 
