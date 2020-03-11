@@ -5,7 +5,6 @@ import unittest
 from typing import List
 
 import numpy as np
-import pandas as pd
 import torch
 from pytext.data.bert_tensorizer import BERTTensorizer, BERTTensorizerScriptImpl
 from pytext.data.roberta_tensorizer import (
@@ -14,7 +13,6 @@ from pytext.data.roberta_tensorizer import (
 )
 from pytext.data.sources import SquadDataSource
 from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper, load_float_list
-from pytext.data.sources.pandas import SessionPandasDataSource
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.squad_for_bert_tensorizer import (
     SquadForBERTTensorizer,
@@ -129,33 +127,6 @@ class ListTensorizersTest(unittest.TestCase):
             np.array([[1, 2, 0, -1], [3, 4, 0, -1], [5, 6, 7, 0]]),
             tensors.detach().numpy(),
         )
-
-    def test_label_list_tensors_pad_missing(self):
-        ds = SessionPandasDataSource(
-            test_df=pd.DataFrame(
-                # test None and empty case
-                {
-                    "session_id": [1, 1, 1, 1],
-                    "label": ["positive", "negative", None, ""],
-                }
-            ),
-            schema={"label": List[str]},
-            id_col="session_id",
-        )
-        tensorizers = {
-            "label": LabelListTensorizer(
-                label_column="label", pad_in_vocab=False, allow_unknown=False
-            )
-        }
-        initialize_tensorizers(tensorizers, ds.test)
-        self.assertEqual(2, len(tensorizers["label"].vocab))
-        # only one row in test data
-        label_idx_list, lens = tensorizers["label"].numberize(next(iter(ds.test)))
-        self.assertEqual([0, 1, -1, -1], label_idx_list)
-
-        tensorizers["label"].pad_missing = False
-        with self.assertRaises(Exception):
-            tensorizers["label"].numberize(next(iter(ds.test)))
 
 
 # fmt: off

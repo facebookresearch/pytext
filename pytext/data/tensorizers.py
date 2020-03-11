@@ -815,49 +815,18 @@ class LabelListTensorizer(LabelTensorizer):
     """
 
     class Config(LabelTensorizer.Config):
-        # pad missing label in the list, including None and empty
-        pad_missing: bool = True
+        pass
 
-    @classmethod
-    def from_config(cls, config: Config):
-        return cls(
-            config.pad_missing,
-            config.column,
-            config.allow_unknown,
-            config.pad_in_vocab,
-            config.label_vocab,
-            config.is_input,
-        )
-
-    def __init__(self, pad_missing: bool = True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.pad_missing = pad_missing
-
-    def __setstate__(self, newstate):
-        # for backward compatibility
-        if "pad_missing" not in newstate:
-            newstate["pad_missing"] = True
-        self.__dict__.update(newstate)
+    def __init__(self, label_column: str = "label", *args, **kwargs):
+        super().__init__(label_column, *args, **kwargs)
 
     @property
     def column_schema(self):
         return [(self.label_column, List[str])]
 
     def numberize(self, row):
-        label_idx_list = []
-        for label in row[self.label_column]:
-            # Only None and empty is viewed as missing data, values like "False" is legit
-            if label in [None, ""]:
-                if self.pad_missing:
-                    label_idx_list.append(self.pad_idx)
-                else:
-                    raise Exception(
-                        "Found none or empty value in the list,"
-                        + " while pad_missing is disabled"
-                    )
-            else:
-                label_idx_list.append(self.vocab.lookup_all(label))
-        return label_idx_list, len(label_idx_list)
+        labels = super().numberize(row)
+        return labels, len(labels)
 
     def tensorize(self, batch):
         labels, labels_len = zip(*batch)
