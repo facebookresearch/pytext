@@ -53,7 +53,7 @@ class NLLLoss(Loss):
             log_probs,
             targets,
             ignore_index=self.ignore_index,
-            reduction="elementwise_mean" if reduce else "none",
+            reduction="mean" if reduce else "none",
             weight=self.weight,
         )
 
