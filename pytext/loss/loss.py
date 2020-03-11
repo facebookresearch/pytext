@@ -23,6 +23,9 @@ class Loss(Component):
 
 
 class CrossEntropyLoss(Loss):
+    class Config(ConfigBase):
+        pass
+
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
         self.ignore_index = ignore_index
         self.weight = weight
