@@ -24,6 +24,7 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
     class Config(TransformerSentenceEncoderBase.Config, ConfigBase):
         bert_cpt_dir: str = "/mnt/vol/nlp_technologies/bert/uncased_L-12_H-768_A-12/"
         load_weights: bool = True
+        projection_dim: int = 0
 
     def __init__(
         self, config: Config, output_encoded_layers: bool, *args, **kwargs
@@ -81,11 +82,19 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
                 )
 
         self.bert = model
+        self.projection = (
+            torch.nn.Linear(model.config.hidden_size, config.projection_dim)
+            if config.projection_dim > 0
+            else None
+        )
         log_class_usage(__class__)
 
     def _encoder(self, input_tuple: Tuple[torch.Tensor, ...]):
         tokens, pad_mask, segment_labels, _ = input_tuple
-        return self.bert(tokens, segment_labels, pad_mask)
+        encoded_layers, pooled_output = self.bert(tokens, segment_labels, pad_mask)
+        if self.projection:
+            pooled_output = self.projection(pooled_output).tanh()
+        return encoded_layers, pooled_output
 
     def _embedding(self):
         # used to tie weights in MaskedLM model
