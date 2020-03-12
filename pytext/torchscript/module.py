@@ -79,6 +79,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         texts: Optional[List[str]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=squeeze_1d(texts),
