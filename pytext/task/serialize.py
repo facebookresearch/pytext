@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import abc
 import io
 import logging
 import os
@@ -127,8 +128,7 @@ def load_v3(state, overwrite_config=None):
     return task, config, training_state
 
 
-def load_checkpoint(f: io.IOBase, overwrite_config=None):
-    state = torch.load(f, map_location=lambda storage, loc: storage)
+def load_checkpoint(state, overwrite_config=None):
     print(f"Loaded checkpoint...")
     if SERIALIZE_VERSION_KEY not in state:
         return load_v1(state)
@@ -194,91 +194,108 @@ def get_post_training_snapshot_path() -> str:
     return _CHECKPOINT_MANAGER.get_post_training_snapshot_path()
 
 
-class CheckpointManager:
+DELIMITER = "-"
+
+
+# generate per epoch checkpoint save path
+def generate_checkpoint_path(config: PyTextConfig, identifier: str):
+    dir_name = os.path.dirname(config.save_snapshot_path)
+    return f"{dir_name}/checkpoint{DELIMITER}{identifier}"
+
+
+class PyTextCheckpointManagerInterface(abc.ABC):
     """
-        CheckpointManager is class abstraction to manage training job's
-        checkpoints with different IO and storage, using two functions:
-        save() and load().
+        CheckpointManager is a class abstraction to manage a training job's
+        checkpoints/snapshots with different IO and storage.
     """
 
-    DELIMITER = "-"
+    @abc.abstractmethod
+    def save_checkpoint(self, state, checkpoint_path):
+        """
+        Serialize and save checkpoint to given path. State is a dictionary that
+        represents the all data to be saved.
+        Args:
+            state: Dictionary containing data to be saved
+            checkpoint_path: path of file to save checkpoint
+        """
+        raise NotImplementedError("Not implemented in interface class")
 
+    @abc.abstractmethod
+    def save_snapshot(self, state, snapshot_path):
+        """
+        Serialize and save post-training model snapshot to given path. State
+        is a dictionary that represents the all data to be saved.
+        Having a separate method for snapshots enables future optimizations like
+        quantization to be applied to snapshots.
+
+        Args:
+            state: Dictionary containing data to be saved
+            snapshot_path: path of file to save snapshot
+        """
+        raise NotImplementedError("Not implemented in interface class")
+
+    @abc.abstractmethod
+    def load(self, load_path: str):
+        """
+        Loads a checkpoint/snapshot from disk.
+        Args:
+            load_path (str): the file path from which to load
+        Returns: De-serialized state (dictionary) that was saved
+        """
+        raise NotImplementedError("Not implemented in interface class")
+
+    @abc.abstractmethod
+    def list(self) -> List[str]:
+        """
+        Return all existing checkpoint paths
+        Returns: checkpoint_path_list (List[str]), list elements are in the same
+        order of checkpoint saving
+        """
+        raise NotImplementedError("Not implemented in interface class")
+
+    @abc.abstractmethod
+    def get_latest_checkpoint_path(self) -> str:
+        """
+        Return most recent saved checkpoint path in str
+        Returns: checkpoint_path (str)
+        """
+        raise NotImplementedError("Not implemented in interface class")
+
+    @abc.abstractmethod
+    def get_post_training_snapshot_path(self) -> str:
+        raise NotImplementedError("Not implemented in interface class")
+
+
+class CheckpointManager(PyTextCheckpointManagerInterface):
     def __init__(self):
         # keep a list of saved checkpoint path
         self._saved_paths: List[str] = []
         self._post_training_snapshot_path = None
         log_class_usage(__class__)
 
-    # generate per epoch checkpoint save path
-    def generate_checkpoint_path(self, config: PyTextConfig, identifier: str):
-        dir_name = os.path.dirname(config.save_snapshot_path)
-        return f"{dir_name}/checkpoint{self.DELIMITER}{identifier}"
+    def save(self, state, save_path):
+        with PathManager.open(save_path, "wb") as f:
+            torch.save(state, f)
 
-    def save(
-        self,
-        config: PyTextConfig,
-        model: Model,
-        meta: Optional[CommonMetadata],
-        tensorizers: Dict[str, Tensorizer],
-        training_state: Optional[TrainingState] = None,
-        identifier: str = None,
-    ) -> str:
-        """
-        save a checkpoint to given path, config, model and training_state
-        together represent the checkpoint. When identifier is None, this
-        function is used to save post-training snapshot
-        """
-        saved_path = ""
-        if identifier:
-            # saving during-training checkpoints
-            saved_path = self.generate_checkpoint_path(config, identifier)
-            print("Saving checkpoint to ", saved_path)
-        else:
-            # saving post-training snapshot if no identifer given
-            saved_path = config.save_snapshot_path
-            print(f"Saving pytorch model to: {saved_path}")
+    def save_checkpoint(self, state, checkpoint_path):
+        self.save(state, checkpoint_path)
+        self._saved_paths.append(checkpoint_path)
 
-        saved_folder = os.path.dirname(saved_path)
-        if not PathManager.exists(saved_folder):
-            PathManager.mkdirs(saved_folder)
-            print(f"created {saved_folder}")
+    def save_snapshot(self, state, snapshot_path):
+        self.save(state, snapshot_path)
+        self._post_training_snapshot_path = snapshot_path
 
-        with PathManager.open(saved_path, "wb") as checkpoint_f:
-            save_checkpoint(
-                checkpoint_f, config, model, meta, tensorizers, training_state
-            )
-            if identifier:
-                self._saved_paths.append(saved_path)
-            else:
-                self._post_training_snapshot_path = saved_path
-        return saved_path
-
-    def load(self, load_path: str, overwrite_config=None):
-        """
-        Loads a checkpoint from disk.
-        Args:
-            load_path (str): the file path to load for checkpoint
-        Returns: task (Task), config (PyTextConfig) and training_state (TrainingState)
-        """
+    def load(self, load_path: str):
         if not (load_path and PathManager.isfile(load_path)):
             raise ValueError(f"Invalid snapshot path{load_path}")
-        print(f"Loading model from {load_path}")
         with PathManager.open(load_path, "rb") as checkpoint_f:
-            return load_checkpoint(checkpoint_f, overwrite_config)
+            state = torch.load(checkpoint_f, map_location=lambda storage, loc: storage)
+        return state
 
     def list(self) -> List[str]:
-        """
-        Return all existing checkpoint path in str
-        Returns: checkpoint_path_list (List[str]), list elements are in the same
-        order of checkpoint saving
-        """
         return self._saved_paths
 
     def get_latest_checkpoint_path(self) -> str:
-        """
-        Return most recent saved checkpoint path in str
-        Returns: checkpoint_path (str)
-        """
         return self._saved_paths[-1] if len(self._saved_paths) > 0 else None
 
     def get_post_training_snapshot_path(self) -> str:
@@ -288,7 +305,7 @@ class CheckpointManager:
 _CHECKPOINT_MANAGER = CheckpointManager()
 
 
-def set_checkpoint_manager(manager: CheckpointManager) -> None:
+def set_checkpoint_manager(manager: PyTextCheckpointManagerInterface) -> None:
     global _CHECKPOINT_MANAGER
     _CHECKPOINT_MANAGER = manager
 
@@ -318,9 +335,45 @@ def save(
     if specified, will be used to save checkpoint during training,
     identifier is used to identify checkpoints in the same training
     """
-    return _CHECKPOINT_MANAGER.save(
-        config, model, meta, tensorizers, training_state, identifier
-    )
+    saved_path = ""
+    if identifier:
+        # saving during-training checkpoints
+        saved_path = generate_checkpoint_path(config, identifier)
+    else:
+        # saving post-training snapshot if no identifer given
+        saved_path = config.save_snapshot_path
+        print(f"Saving pytorch model to: {saved_path}")
+
+    saved_folder = os.path.dirname(saved_path)
+    if not PathManager.exists(saved_folder):
+        PathManager.mkdirs(saved_folder)
+        print(f"created {saved_folder}")
+
+    # Currently torch.save() has error pickling certain models when not saving
+    # by model.state_dict(), thus currently overriding the model in
+    # training_state with None, and put back saving
+    # https://github.com/pytorch/pytorch/issues/15116
+    model_in_training_state = None
+    if training_state:
+        model_in_training_state, training_state.model = training_state.model, None
+    try:
+        state = {
+            DATA_STATE: meta,
+            CONFIG_JSON: config_to_json(PyTextConfig, config),
+            MODEL_STATE: model.state_dict(),
+            SERIALIZE_VERSION_KEY: LATEST_SERIALIZE_VERSION,
+            TENSORIZERS: tensorizers,
+            TRAINING_STATE: training_state,
+        }
+        if identifier is not None:
+            _CHECKPOINT_MANAGER.save_checkpoint(state, saved_path)
+        else:
+            _CHECKPOINT_MANAGER.save_snapshot(state, saved_path)
+
+    finally:
+        if training_state:
+            training_state.model = model_in_training_state
+    return saved_path
 
 
 def load(load_path: str, overwrite_config=None):
@@ -332,4 +385,5 @@ def load(load_path: str, overwrite_config=None):
     if overwrite_task is specified, it will construct the task using
     overwrite_task then load metadata and model state.
     """
-    return _CHECKPOINT_MANAGER.load(load_path, overwrite_config)
+    state = _CHECKPOINT_MANAGER.load(load_path)
+    return load_checkpoint(state, overwrite_config)
