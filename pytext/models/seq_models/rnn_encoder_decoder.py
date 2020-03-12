@@ -42,8 +42,14 @@ class RNNModel(PyTextSeq2SeqModule):
 
     @classmethod
     def from_config(
-        cls, config: Config, source_embedding, out_vocab_size, target_embedding
+        cls,
+        config: Config,
+        source_vocab,
+        source_embedding,
+        target_vocab,
+        target_embedding,
     ):
+        out_vocab_size = len(target_vocab)
         encoder = create_module(config.encoder)
         decoder = create_module(config.decoder, out_vocab_size, target_embedding)
         return cls(encoder, decoder, source_embedding)

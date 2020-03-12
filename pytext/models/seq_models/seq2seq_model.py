@@ -61,8 +61,9 @@ class Seq2SeqModel(Model):
 
         model = create_module(
             config.encoder_decoder,
+            src_tokens.vocab,
             source_embedding,
-            len(trg_tokens.vocab),
+            trg_tokens.vocab,
             target_embedding,
         )
         output_layer = create_module(config.output_layer, trg_tokens.vocab)
