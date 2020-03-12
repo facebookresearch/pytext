@@ -109,6 +109,7 @@ class DocModel(Model):
         output_layer = self.output_layer.torchscript_predictions()
 
         input_vocab = tensorizers["tokens"].vocab
+        max_seq_len = tensorizers["tokens"].max_seq_len or -1
 
         class Model(jit.ScriptModule):
             def __init__(self):
@@ -117,6 +118,7 @@ class DocModel(Model):
                 self.model = traced_model
                 self.output_layer = output_layer
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.max_seq_len = jit.Attribute(max_seq_len, int)
 
             @jit.script_method
             def forward(
@@ -128,8 +130,15 @@ class DocModel(Model):
                 if tokens is None:
                     raise RuntimeError("tokens is required")
 
-                seq_lens = make_sequence_lengths(tokens)
-                word_ids = self.vocab.lookup_indices_2d(tokens)
+                trimmed_tokens: List[List[str]] = []
+                if self.max_seq_len >= 0:
+                    for token in tokens:
+                        trimmed_tokens.append(token[0 : self.max_seq_len])
+                else:
+                    trimmed_tokens = tokens
+
+                seq_lens = make_sequence_lengths(trimmed_tokens)
+                word_ids = self.vocab.lookup_indices_2d(trimmed_tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
                 logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
                 return self.output_layer(logits)
@@ -142,6 +151,7 @@ class DocModel(Model):
                 self.model = traced_model
                 self.output_layer = output_layer
                 self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.max_seq_len = jit.Attribute(max_seq_len, int)
 
             @jit.script_method
             def forward(
@@ -156,8 +166,15 @@ class DocModel(Model):
                 if dense_feat is None:
                     raise RuntimeError("dense_feat is required")
 
-                seq_lens = make_sequence_lengths(tokens)
-                word_ids = self.vocab.lookup_indices_2d(tokens)
+                trimmed_tokens: List[List[str]] = []
+                if self.max_seq_len >= 0:
+                    for token in tokens:
+                        trimmed_tokens.append(token[0 : self.max_seq_len])
+                else:
+                    trimmed_tokens = tokens
+
+                seq_lens = make_sequence_lengths(trimmed_tokens)
+                word_ids = self.vocab.lookup_indices_2d(trimmed_tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
                 dense_feat = self.normalizer.normalize(dense_feat)
                 logits = self.model(
