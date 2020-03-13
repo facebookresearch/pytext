@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 from pytext.common.constants import Stage
@@ -10,7 +10,7 @@ from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
     RoBERTaTokenLevelTensorizer,
 )
-from pytext.data.tensorizers import LabelTensorizer, Tensorizer
+from pytext.data.tensorizers import FloatListTensorizer, LabelTensorizer, Tensorizer
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import BaseModel
@@ -25,7 +25,7 @@ from pytext.models.representations.transformer import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
-from pytext.torchscript.module import ScriptPyTextModule
+from pytext.torchscript.module import ScriptPyTextModule, ScriptPyTextModuleWithDense
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch.serialization import default_restore_location
@@ -141,6 +141,7 @@ class RoBERTa(NewBertModel):
     class Config(NewBertModel.Config):
         class InputConfig(ConfigBase):
             tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
         inputs: InputConfig = InputConfig()
@@ -152,7 +153,11 @@ class RoBERTa(NewBertModel):
         values according to the output layer (eg. as a dict mapping class name to score)
         """
         script_tensorizer = tensorizers["tokens"].torchscriptify()
-        return ScriptPyTextModule(
+        if "dense" in tensorizers:
+            script_module_cls = ScriptPyTextModuleWithDense
+        else:
+            script_module_cls = ScriptPyTextModule
+        return script_module_cls(
             model=traced_model,
             output_layer=self.output_layer.torchscript_predictions(),
             tensorizer=script_tensorizer,
