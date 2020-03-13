@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import Stage
@@ -10,6 +10,7 @@ from pytext.models.embeddings import DictEmbedding, WordEmbedding
 from pytext.models.embeddings.scriptable_embedding_list import ScriptableEmbeddingList
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
+from pytext.torchscript.seq2seq.export_model import Seq2SeqJIT
 from pytext.torchscript.seq2seq.scripted_seq2seq_generator import (
     ScriptedSequenceGenerator,
 )
@@ -70,14 +71,12 @@ class Seq2SeqModel(Model):
 
         dictfeat_tokens = tensorizers.get("dict_feat")
 
-        sequence_generator = create_module(
-            config.sequence_generator, [model], trg_tokens.vocab.get_eos_index()
-        )
-
         return cls(
             model=model,
             output_layer=output_layer,
-            sequence_generator=sequence_generator,
+            sequence_generator_builder=lambda models: create_module(
+                config.sequence_generator, models, trg_tokens.vocab.get_eos_index()
+            ),
             src_vocab=src_tokens.vocab,
             trg_vocab=trg_tokens.vocab,
             dictfeat_vocab=dictfeat_tokens.vocab if dictfeat_tokens else None,
@@ -121,7 +120,9 @@ class Seq2SeqModel(Model):
         self,
         model: RNNModel,
         output_layer: Seq2SeqOutputLayer,
-        sequence_generator: ScriptedSequenceGenerator,
+        sequence_generator_builder: Callable[
+            [List[RNNModel]], ScriptedSequenceGenerator
+        ],
         src_vocab: Vocabulary,
         trg_vocab: Vocabulary,
         dictfeat_vocab: Vocabulary,
@@ -131,7 +132,20 @@ class Seq2SeqModel(Model):
         self.encoder = self.model.encoder
         self.decoder = self.model.decoder
         self.output_layer = output_layer
-        self.sequence_generator = sequence_generator
+
+        # Sequence generation is expected to be used only for inference, and to
+        # take the trained model(s) as input. Creating the sequence generator
+        # may apply Torchscript JIT compilation and quantization, which modify
+        # the input model. Therefore, we want to create the sequence generator
+        # after training.
+        self.sequence_generator_builder = sequence_generator_builder
+        self.sequence_generator = None
+
+        # Disable predictions until testing (see above comment about sequence
+        # generator). If this functionality is needed, a new sequence generator
+        # with a copy of the model should be used for each epoch during the
+        # EVAL stage.
+        self.force_eval_predictions = False
 
         # Target vocab EOS index is useful for recognizing when to stop generating
         self.trg_eos_index = trg_vocab.get_eos_index()
@@ -145,7 +159,6 @@ class Seq2SeqModel(Model):
         self.trg_dict = trg_vocab
         self.dictfeat_dict = dictfeat_vocab
 
-        self.force_eval_predictions = False
         log_class_usage(__class__)
 
     def max_decoder_positions(self):
@@ -183,9 +196,35 @@ class Seq2SeqModel(Model):
                 (stage == Stage.TEST)
                 or (self.force_eval_predictions and stage == Stage.EVAL)
             ):
+                # We don't support predictions during EVAL since sequence
+                # generator may quantize the models.
+                assert (
+                    not self.force_eval_predictions
+                ), "Eval predictions not supported for Seq2SeqModel yet."
+                if self.sequence_generator is None:
+                    assert not self.model.training
+                    self.sequence_generator = torch.jit.script(
+                        self.sequence_generator_builder([self.model])
+                    )
                 _, model_input = model_outputs
                 preds = self.sequence_generator.generate_hypo(model_input)
         return preds
 
     def get_normalized_probs(self, net_output, log_probs, sample=None):
         return self.model.get_normalized_probs(net_output, log_probs, sample)
+
+    def torchscriptify(self):
+        self.model.zero_grad()
+        self.model.eval()
+
+        if self.sequence_generator is None:
+            self.sequence_generator = self.sequence_generator_builder([self.model])
+
+        model = Seq2SeqJIT(
+            self.src_dict,
+            self.trg_dict,
+            self.sequence_generator,
+            filter_eos_bos=True,
+            copy_unk_token=True,
+        )
+        return torch.jit.script(model)

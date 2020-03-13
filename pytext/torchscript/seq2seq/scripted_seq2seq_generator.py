@@ -96,6 +96,7 @@ class ScriptedSequenceGenerator(Module):
             all_tokens, all_scores, all_weights, all_prev_indices, target_length
         )
 
+    @torch.jit.export
     def generate_hypo(self, tensors: Dict[str, torch.Tensor]):
 
         actual_src_tokens = tensors["src_tokens"].t()

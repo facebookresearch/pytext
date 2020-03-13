@@ -252,3 +252,11 @@ class SequenceLabelingTask(NewTask):
         metric_reporter: Seq2SeqCompositionalMetricReporter.Config = (
             Seq2SeqCompositionalMetricReporter.Config()
         )
+
+    def torchscript_export(self, model, export_path, quantize=False):
+        model.cpu()
+        # Trace needs eval mode, to disable dropout etc
+        model.eval()
+        if hasattr(model, "torchscriptify"):
+            jit_module = model.torchscriptify()
+            jit_module.save(export_path)
