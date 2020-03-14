@@ -1,0 +1,3 @@
+what time is it	 [{"tokenIdx": 0, "features": {"pos:ADJ": 1}}, {"tokenIdx": 1, "features": {"pos:NOUN": 1, "expected:TIME": 1}}, {"tokenIdx": 2, "features": {"pos:VB": 1}}, {"tokenIdx": 3, "features": {"pos:PREP": 1}}]	[IN:TIME what [SLOT:TIME time] is it]
+directions to starbucks	 [{"tokenIdx": 0, "features": {"pos:NOUN": 1, "expected:LOC": 1}}, {"tokenIdx": 1, "features": {"pos:PREP": 1}}, {"tokenIdx": 2, "features": {"pos:PNOUN": 1, "SL:LOC": 1}}] 	 [IN:DIRECTIONS direction to [SLOT:LOC starbucks]]
+is it raining	 [{"tokenIdx": 0, "features": {"pos:VB": 1}}, {"tokenIdx": 1, "features": {"pos:PREP": 1}}, {"tokenIdx": 2, "features": {"pos:ADV": 1, "expected:WEATHER": 1}}]	[IN:WEATHER is it raining] 	 [outOfDomain information ] 
