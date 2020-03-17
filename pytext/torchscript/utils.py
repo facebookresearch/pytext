@@ -157,6 +157,17 @@ def pad_2d(
 
 
 @torch.jit.script
+def pad_2d_float(
+    batch: List[List[float]], seq_lens: List[int], pad_val: float = 0.0
+) -> List[List[float]]:
+    pad_to_length = list_max(seq_lens)
+    for sentence in batch:
+        for _ in range(pad_to_length - len(sentence)):
+            sentence.append(pad_val)
+    return batch
+
+
+@torch.jit.script
 def add_special_token_2d(
     values: List[List[int]], special_token: int = 0, use_first_value: bool = False
 ) -> List[List[int]]:
