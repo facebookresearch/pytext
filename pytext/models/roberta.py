@@ -154,14 +154,18 @@ class RoBERTa(NewBertModel):
         """
         script_tensorizer = tensorizers["tokens"].torchscriptify()
         if "dense" in tensorizers:
-            script_module_cls = ScriptPyTextModuleWithDense
+            return ScriptPyTextModuleWithDense(
+                model=traced_model,
+                output_layer=self.output_layer.torchscript_predictions(),
+                tensorizer=script_tensorizer,
+                normalizer=tensorizers["dense"].normalizer,
+            )
         else:
-            script_module_cls = ScriptPyTextModule
-        return script_module_cls(
-            model=traced_model,
-            output_layer=self.output_layer.torchscript_predictions(),
-            tensorizer=script_tensorizer,
-        )
+            return ScriptPyTextModule(
+                model=traced_model,
+                output_layer=self.output_layer.torchscript_predictions(),
+                tensorizer=script_tensorizer,
+            )
 
 
 class RoBERTaWordTaggingModel(BaseModel):
