@@ -78,11 +78,13 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         self,
         model: torch.jit.ScriptModule,
         tensorizer: ScriptTensorizer,
+        out_embedding_dim: int,
         index: int = 0,
     ):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
+        self.out_embedding_dim = torch.jit.Attribute(out_embedding_dim, int)
         self.index = torch.jit.Attribute(index, int)
 
     @torch.jit.script_method
@@ -109,9 +111,10 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         model: torch.jit.ScriptModule,
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
+        out_embedding_dim: int,
         index: int = 0,
     ):
-        super().__init__(model, tensorizer, index)
+        super().__init__(model, tensorizer, out_embedding_dim, index)
         self.normalizer = normalizer
 
     @torch.jit.script_method
