@@ -38,6 +38,7 @@ from pytext.workflow import (
     export_saved_model_to_torchscript,
     get_logits as workflow_get_logits,
     prepare_task_metadata,
+    save_pytext_snapshot as workflow_save_pytext_snapshot,
     test_model_from_snapshot_path,
     train_model,
 )
@@ -478,6 +479,17 @@ def get_logits(context, model_snapshot, test_path, use_cuda, output_path, field_
     )
     print("\n=== Starting get_logits...")
     workflow_get_logits(model_snapshot, use_cuda, output_path, test_path, field_names)
+
+
+@main.command()
+@click.pass_context
+def save_pytext_snapshot(context):
+    """Load a PyText task and save snapshot for later use.
+    This is helpful when you want to plug in a pretrained encoder in a PyText
+    task and either test or generate logits using the task.
+    """
+    config = context.obj.load_config()
+    workflow_save_pytext_snapshot(config)
 
 
 if __name__ == "__main__":
