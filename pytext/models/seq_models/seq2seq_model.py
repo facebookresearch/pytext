@@ -74,12 +74,10 @@ class Seq2SeqModel(Model):
         return cls(
             model=model,
             output_layer=output_layer,
-            sequence_generator_builder=lambda models: create_module(
-                config.sequence_generator, models, trg_tokens.vocab.get_eos_index()
-            ),
             src_vocab=src_tokens.vocab,
             trg_vocab=trg_tokens.vocab,
             dictfeat_vocab=dictfeat_tokens.vocab if dictfeat_tokens else None,
+            generator_config=config.sequence_generator,
         )
 
     def arrange_model_inputs(
@@ -120,12 +118,10 @@ class Seq2SeqModel(Model):
         self,
         model: RNNModel,
         output_layer: Seq2SeqOutputLayer,
-        sequence_generator_builder: Callable[
-            [List[RNNModel]], ScriptedSequenceGenerator
-        ],
         src_vocab: Vocabulary,
         trg_vocab: Vocabulary,
         dictfeat_vocab: Vocabulary,
+        generator_config=None,
     ):
         BaseModel.__init__(self)
         self.model = model
@@ -138,7 +134,10 @@ class Seq2SeqModel(Model):
         # may apply Torchscript JIT compilation and quantization, which modify
         # the input model. Therefore, we want to create the sequence generator
         # after training.
-        self.sequence_generator_builder = sequence_generator_builder
+        if generator_config is not None:
+            self.sequence_generator_builder = lambda models: create_module(
+                generator_config, models, trg_vocab.get_eos_index()
+            )
         self.sequence_generator = None
 
         # Disable predictions until testing (see above comment about sequence
@@ -201,6 +200,7 @@ class Seq2SeqModel(Model):
                 assert (
                     not self.force_eval_predictions
                 ), "Eval predictions not supported for Seq2SeqModel yet."
+                assert self.sequence_generator_builder is not None
                 if self.sequence_generator is None:
                     assert not self.model.training
                     self.sequence_generator = torch.jit.script(
@@ -216,7 +216,7 @@ class Seq2SeqModel(Model):
     def torchscriptify(self):
         self.model.zero_grad()
         self.model.eval()
-
+        assert self.sequence_generator_builder is not None
         if self.sequence_generator is None:
             self.sequence_generator = self.sequence_generator_builder([self.model])
 
