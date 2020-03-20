@@ -110,9 +110,11 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
         index: int = 0,
+        concat_dense: bool = True,
     ):
         super().__init__(model, tensorizer, index)
         self.normalizer = normalizer
+        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
 
     @torch.jit.script_method
     def forward(
@@ -135,5 +137,8 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         dense_feat = self.normalizer.normalize(dense_feat)
         dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
 
-        encoder_embedding = self.model(input_tensors, dense_tensor)[self.index]
-        return torch.cat([encoder_embedding, dense_tensor], 1)
+        sentence_embedding = self.model(input_tensors, dense_tensor)[self.index]
+        if self.concat_dense:
+            return torch.cat([sentence_embedding, dense_tensor], 1)
+        else:
+            return sentence_embedding
