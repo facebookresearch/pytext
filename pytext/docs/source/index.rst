@@ -71,6 +71,7 @@ If you want to use PyText as a library and build your own models, please check t
   disjoint_multitask_tutorial
   distributed_training_tutorial
   xlm_r
+  seq2seq_tutorial
 
 .. toctree::
   :maxdepth: 1
