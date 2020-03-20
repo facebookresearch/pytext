@@ -7,6 +7,7 @@ from .classification_metric_reporter import (
     MultiLabelClassificationMetricReporter,
 )
 from .compositional_metric_reporter import CompositionalMetricReporter
+from .dense_retrieval_metric_reporter import DenseRetrievalMetricReporter
 from .intent_slot_detection_metric_reporter import IntentSlotMetricReporter
 from .language_model_metric_reporter import LanguageModelMetricReporter
 from .metric_reporter import MetricReporter, PureLossMetricReporter
@@ -35,4 +36,5 @@ __all__ = [
     "SequenceTaggingMetricReporter",
     "PureLossMetricReporter",
     "NERMetricReporter",
+    "DenseRetrievalMetricReporter",
 ]

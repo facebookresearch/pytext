@@ -8,6 +8,10 @@ import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.config.component import create_loss
 from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.dense_retrieval_tensorizer import (  # noqa
+    BERTContextTensorizerForDenseRetrieval,
+    PositiveLabelTensorizerForDenseRetrieval,
+)
 from pytext.data.tensorizers import (
     FloatListTensorizer,
     LabelTensorizer,
@@ -172,6 +176,7 @@ class BertPairwiseModel(BasePairwiseModel):
     ) -> nn.ModuleList:
         encoder1 = create_module(
             config.encoder,
+            output_encoded_layers=False,
             padding_idx=tensorizers["tokens1"].vocab.get_pad_index(),
             vocab_size=len(tensorizers["tokens1"].vocab),
         )
@@ -180,6 +185,7 @@ class BertPairwiseModel(BasePairwiseModel):
         else:
             encoder2 = create_module(
                 config.encoder,
+                output_encoded_layers=False,
                 padding_idx=tensorizers["tokens2"].vocab.get_pad_index(),
                 vocab_size=len(tensorizers["tokens2"].vocab),
             )

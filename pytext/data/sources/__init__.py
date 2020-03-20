@@ -3,6 +3,7 @@
 
 from .conllu import CoNLLUNERDataSource
 from .data_source import DataSource, RawExample
+from .dense_retrieval import DenseRetrievalDataSource
 from .pandas import PandasDataSource
 from .squad import SquadDataSource
 from .tsv import TSVDataSource
@@ -15,4 +16,5 @@ __all__ = [
     "TSVDataSource",
     "PandasDataSource",
     "CoNLLUNERDataSource",
+    "DenseRetrievalDataSource",
 ]

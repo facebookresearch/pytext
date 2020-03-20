@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from enum import IntEnum, unique
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -28,6 +28,8 @@ class OutputScore(IntEnum):
 
 
 class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
+    __EXPANSIBLE__ = True
+
     class Config(OutputLayerBase.Config):
         loss: Union[
             BinaryCrossEntropyLoss.Config,
@@ -80,7 +82,7 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
 
     def get_loss(
         self,
-        logits: torch.Tensor,
+        logits: Tuple[torch.Tensor, torch.Tensor],
         targets: torch.Tensor,
         context: Optional[Dict[str, Any]] = None,
         reduce: bool = True,
@@ -136,6 +138,43 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
             )
 
         return preds, scores
+
+
+class DenseRetrievalOutputLayer(PairwiseCosineDistanceOutputLayer):
+    def get_loss(
+        self,
+        logits: Tuple[torch.Tensor, torch.Tensor],
+        targets: torch.Tensor,
+        context: Optional[Dict[str, Any]] = None,
+        reduce: bool = True,
+    ) -> torch.Tensor:
+        # Loss computation pointer: https://fburl.com/inf9ra38
+        log_probs = self._get_log_probs(logits)
+        # only supports NLL loss
+        loss = self.loss_fn(log_probs, targets, reduce)
+        return loss
+
+    def get_pred(self, logits: torch.Tensor, targets: torch.Tensor, *args, **kwargs):
+        log_probs = self._get_log_probs(logits)
+        _, preds = torch.max(log_probs, 1)
+        # Pack in logits and positive_indices_per_question for computing Avg Rank
+        question_logits, context_logits = logits
+        return (
+            (
+                preds,
+                question_logits.detach().cpu().tolist(),
+                context_logits.detach().cpu().tolist(),
+            ),
+            log_probs,
+        )  # Expected tuple: prediction, scores
+
+    def _get_log_probs(self, logits):
+        # question_logits: (bsz X rep_dim); context_logits: (bsz * 2, rep_dim)
+        question_logits, context_logits = logits
+        dot_products = torch.matmul(
+            question_logits, torch.transpose(context_logits, 0, 1)
+        )  # (bsz X bsz*num_negs+1)
+        return F.log_softmax(dot_products, dim=1)
 
 
 def get_norm_cosine_scores(cosine_sim_scores):

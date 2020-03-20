@@ -13,6 +13,7 @@ from pytext.exporters import DenseFeatureExporter
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     CompositionalMetricReporter,
+    DenseRetrievalMetricReporter,
     IntentSlotMetricReporter,
     LanguageModelMetricReporter,
     NERMetricReporter,
@@ -189,6 +190,23 @@ class PairwiseClassificationTask(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
         )
+
+
+class PairwiseClassificationForDenseRetrievalTask(PairwiseClassificationTask):
+    """This task is to implement DPR training in PyText.
+    Code pointer: https://github.com/fairinternal/DPR/tree/master/dpr
+    """
+
+    class Config(PairwiseClassificationTask.Config):
+        metric_reporter: DenseRetrievalMetricReporter.Config = (
+            DenseRetrievalMetricReporter.Config()
+        )
+
+    @classmethod
+    def create_metric_reporter(cls, config: Config, *args, **kwargs):
+        config.metric_reporter.task_batch_size = config.data.batcher.train_batch_size
+        config.metric_reporter.num_negative_ctxs = config.data.source.num_negative_ctxs
+        return super().create_metric_reporter(config, *args, **kwargs)
 
 
 class RoBERTaNERTask(NewTask):
