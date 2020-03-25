@@ -352,6 +352,7 @@ def v6_to_v7(json_config):
         "DocRegressionModel",
         "NewWordTaggingModel",
         "ELModel",
+        "EntitySalienceModel",
     ):
         # Model has a label tensorizer different from LabelTensorizer.
         return json_config
