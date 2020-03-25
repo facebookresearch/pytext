@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from pytext.models.module import Module
 from pytext.utils.usage import log_class_usage
@@ -54,3 +54,22 @@ class PyTextIncrementalDecoderComponent(PyTextSeq2SeqModule):
 class PlaceholderIdentity(nn.Module):
     def forward(self, x, incremental_state: Optional[Dict[str, Tensor]] = None):
         return x
+
+
+class PlaceholderAttentionIdentity(nn.Module):
+    def forward(
+        self,
+        query,
+        key,
+        value,
+        need_weights: bool = None,
+        key_padding_mask: Optional[Tensor] = None,
+        incremental_state: Optional[Dict[str, Tensor]] = None,
+    ) -> Tuple[Tensor, Optional[Tensor]]:
+        optional_attention: Optional[Tensor] = None
+        return query, optional_attention
+
+    def reorder_incremental_state(
+        self, incremental_state: Dict[str, Tensor], new_order: Tensor
+    ):
+        pass
