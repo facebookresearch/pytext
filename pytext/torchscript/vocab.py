@@ -26,6 +26,8 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         self.idx = torch.jit.Attribute(
             {word: i for i, word in enumerate(vocab_list)}, Dict[str, int]
         )
+        pad_token = vocab_list[pad_idx] if pad_idx >= 0 else "__PAD__"
+        self.pad_token = torch.jit.Attribute(pad_token, str)
 
     @torch.jit.script_method
     def lookup_indices_1d(self, values: List[str]) -> List[int]:

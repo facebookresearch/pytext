@@ -138,6 +138,21 @@ def utf8_chars(s: str) -> List[str]:
 
 
 @torch.jit.script
+def truncate_tokens(
+    batch: List[List[str]], max_seq_len: int, pad_token: str
+) -> List[List[str]]:
+    truncated: List[List[str]] = []
+    for sentence in batch:
+        if len(sentence) == 0:
+            truncated.append([pad_token])
+        elif max_seq_len > 0:
+            truncated.append(sentence[0:max_seq_len])
+        else:
+            truncated.append(sentence)
+    return truncated
+
+
+@torch.jit.script
 def make_sequence_lengths(batch: List[List[str]]) -> List[int]:
     seq_lens = torch.jit.annotate(List[int], [])
     for sentence in batch:

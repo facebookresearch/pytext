@@ -22,7 +22,7 @@ class TensorizerTest(unittest.TestCase):
     def _mock_vocab(self):
         # mapping of vocab index to token is x: x + 100
         return ScriptVocabulary(
-            [str(i) for i in range(100, 203)], pad_idx=200, bos_idx=201, eos_idx=202
+            [str(i) for i in range(100, 303)], pad_idx=200, bos_idx=201, eos_idx=202
         )
 
     def _mock_tokenizer(self):

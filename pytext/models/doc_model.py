@@ -41,7 +41,12 @@ from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.pure_doc_attention import PureDocAttention
 from pytext.models.representations.representation_base import RepresentationBase
-from pytext.torchscript.utils import make_byte_inputs, make_sequence_lengths, pad_2d
+from pytext.torchscript.utils import (
+    make_byte_inputs,
+    make_sequence_lengths,
+    pad_2d,
+    truncate_tokens,
+)
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
@@ -121,10 +126,14 @@ class DocModel(Model):
         class Model(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(
+                    input_vocab,
+                    input_vocab.get_unk_index(),
+                    input_vocab.get_pad_index(),
+                )
                 self.model = traced_model
                 self.output_layer = output_layer
-                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.pad_idx = jit.Attribute(input_vocab.get_pad_index(), int)
                 self.max_seq_len = jit.Attribute(max_seq_len, int)
 
             @jit.script_method
@@ -137,15 +146,9 @@ class DocModel(Model):
                 if tokens is None:
                     raise RuntimeError("tokens is required")
 
-                trimmed_tokens: List[List[str]] = []
-                if self.max_seq_len >= 0:
-                    for token in tokens:
-                        trimmed_tokens.append(token[0 : self.max_seq_len])
-                else:
-                    trimmed_tokens = tokens
-
-                seq_lens = make_sequence_lengths(trimmed_tokens)
-                word_ids = self.vocab.lookup_indices_2d(trimmed_tokens)
+                tokens = truncate_tokens(tokens, self.max_seq_len, self.vocab.pad_token)
+                seq_lens = make_sequence_lengths(tokens)
+                word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
                 logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
                 return self.output_layer(logits)
@@ -153,11 +156,15 @@ class DocModel(Model):
         class ModelWithDenseFeat(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(
+                    input_vocab,
+                    input_vocab.get_unk_index(),
+                    input_vocab.get_pad_index(),
+                )
                 self.normalizer = tensorizers["dense"].normalizer
                 self.model = traced_model
                 self.output_layer = output_layer
-                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.pad_idx = jit.Attribute(input_vocab.get_pad_index(), int)
                 self.max_seq_len = jit.Attribute(max_seq_len, int)
 
             @jit.script_method
@@ -173,15 +180,9 @@ class DocModel(Model):
                 if dense_feat is None:
                     raise RuntimeError("dense_feat is required")
 
-                trimmed_tokens: List[List[str]] = []
-                if self.max_seq_len >= 0:
-                    for token in tokens:
-                        trimmed_tokens.append(token[0 : self.max_seq_len])
-                else:
-                    trimmed_tokens = tokens
-
-                seq_lens = make_sequence_lengths(trimmed_tokens)
-                word_ids = self.vocab.lookup_indices_2d(trimmed_tokens)
+                tokens = truncate_tokens(tokens, self.max_seq_len, self.vocab.pad_token)
+                seq_lens = make_sequence_lengths(tokens)
+                word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
                 dense_feat = self.normalizer.normalize(dense_feat)
                 logits = self.model(
@@ -287,6 +288,7 @@ class ByteTokensDocumentModel(DocModel):
 
     def torchscriptify(self, tensorizers, traced_model):
         output_layer = self.output_layer.torchscript_predictions()
+        max_seq_len = tensorizers["tokens"].max_seq_len or -1
         max_byte_len = tensorizers["token_bytes"].max_byte_len
         byte_offset_for_non_padding = tensorizers["token_bytes"].offset_for_non_padding
         input_vocab = tensorizers["tokens"].vocab
@@ -294,12 +296,17 @@ class ByteTokensDocumentModel(DocModel):
         class Model(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(
+                    input_vocab,
+                    input_vocab.get_unk_index(),
+                    input_vocab.get_pad_index(),
+                )
+                self.max_seq_len = jit.Attribute(max_seq_len, int)
                 self.max_byte_len = jit.Attribute(max_byte_len, int)
                 self.byte_offset_for_non_padding = jit.Attribute(
                     byte_offset_for_non_padding, int
                 )
-                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.pad_idx = jit.Attribute(input_vocab.get_pad_index(), int)
                 self.model = traced_model
                 self.output_layer = output_layer
 
@@ -312,6 +319,8 @@ class ByteTokensDocumentModel(DocModel):
             ):
                 if tokens is None:
                     raise RuntimeError("tokens is required")
+
+                tokens = truncate_tokens(tokens, self.max_seq_len, self.vocab.pad_token)
                 seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
@@ -326,13 +335,18 @@ class ByteTokensDocumentModel(DocModel):
         class ModelWithDenseFeat(jit.ScriptModule):
             def __init__(self):
                 super().__init__()
-                self.vocab = ScriptVocabulary(input_vocab, unk_idx=input_vocab.idx[UNK])
+                self.vocab = ScriptVocabulary(
+                    input_vocab,
+                    input_vocab.get_unk_index(),
+                    input_vocab.get_pad_index(),
+                )
                 self.normalizer = tensorizers["dense"].normalizer
+                self.max_seq_len = jit.Attribute(max_seq_len, int)
                 self.max_byte_len = jit.Attribute(max_byte_len, int)
                 self.byte_offset_for_non_padding = jit.Attribute(
                     byte_offset_for_non_padding, int
                 )
-                self.pad_idx = jit.Attribute(input_vocab.idx[PAD], int)
+                self.pad_idx = jit.Attribute(input_vocab.get_pad_index(), int)
                 self.model = traced_model
                 self.output_layer = output_layer
 
@@ -349,6 +363,7 @@ class ByteTokensDocumentModel(DocModel):
                 if dense_feat is None:
                     raise RuntimeError("dense_feat is required")
 
+                tokens = truncate_tokens(tokens, self.max_seq_len, self.vocab.pad_token)
                 seq_lens = make_sequence_lengths(tokens)
                 word_ids = self.vocab.lookup_indices_2d(tokens)
                 word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
