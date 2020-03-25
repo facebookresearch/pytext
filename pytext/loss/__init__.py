@@ -8,6 +8,7 @@ from .loss import (
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
+    LabelSmoothedCrossEntropyLengthLoss,
     LabelSmoothedCrossEntropyLoss,
     Loss,
     MAELoss,
@@ -32,4 +33,5 @@ __all__ = [
     "NLLLoss",
     "PairwiseRankingLoss",
     "LabelSmoothedCrossEntropyLoss",
+    "LabelSmoothedCrossEntropyLengthLoss",
 ]
