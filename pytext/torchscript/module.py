@@ -74,16 +74,15 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
 
 
 class ScriptPyTextEmbeddingModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        index: int = 0,
-    ):
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
-        self.index = torch.jit.Attribute(index, int)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors)
 
     @torch.jit.script_method
     def forward(
@@ -98,8 +97,22 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
+        return self._forward(inputs)
+
+
+class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        index: int = 0,
+    ):
+        super().__init__(model, tensorizer)
+        self.index = torch.jit.Attribute(index, int)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
-        # call model
         return self.model(input_tensors)[self.index]
 
 
@@ -109,12 +122,16 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         model: torch.jit.ScriptModule,
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
-        index: int = 0,
-        concat_dense: bool = True,
+        concat_dense: bool = False,
     ):
-        super().__init__(model, tensorizer, index)
+        super().__init__(model, tensorizer)
         self.normalizer = normalizer
         self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors, dense_tensor)
 
     @torch.jit.script_method
     def forward(
@@ -132,13 +149,30 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
-        input_tensors = self.tensorizer(inputs)
         # call model
         dense_feat = self.normalizer.normalize(dense_feat)
         dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
 
-        sentence_embedding = self.model(input_tensors, dense_tensor)[self.index]
+        sentence_embedding = self._forward(inputs, dense_tensor)
         if self.concat_dense:
             return torch.cat([sentence_embedding, dense_tensor], 1)
         else:
             return sentence_embedding
+
+
+class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithDense):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        normalizer: VectorNormalizer,
+        index: int = 0,
+        concat_dense: bool = True,
+    ):
+        super().__init__(model, tensorizer, normalizer, concat_dense)
+        self.index = torch.jit.Attribute(index, int)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors, dense_tensor)[self.index]
