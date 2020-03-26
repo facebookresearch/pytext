@@ -31,14 +31,7 @@ def _predict(workspace_id, predict_net, model, tensorizers, input):
         name: tensorizer.prepare_input(input)
         for name, tensorizer in tensorizers.items()
     }
-    model_inputs = model.arrange_model_inputs(tensor_dict)
-    flat_model_inputs = []
-    for model_input in model_inputs:
-        if isinstance(model_input, tuple):
-            flat_model_inputs.extend(model_input)
-        else:
-            flat_model_inputs.append(model_input)
-    model_inputs = flat_model_inputs
+    model_inputs = model.arrange_caffe2_model_inputs(tensor_dict)
     model_input_names = model.get_export_input_names(tensorizers)
     vocab_to_export = model.vocab_to_export(tensorizers)
     for blob_name, model_input in zip(model_input_names, model_inputs):
