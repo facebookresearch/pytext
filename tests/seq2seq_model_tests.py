@@ -162,6 +162,9 @@ class Seq2SeqModelEvalTests(unittest.TestCase):
         """
         tensorizers = get_tensorizers()
 
+        # Avoid numeric issues with quantization by setting a known seed.
+        torch.manual_seed(42)
+
         model = Seq2SeqModel.from_config(
             Seq2SeqModel.Config(
                 source_embedding=WordEmbedding.Config(embed_dim=512),
