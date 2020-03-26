@@ -23,6 +23,7 @@ def build_fairseq_vocab(
     special_token_replacements: Dict[str, SpecialToken] = None,
     max_vocab: int = -1,
     min_count: int = -1,
+    tokens_to_add: Optional[List[str]] = None,
 ) -> Vocabulary:
     """
     Function builds a PyText vocabulary for models pre-trained using Fairseq
@@ -34,6 +35,9 @@ def build_fairseq_vocab(
     # a min_count or max_vocab size is specified
     if min_count > 0 or max_vocab > 0:
         dictionary.finalize(threshold=min_count, nwords=max_vocab, padding_factor=1)
+    if tokens_to_add:
+        for token in tokens_to_add:
+            dictionary.add_symbol(token)
     return Vocabulary(
         dictionary.symbols, dictionary.count, replacements=special_token_replacements
     )
