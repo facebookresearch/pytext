@@ -531,9 +531,11 @@ class LabelSmoothedCrossEntropyLoss(Loss):
             label_smoothing_loss = -1 * log_probs.mean(dim=1)
 
         if reduce:
-            label_smoothing_loss = torch.mean(
-                label_smoothing_loss[targets != self.ignore_index]
-            )
+            non_ignored = targets != self.ignore_index
+            if non_ignored.any():
+                label_smoothing_loss = torch.mean(label_smoothing_loss[non_ignored])
+            else:
+                label_smoothing_loss = torch.tensor(0.0, device=logits.device)
 
         cross_entropy_loss = F.nll_loss(
             log_probs,
@@ -544,3 +546,36 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         )
 
         return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
+
+
+class LabelSmoothedCrossEntropyLengthLoss(Loss):
+    class Config(LabelSmoothedCrossEntropyLoss.Config):
+        lengths_weight: float = 0.25
+
+    def __init__(self, config, weight=None, ignore_index=-100):
+        # weight values other than 1.0 gives inconsistent behavior
+        # Refer: https://github.com/pytorch/pytorch/issues/17577
+        if weight is not None:
+            assert torch.sum(torch.abs(weight - 1.0)) < 1e-7
+
+        self.lengths_weight = config.lengths_weight
+        self.label_smoothing_loss = LabelSmoothedCrossEntropyLoss(
+            config, ignore_index=ignore_index, weight=weight
+        )
+
+    def __call__(self, logits, targets, length_log_probs, length_targets, reduce=True):
+        label_loss = self.label_smoothing_loss(logits, targets, reduce=reduce)
+
+        max_supported_dim = length_log_probs.size(1)
+        length_targets = length_targets.unsqueeze(-1)
+
+        # If target length is greater than max supported length, set it to 0 length
+        assert not torch.any(length_targets >= max_supported_dim)
+        length_loss = -length_log_probs.gather(dim=-1, index=length_targets)
+
+        if reduce:
+            length_loss = length_loss.mean()
+
+        total_loss = label_loss + self.lengths_weight * length_loss
+
+        return total_loss
