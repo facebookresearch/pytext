@@ -210,9 +210,6 @@ class Seq2SeqModel(Model):
                 preds = self.sequence_generator.generate_hypo(model_input)
         return preds
 
-    def get_normalized_probs(self, net_output, log_probs, sample=None):
-        return self.model.get_normalized_probs(net_output, log_probs, sample)
-
     def torchscriptify(self):
         self.model.zero_grad()
         self.model.eval()
