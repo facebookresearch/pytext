@@ -348,6 +348,20 @@ def get_logits(
                     )
 
 
+def save_pytext_snapshot(config: PyTextConfig,) -> None:
+    task, training_state = prepare_task(
+        config,
+        dist_init_url=None,
+        device_id=0,
+        rank=0,
+        world_size=1,
+        metric_channels=None,
+        metadata=None,
+    )
+    print("Task set up successful.\n")
+    save_and_export(config, task)
+
+
 def dict_zip(*dicts, value_only=False):
     dict_keys = dicts[0].keys()
     return (
