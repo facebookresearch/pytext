@@ -214,6 +214,20 @@ class BaseModel(nn.Module, Component):
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
 
+    def arrange_caffe2_model_inputs(self, tensor_dict):
+        """
+        Generate inputs for exported caffe2 model, default behavior is flatten the
+        input tuples
+        """
+        model_inputs = self.arrange_model_inputs(tensor_dict)
+        flat_model_inputs = []
+        for model_input in model_inputs:
+            if isinstance(model_input, tuple):
+                flat_model_inputs.extend(model_input)
+            else:
+                flat_model_inputs.append(model_input)
+        return flat_model_inputs
+
 
 class Model(BaseModel):
     """
