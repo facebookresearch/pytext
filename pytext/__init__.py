@@ -3,6 +3,7 @@
 import json
 import logging
 import uuid
+from functools import lru_cache
 from typing import Callable, Mapping, Optional
 
 import numpy as np
@@ -65,6 +66,7 @@ def create_predictor(
     model_file: Optional[str] = None,
     db_type: str = CAFFE2_DB_TYPE,
     task: Optional[NewTask] = None,
+    cache_size: int = 0,
 ) -> Predictor:
     """
     Create a simple prediction API from a training config and an exported caffe2
@@ -83,9 +85,18 @@ def create_predictor(
         for name, tensorizer in new_task.data.tensorizers.items()
         if tensorizer.is_input
     }
-    return lambda input: _predict(
-        workspace_id, predict_net, new_task.model, input_tensorizers, input
-    )
+
+    def predict_fn(input):
+        return _predict(
+            workspace_id, predict_net, new_task.model, input_tensorizers, input
+        )
+
+    if cache_size < 0:
+        return lru_cache(maxsize=None)(predict_fn)
+    elif cache_size > 0:
+        return lru_cache(maxsize=cache_size)(predict_fn)
+    else:
+        return predict_fn
 
 
 def batch_predict_caffe2_model(
@@ -96,7 +107,23 @@ def batch_predict_caffe2_model(
     use_cuda=False,
     task: Optional[NewTask] = None,
     train_config: Optional[PyTextConfig] = None,
+    cache_size: int = 0,
 ):
+    """
+    Gets predictions from caffe2 model from a batch of examples.
+
+    Args:
+        pytext_model_file: Path to pytext model file (required if task and
+            training config is not specified)
+        caffe2_model_file: Path to caffe2 model file
+        db_type: DB type to use for caffe2
+        data_source: Data source for test examples
+        use_cuda: Whether to turn on cuda processing
+        task: The pytext task object
+        train_config: The pytext training config
+        cache_size: The LRU cache size to use for prediction. 0 = no cache,
+            -1 = boundless cache, [1, inf) = size of cache
+    """
     logging.info(f"Loading data processing config from {pytext_model_file}")
 
     _set_cuda(use_cuda)
@@ -105,7 +132,9 @@ def batch_predict_caffe2_model(
 
     data_source = data_source or task.data.data_source
     logging.info("Loading Caffe2 model")
-    predictor = create_predictor(train_config, caffe2_model_file, db_type, task)
+    predictor = create_predictor(
+        train_config, caffe2_model_file, db_type, task, cache_size
+    )
     logging.info(f"Model loaded, start testing")
     predictions = [predictor(example) for example in data_source.test]
     return predictions

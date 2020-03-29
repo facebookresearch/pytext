@@ -59,14 +59,29 @@ class PredictorTest(unittest.TestCase):
             model = task.model
             save(config, model, meta=None, tensorizers=task.data.tensorizers)
 
+            pt_results = task.predict(task.data.data_source.test)
+
+            def assert_caffe2_results_correct(caffe2_results):
+                for pt_res, res in zip(pt_results, caffe2_results):
+                    np.testing.assert_array_almost_equal(
+                        pt_res["score"].tolist()[0],
+                        [score[0] for score in res.values()],
+                    )
+
             results = batch_predict_caffe2_model(
                 snapshot_file.name, caffe2_model_file.name
             )
             self.assertEqual(4, len(results))
+            assert_caffe2_results_correct(results)
 
-            pt_results = task.predict(task.data.data_source.test)
+            results = batch_predict_caffe2_model(
+                snapshot_file.name, caffe2_model_file.name, cache_size=2
+            )
+            self.assertEqual(4, len(results))
+            assert_caffe2_results_correct(results)
 
-            for pt_res, res in zip(pt_results, results):
-                np.testing.assert_array_almost_equal(
-                    pt_res["score"].tolist()[0], [score[0] for score in res.values()]
-                )
+            results = batch_predict_caffe2_model(
+                snapshot_file.name, caffe2_model_file.name, cache_size=-1
+            )
+            self.assertEqual(4, len(results))
+            assert_caffe2_results_correct(results)
