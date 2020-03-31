@@ -6,6 +6,7 @@ import unittest
 from pytext.common.constants import RawExampleFieldName, Stage
 from pytext.data import Batcher, Data, PoolingBatcher
 from pytext.data.data import RowData
+from pytext.data.sources import RawExample
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import LabelTensorizer, TokenTensorizer
@@ -195,3 +196,13 @@ class BatcherTest(unittest.TestCase):
         for _, batch in batches[2:]:
             for a in batch["a"]:
                 self.assertGreaterEqual(a, 6)
+
+
+class RawExampleTest(unittest.TestCase):
+    def test_raw_example_hashable(self):
+        example = RawExample()
+        example["one"] = 111
+        example["two"] = "222"
+        example["three"] = [3, 33, [333, 3333], {"33333": 333333}]
+        example["four"] = {"4": {"44": [444, 4444]}, "44444": 444444}
+        self.assertTrue(hash(example))

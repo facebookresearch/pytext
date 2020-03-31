@@ -19,6 +19,33 @@ class RawExample(dict):
     """A wrapper class for a single example row with a dict interface.
     This is here for any logic we want row objects to have that dicts don't do."""
 
+    def __hash__(self):
+        """
+        Makes examples hashable. This allows them to be cached. Currently this
+        assumes keys (column names) are already hashable, and values are either dicts,
+        lists or a type that is already hashable.
+        """
+
+        def list_iter(l):
+            for item in l:
+                if isinstance(item, dict):
+                    yield frozenset(dict_iter(item))
+                elif isinstance(item, list):
+                    yield tuple(list_iter(item))
+                else:
+                    yield item
+
+        def dict_iter(d):
+            for kvp in d.items():
+                if isinstance(kvp[1], dict):
+                    yield (kvp[0], frozenset(dict_iter(kvp[1])))
+                elif isinstance(kvp[1], list):
+                    yield (kvp[0], tuple(list_iter(kvp[1])))
+                else:
+                    yield kvp
+
+        return hash(frozenset(dict_iter(self)))
+
 
 class SafeFileWrapper:
     """
