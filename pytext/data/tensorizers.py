@@ -26,6 +26,7 @@ from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
+from pytext.utils.precision import maybe_half
 from pytext.utils.usage import log_class_usage
 
 from .utils import (
@@ -1117,7 +1118,12 @@ class FloatListTensorizer(Tensorizer):
         return self.normalizer.normalize([dense])[0]
 
     def tensorize(self, batch):
-        return pad_and_tensorize(batch, dtype=torch.float)
+        # training in fp16 will pad tensor shape to multiple of 8 unless
+        # explicitly specify pad_shape to avoid padding.
+        pad_shape = (len(batch), self.dim) if self.dim else None
+        return maybe_half(
+            pad_and_tensorize(batch, dtype=torch.float, pad_shape=pad_shape)
+        )
 
 
 NO_LABEL = SpecialToken("NoLabel")

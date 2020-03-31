@@ -44,6 +44,7 @@ from pytext.data.tokenizers import (
     WordPieceTokenizer,
 )
 from pytext.data.utils import BOS, EOS, Vocabulary
+from pytext.utils import precision
 from pytext.utils.test import import_tests_module
 
 
@@ -734,6 +735,16 @@ class TensorizersTest(unittest.TestCase):
             row = {"dense": load_float_list(raw)}
             numberized = tensorizer.numberize(row)
             self.assertEqual(expected, numberized)
+
+        precision.FP16_ENABLED = True
+        batch = []
+        for raw, _ in tests:
+            row = {"dense": load_float_list(raw)}
+            batch.append(tensorizer.numberize(row))
+        tensor = tensorizer.tensorize(batch)
+        self.assertEqual(list(tensor.size()), [8, 2])
+        self.assertEqual(tensor.dtype, torch.float16)
+        precision.FP16_ENABLED = False
 
     def test_float_list_tensor_prepare_input(self):
         tensorizer = FloatListTensorizer(

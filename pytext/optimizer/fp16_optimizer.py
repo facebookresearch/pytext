@@ -209,6 +209,8 @@ class FP16OptimizerApex(FP16Optimizer):
         if self.opt_level == "O2":
             # convert model parameters back to fp32
             model.float()
+            if hasattr(model, "old_forward"):
+                model.forward = model.old_forward
         else:
             # restoring uncasted versions of functions
             amp._amp_state.handle._deactivate()
