@@ -59,8 +59,8 @@ class Seq2SeqJIT(torch.nn.Module):
         self.source_vocab = ScriptVocabulary(
             src_dict._vocab,
             src_dict.get_unk_index(),
-            bos_idx=src_dict.get_bos_index(),
-            eos_idx=src_dict.get_eos_index(),
+            bos_idx=src_dict.get_bos_index(-1),
+            eos_idx=src_dict.get_eos_index(-1),
         )
         self.target_vocab = ScriptVocabulary(
             tgt_dict._vocab,
