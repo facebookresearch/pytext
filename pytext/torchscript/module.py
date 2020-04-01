@@ -8,6 +8,15 @@ from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
 
 
+@torch.jit.script
+def resolve_texts(
+    texts: Optional[List[str]] = None, multi_texts: Optional[List[List[str]]] = None
+) -> Optional[List[List[str]]]:
+    if texts is not None:
+        return squeeze_1d(texts)
+    return multi_texts
+
+
 class ScriptModule(torch.jit.ScriptModule):
     @torch.jit.script_method
     def set_device(self, device: str):
@@ -30,11 +39,13 @@ class ScriptPyTextModule(ScriptModule):
     def forward(
         self,
         texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=squeeze_1d(texts),
+            texts=resolve_texts(texts, multi_texts),
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
@@ -59,11 +70,13 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
         self,
         dense_feat: List[List[float]],
         texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=squeeze_1d(texts),
+            texts=resolve_texts(texts, multi_texts),
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
@@ -88,12 +101,14 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
     def forward(
         self,
         texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
         dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
         inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=squeeze_1d(texts),
+            texts=resolve_texts(texts, multi_texts),
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
@@ -137,6 +152,8 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
     def forward(
         self,
         texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
         dense_feat: Optional[List[List[float]]] = None,
@@ -145,7 +162,7 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
             raise RuntimeError("Expect dense feature.")
 
         inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=squeeze_1d(texts),
+            texts=resolve_texts(texts, multi_texts),
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
