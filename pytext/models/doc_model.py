@@ -140,6 +140,7 @@ class DocModel(Model):
             def forward(
                 self,
                 texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
                 tokens: Optional[List[List[str]]] = None,
                 languages: Optional[List[str]] = None,
             ):
@@ -171,6 +172,7 @@ class DocModel(Model):
             def forward(
                 self,
                 texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
                 tokens: Optional[List[List[str]]] = None,
                 languages: Optional[List[str]] = None,
                 dense_feat: Optional[List[List[float]]] = None,
@@ -314,6 +316,7 @@ class ByteTokensDocumentModel(DocModel):
             def forward(
                 self,
                 texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
                 tokens: Optional[List[List[str]]] = None,
                 languages: Optional[List[str]] = None,
             ):
@@ -354,6 +357,7 @@ class ByteTokensDocumentModel(DocModel):
             def forward(
                 self,
                 texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
                 tokens: Optional[List[List[str]]] = None,
                 languages: Optional[List[str]] = None,
                 dense_feat: Optional[List[List[float]]] = None,
