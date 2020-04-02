@@ -163,6 +163,7 @@ class AllMetrics(NamedTuple):
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
     loss: Optional[float] = None
+    length_metrics: Dict[int, float] = None
 
     def print_metrics(self) -> None:
         if self.frame_accuracy:
@@ -175,6 +176,8 @@ class AllMetrics(NamedTuple):
         if self.tree_metrics:
             print("\n\nTree Metrics")
             self.tree_metrics.print_metrics()
+        if self.length_metrics:
+            print("\n\nLength Metrics :", self.length_metrics)
 
 
 class IntentSlotConfusions(NamedTuple):
@@ -475,6 +478,7 @@ def compute_all_metrics(
     overall_metrics: bool = False,
     all_predicted_frames: List[List[Node]] = None,
     calculated_loss: float = None,
+    length_metrics: Dict = None,
 ) -> AllMetrics:
     """
     Given a list of predicted and gold intent frames, computes intent-slot related
@@ -534,4 +538,5 @@ def compute_all_metrics(
         bracket,
         tree,
         calculated_loss,
+        length_metrics,
     )

@@ -102,7 +102,8 @@ class MetricReporter(Component):
             self.aggregate_data(self.all_context[key], val)
         # some loss functions (eg: in NewBertRegressionTask) return a tensor
         # convert tensor to float
-        self.all_loss.append(float(loss))
+        if loss is not None:
+            self.all_loss.append(float(loss))
         self.batch_size.append(len(m_input[0]))
 
         # realtime stats

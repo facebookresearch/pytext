@@ -578,4 +578,4 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
 
         total_loss = label_loss + self.lengths_weight * length_loss
 
-        return total_loss
+        return total_loss, {"label_loss": label_loss, "length_loss": length_loss}

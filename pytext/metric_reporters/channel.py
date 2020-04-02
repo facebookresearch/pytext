@@ -75,6 +75,15 @@ class ConsoleChannel(Channel):
     Simple Channel that prints results to console.
     """
 
+    def _print_loss(self, loss):
+        if isinstance(loss, float):
+            print(f"loss: {loss:.6f}")
+        elif isinstance(loss, dict):
+            for key in loss:
+                print(f"{key}: {loss[key]:.6f}")
+        else:
+            raise Exception("Loss type not supported")
+
     def report(
         self,
         stage,
@@ -90,7 +99,7 @@ class ConsoleChannel(Channel):
     ):
         print(f"\n\n{stage}")
         print(f"Epoch:{epoch}")
-        print(f"loss: {loss:.6f}")
+        self._print_loss(loss)
         # TODO change print_metrics function to __str__ T33522209
         if hasattr(metrics, "print_metrics"):
             metrics.print_metrics()
@@ -165,6 +174,15 @@ class TensorBoardChannel(Channel):
         self.summary_writer = summary_writer or SummaryWriter()
         self.metric_name = metric_name
 
+    def log_loss(self, prefix, loss, epoch):
+        if isinstance(loss, float):
+            self.summary_writer.add_scalar(f"{prefix}/loss", loss, epoch)
+        elif isinstance(loss, dict):
+            for key in loss:
+                self.summary_writer.add_scalar(f"{prefix}/" + key, loss[key], epoch)
+        else:
+            raise Exception("Loss type not supported")
+
     def report(
         self,
         stage,
@@ -229,7 +247,7 @@ class TensorBoardChannel(Channel):
                 self.add_texts(tag, metrics)
         else:
             prefix = stage2prefix(stage)
-            self.summary_writer.add_scalar(f"{prefix}/loss", loss, epoch)
+            self.log_loss(prefix, loss, epoch)
             if isinstance(metrics, (int, float)):
                 self.summary_writer.add_scalar(
                     f"{prefix}/{self.metric_name}", metrics, epoch
