@@ -108,6 +108,7 @@ class Vocabulary:
         pad_token: str = PAD,
         bos_token: str = BOS,
         eos_token: str = EOS,
+        mask_token: str = MASK,
     ):
         self._vocab = vocab_list
         self.counts = counts
@@ -116,6 +117,7 @@ class Vocabulary:
         self.pad_token = pad_token
         self.bos_token = bos_token
         self.eos_token = eos_token
+        self.mask_token = mask_token
         if replacements:
             self.replace_tokens(replacements)
         self.unk_token_counter = [0, 0]  # count of unk tokens, total tokens
@@ -197,6 +199,12 @@ class Vocabulary:
         else:
             return self.idx.get(self.pad_token, value)
 
+    def get_mask_index(self, value=None):
+        if value is None:
+            return self.idx[self.mask_token]
+        else:
+            return self.idx.get(self.mask_token, value)
+
     def get_bos_index(self, value=None):
         if value is None:
             return self.idx[self.bos_token]
@@ -233,6 +241,8 @@ class VocabBuilder:
         self.bol_index = 4
         self.use_eol = False
         self.eol_index = 5
+        self.use_mask = False
+        self.mask_index = 6
 
         # Some tokenization libraries use special tokens, expose them so they
         # can be configured
@@ -240,6 +250,7 @@ class VocabBuilder:
         self.pad_token = PAD
         self.bos_token = BOS
         self.eos_token = EOS
+        self.mask_token = MASK
 
         self.delimiter = delimiter
 
@@ -295,6 +306,9 @@ class VocabBuilder:
         if self.use_eol:
             tokens_to_insert.append((self.eol_index, EOL))
             del self._counter[EOL]
+        if self.use_mask:
+            tokens_to_insert.append((self.mask_index, MASK))
+            del self._counter[MASK]
         vocab_list = list(self._counter)
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)
@@ -306,6 +320,7 @@ class VocabBuilder:
             pad_token=self.pad_token,
             bos_token=self.bos_token,
             eos_token=self.eos_token,
+            mask_token=self.mask_token,
         )
 
     def truncate_to_vocab_size(self, vocab_size=-1, min_counts=-1) -> None:

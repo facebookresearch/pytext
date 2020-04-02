@@ -31,6 +31,7 @@ class ComponentType(enum.Enum):
     EXPORTER = "exporter"
     METRIC_REPORTER = "metric_reporter"
     SPARSIFIER = "sparsifier"
+    MASKING_FUNCTION = "masking_function"
 
 
 class RegistryError(Exception):
