@@ -139,8 +139,7 @@ class Seq2SeqMetricReporter(MetricReporter):
                 cleaned_tokens.append(token)
         return cleaned_tokens
 
-    @staticmethod
-    def get_model_select_metric(metrics):
+    def get_model_select_metric(self, metrics):
         return metrics.loss
 
     def batch_context(self, raw_batch, batch):
