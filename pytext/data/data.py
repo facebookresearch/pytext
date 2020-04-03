@@ -93,9 +93,9 @@ class PoolingBatcher(Batcher):
 
     class Config(Batcher.Config):
         #: Size of a pool expressed in number of batches
-        pool_num_batches: int = 10000
+        pool_num_batches: int = 1
         #: How many pool-sized chunks to load at a time for shuffling
-        num_shuffled_pools: int = 1
+        num_shuffled_pools: int = 10000
 
     @classmethod
     def from_config(cls, config: Config):
