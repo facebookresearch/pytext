@@ -168,15 +168,14 @@ class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
         self.aggregate_data(self.all_pred_trees, pred_trees)
 
     def stringify_annotation_tree(self, tree_tokens, tree_vocab):
-        tree = Annotation(INVALID_TREE_STR).tree
         stringified_tree_str = stringify(tree_tokens, tree_vocab._vocab)
         try:
             tree = Annotation(
                 stringified_tree_str.upper(),
                 accept_flat_intents_slots=self.accept_flat_intents_slots,
             ).tree
-        except (ValueError, IndexError) as e:
-            print("Error in parsing tree ", stringified_tree_str, e)
+        except (ValueError, IndexError):
+            tree = Annotation(INVALID_TREE_STR).tree
         return tree
 
     def batch_context(self, raw_batch, batch):

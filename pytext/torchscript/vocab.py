@@ -16,6 +16,7 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         pad_idx: int = -1,
         bos_idx: int = -1,
         eos_idx: int = -1,
+        mask_idx: int = -1,
     ):
         super().__init__()
         self.vocab = torch.jit.Attribute(vocab_list, List[str])
@@ -23,6 +24,7 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         self.pad_idx = torch.jit.Attribute(pad_idx, int)
         self.eos_idx = torch.jit.Attribute(eos_idx, int)
         self.bos_idx = torch.jit.Attribute(bos_idx, int)
+        self.mask_idx = torch.jit.Attribute(mask_idx, int)
         self.idx = torch.jit.Attribute(
             {word: i for i, word in enumerate(vocab_list)}, Dict[str, int]
         )
