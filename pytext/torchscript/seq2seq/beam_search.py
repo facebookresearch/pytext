@@ -42,8 +42,12 @@ class BeamSearch(nn.Module):
         # Script the encoder model
         encoder_ens = EncoderEnsemble(self.models, self.beam_size)
         if quantize:
-            encoder_ens = torch.jit.quantized.quantize_linear_modules(encoder_ens)
-            encoder_ens = torch.jit.quantized.quantize_rnn_cell_modules(encoder_ens)
+            encoder_ens = torch.quantization.quantize_dynamic(
+                encoder_ens,
+                {torch.nn.Linear},  # Add after bug fix torch.nn.LSTM
+                dtype=torch.qint8,
+                inplace=False,
+            )
 
         self.encoder_ens = torch.jit.script(encoder_ens)
 
@@ -52,8 +56,12 @@ class BeamSearch(nn.Module):
             self.models, beam_size, record_attention=record_attention
         )
         if quantize:
-            decoder_ens = torch.jit.quantized.quantize_linear_modules(decoder_ens)
-            decoder_ens = torch.jit.quantized.quantize_rnn_cell_modules(decoder_ens)
+            decoder_ens = torch.quantization.quantize_dynamic(
+                decoder_ens,
+                {torch.nn.Linear},  # Add after bug fix torch.nn.LSTM
+                dtype=torch.qint8,
+                inplace=False,
+            )
 
         self.decoder_ens = torch.jit.script(decoder_ens)
 
