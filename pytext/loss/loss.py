@@ -569,8 +569,9 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
         max_supported_dim = length_log_probs.size(1)
         length_targets = length_targets.unsqueeze(-1)
 
-        # If target length is greater than max supported length, set it to 0 length
-        assert not torch.any(length_targets >= max_supported_dim)
+        assert not torch.any(
+            length_targets >= max_supported_dim
+        ), f"max_supported_dim: {max_supported_dim}, Total Violations : {str(length_targets[length_targets >= max_supported_dim].flatten().tolist())}"
         length_loss = -length_log_probs.gather(dim=-1, index=length_targets)
 
         if reduce:
