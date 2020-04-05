@@ -22,7 +22,6 @@ from pytext.task import (
 )
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.trainers import TrainingState
-from pytext.trainers.elastic_trainer import initialize_coordinator
 from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
 from pytext.utils.file_io import PathManager
 
@@ -123,16 +122,13 @@ def prepare_task(
         print("\nParameters: {}\n".format(config), flush=True)
     _set_cuda(config.use_cuda_if_available, device_id, world_size)
     _set_fp16(config.use_fp16, rank)
-    if hasattr(config.task, "use_elastic") and config.task.use_elastic:
-        initialize_coordinator(dist_init_url, world_size)
-    else:
-        _set_distributed(
-            rank,
-            world_size,
-            dist_init_url,
-            device_id,
-            config.gpu_streams_for_distributed_training,
-        )
+    _set_distributed(
+        rank,
+        world_size,
+        dist_init_url,
+        device_id,
+        config.gpu_streams_for_distributed_training,
+    )
 
     if config.random_seed is not None:
         set_random_seeds(config.random_seed, config.use_deterministic_cudnn)

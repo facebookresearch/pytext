@@ -372,22 +372,6 @@ class Trainer(TrainerBase):
         metric_reporter: MetricReporter,
         train_config: PyTextConfig,
     ) -> Tuple[torch.nn.Module, Any]:
-        last_state = None
-        for state in self.train_from_state_internal(
-            state, training_data, eval_data, metric_reporter, train_config
-        ):
-            last_state = state
-        return last_state.model, last_state.best_model_metric
-
-    @timing.time("Trainer.train_from_state_internal")
-    def train_from_state_internal(
-        self,
-        state: TrainingState,
-        training_data: BatchIterator,
-        eval_data: BatchIterator,
-        metric_reporter: MetricReporter,
-        train_config: PyTextConfig,
-    ):
         """
         Train and eval a model from a given training state will be modified.
         This function iterates epochs specified in config, and for each epoch do:
@@ -441,7 +425,6 @@ class Trainer(TrainerBase):
                         epoch_data, self.config.num_batches_per_epoch
                     )
                 self.run_epoch(state, epoch_data, metric_reporter)
-                yield state
 
             if not self.config.do_eval:
                 continue
@@ -493,7 +476,7 @@ class Trainer(TrainerBase):
         ):
             self.load_best_model(state)
 
-        yield state
+        return state.model, state.best_model_metric
 
     @timing.report_snapshot
     def run_epoch(
