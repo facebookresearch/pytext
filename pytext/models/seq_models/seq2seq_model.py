@@ -125,8 +125,6 @@ class Seq2SeqModel(Model):
     ):
         BaseModel.__init__(self)
         self.model = model
-        self.encoder = self.model.encoder
-        self.decoder = self.model.decoder
         self.output_layer = output_layer
 
         # Sequence generation is expected to be used only for inference, and to
