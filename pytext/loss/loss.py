@@ -551,6 +551,7 @@ class LabelSmoothedCrossEntropyLoss(Loss):
 class LabelSmoothedCrossEntropyLengthLoss(Loss):
     class Config(LabelSmoothedCrossEntropyLoss.Config):
         lengths_weight: float = 0.25
+        beta_2: float = 0.25
 
     def __init__(self, config, weight=None, ignore_index=-100):
         # weight values other than 1.0 gives inconsistent behavior
@@ -563,6 +564,12 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
             config, ignore_index=ignore_index, weight=weight
         )
 
+        self.length_loss = LabelSmoothedCrossEntropyLoss(
+            config=LabelSmoothedCrossEntropyLoss.Config(
+                beta=config.beta_2, use_entropy=config.use_entropy, from_logits=False
+            )
+        )
+
     def __call__(self, logits, targets, length_log_probs, length_targets, reduce=True):
         label_loss = self.label_smoothing_loss(logits, targets, reduce=reduce)
 
@@ -572,10 +579,10 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
         assert not torch.any(
             length_targets >= max_supported_dim
         ), f"max_supported_dim: {max_supported_dim}, Total Violations : {str(length_targets[length_targets >= max_supported_dim].flatten().tolist())}"
-        length_loss = -length_log_probs.gather(dim=-1, index=length_targets)
 
-        if reduce:
-            length_loss = length_loss.mean()
+        length_loss = self.length_loss(
+            logits=length_log_probs, targets=length_targets.view(-1), reduce=reduce
+        )
 
         total_loss = label_loss + self.lengths_weight * length_loss
 
