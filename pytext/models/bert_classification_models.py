@@ -83,7 +83,7 @@ class NewBertModel(BaseModel):
         return self.decoder(representation, *args)
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
-        pass
+        raise NotImplementedError
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
