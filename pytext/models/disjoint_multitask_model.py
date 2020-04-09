@@ -70,4 +70,4 @@ class NewDisjointMultitaskModel(DisjointMultitaskModel):
         return self.current_model.arrange_model_context(tensor_dict)
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
-        pass
+        raise NotImplementedError
