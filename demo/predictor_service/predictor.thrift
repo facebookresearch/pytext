@@ -3,6 +3,6 @@
 namespace cpp predictor_service
 
 service Predictor {
-   // Returns list of scores for each label
-   map<string,list<double>> predict(1:string doc),
+   // Returns scores for each class
+   map<string,double> predict(1:string doc),
 }
