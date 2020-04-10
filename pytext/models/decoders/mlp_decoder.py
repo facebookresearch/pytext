@@ -41,6 +41,7 @@ class MLPDecoder(DecoderBase):
         out_dim: Optional[int] = None
         layer_norm: bool = False
         dropout: float = 0.0
+        bias: bool = True
         activation: Activation = Activation.RELU
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
@@ -48,7 +49,7 @@ class MLPDecoder(DecoderBase):
 
         layers = []
         for dim in config.hidden_dims or []:
-            layers.append(nn.Linear(in_dim, dim))
+            layers.append(nn.Linear(in_dim, dim, config.bias))
             layers.append(get_activation(config.activation))
             if config.layer_norm:
                 layers.append(nn.LayerNorm(dim))
@@ -58,7 +59,7 @@ class MLPDecoder(DecoderBase):
         if config.out_dim is not None:
             out_dim = config.out_dim
         if out_dim > 0:
-            layers.append(nn.Linear(in_dim, out_dim))
+            layers.append(nn.Linear(in_dim, out_dim, config.bias))
 
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
