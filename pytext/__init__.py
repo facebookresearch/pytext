@@ -12,7 +12,7 @@ from caffe2.python.predictor import predictor_exporter
 from pytext.data.sources.data_source import DataSource
 from pytext.task import load
 from pytext.task.new_task import NewTask
-from pytext.utils.file_io import PathManager
+from pytext.utils.file_io import PathManager, register_http_url_handler
 from pytext.workflow import _set_cuda
 
 from .builtin_task import register_builtin_tasks
@@ -21,6 +21,7 @@ from .utils.onnx import CAFFE2_DB_TYPE, convert_caffe2_blob_name
 
 
 register_builtin_tasks()
+register_http_url_handler()
 
 
 Predictor = Callable[[Mapping[str, str]], Mapping[str, np.array]]
