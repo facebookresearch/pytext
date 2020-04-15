@@ -288,7 +288,7 @@ class _NewTask(TaskBase):
         unused_raw_batch, batch = next(
             iter(self.data.batches(Stage.TRAIN, load_early=True))
         )
-        inputs = model.arrange_model_inputs(batch)
+        inputs = model.onnx_trace_input(batch)
         # call model forward to set correct device types
         model(*inputs)
         if quantize:
