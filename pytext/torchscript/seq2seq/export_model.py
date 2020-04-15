@@ -85,19 +85,18 @@ class Seq2SeqJIT(torch.nn.Module):
         self.unk_idx: int = self.source_vocab.unk_idx
         self.filter_eos_bos: bool = filter_eos_bos
 
-    def forward(
+    def prepare_generator_inputs(
         self,
-        src_tokens: List[str],
+        word_ids: List[int],
         dict_feat: Optional[Tuple[List[str], List[float], List[int]]] = None,
-    ) -> List[Tuple[List[str], float, List[float]]]:
-        src_len = len(src_tokens)
-        word_ids = self.source_vocab.lookup_indices_1d(src_tokens)
-
-        # find, if there exists, the unk token in the source utterance.
-        # If multiple we select the first unk token.
-        single_unk_token: Optional[str] = get_single_unk_token(
-            src_tokens, word_ids, self.copy_unk_token, self.unk_idx
-        )
+        contextual_token_embedding: Optional[List[float]] = None,
+    ) -> Tuple[
+        torch.Tensor,
+        Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+        Optional[torch.Tensor],
+        torch.Tensor,
+    ]:
+        src_len = len(word_ids)
         dict_tensors: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None
         if dict_feat is not None:
             dict_tokens, dict_weights, dict_lengths = dict_feat
@@ -108,8 +107,51 @@ class Seq2SeqJIT(torch.nn.Module):
                 torch.tensor([dict_lengths]),
             )
 
+        contextual_embedding_tensor: Optional[torch.Tensor] = None
+        if contextual_token_embedding is not None:
+            assert (
+                len(contextual_token_embedding) % src_len == 0
+                and len(contextual_token_embedding) > 0
+            ), (
+                f"Incorrect size for contextual embeddings: "
+                f"{len(contextual_token_embedding)}, Expected a "
+                f"non-zero multiple of input token count {src_len} "
+            )
+            contextual_embedding_tensor = torch.tensor(
+                [contextual_token_embedding], dtype=torch.float
+            )
+        return (
+            torch.tensor(word_ids).reshape(-1, 1),
+            dict_tensors,
+            contextual_embedding_tensor,
+            torch.tensor([src_len]),
+        )
+
+    def forward(
+        self,
+        src_tokens: List[str],
+        dict_feat: Optional[Tuple[List[str], List[float], List[int]]] = None,
+        contextual_token_embedding: Optional[List[float]] = None,
+    ) -> List[Tuple[List[str], float, List[float]]]:
+
+        word_ids = self.source_vocab.lookup_indices_1d(src_tokens)
+
+        # find, if there exists, the unk token in the source utterance.
+        # If multiple we select the first unk token.
+        single_unk_token: Optional[str] = get_single_unk_token(
+            src_tokens, word_ids, self.copy_unk_token, self.unk_idx
+        )
+
+        (
+            words,
+            dict_tensors,
+            contextual_embedding_tensor,
+            src_lengths,
+        ) = self.prepare_generator_inputs(
+            word_ids, dict_feat, contextual_token_embedding
+        )
         hypos_etc = self.sequence_generator(
-            torch.tensor(word_ids).reshape(-1, 1), dict_tensors, torch.tensor([src_len])
+            words, dict_tensors, contextual_embedding_tensor, src_lengths
         )
         hypos_list: List[Tuple[List[str], float, List[float]]] = []
 

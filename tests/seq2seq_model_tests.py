@@ -9,11 +9,16 @@ from pytext.data.data import Data
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import (
+    ByteTokenTensorizer,
     GazetteerTensorizer,
     TokenTensorizer,
     initialize_tensorizers,
 )
-from pytext.models.embeddings import DictEmbedding, WordEmbedding
+from pytext.models.embeddings import (
+    ContextualTokenEmbedding,
+    DictEmbedding,
+    WordEmbedding,
+)
 from pytext.models.seq_models.rnn_encoder import LSTMSequenceEncoder
 from pytext.models.seq_models.rnn_encoder_decoder import RNNModel
 from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
@@ -59,6 +64,16 @@ def get_tensorizers(add_dict_feat=False, add_contextual_feat=False):
         initialize_tensorizers(
             {"dict_feat": tensorizers["dict_feat"]}, data_source.train
         )
+
+    if add_contextual_feat:
+        tensorizers["contextual_token_embedding"] = ByteTokenTensorizer.from_config(
+            ByteTokenTensorizer.Config(column="source_sequence")
+        )
+        initialize_tensorizers(
+            {"contextual_token_embedding": tensorizers["contextual_token_embedding"]},
+            data_source.train,
+        )
+
     return tensorizers
 
 
@@ -79,6 +94,31 @@ class Seq2SeqModelExportTests(unittest.TestCase):
             model.eval()
             ts_model = model.torchscriptify()
             res = ts_model(["call", "mom"])
+            assert res is not None
+
+    def test_tokens_contextual(self):
+        # TODO: this should be removed after
+        # https://github.com/pytorch/pytorch/pull/33645 is merged.
+        with torch.no_grad():
+            model = Seq2SeqModel.from_config(
+                Seq2SeqModel.Config(
+                    source_embedding=WordEmbedding.Config(embed_dim=512),
+                    target_embedding=WordEmbedding.Config(embed_dim=512),
+                    inputs=Seq2SeqModel.Config.ModelInput(
+                        contextual_token_embedding=ByteTokenTensorizer.Config()
+                    ),
+                    contextual_token_embedding=ContextualTokenEmbedding.Config(
+                        embed_dim=7
+                    ),
+                    encoder_decoder=RNNModel.Config(
+                        encoder=LSTMSequenceEncoder.Config(embed_dim=519)
+                    ),
+                ),
+                get_tensorizers(add_contextual_feat=True),
+            )
+            model.eval()
+            ts_model = model.torchscriptify()
+            res = ts_model(["call", "mom"], contextual_token_embedding=[0.42] * (7 * 2))
             assert res is not None
 
     def test_tokens_dictfeat(self):
@@ -104,6 +144,39 @@ class Seq2SeqModelExportTests(unittest.TestCase):
             model.eval()
             ts_model = model.torchscriptify()
             res = ts_model(["call", "mom"], (["call", "mom"], [0.42, 0.17], [4, 3]))
+            assert res is not None
+
+    def test_tokens_dictfeat_contextual(self):
+        # TODO: this should be removed after
+        # https://github.com/pytorch/pytorch/pull/33645 is merged.
+        with torch.no_grad():
+            model = Seq2SeqModel.from_config(
+                Seq2SeqModel.Config(
+                    source_embedding=WordEmbedding.Config(embed_dim=512),
+                    target_embedding=WordEmbedding.Config(embed_dim=512),
+                    inputs=Seq2SeqModel.Config.ModelInput(
+                        dict_feat=GazetteerTensorizer.Config(
+                            text_column="source_sequence"
+                        ),
+                        contextual_token_embedding=ByteTokenTensorizer.Config(),
+                    ),
+                    encoder_decoder=RNNModel.Config(
+                        encoder=LSTMSequenceEncoder.Config(embed_dim=619)
+                    ),
+                    dict_embedding=DictEmbedding.Config(),
+                    contextual_token_embedding=ContextualTokenEmbedding.Config(
+                        embed_dim=7
+                    ),
+                ),
+                get_tensorizers(add_dict_feat=True, add_contextual_feat=True),
+            )
+            model.eval()
+            ts_model = model.torchscriptify()
+            res = ts_model(
+                ["call", "mom"],
+                (["call", "mom"], [0.42, 0.17], [4, 3]),
+                [0.42] * (7 * 2),
+            )
             assert res is not None
 
 

@@ -4,9 +4,18 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import Stage
-from pytext.data.tensorizers import GazetteerTensorizer, Tensorizer, TokenTensorizer
+from pytext.data.tensorizers import (
+    ByteTokenTensorizer,
+    GazetteerTensorizer,
+    Tensorizer,
+    TokenTensorizer,
+)
 from pytext.data.utils import Vocabulary
-from pytext.models.embeddings import DictEmbedding, WordEmbedding
+from pytext.models.embeddings import (
+    ContextualTokenEmbedding,
+    DictEmbedding,
+    WordEmbedding,
+)
 from pytext.models.embeddings.scriptable_embedding_list import ScriptableEmbeddingList
 from pytext.models.model import BaseModel, Model
 from pytext.models.module import create_module
@@ -31,12 +40,14 @@ class Seq2SeqModel(Model):
             src_seq_tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             trg_seq_tokens: TokenTensorizer.Config = TokenTensorizer.Config()
             dict_feat: Optional[GazetteerTensorizer.Config] = None
+            contextual_token_embedding: Optional[ByteTokenTensorizer.Config] = None
 
         inputs: ModelInput = ModelInput()
         encoder_decoder: RNNModel.Config = RNNModel.Config()
         source_embedding: WordEmbedding.Config = WordEmbedding.Config()
         target_embedding: WordEmbedding.Config = WordEmbedding.Config()
         dict_embedding: Optional[DictEmbedding.Config] = None
+        contextual_token_embedding: Optional[ContextualTokenEmbedding.Config] = None
         output_layer: Seq2SeqOutputLayer.Config = Seq2SeqOutputLayer.Config()
         sequence_generator: ScriptedSequenceGenerator.Config = (
             ScriptedSequenceGenerator.Config()
@@ -52,6 +63,14 @@ class Seq2SeqModel(Model):
         if gazetteer_tensorizer:
             src_embedding_list.append(
                 create_module(config.dict_embedding, tensorizer=gazetteer_tensorizer)
+            )
+        contextual_token_tensorizer = tensorizers.get("contextual_token_embedding")
+        if contextual_token_tensorizer:
+            src_embedding_list.append(
+                create_module(
+                    config.contextual_token_embedding,
+                    tensorizer=contextual_token_tensorizer,
+                )
             )
         source_embedding = ScriptableEmbeddingList(src_embedding_list)
 
@@ -108,7 +127,13 @@ class Seq2SeqModel(Model):
             trg_tokens, trg_lengths, self.trg_eos_index, self.trg_pad_index
         )
 
-        return (src_tokens, tensor_dict.get("dict_feat"), src_lengths, trg_tokens)
+        return (
+            src_tokens,
+            tensor_dict.get("dict_feat"),
+            tensor_dict.get("contextual_token_embedding"),
+            src_lengths,
+            trg_tokens,
+        )
 
     def arrange_targets(self, tensor_dict):
         trg_tokens, trg_lengths, _ = tensor_dict["trg_seq_tokens"]
@@ -165,6 +190,7 @@ class Seq2SeqModel(Model):
         self,
         src_tokens: torch.Tensor,
         dict_feats: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+        contextual_token_embedding: Optional[torch.Tensor],
         src_lengths: torch.Tensor,
         trg_tokens: torch.Tensor,
     ):
@@ -172,6 +198,9 @@ class Seq2SeqModel(Model):
 
         if dict_feats:
             additional_features.append(list(dict_feats))
+
+        if contextual_token_embedding is not None:
+            additional_features.append([contextual_token_embedding])
 
         logits, output_dict = self.model(
             src_tokens, additional_features, src_lengths, trg_tokens
@@ -183,6 +212,10 @@ class Seq2SeqModel(Model):
                 output_dict["dict_weights"],
                 output_dict["dict_lengths"],
             ) = dict_feats
+
+        if contextual_token_embedding is not None:
+            output_dict["contextual_token_embedding"] = contextual_token_embedding
+
         return logits, output_dict
 
     def get_pred(self, model_outputs, context=None):

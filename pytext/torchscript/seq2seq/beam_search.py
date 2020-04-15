@@ -71,12 +71,15 @@ class BeamSearch(nn.Module):
         src_lengths: torch.Tensor,
         num_steps: int,
         dict_feat: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None,
+        contextual_token_embedding: Optional[torch.Tensor] = None,
     ):
         # Initialize incremental_states after every forward()
         self.decoder_ens.reset_incremental_states()
 
         # ARBABU: To do add an assert to make sure that batch size is 1
-        decoder_ip = self.encoder_ens(src_tokens, src_lengths, dict_feat)
+        decoder_ip = self.encoder_ens(
+            src_tokens, src_lengths, dict_feat, contextual_token_embedding
+        )
 
         (
             prev_token,
