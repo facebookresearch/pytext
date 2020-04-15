@@ -26,6 +26,7 @@ class EncoderEnsemble(nn.Module):
         src_tokens: Tensor,
         src_lengths: Tensor,
         dict_feat: Optional[Tuple[Tensor, Tensor, Tensor]] = None,
+        contextual_token_embedding: Optional[Tensor] = None,
     ) -> List[Dict[str, Tensor]]:
         # (seq_length, batch_size) for compatibility with Caffe2
         src_tokens_seq_first = src_tokens.t()
@@ -38,6 +39,8 @@ class EncoderEnsemble(nn.Module):
             embedding_input = [[src_tokens_seq_first]]
             if dict_feat is not None:
                 embedding_input.append(list(dict_feat))
+            if contextual_token_embedding is not None:
+                embedding_input.append([contextual_token_embedding])
             embeddings = model.source_embeddings(embedding_input)
             futures.append(
                 # torch.jit._fork(model.encoder, src_tokens_seq_first, src_lengths)
