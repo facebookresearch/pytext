@@ -77,6 +77,7 @@ class ScriptedSequenceGenerator(Module):
         self,
         src_tokens: torch.Tensor,
         dict_feat: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]],
+        contextual_token_embedding: Optional[torch.Tensor],
         src_lengths: torch.Tensor,
     ) -> List[Tuple[torch.Tensor, float, List[float], torch.Tensor, torch.Tensor]]:
 
@@ -89,7 +90,11 @@ class ScriptedSequenceGenerator(Module):
         )
 
         all_tokens, all_scores, all_weights, all_prev_indices = self.beam_search(
-            src_tokens, src_lengths, target_length, dict_feat
+            src_tokens,
+            src_lengths,
+            target_length,
+            dict_feat,
+            contextual_token_embedding,
         )
 
         return self.beam_decode(
@@ -109,7 +114,16 @@ class ScriptedSequenceGenerator(Module):
                 tensors["dict_lengths"],
             )
 
-        hypos_etc = self.forward(actual_src_tokens, dict_feat, tensors["src_lengths"])
+        contextual_token_embedding: Optional[torch.Tensor] = None
+        if "contextual_token_embedding" in tensors:
+            contextual_token_embedding = tensors["contextual_token_embedding"]
+
+        hypos_etc = self.forward(
+            actual_src_tokens,
+            dict_feat,
+            contextual_token_embedding,
+            tensors["src_lengths"],
+        )
         predictions = [[pred for pred, _, _, _, _ in hypos_etc]]
         scores = [[score for _, score, _, _, _ in hypos_etc]]
         return (predictions, scores)
