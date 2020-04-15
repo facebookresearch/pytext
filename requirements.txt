@@ -1,6 +1,7 @@
 click
 fairseq
 future
+fvcore
 hypothesis<4.0
 joblib
 numpy
