@@ -228,6 +228,9 @@ class BaseModel(nn.Module, Component):
                 flat_model_inputs.append(model_input)
         return flat_model_inputs
 
+    def get_num_examples_from_batch(self, batch):
+        pass
+
 
 class Model(BaseModel):
     """
