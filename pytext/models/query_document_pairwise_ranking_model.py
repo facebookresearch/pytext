@@ -86,6 +86,13 @@ class QueryDocPairwiseRankingModel(PairwiseModel):
     def arrange_targets(self, tensor_dict):
         return {}
 
+    def get_num_examples_from_batch(self, tensor_dict):
+        inputs = self.arrange_model_inputs(tensor_dict)
+        query = inputs[2]
+        query_lengths = query[1]
+        num_queries = query_lengths.shape[0]
+        return num_queries
+
     def forward(
         self,
         pos_response: Tuple[torch.Tensor, torch.Tensor],
