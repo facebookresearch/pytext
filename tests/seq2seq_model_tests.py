@@ -81,7 +81,7 @@ def get_tensorizers(add_dict_feat=False, add_contextual_feat=False):
 # This should at least make sure we're testing end to end.
 class Seq2SeqModelExportTests(unittest.TestCase):
     def test_tokens(self):
-        # TODO: this should be removed after
+        # TODO (T65593688): this should be removed after
         # https://github.com/pytorch/pytorch/pull/33645 is merged.
         with torch.no_grad():
             model = Seq2SeqModel.from_config(
@@ -97,7 +97,7 @@ class Seq2SeqModelExportTests(unittest.TestCase):
             assert res is not None
 
     def test_tokens_contextual(self):
-        # TODO: this should be removed after
+        # TODO (T65593688): this should be removed after
         # https://github.com/pytorch/pytorch/pull/33645 is merged.
         with torch.no_grad():
             model = Seq2SeqModel.from_config(
@@ -122,7 +122,7 @@ class Seq2SeqModelExportTests(unittest.TestCase):
             assert res is not None
 
     def test_tokens_dictfeat(self):
-        # TODO: this should be removed after
+        # TODO (T65593688): this should be removed after
         # https://github.com/pytorch/pytorch/pull/33645 is merged.
         with torch.no_grad():
             model = Seq2SeqModel.from_config(
@@ -147,7 +147,7 @@ class Seq2SeqModelExportTests(unittest.TestCase):
             assert res is not None
 
     def test_tokens_dictfeat_contextual(self):
-        # TODO: this should be removed after
+        # TODO (T65593688): this should be removed after
         # https://github.com/pytorch/pytorch/pull/33645 is merged.
         with torch.no_grad():
             model = Seq2SeqModel.from_config(
