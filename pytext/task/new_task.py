@@ -244,12 +244,10 @@ class _NewTask(TaskBase):
                 name: [tensorizer.numberize(row)]
                 for name, tensorizer in input_tensorizers.items()
             }
-
             tensor_dict = {
                 name: tensorizer.tensorize(batch=numberized_row[name])
                 for name, tensorizer in input_tensorizers.items()
             }
-
             model_inputs = self.model.arrange_model_inputs(tensor_dict)
             model_context = self.model.arrange_model_context(tensor_dict)
             predictions, scores = self.model.get_pred(
