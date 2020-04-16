@@ -2,8 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
+from itertools import zip_longest
 from typing import List, Optional
 
+import torch
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
@@ -50,6 +52,14 @@ class ClassificationMetricReporter(MetricReporter):
         #: run_model output file along with other saving results.
         additional_column_names: List[str] = []
         recall_at_precision_thresholds: List[float] = RECALL_AT_PRECISION_THRESHOLDS
+        # Boolean which is used to run a more memory efficient version of the
+        # metric reporter. This involves storing as little information as possible
+        # in memory and as a result, we don't compute metrics other than accuracy
+        # and F1. This is useful when the label space is huge and we don't want to
+        # keep around the score for every label for every example in memory.
+        # This also means that the output debug file in the Test operator will have
+        # only predictions and no label scores.
+        is_memory_efficient: bool = False
 
     def __init__(
         self,
@@ -64,6 +74,7 @@ class ClassificationMetricReporter(MetricReporter):
         recall_at_precision_thresholds: List[float] = (
             Config.recall_at_precision_thresholds
         ),
+        is_memory_efficient: bool = Config.is_memory_efficient,
     ) -> None:
         super().__init__(channels)
         self.label_names = label_names
@@ -72,6 +83,7 @@ class ClassificationMetricReporter(MetricReporter):
         self.text_column_names = text_column_names
         self.additional_column_names = additional_column_names
         self.recall_at_precision_thresholds = recall_at_precision_thresholds
+        self.is_memory_efficient = is_memory_efficient
 
     @classmethod
     def from_config(cls, config, meta: CommonMetadata = None, tensorizers=None):
@@ -106,6 +118,7 @@ class ClassificationMetricReporter(MetricReporter):
             config.text_column_names,
             config.additional_column_names,
             config.recall_at_precision_thresholds,
+            config.is_memory_efficient,
         )
 
     def batch_context(self, raw_batch, batch):
@@ -122,16 +135,62 @@ class ClassificationMetricReporter(MetricReporter):
                 ]
         return context
 
+    def add_batch_stats(
+        self, n_batches, preds, targets, scores, loss, m_input, **context
+    ):
+        """
+        Aggregates a batch of output data (predictions, scores, targets/true labels
+        and loss).
+
+        Args:
+            n_batches (int): number of current batch
+            preds (torch.Tensor): predictions of current batch
+            targets (torch.Tensor): targets of current batch
+            scores (torch.Tensor): scores of current batch
+            loss (double): average loss of current batch
+            m_input (Tuple[torch.Tensor, ...]): model inputs of current batch
+            context (Dict[str, Any]): any additional context data, it could be
+                either a list of data which maps to each example, or a single value
+                for the batch
+        """
+        self.n_batches = n_batches
+        self.aggregate_preds(preds, context)
+        self.aggregate_targets(targets, context)
+
+        # if we are running in memory efficient mode, then don't store all the scores
+        # This list in general is the most memory hungry of all the data structures.
+        # For a problem with 10K classes, we store 10K floats for every instance in
+        # the epoch. This is bad.
+        if not self.is_memory_efficient:
+            self.aggregate_scores(scores)
+
+        for key, val in context.items():
+            if not (isinstance(val, torch.Tensor) or isinstance(val, List)):
+                continue
+            if key not in self.all_context:
+                self.all_context[key] = []
+            self.aggregate_data(self.all_context[key], val)
+        # some loss functions (eg: in NewBertRegressionTask) return a tensor
+        # convert tensor to float
+        if loss is not None:
+            self.all_loss.append(float(loss))
+        self.batch_size.append(len(m_input[0]))
+
     def calculate_metric(self):
+        # If we are running in memory efficient mode, then scores in
+        # LabelPrediction should be an empty list
+        label_predictions = [
+            LabelPrediction(scores, pred, expect)
+            for scores, pred, expect in zip_longest(
+                self.all_scores, self.all_preds, self.all_targets, fillvalue=[]
+            )
+        ]
         return compute_classification_metrics(
-            [
-                LabelPrediction(scores, pred, expect)
-                for scores, pred, expect in zip(
-                    self.all_scores, self.all_preds, self.all_targets
-                )
-            ],
+            label_predictions,
             self.label_names,
             self.calculate_loss(),
+            # Compute soft-metrics only if self.is_memory_efficient is False
+            average_precisions=(not self.is_memory_efficient),
             recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
 

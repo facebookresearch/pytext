@@ -150,7 +150,12 @@ class FileChannel(Channel):
     def gen_content(self, metrics, loss, preds, targets, scores, context):
         context_values = context.values()
         for i in range(len(preds)):
-            res = [preds[i], targets[i], scores[i]]
+            # if we are running the metric reporter in memory_efficient mode
+            # then we don't store any scores
+            if len(scores) == 0:
+                res = [preds[i], targets[i]]
+            else:
+                res = [preds[i], targets[i], scores[i]]
             res.extend([v_list[i] for v_list in context_values])
             yield res
 
