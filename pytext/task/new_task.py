@@ -7,7 +7,7 @@ import torch
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
-from pytext.data.data import Data, pad_and_tensorize_batches
+from pytext.data.data import Data
 from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
@@ -21,7 +21,7 @@ from .task import TaskBase
 
 
 def create_schema(
-    tensorizers: Dict[str, Tensorizer], extra_schema: Optional[Dict[str, Type]] = None
+        tensorizers: Dict[str, Tensorizer], extra_schema: Optional[Dict[str, Type]] = None
 ) -> Schema:
     schema: Dict[str, Type] = {}
 
@@ -49,7 +49,7 @@ def create_schema(
 
 
 def create_tensorizers(
-    model_inputs: Union[BaseModel.Config.ModelInput, Dict[str, Tensorizer.Config]],
+        model_inputs: Union[BaseModel.Config.ModelInput, Dict[str, Tensorizer.Config]],
 ) -> Dict[str, Tensorizer]:
     if not isinstance(model_inputs, dict):
         model_inputs = model_inputs._asdict()
@@ -98,13 +98,13 @@ class _NewTask(TaskBase):
 
     @classmethod
     def from_config(
-        cls,
-        config: Config,
-        unused_metadata=None,
-        model_state=None,
-        tensorizers=None,
-        rank=0,
-        world_size=1,
+            cls,
+            config: Config,
+            unused_metadata=None,
+            model_state=None,
+            tensorizers=None,
+            rank=0,
+            world_size=1,
     ):
         print(f"Creating task: {cls.__name__}...")
         tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
@@ -132,9 +132,9 @@ class _NewTask(TaskBase):
         # Pull extra columns from the metric reporter config to pass into
         # the data source schema.
         extra_columns = (
-            getattr(config.metric_reporter, "text_column_names", [])
-            + getattr(config.metric_reporter, "additional_column_names", [])
-            + getattr(config.metric_reporter, "student_column_names", [])
+                getattr(config.metric_reporter, "text_column_names", [])
+                + getattr(config.metric_reporter, "additional_column_names", [])
+                + getattr(config.metric_reporter, "student_column_names", [])
         )
         extra_schema = {column: Any for column in extra_columns}
 
@@ -173,11 +173,11 @@ class _NewTask(TaskBase):
         return model
 
     def __init__(
-        self,
-        data: Data,
-        model: BaseModel,
-        metric_reporter: Optional[MetricReporter] = None,
-        trainer: Optional[TaskTrainer] = None,
+            self,
+            data: Data,
+            model: BaseModel,
+            metric_reporter: Optional[MetricReporter] = None,
+            trainer: Optional[TaskTrainer] = None,
     ):
         self.data = data
         self.model = model
@@ -192,11 +192,11 @@ class _NewTask(TaskBase):
         log_class_usage
 
     def train(
-        self,
-        config: PyTextConfig,
-        rank: int = 0,
-        world_size: int = 1,
-        training_state: TrainingState = None,
+            self,
+            config: PyTextConfig,
+            rank: int = 0,
+            world_size: int = 1,
+            training_state: TrainingState = None,
     ):
         # next to move dist_init back to prepare_task in pytext/workflow.py
         # when processing time between dist_init and first loss.backward() is short
@@ -237,12 +237,19 @@ class _NewTask(TaskBase):
         """
         self.model.eval()
         results = []
+        input_tensorizers = {name: tensorizer for name, tensorizer in self.data.tensorizers.items()
+                             if tensorizer.is_input}
         for row in examples:
-            tensor_dict = {}
-            for name, tensorizer in self.data.tensorizers.items():
-                if tensorizer.is_input:
-                    row = tensorizer.numberize(row)
-                    tensor_dict[name] = tensorizer.tensorize(batch=[row])
+            numberized_row = {
+                name: [tensorizer.numberize(row)]
+                for name, tensorizer in input_tensorizers.items()
+            }
+
+            tensor_dict = {
+                name: tensorizer.tensorize(batch=numberized_row[name])
+                for name, tensorizer in input_tensorizers.items()
+            }
+
             model_inputs = self.model.arrange_model_inputs(tensor_dict)
             model_context = self.model.arrange_model_context(tensor_dict)
             predictions, scores = self.model.get_pred(
