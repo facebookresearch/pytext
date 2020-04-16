@@ -88,6 +88,10 @@ class DocModel(Model):
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
+    def get_num_examples_from_batch(self, tensor_dict):
+        targets = self.arrange_targets(tensor_dict)
+        return len(targets)
+
     def get_export_input_names(self, tensorizers):
         res = ["tokens_vals", "tokens_lens"]
         if "dense" in tensorizers:

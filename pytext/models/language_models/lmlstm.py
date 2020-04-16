@@ -142,6 +142,11 @@ class LMLSTM(BaseModel):
         tokens, seq_lens, _ = tensor_dict["tokens"]
         return (tokens[:, 1:].contiguous(), seq_lens - 1)
 
+    def get_num_examples_from_batch(self, batch):
+        targets = self.arrange_targets(batch)
+        num_words_in_batch = targets[1].sum().item()
+        return num_words_in_batch
+
     def get_export_input_names(self, tensorizers):
         return ["tokens_vals", "tokens_lens"]
 
