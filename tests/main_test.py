@@ -16,19 +16,26 @@ tests_module = test.import_tests_module()
 class TestMain(unittest.TestCase):
     def setUp(self):
         os.chdir(PYTEXT_HOME)
-
-    def run_from_command(self, args, config_filename):
-        runner = CliRunner()
-        config_path = os.path.join(tests_module.TEST_CONFIG_DIR, config_filename)
-        with PathManager.open(config_path, "r") as f:
-            config_str = f.read()
-        return runner.invoke(main, args=args, input=config_str)
+        self.runner = CliRunner()
 
     def test_docnn(self):
         # train model
-        result = self.run_from_command(args=["train"], config_filename="docnn.json")
+        result = self.runner.invoke(
+            main, args=["--config-file", "demo/configs/docnn.json", "train"]
+        )
         assert not result.exception, result.exception
 
         # export the trained model
-        result = self.run_from_command(args=["export"], config_filename="docnn.json")
+        result = self.runner.invoke(
+            main, args=["--config-file", "demo/configs/docnn.json", "export"]
+        )
+        print(result.output)
         assert not result.exception, result.exception
+
+        # predict with PyTorch model
+        result = self.runner.invoke(
+            main,
+            args=["predict-py", "--model-file", "/tmp/model.pt"],
+            input='{"text": "create an alarm for 1:30 pm"}',
+        )
+        assert "'prediction':" in result.output, result.exception

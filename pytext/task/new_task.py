@@ -186,6 +186,9 @@ class _NewTask(TaskBase):
             self.Config.metric_reporter, model
         )
         self.trainer = trainer or TaskTrainer()
+
+        self.input_tensorizers = [t for name, t in self.data.tensorizers.items() if t.is_input]
+
         log_class_usage
 
     def train(
@@ -235,11 +238,13 @@ class _NewTask(TaskBase):
         self.model.eval()
         results = []
         for row in examples:
-            numberized_rows = self.data.numberize_rows([row])
-            batches = self.data.batcher.batchify(numberized_rows)
-            _, inputs = next(pad_and_tensorize_batches(self.data.tensorizers, batches))
-            model_inputs = self.model.arrange_model_inputs(inputs)
-            model_context = self.model.arrange_model_context(inputs)
+            tensor_dict = {}
+            for name, tensorizer in self.data.tensorizers.items():
+                if tensorizer.is_input:
+                    row = tensorizer.numberize(row)
+                    tensor_dict[name] = tensorizer.tensorize(batch=[row])
+            model_inputs = self.model.arrange_model_inputs(tensor_dict)
+            model_context = self.model.arrange_model_context(tensor_dict)
             predictions, scores = self.model.get_pred(
                 self.model(*model_inputs), context=model_context
             )
