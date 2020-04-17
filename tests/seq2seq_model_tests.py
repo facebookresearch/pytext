@@ -81,103 +81,81 @@ def get_tensorizers(add_dict_feat=False, add_contextual_feat=False):
 # This should at least make sure we're testing end to end.
 class Seq2SeqModelExportTests(unittest.TestCase):
     def test_tokens(self):
-        # TODO (T65593688): this should be removed after
-        # https://github.com/pytorch/pytorch/pull/33645 is merged.
-        with torch.no_grad():
-            model = Seq2SeqModel.from_config(
-                Seq2SeqModel.Config(
-                    source_embedding=WordEmbedding.Config(embed_dim=512),
-                    target_embedding=WordEmbedding.Config(embed_dim=512),
-                ),
-                get_tensorizers(),
-            )
-            model.eval()
-            ts_model = model.torchscriptify()
-            res = ts_model(["call", "mom"])
-            assert res is not None
+        model = Seq2SeqModel.from_config(
+            Seq2SeqModel.Config(
+                source_embedding=WordEmbedding.Config(embed_dim=512),
+                target_embedding=WordEmbedding.Config(embed_dim=512),
+            ),
+            get_tensorizers(),
+        )
+        model.eval()
+        ts_model = model.torchscriptify()
+        res = ts_model(["call", "mom"])
+        assert res is not None
 
     def test_tokens_contextual(self):
-        # TODO (T65593688): this should be removed after
-        # https://github.com/pytorch/pytorch/pull/33645 is merged.
-        with torch.no_grad():
-            model = Seq2SeqModel.from_config(
-                Seq2SeqModel.Config(
-                    source_embedding=WordEmbedding.Config(embed_dim=512),
-                    target_embedding=WordEmbedding.Config(embed_dim=512),
-                    inputs=Seq2SeqModel.Config.ModelInput(
-                        contextual_token_embedding=ByteTokenTensorizer.Config()
-                    ),
-                    contextual_token_embedding=ContextualTokenEmbedding.Config(
-                        embed_dim=7
-                    ),
-                    encoder_decoder=RNNModel.Config(
-                        encoder=LSTMSequenceEncoder.Config(embed_dim=519)
-                    ),
+        model = Seq2SeqModel.from_config(
+            Seq2SeqModel.Config(
+                source_embedding=WordEmbedding.Config(embed_dim=512),
+                target_embedding=WordEmbedding.Config(embed_dim=512),
+                inputs=Seq2SeqModel.Config.ModelInput(
+                    contextual_token_embedding=ByteTokenTensorizer.Config()
                 ),
-                get_tensorizers(add_contextual_feat=True),
-            )
-            model.eval()
-            ts_model = model.torchscriptify()
-            res = ts_model(["call", "mom"], contextual_token_embedding=[0.42] * (7 * 2))
-            assert res is not None
+                contextual_token_embedding=ContextualTokenEmbedding.Config(embed_dim=7),
+                encoder_decoder=RNNModel.Config(
+                    encoder=LSTMSequenceEncoder.Config(embed_dim=519)
+                ),
+            ),
+            get_tensorizers(add_contextual_feat=True),
+        )
+        model.eval()
+        ts_model = model.torchscriptify()
+        res = ts_model(["call", "mom"], contextual_token_embedding=[0.42] * (7 * 2))
+        assert res is not None
 
     def test_tokens_dictfeat(self):
-        # TODO (T65593688): this should be removed after
-        # https://github.com/pytorch/pytorch/pull/33645 is merged.
-        with torch.no_grad():
-            model = Seq2SeqModel.from_config(
-                Seq2SeqModel.Config(
-                    source_embedding=WordEmbedding.Config(embed_dim=512),
-                    target_embedding=WordEmbedding.Config(embed_dim=512),
-                    inputs=Seq2SeqModel.Config.ModelInput(
-                        dict_feat=GazetteerTensorizer.Config(
-                            text_column="source_sequence"
-                        )
-                    ),
-                    encoder_decoder=RNNModel.Config(
-                        encoder=LSTMSequenceEncoder.Config(embed_dim=612)
-                    ),
-                    dict_embedding=DictEmbedding.Config(),
+        model = Seq2SeqModel.from_config(
+            Seq2SeqModel.Config(
+                source_embedding=WordEmbedding.Config(embed_dim=512),
+                target_embedding=WordEmbedding.Config(embed_dim=512),
+                inputs=Seq2SeqModel.Config.ModelInput(
+                    dict_feat=GazetteerTensorizer.Config(text_column="source_sequence")
                 ),
-                get_tensorizers(add_dict_feat=True),
-            )
-            model.eval()
-            ts_model = model.torchscriptify()
-            res = ts_model(["call", "mom"], (["call", "mom"], [0.42, 0.17], [4, 3]))
-            assert res is not None
+                encoder_decoder=RNNModel.Config(
+                    encoder=LSTMSequenceEncoder.Config(embed_dim=612)
+                ),
+                dict_embedding=DictEmbedding.Config(),
+            ),
+            get_tensorizers(add_dict_feat=True),
+        )
+        model.eval()
+        ts_model = model.torchscriptify()
+        res = ts_model(["call", "mom"], (["call", "mom"], [0.42, 0.17], [4, 3]))
+        assert res is not None
 
     def test_tokens_dictfeat_contextual(self):
-        # TODO (T65593688): this should be removed after
-        # https://github.com/pytorch/pytorch/pull/33645 is merged.
-        with torch.no_grad():
-            model = Seq2SeqModel.from_config(
-                Seq2SeqModel.Config(
-                    source_embedding=WordEmbedding.Config(embed_dim=512),
-                    target_embedding=WordEmbedding.Config(embed_dim=512),
-                    inputs=Seq2SeqModel.Config.ModelInput(
-                        dict_feat=GazetteerTensorizer.Config(
-                            text_column="source_sequence"
-                        ),
-                        contextual_token_embedding=ByteTokenTensorizer.Config(),
-                    ),
-                    encoder_decoder=RNNModel.Config(
-                        encoder=LSTMSequenceEncoder.Config(embed_dim=619)
-                    ),
-                    dict_embedding=DictEmbedding.Config(),
-                    contextual_token_embedding=ContextualTokenEmbedding.Config(
-                        embed_dim=7
-                    ),
+        model = Seq2SeqModel.from_config(
+            Seq2SeqModel.Config(
+                source_embedding=WordEmbedding.Config(embed_dim=512),
+                target_embedding=WordEmbedding.Config(embed_dim=512),
+                inputs=Seq2SeqModel.Config.ModelInput(
+                    dict_feat=GazetteerTensorizer.Config(text_column="source_sequence"),
+                    contextual_token_embedding=ByteTokenTensorizer.Config(),
                 ),
-                get_tensorizers(add_dict_feat=True, add_contextual_feat=True),
-            )
-            model.eval()
-            ts_model = model.torchscriptify()
-            res = ts_model(
-                ["call", "mom"],
-                (["call", "mom"], [0.42, 0.17], [4, 3]),
-                [0.42] * (7 * 2),
-            )
-            assert res is not None
+                encoder_decoder=RNNModel.Config(
+                    encoder=LSTMSequenceEncoder.Config(embed_dim=619)
+                ),
+                dict_embedding=DictEmbedding.Config(),
+                contextual_token_embedding=ContextualTokenEmbedding.Config(embed_dim=7),
+            ),
+            get_tensorizers(add_dict_feat=True, add_contextual_feat=True),
+        )
+        model.eval()
+        ts_model = model.torchscriptify()
+        res = ts_model(
+            ["call", "mom"], (["call", "mom"], [0.42, 0.17], [4, 3]), [0.42] * (7 * 2)
+        )
+        assert res is not None
 
 
 # Seq2SeqModel has restrictions on what can happen during evaluation, since
