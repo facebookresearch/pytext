@@ -671,6 +671,21 @@ def upgrade_if_xlm(json_config):
     return json_config
 
 
+@register_adapter(from_version=19)
+def fix_fl_local_optimizer(json_config):
+    """Change FL local optimizer from optimizer:{SGD:{lr=0.1, momentum=0.2}}
+       to optimizer:{lr=0.1, momentum=0.2}
+    """
+    for trainer_name in ["FLSyncTrainer", "FLAsyncTrainer"]:
+        for top_section in find_dicts_containing_key(json_config, trainer_name):
+            trainer_section = top_section[trainer_name]
+            if "optimizer" in trainer_section:
+                optimizer = trainer_section.pop("optimizer")
+                sgd_config = optimizer.pop("SGD")
+                trainer_section["optimizer"] = sgd_config
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
