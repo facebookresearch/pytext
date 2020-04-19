@@ -300,7 +300,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
 
     def _load_processor(self):
         self.processor = SentencePieceProcessor()
-        self.processor.Load(self.sp_model_path)
+        self.processor.Load(PathManager.get_local_path(self.sp_model_path))
 
     def torchscriptify(self):
         return ScriptDoNothingTokenizer()
