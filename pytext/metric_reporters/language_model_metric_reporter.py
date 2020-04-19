@@ -103,14 +103,16 @@ class LanguageModelMetricReporter(MetricReporter):
         num_words_in_batch = targets[1].sum().item()
         self.aggregate_loss += loss * num_words_in_batch
         self.total_num_tokens += num_words_in_batch
-        if self.aggregate_metrics:
+        if self.aggregate_metrics and num_words_in_batch > 0:
             # unpacks logits from `targets` and computes scores for
             # each item in the batch, e.g. sentence-level perplexity
             if isinstance(targets, tuple):
                 targets = targets[0]
             scores = self.compute_scores(preds, targets)
-            self.aggregate_scores(scores)
-            self.aggregate_context(context)
+            # scores is None when the every element in the target is self.pad_index
+            if scores is not None:
+                self.aggregate_scores(scores)
+                self.aggregate_context(context)
 
     def calculate_loss(self) -> float:
         if self.total_num_tokens == 0:
@@ -149,8 +151,7 @@ class LanguageModelMetricReporter(MetricReporter):
             items -- these are 0 by default.
 
             """
-
-            return torch.exp(self.perplexity_func(tensor[tensor != 0.0]))
+            return torch.exp(self.perplexity_func(tensor))
 
         # compute cross-entropy loss of logits wrt targets -- don't reduce
         # to access the loss of each item in the batch
@@ -160,8 +161,22 @@ class LanguageModelMetricReporter(MetricReporter):
             ignore_index=self.pad_index,
             reduction="none",
         )
-        # compute a score for each item in the batch
-        return map(lambda x: _compute_score(x).item(), scores)
+        # scores is 0 at positions of the target == pad_index,
+        non_padding_scores_all_sentences = []
+        for sentence_score, sentence_target in zip(scores, targets):
+            non_padding_score_per_sentence = sentence_score[
+                sentence_target != self.pad_index
+            ]
+            # exclude padding position at each sentence, filter the sentence
+            # from score calculation if every target in the
+            # sentence == self.pad_index
+            if non_padding_score_per_sentence.numel() > 0:
+                non_padding_scores_all_sentences.append(non_padding_score_per_sentence)
+
+        if len(non_padding_scores_all_sentences) == 0:
+            return
+
+        return map(lambda x: _compute_score(x).item(), non_padding_scores_all_sentences)
 
     def aggregate_scores(self, scores):
         self.all_scores.extend(scores)
