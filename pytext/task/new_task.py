@@ -7,7 +7,7 @@ import torch
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
-from pytext.data.data import Data, pad_and_tensorize_batches
+from pytext.data.data import Data
 from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
@@ -234,12 +234,22 @@ class _NewTask(TaskBase):
         """
         self.model.eval()
         results = []
+        input_tensorizers = {
+            name: tensorizer
+            for name, tensorizer in self.data.tensorizers.items()
+            if tensorizer.is_input
+        }
         for row in examples:
-            numberized_rows = self.data.numberize_rows([row])
-            batches = self.data.batcher.batchify(numberized_rows)
-            _, inputs = next(pad_and_tensorize_batches(self.data.tensorizers, batches))
-            model_inputs = self.model.arrange_model_inputs(inputs)
-            model_context = self.model.arrange_model_context(inputs)
+            numberized_row = {
+                name: [tensorizer.numberize(row)]
+                for name, tensorizer in input_tensorizers.items()
+            }
+            tensor_dict = {
+                name: tensorizer.tensorize(batch=numberized_row[name])
+                for name, tensorizer in input_tensorizers.items()
+            }
+            model_inputs = self.model.arrange_model_inputs(tensor_dict)
+            model_context = self.model.arrange_model_context(tensor_dict)
             predictions, scores = self.model.get_pred(
                 self.model(*model_inputs), context=model_context
             )
