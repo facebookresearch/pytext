@@ -169,6 +169,9 @@ class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
 
     def stringify_annotation_tree(self, tree_tokens, tree_vocab):
         stringified_tree_str = stringify(tree_tokens, tree_vocab._vocab)
+        return self.get_annotation_from_string(stringified_tree_str)
+
+    def get_annotation_from_string(self, stringified_tree_str: str) -> Annotation:
         try:
             tree = Annotation(
                 stringified_tree_str.upper(),
