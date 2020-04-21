@@ -95,7 +95,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors)
+        return self.model(input_tensors).cpu()
 
     @torch.jit.script_method
     def forward(
@@ -128,7 +128,7 @@ class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors)[self.index]
+        return self.model(input_tensors)[self.index].cpu()
 
 
 class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
@@ -146,7 +146,7 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
         input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors, dense_tensor)
+        return self.model(input_tensors, dense_tensor).cpu()
 
     @torch.jit.script_method
     def forward(
@@ -192,4 +192,4 @@ class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithD
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
         input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors, dense_tensor)[self.index]
+        return self.model(input_tensors, dense_tensor)[self.index].cpu()
