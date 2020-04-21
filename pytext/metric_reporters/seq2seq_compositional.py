@@ -38,29 +38,29 @@ class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
             "target",
         )
 
+    def validated_annotation(self, predicted_output_sequence):
+        try:
+            tree = Annotation(
+                predicted_output_sequence,
+                accept_flat_intents_slots=self.accept_flat_intents_slots,
+            ).tree
+        except (ValueError, IndexError):
+            tree = Annotation(INVALID_TREE_STR).tree
+        return tree.flat_str()
+
     def gen_content(self, metrics, loss, preds, targets, scores, context):
         target_vocab = self.tensorizers["trg_seq_tokens"].vocab
         batch_size = len(targets)
-
-        def validated_annotation(predicted_output_sequence):
-            try:
-                tree = Annotation(
-                    predicted_output_sequence,
-                    accept_flat_intents_slots=self.accept_flat_intents_slots,
-                ).tree
-            except (ValueError, IndexError):
-                tree = Annotation(INVALID_TREE_STR).tree
-            return tree.flat_str()
 
         for i in range(batch_size):
             yield [
                 context[BatchContext.INDEX][i],
                 context[DatasetFieldName.RAW_SEQUENCE][i],
                 stringify(preds[i][0], target_vocab._vocab).upper(),
-                validated_annotation(
+                self.validated_annotation(
                     stringify(preds[i][0], target_vocab._vocab).upper()
                 ),
-                validated_annotation(
+                self.validated_annotation(
                     stringify(targets[i], target_vocab._vocab).upper()
                 ),
             ]
