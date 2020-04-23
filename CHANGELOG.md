@@ -1,5 +1,113 @@
 # Changelog
 
+## v0.3.2
+
+## New features
+
+- Support read file from http URL (#1317)
+- add a new PyText get_num_examples_from_batch function in model (#1319)
+- Add support for length label smoothing (#1308)
+- Add new metrics type for Masked Seq2Seq Joint Model (#1304)
+- Add mask generator and strategy (#1302)
+- Add separate logging for label loss and length loss (#1294)
+- Add tensorizer support for masking of target tokens (#1297)
+- Add length prediction and basic masked generator (#1290)
+- Add self attention option to conv_encoder and conv_decoder (#1291)
+- Entity Saliency modeling on PyText: EntitySalienceMetricReporter/EntitySalienceTask
+- In-batch negative training for BertPairwiseModel
+- Support embedding from decoder (#1284)
+- Add dense features to Roberta
+- Add projection layer to HuggingFace encoder (#1273)
+- add PyText Embedding TorchScript Wrapper
+- Add option to pad missing label in LabelListTensorizer (#1269)
+- Integrate PET and Introduce ElasticTrainer (#1266)
+- support PoolingType in DocNN. (#1259)
+- Added WordSeqEmbedding (#1255)
+- Open source Assistant NLU seq2seq model (#1236)
+- Support multi label classification
+- BART in decoupled model
+
+## Bug fixes
+
+- Cast model output to cpu (#1329)
+- Fix OSS predict-py API (#1320)
+- Fix "calling median on empty tensor" issue in MR (#1322)
+- Add ScriptDoNothingTokenizer so that torchscriptification of SPM does not fail (#1316)
+- Fix creating generator everytime (#1301)
+- fix dense feature for fp16
+- Avoid edge cases with quantization by setting a known seed (#1295)
+- Make torchscript predictions even on empty text / token inputs
+- fix dense feature TorchScript typing (#1281)
+- avoid zero division error in metrics reporter (#1271)
+- Fix contiguous issue in bilstm export (#1270)
+- fix debug file generation for multilabel classification (#1247)
+- Fix fp16 optimizer attribute name
+
+## Other
+
+- New Debug File for masked seq2seq
+- Move MockConfigLoader to OSS (#1324)
+- Pass in optimizer config instead of create_optimizer to trainer
+- Remove unnecessary torch.no_grad() block (#1323)
+- Fix Memory Issues in Metric Reporter for Classification Tasks over large Label Spaces
+- Add contextual embedding support to OS seq2seq model (#1299)
+- recover xlm_r tutorial notebook (#1305)
+- Enable controlling bias in MLP decoder
+- Migrate serving tutorial to TorchScript (#1310)
+- delete caffe2 export (#1307)
+- add whitelist for ONNX export
+- Use dynamic quantization api for BeamSearch (#1303)
+- Remove requirement that eos/bos be supplied for sequence export. (#1300)
+- Multicolumn support
+- Multicolumn support in torchscriptify
+- Add caching support to RawExample and batch predict API (#1298)
+- Add save-pytext-snapshot command to PyText cmdline (#1285)
+- Update with Whatsapp calling data + support dictionary features (#1293)
+- add arrange_caffe2_model_inputs in BaseModel (#1292)
+- Replace unit-tests on LMModel and FLLanguageModelingTask by LiteLMModel and FLLiteLMTask (#1296)
+- changes to make mbart work (#1911)
+- handle encoder and decoder embedding
+- Add tutorial for semantic parsing. (#1288)
+- Add new fb beam search with fused operator (#1287)
+- Move generator builder to constructor so that it can easily overridden. (#1286)
+- Torchscriptify ELTensorizer (#1282)
+- Torchscript export for Seq2Seq model (#1265)
+- Change Seq2Seq model from_config() to a more general api (#1280)
+- add max_seq_len to DocNN TorchScript model (#1279)
+- support XLM-R model Embedding in TorchScript (#1278)
+- Generic PyText Checkpoint Manager Interface (#1267)
+- Fix backward compatibility issue of pad_missing in LabelListTensorizer (#1277)
+- Update mean reduction in NLLLoss (#1272)
+- migrate pages.integrity.scam.docnn_models.xxx (#1275)
+- Unify model input for ByteTokensDocumentModel (#1274)
+- Torchscriptify TokenTensorizer
+- Allow dictionaries to overwrite entries with #fairseq:overwrite comment (#1073)
+- Make WordSeqEmbedding ONNX compatible
+- If the snapshot path provided is not valid, throw error (#1268)
+- support vocab filter by min count
+- Unify input for TorchScript Tensorizers and Models (#1256)
+- Torchscriptify XLM-R
+- Add class logging to task (#1264)
+- Add usage logging to exporter (#1262)
+- Add usage logging across models (#1263)
+- Usage logging on data classes (#1261)
+- GPT2 BPE add lower casing support (#1260)
+- FAISS Embedding Search Space [3/5]
+- Return len of tokens of each sequence in SeqTokenTensorizer (#1254)
+- Vocab Limited Pretrained Embedding [2/5] (#1248)
+- add Stage.OTHERS and allow TB to print to a seperate prefix not in (TRAIN, TEST, EVAL) (#1258)
+- Add option to skip 2 stage tokenizer and bpe decode sequences in the debug file (#1257)
+- Add Testcase for Wordpiece Tokenizer (#1249)
+- modify accuracy calculation for multi-label classification (#1244)
+- Enable tests in pytext/config:pytext_all_config_test
+- Introduce Class Usage Logging (#1243)
+- Make PyText compatible with Any type (#1242)
+- Make dict_embedding Torchscript friendly (#1240)
+- Support MultipleData for export and kd generation
+- delete flaky/broken tests (#1238)
+- Add support for returning start & end indices.
+
+
 ## v0.3.1
 
 ## New features
