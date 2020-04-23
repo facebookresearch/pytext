@@ -211,6 +211,10 @@ class BaseModel(nn.Module, Component):
         # should raise NotImplementedError after migration is done
         return None
 
+    def onnx_trace_input(self, tensor_dict):
+        # default behavior is the same as getting model inputs
+        return self.arrange_model_inputs(tensor_dict)
+
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
 
