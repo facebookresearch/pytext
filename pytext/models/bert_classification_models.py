@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from pytext.common.constants import Stage
 from pytext.config.component import create_loss
-from pytext.data.bert_tensorizer import BERTTensorizer
+from pytext.data.bert_tensorizer import BERTTensorizer, BERTTensorizerBase
 from pytext.data.dense_retrieval_tensorizer import (  # noqa
     BERTContextTensorizerForDenseRetrieval,
     PositiveLabelTensorizerForDenseRetrieval,
@@ -139,10 +139,10 @@ class BertPairwiseModel(BasePairwiseModel):
 
     class Config(BasePairwiseModel.Config):
         class ModelInput(ModelInputBase):
-            tokens1: BERTTensorizer.Config = BERTTensorizer.Config(
+            tokens1: BERTTensorizerBase.Config = BERTTensorizer.Config(
                 columns=["text1"], max_seq_len=128
             )
-            tokens2: BERTTensorizer.Config = BERTTensorizer.Config(
+            tokens2: BERTTensorizerBase.Config = BERTTensorizer.Config(
                 columns=["text2"], max_seq_len=128
             )
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
