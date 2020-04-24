@@ -274,6 +274,7 @@ class BERTTensorizerBase(Tensorizer):
         max_seq_len: int = Config.max_seq_len,
         base_tokenizer: Tokenizer = None,
     ) -> None:
+        super().__init__()
         self.columns = columns
         self.vocab = vocab
         self.tokenizer = tokenizer
