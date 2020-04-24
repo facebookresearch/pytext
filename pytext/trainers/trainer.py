@@ -266,6 +266,22 @@ class Trainer(TrainerBase):
 
         return True
 
+    def move_state_dict_to_cpu(self, state_dict):
+        for key, maybe_parameter in state_dict.items():
+            if isinstance(maybe_parameter, torch.Tensor):
+                state_dict[key] = maybe_parameter.cpu()
+            else:
+                self.move_state_dict_to_cpu(maybe_parameter)
+        return state_dict
+
+    def move_state_dict_to_gpu(self, state_dict):
+        for key, maybe_parameter in state_dict.items():
+            if isinstance(maybe_parameter, torch.Tensor):
+                state_dict[key] = maybe_parameter.cuda()
+            else:
+                self.move_state_dict_to_gpu(maybe_parameter)
+        return state_dict
+
     def update_best_model(
         self, state: TrainingState, train_config: PyTextConfig, eval_metric
     ):
@@ -282,8 +298,7 @@ class Trainer(TrainerBase):
         model_state = state.model.state_dict()
         # save to cpu to avoid multiple model copies in gpu memory
         if cuda.CUDA_ENABLED:
-            for key, parameter in model_state.items():
-                model_state[key] = parameter.cpu()
+            self.move_state_dict_to_cpu(model_state)
         state.best_model_state = model_state
 
     @timing.time("save checkpoint")
@@ -319,7 +334,7 @@ class Trainer(TrainerBase):
             # Move current model to CPU to avoid multiple models in GPU memory
             state.model.cpu()
             state.model.load_state_dict(
-                {k: v.cuda() for k, v in state.best_model_state.items()}
+                self.move_state_dict_to_gpu(state.best_model_state)
             )
             # Move model back to GPU
             state.model.cuda()
