@@ -5,6 +5,7 @@ import itertools
 from typing import Any, Dict, List, Tuple
 
 import torch
+from pytext import resources
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import (
     BERTTensorizerBase,
@@ -26,9 +27,8 @@ class RoBERTaTensorizer(BERTTensorizerBase):
     __TENSORIZER_SCRIPT_IMPL__ = RoBERTaTensorizerScriptImpl
 
     class Config(BERTTensorizerBase.Config):
-        vocab_file: str = (
-            "manifold://pytext_training/tree/static/vocabs/bpe/gpt2/dict.txt"
-        )
+        # any unittest should be overriding this with a small local file
+        vocab_file: str = resources.roberta.GPT2_BPE_DICT
         tokenizer: Tokenizer.Config = GPT2BPETokenizer.Config()
         max_seq_len: int = 256
 
@@ -40,6 +40,13 @@ class RoBERTaTensorizer(BERTTensorizerBase):
             base_tokenizer = create_component(
                 ComponentType.TOKENIZER, config.base_tokenizer
             )
+
+        # map to the real vocab_file
+        config.vocab_file = (
+            resources.roberta.RESOURCE_MAP[config.vocab_file]
+            if config.vocab_file in resources.roberta.RESOURCE_MAP
+            else config.vocab_file
+        )
         with PathManager.open(config.vocab_file) as f:
             vocab = build_fairseq_vocab(
                 vocab_file=f,

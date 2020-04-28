@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from fairseq.data.dictionary import Dictionary
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
+from pytext import resources
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
@@ -379,6 +380,11 @@ class BERTTensorizer(BERTTensorizerBase):
                 replacements=special_token_replacements,
             )
         else:
+            config.vocab_file = (
+                resources.roberta.RESOURCE_MAP[config.vocab_file]
+                if config.vocab_file in resources.roberta.RESOURCE_MAP
+                else config.vocab_file
+            )
             with PathManager.open(config.vocab_file) as file_path:
                 vocab = build_fairseq_vocab(
                     dictionary_class=BertDictionary,

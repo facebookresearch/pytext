@@ -5,6 +5,7 @@ import itertools
 from typing import List
 
 import torch
+from pytext import resources
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
@@ -261,6 +262,12 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
     @classmethod
     def from_config(cls, config: Config):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+
+        config.vocab_file = (
+            resources.roberta.RESOURCE_MAP[config.vocab_file]
+            if config.vocab_file in resources.roberta.RESOURCE_MAP
+            else config.vocab_file
+        )
         with PathManager.open(config.vocab_file) as file_path:
             vocab = build_fairseq_vocab(
                 vocab_file=file_path,
