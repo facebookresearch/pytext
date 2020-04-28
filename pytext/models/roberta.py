@@ -4,6 +4,7 @@
 from typing import Dict, Optional, Tuple
 
 import torch
+from pytext import resources
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.data.roberta_tensorizer import (
@@ -63,9 +64,7 @@ class RoBERTaEncoderJit(RoBERTaEncoderBase):
 
     class Config(RoBERTaEncoderBase.Config):
         pretrained_encoder: Module.Config = Module.Config(
-            load_path=(
-                "manifold://pytext_training/tree/static/models/roberta_public.pt1"
-            )
+            load_path=resources.roberta.PUBLIC
         )
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
@@ -99,6 +98,13 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
+
+        # map to the real model_path
+        config.model_path = (
+            resources.roberta.RESOURCE_MAP[config.model_path]
+            if config.model_path in resources.roberta.RESOURCE_MAP
+            else config.model_path
+        )
         # assert config.pretrained_encoder.load_path, "Load path cannot be empty."
         self.encoder = SentenceEncoder(
             transformer=Transformer(
