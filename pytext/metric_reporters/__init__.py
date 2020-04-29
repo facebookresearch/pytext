@@ -15,6 +15,7 @@ from .pairwise_ranking_metric_reporter import PairwiseRankingMetricReporter
 from .regression_metric_reporter import RegressionMetricReporter
 from .squad_metric_reporter import SquadMetricReporter
 from .word_tagging_metric_reporter import (
+    MultiLabelSequenceTaggingMetricReporter,
     NERMetricReporter,
     SequenceTaggingMetricReporter,
     WordTaggingMetricReporter,
@@ -26,6 +27,7 @@ __all__ = [
     "MetricReporter",
     "ClassificationMetricReporter",
     "MultiLabelClassificationMetricReporter",
+    "MultiLabelSequenceTaggingMetricReporter",
     "RegressionMetricReporter",
     "IntentSlotMetricReporter",
     "LanguageModelMetricReporter",

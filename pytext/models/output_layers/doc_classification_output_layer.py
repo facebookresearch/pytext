@@ -128,7 +128,7 @@ class ClassificationScores(jit.ScriptModule):
 class BinaryClassificationOutputLayer(ClassificationOutputLayer):
     def get_pred(self, logit, *args, **kwargs):
         """See `OutputLayerBase.get_pred()`."""
-        preds = torch.max(logit, 1)[1]
+        preds = torch.max(logit, -1)[1]
         scores = F.logsigmoid(logit)
         return preds, scores
 
@@ -153,7 +153,7 @@ class BinaryClassificationOutputLayer(ClassificationOutputLayer):
 class MulticlassOutputLayer(ClassificationOutputLayer):
     def get_pred(self, logit, *args, **kwargs):
         """See `OutputLayerBase.get_pred()`."""
-        preds = torch.max(logit, 1)[1]
+        preds = torch.max(logit, -1)[1]
         scores = F.log_softmax(logit, 1)
         return preds, scores
 

@@ -15,7 +15,8 @@ def get_label_weights(vocab_dict: Dict[str, int], label_weights: Dict[str, float
     if len(pruned_label_weights) != len(label_weights):
         filtered_labels = [k for k in label_weights if k not in vocab_dict]
         print(
-            f"Warning: these labels are filtered from original label weights {filtered_labels}"
+            f"Warning: these labels are filtered from original label weights \
+            {filtered_labels}"
         )
     if len(pruned_label_weights) == 0:
         return None
