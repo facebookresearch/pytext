@@ -1075,8 +1075,8 @@ class SquadForRobertaTensorizerTest(unittest.TestCase):
         tokens, segments, seq_len, positions, start, end = tensorizer.numberize(row)
         # check against manually verified answer positions in tokenized output
         # there are 4 identical answers
-        self.assertEqual(start, [5])
-        self.assertEqual(end, [5])
+        self.assertEqual(start, [3])
+        self.assertEqual(end, [3])
         self.assertEqual(len(tokens), seq_len)
         self.assertEqual(len(segments), seq_len)
 
