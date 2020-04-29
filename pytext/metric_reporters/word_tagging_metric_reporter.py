@@ -11,6 +11,7 @@ from pytext.metrics import (
     AllConfusions,
     Confusions,
     LabelPrediction,
+    MultiLabelSoftClassificationMetrics,
     PRF1Metrics,
     compute_classification_metrics,
     compute_multi_label_multi_class_soft_metrics,
@@ -25,6 +26,9 @@ from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
+
+
+NAN_LABELS = ["__UNKNOWN__", "__PAD__"]
 
 
 def get_slots(word_names):
@@ -97,6 +101,8 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
     def __init__(self, label_names, pad_idx, channels, label_vocabs=None):
         super().__init__(channels)
         self.label_names = label_names
+        # Right now the assumption is that we use the same pad idx for all
+        # labels. #TODO Extend it to use multiple label specific pad idxs
         self.pad_idx = pad_idx
         self.label_vocabs = label_vocabs
 
@@ -110,8 +116,6 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
         )
 
     def calculate_metric(self):
-        if len(self.all_scores) == 0:
-            return {}
         list_score_pred_expect = []
         for label_idx in range(0, len(self.label_names)):
             list_score_pred_expect.append(
@@ -143,18 +147,13 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
 
     @staticmethod
     def get_model_select_metric(metrics):
-        if isinstance(metrics, dict):
+        if isinstance(metrics, MultiLabelSoftClassificationMetrics):
             # There are multiclass precision/recall labels
             # Compute average precision
-            avg_precision = 0.0
-            for _, metric in metrics.items():
-                if metric:
-                    avg_precision += sum(
-                        v.average_precision
-                        for k, v in metric.items()
-                        if v.average_precision > 0
-                    ) / (len(metric.keys()) * 1.0)
-            avg_precision = avg_precision / (len(metrics.keys()) * 1.0)
+            normalize_count = sum(1 for k in metrics.average_precision.keys()) * 1.0
+            avg_precision = (
+                sum(v for k, v in metrics.average_precision.items()) / normalize_count
+            )
         else:
             avg_precision = metrics.accuracy
         return avg_precision

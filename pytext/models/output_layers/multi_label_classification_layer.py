@@ -9,8 +9,6 @@ import torch.nn as nn
 from caffe2.python import core
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
-
-# from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
 from torch import jit
 
