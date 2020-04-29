@@ -259,12 +259,7 @@ class _NewTask(TaskBase):
     def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
-        if model.__class__.__name__ not in onnx.ONNX_MODEL_WHITELIST:
-            raise Exception(
-                "Please use torchscript_export to export a TorchScript model. "
-                "If there is hard blocker, contact latte_nlp oncall and add your "
-                "model to whitelist in pytext/utils/onnx.py."
-            )
+        onnx.validate_onnx_export(model)
 
         cuda.CUDA_ENABLED = False
         model = model.cpu()
