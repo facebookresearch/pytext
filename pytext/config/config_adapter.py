@@ -672,17 +672,37 @@ def upgrade_if_xlm(json_config):
 
 
 @register_adapter(from_version=19)
-def fix_fl_local_optimizer(json_config):
-    """Change FL local optimizer from optimizer:{SGD:{lr=0.1, momentum=0.2}}
-       to optimizer:{lr=0.1, momentum=0.2}
+def fix_fl_local_optimizer_and_trainer(json_config):
+    """a) Change FL local optimizer from optimizer:{SGD:{lr=0.1, momentum=0.2}}
+    to optimizer:{lr=0.1, momentum=0.2}
+    b) Replace trainer:{FLSyncTrainer:{foo}} by
+    trainer:{fl_trainer:{foo, type:SyncTrainer}}
+    Same for FLAsyncTrainer
     """
-    for trainer_name in ["FLSyncTrainer", "FLAsyncTrainer"]:
-        for top_section in find_dicts_containing_key(json_config, trainer_name):
-            trainer_section = top_section[trainer_name]
-            if "optimizer" in trainer_section:
-                optimizer = trainer_section.pop("optimizer")
-                sgd_config = optimizer.pop("SGD")
-                trainer_section["optimizer"] = sgd_config
+    # only for tasks that contain FLSyncTrainer or FLAsyncTrainer
+    _, container, trainer = find_parameter(json_config, "task.trainer")
+    if not trainer:
+        return json_config
+    if "FLSyncTrainer" in trainer:
+        fl_trainer_name, fl_trainer_type = "FLSyncTrainer", "SyncTrainer"
+    elif "FLAsyncTrainer" in trainer:
+        fl_trainer_name, fl_trainer_type = "FLAsyncTrainer", "AsyncTrainer"
+    else:
+        return json_config
+
+    trainer_section = trainer.pop(fl_trainer_name)
+    # first, replace optimizer:{SGD:{lr=0.1, momentum=0.2}} by
+    # optimizer:{lr=0.1, momentum=0.2}
+    if "optimizer" in trainer_section:
+        optimizer = trainer_section.pop("optimizer")
+        sgd_config = optimizer.pop("SGD")
+        trainer_section["optimizer"] = sgd_config
+    # rename "global_optimizer" to "aggregator"
+    if "global_optimizer" in trainer_section:
+        aggregator = trainer_section.pop("global_optimizer")
+        trainer_section["aggregator"] = aggregator
+    trainer_section["type"] = fl_trainer_type
+    trainer["fl_trainer"] = trainer_section
     return json_config
 
 
@@ -708,6 +728,7 @@ def upgrade_to_latest(json_config):
             version {LATEST_VERSION}"
         )
     while current_version != LATEST_VERSION:
+        print(f"Current Version: {current_version}")
         json_config = upgrade_one_version(json_config)
         current_version = json_config["version"]
     return json_config
