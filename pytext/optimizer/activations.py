@@ -39,7 +39,7 @@ class GeLU(nn.Module):
             )
 
 
-def get_activation(name):
+def get_activation(name, dim=1):
     if name == Activation.RELU:
         return nn.ReLU()
     elif name == Activation.LEAKYRELU:
@@ -49,6 +49,6 @@ def get_activation(name):
     elif name == Activation.GELU:
         return GeLU()
     elif name == Activation.GLU:
-        return nn.GLU(dim=1)
+        return nn.GLU(dim=dim)
     else:
         raise RuntimeError(f"{name} is not supported")
