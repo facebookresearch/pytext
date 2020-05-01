@@ -84,9 +84,6 @@ class WordTaggingOutputLayer(OutputLayerBase):
         ] = CrossEntropyLoss.Config()
         label_weights: Dict[str, float] = {}
         ignore_pad_in_loss: Optional[bool] = True
-        # This will be useful for nested output layers
-        # as in the case of multilabel joint models.
-        output: Optional[OutputLayerBase.Config] = OutputLayerBase.Config()
 
     @classmethod
     def from_config(cls, config: Config, labels: Vocabulary):
