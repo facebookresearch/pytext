@@ -853,8 +853,8 @@ class LabelListTensorizer(LabelTensorizer):
                     label_idx_list.append(self.pad_idx)
                 else:
                     raise Exception(
-                        "Found none or empty value in the list,"
-                        + " while pad_missing is disabled"
+                        "Found none or empty value in the list, \
+                        while pad_missing is disabled"
                     )
             else:
                 label_idx_list.append(self.vocab.lookup_all(label))

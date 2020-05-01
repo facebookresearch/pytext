@@ -753,6 +753,37 @@ def compute_multi_label_soft_metrics(
     return soft_metrics
 
 
+def compute_multi_label_multi_class_soft_metrics(
+    predictions: Sequence[Sequence[LabelListPrediction]],
+    label_names: Sequence[str],
+    label_vocabs: Sequence[Sequence[str]],
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
+) -> Dict[int, SoftClassificationMetrics]:
+    """
+
+    Computes multi-label soft classification metrics with multi-class accommodation
+
+    Args:
+        predictions: multi-label predictions,
+                     including the confidence score for each label.
+        label_names: Indexed label names.
+        recall_at_precision_thresholds: precision thresholds at which to calculate
+            recall
+        precision_at_recall_thresholds: recall thresholds at which to calculate
+            precision
+
+
+    Returns:
+        Dict from label strings to their corresponding soft metrics.
+    """
+    soft_metrics = {}
+    for label_idx, label_vocab in enumerate(label_vocabs):
+        label = list(label_names)[label_idx]
+        soft_metrics[label] = compute_soft_metrics(predictions[label_idx], label_vocab)
+    return soft_metrics
+
+
 def compute_matthews_correlation_coefficients(
     TP: int, FP: int, FN: int, TN: int
 ) -> float:

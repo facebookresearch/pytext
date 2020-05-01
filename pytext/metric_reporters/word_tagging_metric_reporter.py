@@ -13,6 +13,7 @@ from pytext.metrics import (
     LabelPrediction,
     PRF1Metrics,
     compute_classification_metrics,
+    compute_multi_label_multi_class_soft_metrics,
 )
 from pytext.metrics.intent_slot_metrics import (
     Node,
@@ -90,6 +91,73 @@ class WordTaggingMetricReporter(MetricReporter):
 
     def get_model_select_metric(self, metrics):
         return metrics.micro_scores.f1
+
+
+class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
+    def __init__(self, label_names, pad_idx, channels, label_vocabs=None):
+        super().__init__(channels)
+        self.label_names = label_names
+        self.pad_idx = pad_idx
+        self.label_vocabs = label_vocabs
+
+    @classmethod
+    def from_config(cls, config, tensorizers):
+        return MultiLabelSequenceTaggingMetricReporter(
+            channels=[ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
+            label_names=tensorizers.keys(),
+            pad_idx=[v.pad_idx for _, v in tensorizers.items()],
+            label_vocabs=[v.vocab._vocab for _, v in tensorizers.items()],
+        )
+
+    def calculate_metric(self):
+        if len(self.all_scores) == 0:
+            return {}
+        list_score_pred_expect = []
+        for label_idx in range(0, len(self.label_names)):
+            list_score_pred_expect.append(
+                list(
+                    itertools.chain.from_iterable(
+                        (
+                            LabelPrediction(s, p, e)
+                            for s, p, e in zip(scores, pred, expect)
+                            if e != self.pad_idx[label_idx]
+                        )
+                        for scores, pred, expect in zip(
+                            self.all_scores[label_idx],
+                            self.all_preds[label_idx],
+                            self.all_targets[label_idx],
+                        )
+                    )
+                )
+            )
+        metrics = compute_multi_label_multi_class_soft_metrics(
+            list_score_pred_expect,
+            self.label_names,
+            self.label_vocabs,
+            self.calculate_loss(),
+        )
+        return metrics
+
+    def batch_context(self, raw_batch, batch):
+        return {}
+
+    @staticmethod
+    def get_model_select_metric(metrics):
+        if isinstance(metrics, dict):
+            # There are multiclass precision/recall labels
+            # Compute average precision
+            avg_precision = 0.0
+            for _, metric in metrics.items():
+                if metric:
+                    avg_precision += sum(
+                        v.average_precision
+                        for k, v in metric.items()
+                        if v.average_precision > 0
+                    ) / (len(metric.keys()) * 1.0)
+            avg_precision = avg_precision / (len(metrics.keys()) * 1.0)
+        else:
+            avg_precision = metrics.accuracy
+        return avg_precision
 
 
 class SequenceTaggingMetricReporter(MetricReporter):

@@ -590,7 +590,8 @@ class Trainer(TrainerBase):
 
             if batch_id % self.config.num_samples_to_log_progress == 0:
                 print(
-                    f"Running batch {batch_id} for epoch {state.epoch} in {state.stage} stage",
+                    f"Running batch {batch_id} for epoch {state.epoch} \
+                        in {state.stage} stage",
                     flush=True,
                 )
         # update gradients after len(samples) forward & backward
