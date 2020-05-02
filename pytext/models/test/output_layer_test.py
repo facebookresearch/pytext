@@ -10,7 +10,11 @@ import numpy as np
 import torch
 from hypothesis import given
 from pytext.data.tensorizers import LabelTensorizer
-from pytext.data.utils import Vocabulary
+from pytext.data.utils import PAD, Vocabulary
+from pytext.loss import CrossEntropyLoss
+from pytext.models.output_layers.doc_classification_output_layer import (
+    ClassificationOutputLayer,
+)
 from pytext.models.output_layers.intent_slot_output_layer import IntentSlotOutputLayer
 from pytext.models.output_layers.word_tagging_output_layer import (
     CRFOutputLayer,
@@ -19,6 +23,23 @@ from pytext.models.output_layers.word_tagging_output_layer import (
 
 
 class OutputLayerTest(hu.HypothesisTestCase):
+    def test_doc_classification_output_layer(self):
+        tensorizer = LabelTensorizer()
+        tensorizer.vocab = Vocabulary([PAD, "foo", "bar"])
+        layer = ClassificationOutputLayer.from_config(
+            config=ClassificationOutputLayer.Config(loss=CrossEntropyLoss.Config()),
+            labels=tensorizer.vocab,
+        )
+        self.assertEqual(layer.loss_fn.ignore_index, 0)
+
+        # use default pad
+        tensorizer.vocab = Vocabulary(["foo", "bar"])
+        layer = ClassificationOutputLayer.from_config(
+            config=ClassificationOutputLayer.Config(loss=CrossEntropyLoss.Config()),
+            labels=tensorizer.vocab,
+        )
+        self.assertEqual(layer.loss_fn.ignore_index, -1)
+
     def test_create_word_tagging_output_layer(self):
         tensorizer = LabelTensorizer()
         tensorizer.vocab = Vocabulary(["foo", "bar"])
