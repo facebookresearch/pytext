@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Union
 import torch
 import torch.nn.functional as F
 from caffe2.python import core
+from pytext.common import Padding
 from pytext.config.component import create_loss
 from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
@@ -60,16 +61,23 @@ class ClassificationOutputLayer(OutputLayerBase):
         if labels is not None:
             vocab = list(labels)
             vocab_dict = labels.idx
+            pad_token_idx = labels.idx.get(
+                labels.pad_token, Padding.DEFAULT_LABEL_PAD_IDX
+            )
         else:
             vocab = metadata.vocab.itos
             vocab_dict = metadata.vocab.stoi
+            pad_token_idx = getattr(metadata, "pad_token_idx", -1)
 
         label_weights = (
             get_label_weights(vocab_dict, config.label_weights)
             if config.label_weights
             else None
         )
-        loss = create_loss(config.loss, weight=label_weights)
+
+        loss = create_loss(
+            config.loss, weight=label_weights, ignore_index=pad_token_idx
+        )
 
         if isinstance(loss, BinaryCrossEntropyLoss):
             cls = BinaryClassificationOutputLayer
@@ -78,7 +86,7 @@ class ClassificationOutputLayer(OutputLayerBase):
         else:
             cls = MulticlassOutputLayer
 
-        return cls(vocab, create_loss(config.loss, weight=label_weights), config)
+        return cls(vocab, loss, config)
 
     def get_pred(self, logit, *args, **kwargs):
         """Compute and return prediction and scores from the model.
