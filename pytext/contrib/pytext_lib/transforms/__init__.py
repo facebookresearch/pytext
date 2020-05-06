@@ -3,7 +3,10 @@
 
 from .transforms import (
     CapTransform,
+    DictToListTransform,
+    IdenticalTransform,
     LabelTransform,
+    ListToDictTransform,
     RobertaInputTransform,
     SpaceTokenizer,
     SpmTokenizerTransform,
@@ -15,7 +18,10 @@ from .transforms import (
 
 __all__ = [
     "CapTransform",
+    "DictToListTransform",
+    "IdenticalTransform",
     "LabelTransform",
+    "ListToDictTransform",
     "RobertaInputTransform",
     "SpaceTokenizer",
     "SpmTokenizerTransform",

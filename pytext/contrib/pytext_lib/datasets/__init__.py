@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reservedimport pytext_lib
 
-from .datasets import TsvDataset
+from .batchers import Batcher, PoolingBatcher
+from .datasets import NestedDataset, TsvDataset
 
 
-__all__ = ["TsvDataset"]
+__all__ = ["Batcher", "NestedDataset", "PoolingBatcher", "TsvDataset"]

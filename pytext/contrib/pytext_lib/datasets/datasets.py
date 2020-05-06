@@ -4,7 +4,14 @@
 import csv
 import sys
 import threading
+from typing import Any, Dict, List
 
+import torch.nn as nn
+from pytext.contrib.pytext_lib.datasets import Batcher
+from pytext.contrib.pytext_lib.transforms import (
+    DictToListTransform,
+    ListToDictTransform,
+)
 from pytext.data.sources.data_source import SafeFileWrapper
 from torch.utils.data import IterableDataset
 
@@ -56,61 +63,61 @@ class TSV:
 class TsvDataset(IterableDataset):
     def __init__(
         self,
-        file_path,
-        field_names,
-        batch_size=1,
-        transform=None,
-        label_transform=None,
-        delimiter="\t",
+        file_path: str,
+        field_names: List[str],
+        batcher: Batcher = None,
+        batch_size: int = 1,
+        transform: nn.Module = None,
+        label_transform: nn.Module = None,
+        delimiter: str = "\t",
     ):
         super().__init__()
+        self.transform = transform or ListToDictTransform()
+        self.label_transform = label_transform or ListToDictTransform()
+
         self.file_path = file_path
-        self.batch_size = batch_size
-        self.transform = transform
-        self.label_transform = label_transform
-
         self.file = SafeFileWrapper(self.file_path, encoding="utf-8", errors="replace")
-        self.iterator = TSV(self.file, field_names=field_names, delimiter=delimiter)
+        iterator = TSV(self.file, field_names=field_names, delimiter=delimiter)
+        batcher = batcher or Batcher(batch_size)
+        self.iterator = batcher.batchify(iterator)
 
-    def __iter__(self):
-        batch = []
-        tensors = {}
-        for example in self.iterator:
-            # if batch_size is None:
-            #     yield self.transform(self.transform.extract_inputs(batch))
-            # else:
-            batch.append(example)
-            if len(batch) == self.batch_size:
-                if self.transform:
-                    tensors.update(self.transform(self.transform.extract_inputs(batch)))
-                else:
-                    tensors.update(batch)
+    def __iter__(self) -> Dict[str, List[Any]]:
+        for batch in self.iterator:
+            input_dict = self.transform(self.transform.extract_inputs(batch))
+            label_dict = self.label_transform(batch)
+            yield {**input_dict, **label_dict}
 
-                if self.label_transform:
-                    tensors.update(self.label_transform(batch))
-                yield tensors
 
-                tensors.clear()
-                batch.clear()
+def transpose_dataset(dataset: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
+    dict_to_list_transform = DictToListTransform()
+    for batch in dataset:
+        # convert dict_of_list to list_of_dict
+        list_of_dict = dict_to_list_transform(batch)
+        if len(list_of_dict) == 1:
+            list_of_dict = list_of_dict[0]
+        yield list_of_dict
 
 
 class NestedDataset(IterableDataset):
-    def __init__(self, dataset, batch_size=1, transform=None, label_transform=None):
+    def __init__(
+        self,
+        dataset: Dict[str, List[Any]],
+        batcher: Batcher = None,
+        batch_size: int = 1,
+        transform: nn.Module = None,
+        label_transform: nn.Module = None,
+    ):
         super().__init__()
         self.batch_size = batch_size
-        self.transform = transform
-        self.label_transform = label_transform
-        self.iterator = dataset
+        self.transform = transform or ListToDictTransform()
+        self.label_transform = label_transform or ListToDictTransform()
 
-    def __iter__(self):
-        batch = []
-        tensors = {}
-        for example in self.iterator:
-            batch.append(example)
-            if len(batch) == self.batch_size:
-                tensors.update(self.transform(self.transform.extract_inputs(batch)))
-                tensors.update(self.label_transform(batch))
-                yield tensors
+        iterator = transpose_dataset(dataset)
+        batcher = batcher or Batcher(batch_size)
+        self.iterator = batcher.batchify(iterator)
 
-                tensors.clear()
-                batch.clear()
+    def __iter__(self) -> Dict[str, List[Any]]:
+        for batch in self.iterator:
+            input_dict = self.transform(self.transform.extract_inputs(batch))
+            label_dict = self.label_transform(batch)
+            yield {**input_dict, **label_dict}

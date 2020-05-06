@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -240,14 +240,50 @@ class RobertaInputTransform(nn.Module):
         return text_batch
 
 
-class LabelTransform(Callable):
+class LabelTransform(nn.Module):
     def __init__(self, vocab: Vocabulary, field_name: str, pad_idx: int):
+        super().__init__()
         self.vocab = vocab
         self.field_name = field_name
         self.pad_idx = pad_idx
 
-    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
+    def forward(self, batch: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
         labels = []
         for row in batch:
             labels.append(self.vocab.lookup_all(row[self.field_name]))
         return {"label": pad_and_tensorize(labels, self.pad_idx)}
+
+
+class IdenticalTransform(nn.Module):
+    def forward(self, batch: Any) -> Any:
+        super().__init__()
+        return batch
+
+    def extract_inputs(self, batch: Any) -> Any:
+        return batch
+
+
+class ListToDictTransform(nn.Module):
+    def forward(self, batch: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
+        super().__init__()
+        dic = {}
+        for row in batch:
+            for k, v in row.items():
+                if k in dic:
+                    dic[k].append(v)
+                else:
+                    dic[k] = [v]
+        return dic
+
+    def extract_inputs(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return batch
+
+
+class DictToListTransform(nn.Module):
+    def forward(self, batch: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
+        super().__init__()
+        # convert dict_of_list to list_of_dict
+        return [dict(zip(batch, t)) for t in zip(*batch.values())]
+
+    def extract_inputs(self, batch: Dict[str, List[Any]]) -> Dict[str, List[Any]]:
+        return batch
