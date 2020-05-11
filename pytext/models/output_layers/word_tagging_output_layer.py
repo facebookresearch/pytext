@@ -39,7 +39,7 @@ class WordTaggingScores(nn.Module):
     def forward(
         self, logits: torch.Tensor, context: Optional[Dict[str, torch.Tensor]] = None
     ) -> List[List[Dict[str, float]]]:
-        scores: torch.Tensor = F.log_softmax(logits, 2)
+        scores: torch.Tensor = F.log_softmax(logits, dim=2)
         return _get_prediction_from_scores(scores, self.classes)
 
 
@@ -57,7 +57,7 @@ class CRFWordTaggingScores(WordTaggingScores):
         assert "seq_lens" in context
         pred = self.crf.decode(logits, context["seq_lens"])
         logits_rearranged = _rearrange_output(logits, pred)
-        scores: torch.Tensor = F.log_softmax(logits_rearranged, 2)
+        scores: torch.Tensor = F.log_softmax(logits_rearranged, dim=2)
         return _get_prediction_from_scores(scores, self.classes)
 
 
@@ -156,7 +156,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
 
         """
         preds = torch.max(logit, 2)[1]
-        scores = F.log_softmax(logit, 2)
+        scores = F.log_softmax(logit, dim=2)
         return preds, scores
 
     def export_to_caffe2(
@@ -260,7 +260,7 @@ class CRFOutputLayer(OutputLayerBase):
             raise MissingValueError("Expected non-None context but got None.")
         pred = self.crf.decode(logit, context["seq_lens"])
         logit_rearranged = _rearrange_output(logit, pred)
-        scores = F.log_softmax(logit_rearranged, 2)
+        scores = F.log_softmax(logit_rearranged, dim=2)
         return pred, scores
 
     def export_to_caffe2(

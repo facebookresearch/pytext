@@ -121,7 +121,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         # Do softmax since we do log softmax before exporting predictor nets
         # We do exp on caffe2 output instead, because log of numbers that are
         # very close to 0 gives different result in pytorch and caffe2
-        py_outs = F.softmax(py_outs, 1)
+        py_outs = F.softmax(py_outs, dim=1)
 
         np.testing.assert_array_almost_equal(
             py_outs.view(-1).detach().numpy(),

@@ -149,7 +149,7 @@ The output layer can be simple enough and demonstrates a few important notions i
 
         def get_pred(self, logit, *args, **kwargs):
             preds = torch.max(logit, 2)[1]
-            scores = F.log_softmax(logit, 2)
+            scores = F.log_softmax(logit, dim=2)
             return preds, scores
 
 6. Metric Reporter

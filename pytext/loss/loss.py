@@ -35,7 +35,7 @@ class CrossEntropyLoss(Loss):
         # There's some wisdom from fairseq folks that it's the preferred way.
         # Needs more testing before we can change to using F.cross_entropy().
         return F.nll_loss(
-            F.log_softmax(logits, 1, dtype=torch.float32),
+            F.log_softmax(logits, dim=1, dtype=torch.float32),
             targets,
             weight=self.weight,
             ignore_index=self.ignore_index,
@@ -407,7 +407,7 @@ class KLDivergenceCELoss(Loss):
         hard_targets, _, soft_targets_logits = targets
         soft_targets = F.softmax(soft_targets_logits.float() / self.t, dim=1)
         soft_targets = soft_targets.clamp(1e-10, 1 - 1e-10)
-        log_probs = F.log_softmax(logits / self.t, 1)
+        log_probs = F.log_softmax(logits / self.t, dim=1)
 
         if self.weight is not None:
             soft_loss = (

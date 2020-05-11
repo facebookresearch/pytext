@@ -162,7 +162,7 @@ class MulticlassOutputLayer(ClassificationOutputLayer):
     def get_pred(self, logit, *args, **kwargs):
         """See `OutputLayerBase.get_pred()`."""
         preds = torch.max(logit, -1)[1]
-        scores = F.log_softmax(logit, 1)
+        scores = F.log_softmax(logit, dim=1)
         return preds, scores
 
     def torchscript_predictions(self):

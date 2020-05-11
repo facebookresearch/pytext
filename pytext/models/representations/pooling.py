@@ -47,7 +47,7 @@ class SelfAttention(Module):
         alphas = torch.onnx.operators.reshape_from_tensor_shape(
             alphas, size[:2]
         )  # (bsz, sent_len)
-        alphas = self.softmax(alphas)  # (bsz, sent_len)
+        alphas = self.softmax(alphas, dim=2)  # (bsz, sent_len)
 
         # (bsz, rep_dim)
         return torch.bmm(alphas.unsqueeze(1), inputs).squeeze(1)

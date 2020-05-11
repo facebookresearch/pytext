@@ -367,7 +367,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
                 py_model.eval()
                 py_outs = py_model(*test_inputs)
                 # Do log_softmax since we do that before exporting predictor nets
-                py_outs = F.log_softmax(py_outs, 1)
+                py_outs = F.log_softmax(py_outs, dim=1)
                 np.testing.assert_array_almost_equal(
                     py_outs.view(-1).detach().numpy(), np.array(c2_out).flatten()
                 )

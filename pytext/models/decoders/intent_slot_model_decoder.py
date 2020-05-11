@@ -87,7 +87,7 @@ class IntentSlotModelDecoder(DecoderBase):
 
         if self.use_doc_probs_in_word:
             # Get doc probability distribution
-            doc_prob = F.softmax(logit_d, 1)
+            doc_prob = F.softmax(logit_d, dim=1)
             word_input_shape = x_w.size()
             doc_prob = doc_prob.unsqueeze(1).repeat(1, word_input_shape[1], 1)
             x_w = torch.cat((x_w, doc_prob), 2)
