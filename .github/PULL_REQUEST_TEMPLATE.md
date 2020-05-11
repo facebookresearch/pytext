@@ -23,7 +23,7 @@
 - [ ] My code follows the code style of this project.
 - [ ] My change requires a change to the documentation.
 - [ ] I have updated the documentation accordingly.
-- [ ] I have read the **CONTRIBUTING** document.
-- [ ] I have completed my CLA (see **CONTRIBUTING**)
+- [ ] I have read the [**CONTRIBUTING**](https://github.com/facebookresearch/pytext/blob/master/CONTRIBUTING.md) document.
+- [ ] I have completed my CLA (see [**CLA**](https://github.com/facebookresearch/pytext/blob/master/CONTRIBUTING.md#contributor-license-agreement-cla))
 - [ ] I have added tests to cover my changes.
 - [ ] All new and existing tests passed.
