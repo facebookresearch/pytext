@@ -115,7 +115,7 @@ class DocumentClassificationTask(NewTask):
 
 class DocumentRegressionTask(NewTask):
     class Config(NewTask.Config):
-        model: DocRegressionModel.Config = DocRegressionModel.Config()
+        model: BaseModel.Config = DocRegressionModel.Config()
         metric_reporter: RegressionMetricReporter.Config = (
             RegressionMetricReporter.Config()
         )

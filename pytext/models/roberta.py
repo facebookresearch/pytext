@@ -11,8 +11,14 @@ from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
     RoBERTaTokenLevelTensorizer,
 )
-from pytext.data.tensorizers import FloatListTensorizer, LabelTensorizer, Tensorizer
+from pytext.data.tensorizers import (
+    FloatListTensorizer,
+    LabelTensorizer,
+    NumericLabelTensorizer,
+    Tensorizer,
+)
 from pytext.models.bert_classification_models import NewBertModel
+from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import BaseModel
 from pytext.models.module import Module, create_module
@@ -172,6 +178,28 @@ class RoBERTa(NewBertModel):
                 output_layer=self.output_layer.torchscript_predictions(),
                 tensorizer=script_tensorizer,
             )
+
+
+class RoBERTaRegression(NewBertRegressionModel):
+    class Config(NewBertRegressionModel.Config):
+        class RegressionModelInput(ConfigBase):
+            tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
+
+        inputs: RegressionModelInput = RegressionModelInput()
+        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
+
+    def torchscriptify(self, tensorizers, traced_model):
+        """Using the traced model, create a ScriptModule which has a nicer API that
+        includes generating tensors from simple data types, and returns classified
+        values according to the output layer (eg. as a dict mapping class name to score)
+        """
+        script_tensorizer = tensorizers["tokens"].torchscriptify()
+        return ScriptPyTextModule(
+            model=traced_model,
+            output_layer=self.output_layer.torchscript_predictions(),
+            tensorizer=script_tensorizer,
+        )
 
 
 class RoBERTaWordTaggingModel(BaseModel):
