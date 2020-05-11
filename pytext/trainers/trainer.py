@@ -13,6 +13,7 @@ from pytext.config.component import (
     Component,
     ComponentType,
     create_optimizer,
+    create_privacy_engine,
     create_scheduler,
     create_sparsifier,
 )
@@ -21,7 +22,7 @@ from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
-from pytext.optimizer import Adam, Optimizer, learning_rates
+from pytext.optimizer import Adam, Optimizer, PrivacyEngine, learning_rates
 from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerFairseq
 from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
@@ -119,6 +120,8 @@ class Trainer(TrainerBase):
         #: backward and master weight will be maintained on original optimizer.
         #: https://arxiv.org/abs/1710.03740
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
+        # PrivacyEngine related args
+        privacy_engine: Optional[PrivacyEngine.Config] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
@@ -135,6 +138,14 @@ class Trainer(TrainerBase):
             self.optimizer: torch.optim.Optimizer = create_optimizer(
                 config.optimizer, model
             )
+        self.privacy_engine: PrivacyEngine = (
+            create_privacy_engine(config.privacy_engine, model)
+            if config.privacy_engine
+            else None
+        )
+        if self.privacy_engine is not None:
+            print("Attaching Privacy engine to the optimzer")
+            self.privacy_engine.attach(self.optimizer)
 
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, self.optimizer)
@@ -372,6 +383,7 @@ class Trainer(TrainerBase):
             optimizer=self.optimizer,
             scheduler=self.scheduler,
             sparsifier=self.sparsifier,
+            privacy_engine=self.privacy_engine,
             rank=rank,
         )
         return self.train_from_state(
@@ -537,6 +549,7 @@ class Trainer(TrainerBase):
                     optimizer=getattr(
                         state, "optimizer", None
                     ),  # optimizer is not present during test
+                    privacy_engine=getattr(state, "privacy_engine", None),
                 )
         else:
             metric_reporter._reset()
