@@ -5,7 +5,7 @@ fvcore
 hypothesis<4.0
 joblib
 numpy
-onnx>=1.6.0
+onnx==1.6.0
 # pytorch-pretrained-bert requires python-dateutil < 2.8.1
 python-dateutil==2.8.0
 pandas
