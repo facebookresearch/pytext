@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 from pytext.config.component import create_loss
@@ -77,3 +77,21 @@ class RegressionOutputLayer(OutputLayerBase):
         if self.squash_to_unit_range:
             prediction = torch.sigmoid(prediction)
         return prediction, prediction
+
+    def torchscript_predictions(self):
+        return RegressionScores(self.squash_to_unit_range)
+
+
+class RegressionScores(torch.jit.ScriptModule):
+    def __init__(self, squash_to_unit_range: bool):
+        super().__init__()
+        self.squash_to_unit_range = torch.jit.Attribute(squash_to_unit_range, bool)
+
+    @torch.jit.script_method
+    def forward(self, logits: torch.Tensor) -> List[float]:
+        # logits: B x 1, prediction: B
+        prediction = logits.squeeze(dim=1)
+        if self.squash_to_unit_range:
+            prediction = torch.sigmoid(prediction)
+        scores: List[float] = prediction.tolist()
+        return scores
