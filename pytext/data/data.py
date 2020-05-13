@@ -93,7 +93,7 @@ class PoolingBatcher(Batcher):
 
     class Config(Batcher.Config):
         #: Size of a pool expressed in number of batches
-        pool_num_batches: int = 1000
+        pool_num_batches: int = 10000
         #: How many pool-sized chunks to load at a time for shuffling
         num_shuffled_pools: int = 1
 
@@ -266,7 +266,7 @@ class Data(Component):
         tensorizers: Dict[str, Tensorizer],
         batcher: Batcher = None,
         sort_key: Optional[str] = None,
-        in_memory: Optional[bool] = True,
+        in_memory: Optional[bool] = False,
         init_tensorizers: Optional[bool] = True,
         init_tensorizers_from_scratch: Optional[bool] = True,
     ):
