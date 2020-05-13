@@ -1,0 +1,159 @@
+<doctype html>
+
+    <head>
+        <title>Document Classification Console</title>
+
+        <style>
+            .button {
+                margin-top: 20px;
+                height: 30px;
+                width: 100px;
+                font-size: 12pt;
+            }
+
+            #query {
+                height: 50px;
+                width: 700px;
+                font-size: 14pt;
+                padding-left: 10px;
+            }
+
+            #submit_button {
+                height: 50px;
+                width: 70px;
+                font-size: 14pt;
+            }
+
+            .selection_area {
+                padding: 20px;
+            }
+
+            input[type=radio]:checked+label {
+                color: red;
+            }
+        </style>
+
+        <script>
+            var PYTHON_SERVER_ADDRESS = "{{ console_address }}";
+            window.onload = function () {
+                function makeScoreString(raw_scores) {
+                    return raw_scores[0] + ": " + (raw_scores[1] * 100).toFixed(2) + "%";
+                }
+                function makeUL(query, array) {
+                    // Create the list element:
+                    var prediction_container = document.createElement('div');
+                    var list = document.createElement('ul');
+
+                    var header = document.createElement("h4");
+                    header.appendChild(document.createTextNode("Help us gather more data!"));
+                    prediction_container.appendChild(header);
+                    prediction_container.appendChild(document.createTextNode("Select the correct prediction from below and submit to provide us more data to learn from!"))
+
+                    // prediction_container.appendChild(list);
+
+                    var selection_area = document.createElement("div");
+                    selection_area.setAttribute("class", "selection_area");
+
+
+                    for (var i = 0; i < array.length; i++) {
+                        // Create the list item:
+                        var item = document.createElement('li');
+                        var intent_name = array[i][0];
+                        var intent_score = array[i][1];
+
+                        var choiceSelection = document.createElement('input')
+                        choiceSelection.setAttribute('type', 'radio');
+                        choiceSelection.setAttribute('name', 'choice');
+                        choiceSelection.setAttribute('value', query + "," + intent_name);
+                        choiceSelection.setAttribute('id', "choice_" + intent_name);
+
+                        var choiceLabel = document.createElement('label')
+                        choiceLabel.setAttribute('for', "choice_" + intent_name);
+                        choiceLabel.appendChild(document.createTextNode(makeScoreString(array[i])));
+
+                        selection_area.appendChild(choiceSelection);
+                        selection_area.appendChild(choiceLabel);
+                        selection_area.appendChild(document.createElement("br"));
+                    }
+
+                    // add submit button
+
+                    var submit_data_button = document.createElement("button");
+                    submit_data_button.setAttribute("type", "submit");
+                    submit_data_button.setAttribute("class", "button");
+                    submit_data_button.onclick = function () {
+                        var data_point = document.querySelector('input[name="choice"]:checked').value;
+                        var xhr = new XMLHttpRequest();
+                        xhr.onreadystatechange = function () {
+                            if (this.readyState == 4) {
+                                if (this.status == 200) {
+                                    var data = JSON.parse(xhr.responseText);
+                                    // Display the returned data in browser
+                                    var success_message = "The data point (query=" + data.query + ", label=" + data.label + ") has been added, thank you for your help!";
+                                    document.getElementById('raw_scores').innerHTML = success_message;
+                                } else {
+                                    console.error('Error: ' + this.status);
+                                }
+                            }
+                        };
+
+                        xhr.open('GET', PYTHON_SERVER_ADDRESS + 'api/add_data/?data_point=' + encodeURI(data_point));
+                        xhr.send();
+                    };
+
+                    submit_data_button.appendChild(document.createTextNode("Submit"));
+
+                    selection_area.appendChild(submit_data_button);
+                    prediction_container.appendChild(selection_area);
+                    return prediction_container;
+                }
+
+                // Add the contents of options[0] to #foo:
+                document.getElementById('submit_button').onclick = function () {
+                    var query_box_val = document.getElementById('query').value;
+                    var xhr = new XMLHttpRequest();
+                    xhr.onreadystatechange = function () {
+                        if (this.readyState == 4) {
+                            if (this.status == 200) {
+                                var data = JSON.parse(xhr.responseText);
+                                // Display the returned data in browser
+                                document.getElementById("best_prediction").innerHTML = makeScoreString(data.prediction);
+                                document.getElementById('raw_scores').innerHTML = "";
+                                document.getElementById('raw_scores').appendChild(makeUL(data.query, data.raw_scores));
+                            } else {
+                                console.error('Error: ' + this.status);
+                            }
+                        }
+                    };
+
+                    xhr.open('GET', PYTHON_SERVER_ADDRESS + "api/model/?query=" + encodeURI(query_box_val));
+                    xhr.send();
+                };
+
+                // Query on enter
+                var query_box = document.getElementById("query");
+                query_box.addEventListener("keyup", function (event) {
+                    // Number 13 is the "Enter" key on the keyboard
+                    if (event.keyCode === 13) {
+                        event.preventDefault();
+                        document.getElementById("submit_button").click();
+                    }
+                });
+            };
+        </script>
+    </head>
+
+    <body>
+
+        <h2 id="title">Document Classification Console</h2>
+        <input type="text" name="doc" id="query" value="Sample query">
+        <button type="submit" id="submit_button">Enter</button>
+
+        <br />
+        <h3>Top Model Prediction</h3>
+        <div id="best_prediction"></div>
+
+        <br />
+        <div id="raw_scores"></div>
+    </body>
+</doctype>
