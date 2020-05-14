@@ -1,0 +1,57 @@
+[
+  {
+    "original": {
+      "task": {
+        "MaskDecoupledSeq2SeqTask": {
+          "model": {
+            "source_embedding": {
+              "load_path": null,
+              "save_path": null,
+              "shared_module_key": null,
+              "embed_dim": 28,
+              "embedding_init_range": null,
+              "padding_idx": null
+            },
+            "target_embedding": {
+              "load_path": null,
+              "save_path": null,
+              "shared_module_key": null,
+              "embed_dim": 32,
+              "embedding_init_range": null,
+              "padding_idx": null
+            }
+          }
+        }
+      }
+    },
+    "adapted": {
+      "task": {
+        "MaskDecoupledSeq2SeqTask": {
+          "model": {
+            "source_embedding": {
+              "WordEmbedding": {
+                "load_path": null,
+                "save_path": null,
+                "shared_module_key": null,
+                "embed_dim": 28,
+                "embedding_init_range": null,
+                "padding_idx": null
+              }
+            },
+            "target_embedding": {
+              "WordEmbedding": {
+                "load_path": null,
+                "save_path": null,
+                "shared_module_key": null,
+                "embed_dim": 32,
+                "embedding_init_range": null,
+                "padding_idx": null
+              }
+            }
+          }
+        }
+      },
+      "version": 21
+    }
+  }
+]
