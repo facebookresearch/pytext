@@ -102,13 +102,17 @@ class ClassificationMetricReporter(MetricReporter):
             ComparableClassificationMetric.LABEL_AVG_PRECISION,
             ComparableClassificationMetric.LABEL_ROC_AUC,
         ):
-            assert config.target_label is not None
+            assert (
+                config.target_label is not None
+            ), "target_label must be set for selected metric"
             assert config.target_label in label_names
         if config.model_select_metric in (
             ComparableClassificationMetric.ROC_AUC,
             ComparableClassificationMetric.MCC,
         ):
-            assert len(label_names) == 2
+            assert (
+                len(label_names) == 2
+            ), "selected metric is valid for binary labels only"
 
         return cls(
             label_names,
