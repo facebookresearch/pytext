@@ -198,10 +198,10 @@ class Node:
                 ancestors += self.parent.list_ancestors()
         return ancestors
 
-    def validate_node(self):
+    def validate_node(self, *args):
         if self.children:
             for child in self.children:
-                child.validate_node()
+                child.validate_node(*args)
 
     # Returns all tokens in the span covered by this node
     def list_tokens(self):
@@ -304,8 +304,8 @@ class Root(Node):
     def __init__(self):
         super().__init__("ROOT")
 
-    def validate_node(self):
-        super().validate_node()
+    def validate_node(self, *args):
+        super().validate_node(*args)
         for child in self.children:
             if type(child) == Slot or type(child) == Root:
                 raise TypeError(
@@ -324,8 +324,8 @@ class Intent(Node):
     def __init__(self, label):
         super().__init__(label)
 
-    def validate_node(self):
-        super().validate_node()
+    def validate_node(self, *args):
+        super().validate_node(*args)
         for child in self.children:
             if type(child) == Intent or type(child) == Root:
                 raise TypeError(
@@ -342,8 +342,12 @@ class Slot(Node):
     def __init__(self, label):
         super().__init__(label)
 
-    def validate_node(self):
-        super().validate_node()
+    def validate_node(self, allow_empty_slots=True, *args):
+        super().validate_node(*args)
+        if not allow_empty_slots:
+            if len(self.children) == 0:
+                raise TypeError("Empty slot found: " + self.label)
+
         for child in self.children:
             if type(child) == Slot or type(child) == Root:
                 raise TypeError(
@@ -362,7 +366,7 @@ class Token(Node):
         self.index = index
         self.children = None
 
-    def validate_node(self):
+    def validate_node(self, *args):
         if self.children is not None:
             raise TypeError(
                 "A token node is terminal and should not \
@@ -508,7 +512,7 @@ class Tree:
                     + "Utterance is: {}".format(utterance)
                 )
 
-    def validate_tree(self):
+    def validate_tree(self, allow_empty_slots=True):
         """
         This is a method for checking that roots/intents/slots are
         nested correctly.
@@ -525,16 +529,16 @@ class Tree:
                         COMBINATION_SLOT_LABEL,
                     )
                 )
-            self.recursive_validation(self.root)
+            self.recursive_validation(self.root, allow_empty_slots)
         except TypeError as t:
             raise ValueError(
                 "Failed validation for {}".format(self.root) + "\n" + str(t)
             )
 
-    def recursive_validation(self, node):
-        node.validate_node()
+    def recursive_validation(self, node, *args):
+        node.validate_node(*args)
         for child in node.children:
-            child.validate_node()
+            child.validate_node(*args)
 
     def print_tree(self):
         print(self.flat_str())
