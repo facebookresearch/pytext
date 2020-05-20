@@ -49,7 +49,7 @@ def create_schema(
 
 
 def create_tensorizers(
-    model_inputs: Union[BaseModel.Config.ModelInput, Dict[str, Tensorizer.Config]],
+    model_inputs: Union[BaseModel.Config.ModelInput, Dict[str, Tensorizer.Config]]
 ) -> Dict[str, Tensorizer]:
     if not isinstance(model_inputs, dict):
         model_inputs = model_inputs._asdict()
