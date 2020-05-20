@@ -66,6 +66,16 @@ def build_subclass_dict(subclasses):
     return subclasses_dict
 
 
+def _any_from_json(json_obj):
+    if _is_dict(json_obj):
+        # convert to vanilla python dict
+        # call _any_from_json recursively on values
+        # Example: fancy_dict(a_key, fancy_dict(another_key, value))
+        # will get converted into plain dict {a_key: {another_key: value}}
+        return {key: _any_from_json(value) for key, value in json_obj.items()}
+    return json_obj
+
+
 def _union_from_json(subclasses, json_obj):
     if not _is_dict(json_obj):
         raise IncorrectTypeError(
@@ -119,7 +129,7 @@ def _value_from_json(cls, value):
     elif hasattr(cls, "_fields"):
         return config_from_json(cls, value)
     elif cls_type == Any:
-        return value
+        return _any_from_json(value)
     elif cls_type == Union:
         return _union_from_json(cls.__args__, value)
     elif issubclass(cls_type, Enum):
