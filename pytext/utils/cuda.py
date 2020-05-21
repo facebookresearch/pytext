@@ -50,3 +50,15 @@ def tensor(data, dtype):
 
 def device():
     return "cuda:{}".format(torch.cuda.current_device()) if CUDA_ENABLED else "cpu"
+
+
+class CPUOnlyParameter(torch.nn.Parameter):
+    def __new__(cls, *args, **kwargs):
+        assert (
+            DISTRIBUTED_WORLD_SIZE <= 1
+        ), "Multiple GPUs not supported for cpu_only embeddings"
+        return super().__new__(cls, *args, **kwargs)
+
+    def cuda(self, device=None):
+        # We do nothing because this Parameter should only be on the CPU
+        return self
