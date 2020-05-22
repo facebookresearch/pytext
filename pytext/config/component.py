@@ -32,6 +32,7 @@ class ComponentType(enum.Enum):
     METRIC_REPORTER = "metric_reporter"
     SPARSIFIER = "sparsifier"
     MASKING_FUNCTION = "masking_function"
+    PRIVACY_ENGINE = "privacy_engine"
 
 
 class RegistryError(Exception):
@@ -244,6 +245,12 @@ def create_scheduler(scheduler_config, optimizer, *args, **kwargs):
 def create_sparsifier(sparsifier_config, *args, **kwargs):
     return create_component(
         ComponentType.SPARSIFIER, sparsifier_config, *args, **kwargs
+    )
+
+
+def create_privacy_engine(privacy_engine_config, *args, **kwargs):
+    return create_component(
+        ComponentType.PRIVACY_ENGINE, privacy_engine_config, *args, **kwargs
     )
 
 
