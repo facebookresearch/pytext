@@ -333,9 +333,7 @@ class Trainer(TrainerBase):
         if cuda.CUDA_ENABLED:
             # Move current model to CPU to avoid multiple models in GPU memory
             state.model.cpu()
-            state.model.load_state_dict(
-                self.move_state_dict_to_gpu(state.best_model_state)
-            )
+            state.model.load_state_dict(state.best_model_state)
             # Move model back to GPU
             state.model.cuda()
         else:
