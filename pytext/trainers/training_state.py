@@ -7,7 +7,7 @@ from typing import Any, Dict
 from pytext.common.constants import Stage
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.model import Model
-from pytext.optimizer import Optimizer
+from pytext.optimizer import Optimizer, PrivacyEngine
 from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
 
@@ -18,6 +18,7 @@ class TrainingState:
     scheduler: Scheduler
     sparsifier: Sparsifier
     start_time: float
+    privacy_engine: PrivacyEngine
     # epoch counter
     epoch: int = 0
     # step counter: each optimizer.step() increments step_counter
