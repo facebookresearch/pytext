@@ -82,7 +82,11 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
         )
         input_tensors = self.tensorizer(inputs)
         dense_feat = self.normalizer.normalize(dense_feat)
-        logits = self.model(input_tensors, torch.tensor(dense_feat, dtype=torch.float))
+
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        logits = self.model(input_tensors, dense_tensor)
         return self.output_layer(logits)
 
 
