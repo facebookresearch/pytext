@@ -210,7 +210,14 @@ class MetricReporter(Component):
         return {}
 
     def report_metric(
-        self, model, stage, epoch, reset=True, print_to_channels=True, optimizer=None
+        self,
+        model,
+        stage,
+        epoch,
+        reset=True,
+        print_to_channels=True,
+        optimizer=None,
+        privacy_engine=None,  # to be handled by the subclassed metric reporters
     ):
         """
         Calculate metrics and average loss, report all statistic data to channels
