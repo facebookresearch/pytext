@@ -107,6 +107,7 @@ class MultiLabelSoftClassificationMetrics(NamedTuple):
     precision_at_recall: Dict[str, Dict[str, Dict[float, float]]]
     decision_thresh_at_recall: Dict[str, Dict[str, Dict[float, float]]]
     roc_auc: Optional[Dict[Optional[str], Optional[Dict[str, Optional[float]]]]]
+    accuracy: float
 
 
 class MacroPRF1Scores(NamedTuple):
@@ -768,10 +769,9 @@ def compute_multi_label_soft_metrics(
 
 
 def compute_multi_label_multi_class_soft_metrics(
-    predictions: Sequence[Sequence[LabelListPrediction]],
+    predictions: Sequence[Sequence[LabelPrediction]],
     label_names: Sequence[str],
     label_vocabs: Sequence[Sequence[str]],
-    loss: float,
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
     precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
 ) -> MultiLabelSoftClassificationMetrics:
@@ -792,31 +792,47 @@ def compute_multi_label_multi_class_soft_metrics(
     Returns:
         Dict from label strings to their corresponding soft metrics.
     """
-    soft_metrics = MultiLabelSoftClassificationMetrics({}, {}, {}, {}, {}, {})
+
+    average_precision = {}
+    recall_at_precision = {}
+    decision_thresh_at_precision = {}
+    precision_at_recall = {}
+    decision_thresh_at_recall = {}
+    roc_auc = {}
+
     for label_idx, label_vocab in enumerate(label_vocabs):
         label = list(label_names)[label_idx]
         soft_metrics_ = compute_soft_metrics(predictions[label_idx], label_vocab)
         temp_avg_precision_ = {k: v.average_precision for k, v in soft_metrics_.items()}
-        soft_metrics.average_precision[label] = sum(
+        average_precision[label] = sum(
             v for k, v in temp_avg_precision_.items() if k not in NAN_LABELS
         ) / (
             sum(1 for k, v in temp_avg_precision_.items() if k not in NAN_LABELS) * 1.0
         )
-        soft_metrics.recall_at_precision[label] = {
+        recall_at_precision[label] = {
             k: v.recall_at_precision for k, v in soft_metrics_.items()
         }
-        soft_metrics.decision_thresh_at_precision[label] = {
+        decision_thresh_at_precision[label] = {
             k: v.decision_thresh_at_precision for k, v in soft_metrics_.items()
         }
-        soft_metrics.precision_at_recall[label] = {
+        precision_at_recall[label] = {
             k: v.precision_at_recall for k, v in soft_metrics_.items()
         }
-        soft_metrics.decision_thresh_at_recall[label] = {
+        decision_thresh_at_recall[label] = {
             k: v.decision_thresh_at_recall for k, v in soft_metrics_.items()
         }
-        soft_metrics.roc_auc[label] = {k: v.roc_auc for k, v in soft_metrics_.items()}
+        roc_auc[label] = {k: v.roc_auc for k, v in soft_metrics_.items()}
 
-    return soft_metrics
+    return MultiLabelSoftClassificationMetrics(
+        average_precision=average_precision,
+        recall_at_precision=recall_at_precision,
+        decision_thresh_at_precision=decision_thresh_at_precision,
+        precision_at_recall=precision_at_recall,
+        decision_thresh_at_recall=decision_thresh_at_recall,
+        roc_auc=roc_auc,
+        accuracy=sum(v for v in average_precision.values())
+        / (len(average_precision) * 1.0),
+    )
 
 
 def compute_matthews_correlation_coefficients(
