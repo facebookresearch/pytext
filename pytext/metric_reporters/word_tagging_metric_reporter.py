@@ -3,7 +3,7 @@
 import itertools
 import re
 from collections import Counter
-from typing import List, NamedTuple
+from typing import Dict, List, NamedTuple
 
 from pytext.common.constants import DatasetFieldName, Stage
 from pytext.data import CommonMetadata
@@ -11,7 +11,6 @@ from pytext.metrics import (
     AllConfusions,
     Confusions,
     LabelPrediction,
-    MultiLabelSoftClassificationMetrics,
     PRF1Metrics,
     compute_classification_metrics,
     compute_multi_label_multi_class_soft_metrics,
@@ -99,12 +98,10 @@ class WordTaggingMetricReporter(MetricReporter):
 
 class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
     def __init__(self, label_names, pad_idx, channels, label_vocabs=None):
-        super().__init__(channels)
         self.label_names = label_names
-        # Right now the assumption is that we use the same pad idx for all
-        # labels. #TODO Extend it to use multiple label specific pad idxs
         self.pad_idx = pad_idx
         self.label_vocabs = label_vocabs
+        super().__init__(channels)
 
     @classmethod
     def from_config(cls, config, tensorizers):
@@ -115,30 +112,44 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
             label_vocabs=[v.vocab._vocab for _, v in tensorizers.items()],
         )
 
+    def aggregate_tuple_data(self, all_data, new_batch):
+        assert isinstance(new_batch, tuple)
+        # num_label_set * bsz * ...
+        data = [self._make_simple_list(d) for d in new_batch]
+        # convert to bsz * num_label_set * ...
+        for d in zip(*data):
+            all_data.append(d)
+
+    def aggregate_preds(self, batch_preds, batch_context=None):
+        self.aggregate_tuple_data(self.all_preds, batch_preds)
+
+    def aggregate_targets(self, batch_targets, batch_context=None):
+        self.aggregate_tuple_data(self.all_targets, batch_targets)
+
+    def aggregate_scores(self, batch_scores):
+        self.aggregate_tuple_data(self.all_scores, batch_scores)
+
     def calculate_metric(self):
         list_score_pred_expect = []
-        for label_idx in range(0, len(self.label_names)):
+        for label_idx, _ in enumerate(self.label_names):
             list_score_pred_expect.append(
                 list(
                     itertools.chain.from_iterable(
                         (
                             LabelPrediction(s, p, e)
-                            for s, p, e in zip(scores, pred, expect)
+                            for s, p, e in zip(
+                                scores[label_idx], pred[label_idx], expect[label_idx]
+                            )
                             if e != self.pad_idx[label_idx]
                         )
                         for scores, pred, expect in zip(
-                            self.all_scores[label_idx],
-                            self.all_preds[label_idx],
-                            self.all_targets[label_idx],
+                            self.all_scores, self.all_preds, self.all_targets
                         )
                     )
                 )
             )
         metrics = compute_multi_label_multi_class_soft_metrics(
-            list_score_pred_expect,
-            self.label_names,
-            self.label_vocabs,
-            self.calculate_loss(),
+            list_score_pred_expect, self.label_names, self.label_vocabs
         )
         return metrics
 
@@ -147,16 +158,7 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
 
     @staticmethod
     def get_model_select_metric(metrics):
-        if isinstance(metrics, MultiLabelSoftClassificationMetrics):
-            # There are multiclass precision/recall labels
-            # Compute average precision
-            normalize_count = sum(1 for k in metrics.average_precision.keys()) * 1.0
-            avg_precision = (
-                sum(v for k, v in metrics.average_precision.items()) / normalize_count
-            )
-        else:
-            avg_precision = metrics.accuracy
-        return avg_precision
+        return metrics.accuracy
 
 
 class SequenceTaggingMetricReporter(MetricReporter):

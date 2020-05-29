@@ -139,7 +139,7 @@ class MultiLabelClassificationLayer(OutputLayerBase):
             pred, score = output_layer.get_pred(logit)
             preds.append(pred)
             scores.append(score)
-        return (preds, scores)
+        return (tuple(preds), tuple(scores))
 
     def export_to_caffe2(
         self,
