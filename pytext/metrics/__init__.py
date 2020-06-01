@@ -108,6 +108,7 @@ class MultiLabelSoftClassificationMetrics(NamedTuple):
     decision_thresh_at_recall: Dict[str, Dict[str, Dict[float, float]]]
     roc_auc: Optional[Dict[Optional[str], Optional[Dict[str, Optional[float]]]]]
     accuracy: float
+    class_accuracy: Dict[str, float]
 
 
 class MacroPRF1Scores(NamedTuple):
@@ -799,9 +800,16 @@ def compute_multi_label_multi_class_soft_metrics(
     precision_at_recall = {}
     decision_thresh_at_recall = {}
     roc_auc = {}
+    class_accuracy = {}
 
     for label_idx, label_vocab in enumerate(label_vocabs):
         label = list(label_names)[label_idx]
+        avg = (
+            sum(1 for s, p, e in predictions[label_idx] if p == e)
+            / len(predictions[label_idx])
+            * 1.0
+        )
+        class_accuracy[label] = avg
         soft_metrics_ = compute_soft_metrics(predictions[label_idx], label_vocab)
         temp_avg_precision_ = {k: v.average_precision for k, v in soft_metrics_.items()}
         average_precision[label] = sum(
@@ -832,6 +840,7 @@ def compute_multi_label_multi_class_soft_metrics(
         roc_auc=roc_auc,
         accuracy=sum(v for v in average_precision.values())
         / (len(average_precision) * 1.0),
+        class_accuracy=class_accuracy,
     )
 
 
