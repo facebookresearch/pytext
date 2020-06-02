@@ -125,6 +125,8 @@ class PyTextConfig(ConfigBase):
     use_deterministic_cudnn: bool = False
     # Run eval set after model has been trained - for hyperparameter search
     report_eval_results: bool = False
+    # Run test set after model has been trained
+    report_test_results: bool = True
     # include components from custom directories
     include_dirs: Optional[List[str]] = None
     # config version
