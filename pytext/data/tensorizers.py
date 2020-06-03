@@ -1723,6 +1723,54 @@ class FloatTensorizer(Tensorizer):
         return cuda.tensor(batch, torch.float)
 
 
+class FloatListSeqTensorizer(Tensorizer):
+    """Numberize numeric labels."""
+
+    class Config(Tensorizer.Config):
+        #: The name of the label column to parse from the data source.
+        column: str
+        error_check: bool = False
+        dim: Optional[int] = None
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.column, config.error_check, config.dim, config.is_input)
+
+    def __init__(
+        self,
+        column: str,
+        error_check: bool,
+        dim: Optional[int],
+        is_input: bool = Config.is_input,
+    ):
+        self.column = column
+        self.error_check = error_check
+        self.dim = dim
+        assert not self.error_check or self.dim is not None, "Error check requires dim"
+        super().__init__(is_input)
+
+    @property
+    def column_schema(self):
+        return [(self.column, List[List[float]])]
+
+    def numberize(self, row):
+        floatSeq_features = row[self.column]
+        if self.error_check:
+            for dense in floatSeq_features:
+                assert (
+                    len(dense) == self.dim
+                ), f"Dense feature didn't match expected dimension {self.dim}: {dense}"
+
+        return floatSeq_features, len(floatSeq_features)
+
+    def tensorize(self, batch):
+        float_lists, lens = zip(*batch)
+        padded_and_tensorized_float_lists = pad_and_tensorize(
+            float_lists, pad_token=-1.0, dtype=torch.float
+        )
+        return (padded_and_tensorized_float_lists, pad_and_tensorize(lens))
+
+
 def initialize_tensorizers(tensorizers, data_source, from_scratch=True):
     """A utility function to stream a data source to the initialize functions
     of a dict of tensorizers."""
