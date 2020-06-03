@@ -172,6 +172,10 @@ class Vocabulary:
                 v = self.idx.get(value, unk_idx)
                 return v, 1 if v == unk_idx else 0, 1
             else:
+                assert value in self.idx, (
+                    f"Token '{value}' is missing from the Vocabulary,"
+                    " and so is the fallback UNK token."
+                )
                 return self.idx[value], 0, 1
 
         if not should_iter(nested_values):
