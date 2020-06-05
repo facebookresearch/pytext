@@ -289,6 +289,9 @@ class VocabBuilder:
             vocab_from_file.add(token)
         self.add_all(sorted(vocab_from_file))
 
+    def has_added_tokens(self):
+        return bool(self._counter)
+
     def make_vocab(self) -> Vocabulary:
         """Build a Vocabulary object from the values seen by the builder."""
         tokens_to_insert: List[Tuple[int, object]] = []

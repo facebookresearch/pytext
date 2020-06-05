@@ -252,6 +252,9 @@ class DocModel(Model):
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         labels = tensorizers["labels"].vocab
+        if not labels:
+            raise ValueError("Labels were not created, see preceding errors")
+
         embedding = cls.create_embedding(config, tensorizers)
         representation = create_module(
             config.representation, embed_dim=embedding.embedding_dim
@@ -549,7 +552,7 @@ class PersonalizedDocModel(DocModel):
 
         decoder_inputs: tuple = ()
         if self.decoder.num_decoder_modules:
-            decoder_inputs = inputs[-self.decoder.num_decoder_modules :]
+            decoder_inputs = inputs[-(self.decoder.num_decoder_modules) :]
 
         return self.decoder(
             input_representation, user_embeddings, *decoder_inputs

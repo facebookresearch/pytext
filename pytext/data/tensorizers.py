@@ -794,6 +794,15 @@ class LabelTensorizer(Tensorizer):
             self.vocab, self.pad_idx = self._create_vocab()
 
     def _create_vocab(self):
+        if not self.vocab_builder.has_added_tokens():
+            error_msg = (
+                "Label classes are not specified, and no examples or labels were found "
+                "in training data. Either the training data is empty, or the data "
+                "fields are misnamed and no examples are parsed (warnings would appear "
+                "in preceding stdout logs)."
+            )
+            raise ValueError(error_msg)
+
         vocab = self.vocab_builder.make_vocab()
         pad_idx = (
             vocab.get_pad_index()

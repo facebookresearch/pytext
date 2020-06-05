@@ -88,6 +88,9 @@ class NewBertModel(BaseModel):
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
         labels = tensorizers["labels"].vocab
+        if not labels:
+            raise ValueError("Labels were not created, see preceding errors")
+
         vocab = tensorizers["tokens"].vocab
         encoder = create_module(
             config.encoder, padding_idx=vocab.get_pad_index(), vocab_size=len(vocab)

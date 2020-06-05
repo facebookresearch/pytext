@@ -510,6 +510,7 @@ class Trainer(TrainerBase):
         report_metric = state.stage != Stage.TRAIN or self.config.report_train_metrics
         model = state.model
         samples = []
+        is_data_empty = True
 
         """
         Sometimes, a batch of inputs is too large to fit into GPU, which has to
@@ -522,6 +523,7 @@ class Trainer(TrainerBase):
         performance by reduce the total network transfer bytes.
         """
         for sample in enumerate(data):
+            is_data_empty = False
             samples.append(sample)
             if (
                 state.stage != Stage.TRAIN
@@ -535,6 +537,15 @@ class Trainer(TrainerBase):
 
         metrics = None
         if report_metric:
+            if is_data_empty:
+                error_msg = (
+                    f"Trying to report metric for stage {state.stage}, but no data was "
+                    "found. Either disable metric reporting for this stage, pass in "
+                    "non-empty data, or see if data fields are misnamed (warnings "
+                    "would appear in preceding stdout logs)."
+                )
+                raise ValueError(error_msg)
+
             with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
                     model,
