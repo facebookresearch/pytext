@@ -46,6 +46,18 @@ class WordFeatConfig(ModuleConfig):
     delimiter: str = " "
 
 
+class MLPFeatConfig(ModuleConfig):
+    embed_dim: int = 100
+    embedding_init_strategy: EmbedInitStrategy = EmbedInitStrategy.RANDOM
+    embedding_init_range: Optional[List[float]] = None
+    embeddding_init_std: Optional[float] = 0.02
+    export_input_names: List[str] = ["mlp_vals"]
+    mlp_layer_dims: List[int] = []
+    cpu_only: bool = False
+    skip_header: bool = True
+    delimiter: str = " "
+
+
 class DictFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
