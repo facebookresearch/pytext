@@ -148,6 +148,7 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
                     )
                 )
             )
+
         metrics = compute_multi_label_multi_class_soft_metrics(
             list_score_pred_expect, self.label_names, self.label_vocabs
         )
