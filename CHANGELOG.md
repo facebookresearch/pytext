@@ -1,8 +1,41 @@
 # Changelog
 
+## v0.3.3
+
+### New features
+
+- Add XLM-R document classification server + console (#1358)
+- MLP layer embed for float tensors and `FloatListSeqTensorizer` for `List[List[[float]]` features. (#1374)
+- Add `class_accuracy` in `MultiLabelSoftClassificationMetrics` (#1371)
+- Add an option to skip test run after models have been trained (#1372)
+- Support DP in PyText (#1366)
+- Support torchscriptify in multi_label_classification_layer (#1350)
+- Add custom metric class for reporting Joint model metrics (#1339)
+- MultiLabel-MultiClass Model for Joint Sequence Tagging (#1335)
+- Scripted tokenizer support for DocModel (#1314)
+
+### Bugfixes
+- Fixed metric reporter aggregation and output layer for the multi-label classification
+- Remove `move_state_dict_to_gpu`, which is causing CUDA OOM (#1367)
+- Fix Flow's default conversion of dict to AttrDict
+- Fix bug in `ClassificationOutputLayer` that `pad_idx` is never respected (#1347)
+- Serializing/Deserializing type Any: bugfix and simplification (#1344)
+- Fix RoBERTa Q&A Training Bug with multiple BoS tokens. (#1343)
+
+### Other
+- Better error message for misconfigured data fields
+- Replace deprecated integer division with floor division operator
+- Add informative prints to assert statements (#1360)
+- TorchScript: Put dense tensor on the same device with other input tensors (#1361)
+- Update PyTorch + ONNX (#1340)
+- Update PyTorch + ONNX (#1340)- binary ONNX
+- Update PR Template (#1349)
+- Reduce memory request for pytext train operator
+- Add 'contrib' directory for experimental code (#1333)
+
 ## v0.3.2
 
-## New features
+### New features
 
 - Support read file from http URL (#1317)
 - add a new PyText get_num_examples_from_batch function in model (#1319)
@@ -27,7 +60,7 @@
 - Support multi label classification
 - BART in decoupled model
 
-## Bug fixes
+### Bug fixes
 
 - Cast model output to cpu (#1329)
 - Fix OSS predict-py API (#1320)
@@ -43,7 +76,7 @@
 - fix debug file generation for multilabel classification (#1247)
 - Fix fp16 optimizer attribute name
 
-## Other
+### Other
 
 - New Debug File for masked seq2seq
 - Move MockConfigLoader to OSS (#1324)
@@ -110,7 +143,7 @@
 
 ## v0.3.1
 
-## New features
+### New features
 - Implement SquadQA tensorizer in TorchScript (#1211)
 - Add session data source for df (#1202)
 - Dynamic Batch Scheduler Implementation (#1200)
@@ -129,7 +162,7 @@
 - CyclicLRScheduler (#1157)
 - PyText Entity Linking: ELTask and ELMetricReporter (#1165)
 
-## Bug fixes
+### Bug fixes
 - Don't upgrade if Tensorizer already given (#504)
 - avoid torchscriptify on a ScriptModule (#1214)
 - Make tensorboard robust to NaN and Inf in model params (#1206)
@@ -144,7 +177,7 @@
 - Fix zero loss tensor in SquadOutputLayer (#1181)
 - qa fix for ignore_impossible=False
 
-## Other
+### Other
 
 - Printing out error's underlying reason (#1227)
 - tidy file path in help text for invocation of docnn.json example (#1221)
@@ -176,7 +209,7 @@
 
 ## v0.3.0
 
-## New Features
+### New Features
 **RoBERTa and XLM-R**
 - Integrate XLM-R into PyText (#1120)
 - Consolidate BERT, XLM and RobERTa Tensorizers (#1119)
@@ -244,7 +277,7 @@
 - Optimize Gelu module for caffe2 export (#918)
 - Save best model's sub-modules when enabled (#912)
 
-## Documentation / Usability
+### Documentation / Usability
 - XLM-R tutorial in notebook (#1159)
 - Update XLM-R OSS tutorial and add Google Colab link (#1168)
 - Update "raw_text" to "text" in tutorial (#1010)
@@ -264,7 +297,7 @@
 - Config adapter old data handler helper (#943)
 - Nicer gen_config_impl (#944)
 
-## Deprecated Features
+### Deprecated Features
 - Remove DocModel_Deprecated (#916)
 - Remove RNNGParser_Deprecated, SemanticParsingTask_Deprecated, SemanticParsingCppTask_Deprecate, RnngJitTask,
 - Remove QueryDocumentTask_Deprecated(#926)
@@ -272,7 +305,7 @@
 - CompositionDataHandler to fb/deprecated (#963)
 - Delete deprecated Word Tagging tasks, models and data handlers (#910)
 
-## Bug Fixes
+### Bug Fixes
 - Fix caffe2 predict (#1103)
 - Fix bug when tensorizer is not defined (#1169)
 - Fix multitask metric reporter for lr logging (#1164)
