@@ -4,12 +4,15 @@
 import caffe2.python.hypothesis_test_util as hu
 import numpy as np
 import torch
-from pytext.loss import LabelSmoothedCrossEntropyLoss
+from pytext.loss.loss import LabelSmoothedCrossEntropyLoss, SourceType
 from scipy.special import logsumexp
 
 
 class LabelSmoothedCrossEntropyLossTest(hu.HypothesisTestCase):
     def test_label_smoothed_cross_entropy_loss_forward(self):
+        torch.manual_seed(1)
+        np.random.seed(1)
+
         for _ in range(50):
             beta = 0.1
             reduce = np.random.choice([True, False])
@@ -48,7 +51,7 @@ class LabelSmoothedCrossEntropyLossTest(hu.HypothesisTestCase):
             self.assertAlmostEqual(error, 0.0, places=4)
 
             loss_log_config = LabelSmoothedCrossEntropyLoss.Config()
-            loss_log_config.from_logits = False
+            loss_log_config.source = SourceType.LOG_PROBS
             loss_log_fn = LabelSmoothedCrossEntropyLoss(
                 config=loss_log_config, ignore_index=-100, weight=weight
             )
@@ -58,6 +61,38 @@ class LabelSmoothedCrossEntropyLossTest(hu.HypothesisTestCase):
             log_diff = np.array(manual_loss) - np.array(label_smoothed_log_loss)
             error = np.linalg.norm(log_diff)
             self.assertAlmostEqual(error, 0.0, places=4)
+
+    def test_label_smoothed_cross_entropy_loss_forward_source_probs(self):
+        torch.manual_seed(1)
+        np.random.seed(1)
+
+        beta = 0.1
+        reduce = False
+        num_classes = 2
+        input_size = 2
+        logits = torch.Tensor([[0.5, 0.5], [0.5, 0.5]])
+        targets = torch.randint(num_classes, (input_size,))
+        padding_indices = 0
+        targets[padding_indices] = -100
+
+        # Only testing for None now because unexpected behavior with nll_loss.
+        # Look at definition of LabelSmoothedCrossEntropyLoss for more
+        # context.
+        weight = None
+
+        manual_loss = self._compute_loss_manual(
+            logits, targets, weight=weight, reduce=reduce, beta=beta, ignore_index=-100
+        )
+        loss_fn = LabelSmoothedCrossEntropyLoss(
+            config=LabelSmoothedCrossEntropyLoss.Config(source=SourceType.PROBS),
+            ignore_index=-100,
+            weight=weight,
+        )
+        label_smoothed_loss = loss_fn(logits, targets, reduce=reduce)
+
+        diff = np.array(manual_loss) - np.array(label_smoothed_loss)
+        error = np.linalg.norm(diff)
+        self.assertAlmostEqual(error, 0.0, places=4)
 
     def _compute_negative_cross_entropy_loss(
         self, logits, targets, weight=None, reduce=True, ignore_index=-100

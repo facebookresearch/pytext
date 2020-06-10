@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from enum import Enum
+
 import torch
 import torch.nn.functional as F
 from pytext.config import ConfigBase
@@ -8,6 +10,12 @@ from pytext.config.component import Component, ComponentType
 from pytext.utils import loss as loss_utils, precision
 from pytext.utils.cuda import FloatTensor
 from torch import nn
+
+
+class SourceType(Enum):
+    LOG_PROBS = "log_probs"
+    LOGITS = "logits"
+    PROBS = "probs"
 
 
 class Loss(Component):
@@ -495,7 +503,7 @@ class MSELoss(Loss):
 class LabelSmoothedCrossEntropyLoss(Loss):
     class Config(ConfigBase):
         beta: float = 0.1
-        from_logits: bool = True
+        source: SourceType = SourceType.LOGITS
         use_entropy: bool = False
 
     def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
@@ -507,7 +515,7 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         self.ignore_index = ignore_index
         self.weight = weight
         self.beta = config.beta
-        self.from_logits = config.from_logits
+        self.source = config.source
         self.use_entropy = config.use_entropy
 
     def __call__(self, logits, targets, reduce=True):
@@ -527,7 +535,12 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         else:
             # negative KL-div has an additional log(num_classes) term but ignored
             # here because it doesn't contribute to optimization
-            log_probs = F.log_softmax(logits, dim=1) if self.from_logits else logits
+            if self.source == SourceType.LOGITS:
+                log_probs = F.log_softmax(logits, dim=1)
+            elif self.source == SourceType.PROBS:
+                log_probs = logits.log()
+            else:
+                log_probs = logits
             label_smoothing_loss = -1 * log_probs.mean(dim=1)
 
         if reduce:
@@ -568,7 +581,9 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
 
         self.length_loss = LabelSmoothedCrossEntropyLoss(
             config=LabelSmoothedCrossEntropyLoss.Config(
-                beta=config.beta_2, use_entropy=config.use_entropy, from_logits=False
+                beta=config.beta_2,
+                use_entropy=config.use_entropy,
+                source=SourceType.LOG_PROBS,
             )
         )
 
