@@ -14,6 +14,7 @@ from .disjoint_multitask_data import DisjointMultitaskData
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler
 from .dynamic_pooling_batcher import DynamicPoolingBatcher
 from .tensorizers import Tensorizer
+from .token_batcher import TokenBatcher
 
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "RandomizedBatchSampler",
     "RoundRobinBatchSampler",
     "Tensorizer",
+    "TokenBatcher",
 ]
