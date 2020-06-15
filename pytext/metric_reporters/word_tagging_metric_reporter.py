@@ -159,7 +159,7 @@ class MultiLabelSequenceTaggingMetricReporter(MetricReporter):
 
     @staticmethod
     def get_model_select_metric(metrics):
-        return metrics.accuracy
+        return metrics.average_overall_precision
 
 
 class SequenceTaggingMetricReporter(MetricReporter):
