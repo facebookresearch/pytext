@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Union
+from typing import List, Optional, Union
 
+import torch
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
     SlotLabelTensorizer,
     TokenTensorizer,
 )
+from pytext.data.tokenizers import DoNothingTokenizer
 from pytext.data.utils import UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders.mlp_decoder import MLPDecoder
@@ -19,6 +21,13 @@ from pytext.models.representations.bilstm_slot_attn import BiLSTMSlotAttention
 from pytext.models.representations.biseqcnn import BSeqCNNRepresentation
 from pytext.models.representations.deepcnn import DeepCNNRepresentation
 from pytext.models.representations.pass_through import PassThroughRepresentation
+from pytext.torchscript.utils import (
+    make_byte_inputs,
+    make_sequence_lengths,
+    pad_2d,
+    truncate_tokens,
+)
+from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.usage import log_class_usage
 
 
@@ -117,6 +126,70 @@ class WordTaggingModel(Model):
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
+    def torchscriptify(self, tensorizers, traced_model):
+        output_layer = self.output_layer.torchscript_predictions()
+
+        input_vocab = tensorizers["tokens"].vocab
+        max_seq_len = tensorizers["tokens"].max_seq_len or -1
+        scripted_tokenizer: Optional[torch.jit.ScriptModule] = None
+        try:
+            scripted_tokenizer = tensorizers["tokens"].tokenizer.torchscriptify()
+        except NotImplementedError:
+            pass
+        if scripted_tokenizer and isinstance(scripted_tokenizer, DoNothingTokenizer):
+            scripted_tokenizer = None
+
+        """
+        The input tensor packing memory is allocated/cached for different shapes,
+        and max sequence length will help to reduce the number of different tensor
+        shapes. We noticed that the TorchScript model could use 25G for offline
+        inference on CPU without using max_seq_len.
+        """
+
+        class Model(torch.jit.ScriptModule):
+            def __init__(self):
+                super().__init__()
+                self.vocab = ScriptVocabulary(
+                    input_vocab,
+                    input_vocab.get_unk_index(),
+                    input_vocab.get_pad_index(),
+                )
+                self.model = traced_model
+                self.output_layer = output_layer
+                self.pad_idx = torch.jit.Attribute(input_vocab.get_pad_index(), int)
+                self.max_seq_len = torch.jit.Attribute(max_seq_len, int)
+                self.tokenizer = scripted_tokenizer
+
+            @torch.jit.script_method
+            def forward(
+                self,
+                texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
+                tokens: Optional[List[List[str]]] = None,
+                languages: Optional[List[str]] = None,
+            ):
+                # PyTorch breaks with 2 'not None' checks right now.
+                if texts is not None:
+                    if tokens is not None:
+                        raise RuntimeError("Can't set both tokens and texts")
+                    if self.tokenizer is not None:
+                        tokens = [
+                            [t[0] for t in self.tokenizer.tokenize(text)]
+                            for text in texts
+                        ]
+
+                if tokens is None:
+                    raise RuntimeError("tokens is required")
+
+                tokens = truncate_tokens(tokens, self.max_seq_len, self.vocab.pad_token)
+                seq_lens = make_sequence_lengths(tokens)
+                word_ids = self.vocab.lookup_indices_2d(tokens)
+                word_ids = pad_2d(word_ids, seq_lens, self.pad_idx)
+                logits = self.model(torch.tensor(word_ids), torch.tensor(seq_lens))
+                return self.output_layer(logits)
+
+        return Model()
+
 
 class WordTaggingLiteModel(WordTaggingModel):
     """
@@ -161,3 +234,41 @@ class WordTaggingLiteModel(WordTaggingModel):
 
     def arrange_model_context(self, tensor_dict):
         return {"seq_lens": tensor_dict["token_bytes"][1]}
+
+    def torchscriptify(self, tensorizers, traced_model):
+        output_layer = self.output_layer.torchscript_predictions()
+        max_seq_len = tensorizers["token_bytes"].max_seq_len or -1
+        max_byte_len = tensorizers["token_bytes"].max_byte_len
+        byte_offset_for_non_padding = tensorizers["token_bytes"].offset_for_non_padding
+
+        class Model(torch.jit.ScriptModule):
+            def __init__(self):
+                super().__init__()
+                self.max_seq_len = torch.jit.Attribute(max_seq_len, int)
+                self.max_byte_len = torch.jit.Attribute(max_byte_len, int)
+                self.byte_offset_for_non_padding = torch.jit.Attribute(
+                    byte_offset_for_non_padding, int
+                )
+                self.model = traced_model
+                self.output_layer = output_layer
+
+            @torch.jit.script_method
+            def forward(
+                self,
+                texts: Optional[List[str]] = None,
+                multi_texts: Optional[List[List[str]]] = None,
+                tokens: Optional[List[List[str]]] = None,
+                languages: Optional[List[str]] = None,
+            ):
+                if tokens is None:
+                    raise RuntimeError("tokens is required")
+
+                tokens = truncate_tokens(tokens, self.max_seq_len, "__PAD__")
+                seq_lens = make_sequence_lengths(tokens)
+                token_bytes, _ = make_byte_inputs(
+                    tokens, self.max_byte_len, self.byte_offset_for_non_padding
+                )
+                logits = self.model(token_bytes, torch.tensor(seq_lens))
+                return self.output_layer(logits)
+
+        return Model()
