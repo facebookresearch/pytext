@@ -4,6 +4,7 @@
 from typing import List, NamedTuple, Optional, Tuple
 
 import torch
+from torch import Tensor
 
 
 class ScriptBatchInput(NamedTuple):
@@ -252,4 +253,12 @@ def squeeze_2d(inputs: Optional[List[List[str]]]) -> Optional[List[List[List[str
         result = torch.jit.annotate(List[List[List[str]]], [])
         for line in inputs:
             result.append([line])
+    return result
+
+
+def float_tensor_list1D(input_tensor: Tensor) -> List[float]:
+    result: List[float] = []
+    assert len(input_tensor.size()) == 1
+    for idx in range(input_tensor.size(0)):
+        result.append(float(input_tensor[idx]))
     return result
