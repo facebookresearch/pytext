@@ -6,6 +6,7 @@ import random
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
+from pytext.data.sources.data_source import shard
 from pytext.torchscript.utils import long_tensor_2d
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset
@@ -25,9 +26,12 @@ class BaseDataset(IterableDataset):
         chunk_size: int = 1000,
         is_cycle: bool = False,
         limit: Optional[int] = None,
+        rank: int = 0,
+        num_workers: int = 1,
     ):
         self.iterable = itertools.cycle(iterable) if is_cycle else iterable
-        assert batch_size or batcher
+        if num_workers > 1:
+            self.iterable = shard(self.iterable, rank, num_workers)
         self.batch_size = batch_size or batcher.batch_size
         self.batcher = batcher or Batcher(self.batch_size)
         self.is_shuffle = is_shuffle

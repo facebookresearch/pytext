@@ -23,10 +23,18 @@ class TsvDataset(BaseDataset):
         chunk_size: int = 1000,
         is_cycle: bool = False,
         limit: Optional[int] = None,
+        rank: int = 0,
+        num_workers: int = 1,
     ):
         field_names = field_names or ["text", "label"]
         self.file = SafeFileWrapper(file_path, encoding="utf-8", errors="replace")
-        tsv_iterator = TSV(self.file, field_names=field_names, delimiter=delimiter)
+        tsv_iterator = TSV(
+            self.file,
+            field_names=field_names,
+            delimiter=delimiter,
+            rank=rank,
+            num_workers=num_workers,
+        )
         super().__init__(
             iterable=tsv_iterator,
             batch_size=batch_size,
