@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, Optional, Union
+from typing import Dict, Union
 
 from pytext.common.constants import Stage
-from pytext.config import doc_classification as DocClassification
-from pytext.config.field_config import WordLabelConfig
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
 from pytext.data.packed_lm_data import PackedLMData
 from pytext.data.tensorizers import Tensorizer
-from pytext.exporters import DenseFeatureExporter
 from pytext.metric_reporters import (
     ClassificationMetricReporter,
     CompositionalMetricReporter,
@@ -53,11 +50,10 @@ from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
 )
 from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
-from pytext.models.seq_models.seqnn import SeqNNModel, SeqNNModel_Deprecated
+from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
-from pytext.task import Task_Deprecated
 from pytext.task.new_task import NewTask
-from pytext.trainers import EnsembleTrainer, HogwildTrainer, Trainer
+from pytext.trainers import EnsembleTrainer, HogwildTrainer
 
 
 class QueryDocumentPairwiseRankingTask(NewTask):
