@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
-from itertools import zip_longest
-from typing import List, Optional
+from itertools import tee, zip_longest
+from typing import Generator, List, Optional
 
 import torch
 from pytext.common.constants import Stage
@@ -178,7 +178,13 @@ class ClassificationMetricReporter(MetricReporter):
         # convert tensor to float
         if loss is not None:
             self.all_loss.append(float(loss))
-        self.batch_size.append(len(m_input[0]))
+        # append the size of the first tensor (should be the batch size)
+        if isinstance(m_input, Generator):
+            # first element without updating the initial iterator
+            first = tee(m_input, 1)
+            self.batch_size.append(len(first))
+        else:
+            self.batch_size.append(len(m_input[0]))
 
     def calculate_metric(self):
         # If we are running in memory efficient mode, then scores in

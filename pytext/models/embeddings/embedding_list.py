@@ -91,7 +91,7 @@ class EmbeddingList(EmbeddingBase, ModuleList):
             tensors.append(emb_tensor)
 
         if self.concat:
-            return torch.cat(tensors, 2)
+            return torch.cat(tensors, -1)
         else:
             return tuple(tensors) if len(tensors) > 1 else tensors[0]
 
