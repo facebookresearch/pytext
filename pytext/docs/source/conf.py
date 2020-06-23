@@ -78,7 +78,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ["modules/pytext.fb.*"]
+exclude_patterns = ["modules/pytext.fb.*", "modules/pytext.contrib.*"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
@@ -187,8 +187,8 @@ texinfo_documents = [
 
 def run_apidoc(_):
     modules = os.path.join(RST_SOURCE_DIR, "modules")
-
-    argv = ["-f", "-o", modules, PROJECT_ROOT]
+    exclude_pattern = os.path.join(PROJECT_ROOT, "contrib*")
+    argv = ["-f", "-o", modules, PROJECT_ROOT, exclude_pattern]
 
     from sphinx.ext import apidoc
 
