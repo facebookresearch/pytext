@@ -25,7 +25,7 @@ class BaseDataset(IterableDataset):
         collate_fn=None,
         chunk_size: int = 1000,
         is_cycle: bool = False,
-        limit: Optional[int] = None,
+        length: Optional[int] = None,
         rank: int = 0,
         num_workers: int = 1,
     ):
@@ -40,13 +40,14 @@ class BaseDataset(IterableDataset):
 
         self.chunk_size = chunk_size  # num of batches per chunk
         self.is_cycle = is_cycle
-        self.limit = limit
+        self.length = length
+
+        self.iterable = ChunkIterator(
+            self.iterable, self.chunk_size * self.batch_size, self.length
+        )
 
     def __iter__(self):
-        self.iterable = chunk_iterator(
-            self.iterable, self.chunk_size * self.batch_size, self.limit
-        )
-        for chunk in self.iterable:
+        for chunk in iter(self.iterable):
             if self.is_shuffle:
                 random.shuffle(chunk)
             transformed_chunk = []
@@ -84,19 +85,25 @@ class BaseDataset(IterableDataset):
         raise NotImplementedError()
 
 
-def chunk_iterator(iterator, chunk_size, limit=None):
-    data = []
-    for i, example in enumerate(iterator):
-        if limit and i >= limit:
-            break
-        data.append(example)
-        if len(data) == chunk_size:
+class ChunkIterator:
+    def __init__(self, iterator, chunk_size: int, length: Optional[int]):
+        self.iterator = iterator
+        self.chunk_size = chunk_size
+        self.length = length
+
+    def __iter__(self):
+        data = []
+        for i, example in enumerate(self.iterator):
+            if self.length and i >= self.length:
+                break
+            data.append(example)
+            if len(data) == self.chunk_size:
+                yield data
+                data = []
+
+        if len(data) > 0:
             yield data
             data = []
-
-    if len(data) > 0:
-        yield data
-        data = []
 
 
 class Batcher:
