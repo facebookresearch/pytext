@@ -23,6 +23,8 @@ class TsvDataset(BaseDataset):
         chunk_size: int = 1000,
         is_cycle: bool = False,
         limit: Optional[int] = None,
+        rank: int = 0,
+        num_workers: int = 1,
     ):
         field_names = field_names or ["text", "label"]
         self.file = SafeFileWrapper(file_path, encoding="utf-8", errors="replace")
@@ -37,4 +39,6 @@ class TsvDataset(BaseDataset):
             chunk_size=chunk_size,
             is_cycle=is_cycle,
             limit=limit,
+            rank=rank,
+            num_workers=num_workers,
         )
