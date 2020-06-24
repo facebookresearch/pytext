@@ -12,7 +12,7 @@ from .base_dataset import BaseDataset
 class TsvDataset(BaseDataset):
     def __init__(
         self,
-        file_path: str,
+        path: str,
         field_names: List[str] = None,
         delimiter: str = "\t",
         batch_size: int = 1,
@@ -22,12 +22,12 @@ class TsvDataset(BaseDataset):
         collate_fn=None,
         chunk_size: int = 1000,
         is_cycle: bool = False,
-        limit: Optional[int] = None,
+        length: Optional[int] = None,
         rank: int = 0,
         num_workers: int = 1,
     ):
         field_names = field_names or ["text", "label"]
-        self.file = SafeFileWrapper(file_path, encoding="utf-8", errors="replace")
+        self.file = SafeFileWrapper(path, encoding="utf-8", errors="replace")
         tsv_iterator = TSV(self.file, field_names=field_names, delimiter=delimiter)
         super().__init__(
             iterable=tsv_iterator,
@@ -38,7 +38,7 @@ class TsvDataset(BaseDataset):
             collate_fn=collate_fn,
             chunk_size=chunk_size,
             is_cycle=is_cycle,
-            limit=limit,
+            length=length,
             rank=rank,
             num_workers=num_workers,
         )
