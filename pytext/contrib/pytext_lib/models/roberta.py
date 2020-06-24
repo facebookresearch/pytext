@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from pytext.config.module_config import Activation
 from pytext.contrib.pytext_lib import resources
 from pytext.contrib.pytext_lib.resources import (
     ROBERTA_BASE_TORCH,
     XLMR_BASE,
     XLMR_DUMMY,
 )
-from pytext.loss import BinaryCrossEntropyLoss
 from pytext.models.representations.transformer import (
     MultiheadSelfAttention,
     Transformer,
@@ -22,9 +19,11 @@ from pytext.models.representations.transformer import (
 from pytext.models.representations.transformer.sentence_encoder import (
     translate_roberta_state_dict,
 )
-from pytext.optimizer import get_activation
 from pytext.utils.file_io import PathManager
 from torch.serialization import default_restore_location
+
+from .classification_heads import BinaryClassificationHead
+from .mlp_decoder import MLPDecoder
 
 
 class RoBERTaEncoder(nn.Module):
@@ -83,33 +82,6 @@ def init_params(module):
             module.weight.data[module.padding_idx].zero_()
 
 
-class MLPDecoder(nn.Module):
-    def __init__(
-        self,
-        in_dim: int,
-        out_dim: int,
-        bias: bool,
-        hidden_dims: List[int] = None,
-        activation: Activation = Activation.RELU,
-    ) -> None:
-        super().__init__()
-        layers = []
-        for dim in hidden_dims or []:
-            layers.append(nn.Linear(in_dim, dim, bias))
-            layers.append(get_activation(activation))
-            in_dim = dim
-        layers.append(nn.Linear(in_dim, out_dim, bias))
-
-        self.mlp = nn.Sequential(*layers)
-
-    def forward(
-        self, representation: torch.Tensor, dense: Optional[torch.Tensor]
-    ) -> torch.Tensor:
-        if dense is not None:
-            representation = torch.cat([representation, dense], 1)
-        return self.mlp(representation)
-
-
 class RobertaModel(nn.Module):
     def __init__(self, encoder: nn.Module, decoder: nn.Module):
         super().__init__()
@@ -121,20 +93,6 @@ class RobertaModel(nn.Module):
         dense: Optional[torch.Tensor] = inputs["dense"] if "dense" in inputs else None
         representation = self.encoder(tokens)
         return self.decoder(representation, dense=dense)
-
-
-class BinaryClassificationHead(nn.Module):
-    def __init__(self, label_weights: Optional[Dict[str, float]] = None, loss=None):
-        super().__init__()
-        self.loss = loss or BinaryCrossEntropyLoss(BinaryCrossEntropyLoss.Config())
-
-    def forward(self, logits):
-        preds = torch.max(logits, -1)[1]
-        scores = F.logsigmoid(logits)
-        return preds, scores
-
-    def get_loss(self, logits, targets, reduce: bool = True):
-        return self.loss(logits, targets, reduce=reduce)
 
 
 class RobertaModelForBinaryDocClassification(RobertaModel):
