@@ -425,6 +425,10 @@ class Trainer(TrainerBase):
         print(f"Model :{model}")
         print(f"Num trainable parameters: {trainable_params}")
 
+        self.sparsifier.initialize(
+            self, state, eval_data, metric_reporter, train_config
+        )
+
         while self.continue_training(state):
             state.epoch += 1
             state.epochs_since_last_improvement += 1

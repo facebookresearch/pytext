@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import itertools
 import math
+import os
+import sys
 from typing import List
 
 import torch
@@ -10,6 +13,8 @@ from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 from pytext.models.crf import CRF
 from pytext.models.model import Model
+from pytext.utils import timing
+from pytext.utils.file_io import PathManager
 
 
 class Sparsifier(Component):
@@ -26,6 +31,9 @@ class Sparsifier(Component):
         pass
 
     def get_sparsifiable_params(self, *args, **kwargs):
+        pass
+
+    def initialize(self, *args, **kwargs):
         pass
 
     def get_current_sparsity(self, model: Model) -> float:
@@ -335,3 +343,166 @@ class CRF_MagnitudeThresholding(CRF_SparsifierBase):
         transition_matrix[trans_abs < topkvals] = 0.0
         current_sparsity = self.get_transition_sparsity(transition_matrix)
         print(f"sparsity of CRF transition matrix: {current_sparsity}")
+
+
+class SensitivityAnalysisSparsifier(Sparsifier):
+    class Config(Sparsifier.Config):
+        pre_train_model_path: str = ""
+        analyzed_sparsity: float = 0.8
+        # we don't use all eval data for analysis, only use a portion of the data.
+        max_analysis_batches: int = 0
+
+    def __init__(self, pre_train_model_path, analyzed_sparsity, max_analysis_batches):
+        assert PathManager.exists(
+            pre_train_model_path
+        ), "The pre-trained model must be exist"
+        self.pre_train_model_path = pre_train_model_path
+        assert (
+            0.0 <= analyzed_sparsity <= 1.0
+        ), "Analyzed sparsity need to be in the range of [0, 1]"
+        self.analyzed_sparsity = analyzed_sparsity
+        self.max_analysis_batches = max_analysis_batches
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            config.pre_train_model_path,
+            config.analyzed_sparsity,
+            config.max_analysis_batches,
+        )
+
+    def get_prunable_params(self, train_config, state):
+        param_dict = {}
+        for module_name, m in state.model.named_modules():
+            # Search the name of all module_name in named_modules
+            # only test the parameters in nn.Linear
+            if isinstance(m, nn.Linear):
+                # module_name: module.xxx
+                # param_name: module.xxx.weight
+                # we only check weight tensor
+                param_name = module_name + ".weight"
+                param_dict[param_name] = m.weight
+
+        return param_dict
+
+    def layer_wise_analysis(
+        self, param_name, param_dict, trainer, state, eval_data, metric_reporter
+    ):
+        # perform pruning for the target param with param_name
+        if param_name is None:
+            prunable_param_shape = None
+        else:
+            prunable_param = param_dict[param_name]
+            # include the shape information for better analysis
+            prunable_param_shape = list(prunable_param.shape)
+            n = int(self.analyzed_sparsity * prunable_param.nelement())
+            if n > 0:
+                # If n > 0, we need to remove n parameters, the threshold
+                # equals to the n-th largest parameters.
+                threshold = float(
+                    prunable_param.abs().flatten().cpu().kthvalue(n - 1)[0]
+                )
+            else:
+                # If n == 0, it means all parameters need to be kept.
+                # Because the absolute parameter value >= 0, setting
+                # threshold to -1 ensures prunable_param.abs().ge(threshold)
+                # is True for all the parameters.
+                threshold = -1.0
+            # reverse_mask indiciates the weights that need to be kept
+            reverse_mask = prunable_param.abs().ge(threshold).float()
+            with torch.no_grad():
+                param_dict[param_name].data.mul_(reverse_mask)
+        # get the eval_metric for the pruned model
+        with torch.no_grad():
+            # set the number of batches of eval data for analysis
+            analysis_data = eval_data
+            if self.max_analysis_batches > 0:
+                analysis_data = itertools.islice(eval_data, self.max_analysis_batches)
+            eval_metric = trainer.run_epoch(state, analysis_data, metric_reporter)
+        current_metric = metric_reporter.get_model_select_metric(eval_metric)
+        if metric_reporter.lower_is_better:
+            current_metric = -current_metric
+
+        return current_metric, prunable_param_shape
+
+    def sensitivity_analysis(
+        self, trainer, state, eval_data, metric_reporter, train_config
+    ):
+        """
+        Analysis the sensitivity of each weight tensor to the metric.
+        Prune the weight tensor one by one and evaluate the metric if the
+        correspond weight tensor is pruned.
+        Args:
+            trainer (trainer): batch iterator of training data
+            state (TrainingState): the state of the current training
+            eval_data (BatchIterator): batch iterator of evaluation data
+            metric_reporter (MetricReporter): compute metric based on training
+            output and report results to console, file.. etc
+            train_config (PyTextConfig): training config
+
+        Returns:
+            analysis_result: a string of each layer sensitivity to metric.
+        """
+        print("Analyzed_sparsity: {}".format(self.analyzed_sparsity))
+        print("Evaluation metric_reporter: {}".format(type(metric_reporter).__name__))
+        output_path = (
+            os.path.dirname(train_config.task.metric_reporter.output_path)
+            + "/sensitivity_analysis_sparsifier.ckp"
+        )
+
+        # param_dict: the dict maps weight tensor to the parameter name
+        param_dict = self.get_prunable_params(train_config, state)
+
+        # load the pretrained model
+        print("load the pretrained model from: " + self.pre_train_model_path)
+        self.loaded_model = torch.load(
+            self.pre_train_model_path, map_location=torch.device("cpu")
+        )
+
+        # set model to evaluation mode
+        state.stage = Stage.EVAL
+        state.model.eval(Stage.EVAL)
+
+        metric_dict = {}
+        all_param_list = [None] + list(param_dict.keys())
+        print("All prunable parameters", all_param_list)
+
+        # print the sensitivity results for each weight
+        print("#" * 40)
+        print("save the analysis result to: ", output_path)
+        print("Pruning Sensitivity Test: param / shape / eval metric")
+
+        # iterate through all_param_list to test pruning snesitivity
+        for param_name in all_param_list:
+            print("=" * 40)
+            print("Testing {}".format(param_name))
+            state.model.load_state_dict(self.loaded_model["model_state"])
+
+            current_metric, prunable_param_shape = self.layer_wise_analysis(
+                param_name, param_dict, trainer, state, eval_data, metric_reporter
+            )
+            metric_dict[param_name] = current_metric
+            # write the test result into the checkpoint
+            if state.rank == 0:
+                with PathManager.open(output_path, "a") as fp:
+                    fp.write(
+                        "{}/{}/{}/{}\n".format(
+                            param_name,
+                            prunable_param_shape,
+                            current_metric,
+                            (current_metric - metric_dict[None]),
+                        )
+                    )
+        print("#" * 40)
+        sys.stdout.flush()
+
+    def sparsify(self, state):
+        """
+        obtain a mask and apply the mask to sparsify
+        """
+
+    @timing.time("sparsifier initialize")
+    def initialize(self, trainer, state, eval_data, metric_reporter, train_config):
+        self.sensitivity_analysis(
+            trainer, state, eval_data, metric_reporter, train_config
+        )
