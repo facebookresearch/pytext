@@ -6,6 +6,7 @@ import os
 import sys
 from typing import List
 
+import numpy as np
 import torch
 import torch.nn as nn
 from pytext.common.constants import Stage
@@ -351,8 +352,17 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         analyzed_sparsity: float = 0.8
         # we don't use all eval data for analysis, only use a portion of the data.
         max_analysis_batches: int = 0
+        # allow the user to skip pruning for some weight. Here we set the max
+        # number of weight tensor can be skipped for pruning.
+        max_skipped_weight: int = 0
 
-    def __init__(self, pre_train_model_path, analyzed_sparsity, max_analysis_batches):
+    def __init__(
+        self,
+        pre_train_model_path,
+        analyzed_sparsity,
+        max_analysis_batches,
+        max_skipped_weight,
+    ):
         assert PathManager.exists(
             pre_train_model_path
         ), "The pre-trained model must be exist"
@@ -362,6 +372,8 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         ), "Analyzed sparsity need to be in the range of [0, 1]"
         self.analyzed_sparsity = analyzed_sparsity
         self.max_analysis_batches = max_analysis_batches
+        self.max_skipped_weight = max_skipped_weight
+        self.require_mask_parameters = []
 
     @classmethod
     def from_config(cls, config: Config):
@@ -369,6 +381,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             config.pre_train_model_path,
             config.analyzed_sparsity,
             config.max_analysis_batches,
+            config.max_skipped_weight,
         )
 
     def get_prunable_params(self, train_config, state):
@@ -424,6 +437,33 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             current_metric = -current_metric
 
         return current_metric, prunable_param_shape
+
+    def find_params_to_prune(self, param_dict, metric_dict, max_skip_weight_num):
+        require_mask_parameters = sorted(
+            param_dict.keys(), reverse=True, key=lambda param: metric_dict[param]
+        )
+        metric_sensitivities_by_param = [
+            metric_dict[p] for p in require_mask_parameters
+        ]
+
+        skipped_weight_num = 0
+        while skipped_weight_num < max_skip_weight_num:
+            # calculate the mean and sandard deviation
+            mean_ = np.mean(metric_sensitivities_by_param[:-skipped_weight_num])
+            std_ = np.std(metric_sensitivities_by_param[:-skipped_weight_num])
+            # skip runing of the parameter if the metric disensitivity is
+            # less than mean_ - 3 * std_, otherwise break.
+            if (
+                metric_sensitivities_by_param[-skipped_weight_num - 1]
+                >= mean_ - 3 * std_
+            ):
+                break
+            skipped_weight_num += 1
+
+        require_mask_parameters = require_mask_parameters[:-skipped_weight_num]
+
+        # return how many weight are skipped during this iteration
+        return require_mask_parameters, skipped_weight_num
 
     def sensitivity_analysis(
         self, trainer, state, eval_data, metric_reporter, train_config
@@ -495,6 +535,19 @@ class SensitivityAnalysisSparsifier(Sparsifier):
                     )
         print("#" * 40)
         sys.stdout.flush()
+
+        # skip some of the weight tensors from pruning. The user can
+        # specify the max_skipped_weight, which limit the max number
+        # of weight to be skipped.
+        self.require_mask_parameters, skipped_weight_num = self.find_params_to_prune(
+            param_dict, metric_dict, self.max_skipped_weight
+        )
+
+        for p in self.require_mask_parameters:
+            print(p, " ", metric_dict[p])
+        print("#" * 40)
+        sys.stdout.flush()
+        print(str(skipped_weight_num) + " weight tensors are skipped for pruning")
 
     def sparsify(self, state):
         """
