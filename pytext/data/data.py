@@ -335,7 +335,7 @@ class Data(Component):
         Passing in `load_early` = True disables loading all data in memory and using
         PoolingBatcher, so that we get the first batch as quickly as possible.
         """
-        data_source = data_source or self.data_source
+        data_source = data_source if data_source is not None else self.data_source
         rows = {
             Stage.TRAIN: data_source.train,
             Stage.TEST: data_source.test,
