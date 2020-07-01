@@ -17,11 +17,12 @@ from typing import (
 )
 
 import numpy as np
+from pytext.common.constants import SpecialTokens
 from pytext.utils import cuda
 from pytext.utils.ascii_table import ascii_table
 
 
-NAN_LABELS = ["__UNKNOWN__", "__PAD__"]
+NAN_LABELS = [SpecialTokens.UNK, SpecialTokens.PAD]
 RECALL_AT_PRECISION_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
 PRECISION_AT_RECALL_THRESHOLDS = [0.2, 0.4, 0.6, 0.8, 0.9]
 

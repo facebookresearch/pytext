@@ -9,8 +9,9 @@ import hypothesis.strategies as st
 import numpy as np
 import torch
 from hypothesis import given
+from pytext.common.constants import SpecialTokens
 from pytext.data.tensorizers import LabelTensorizer
-from pytext.data.utils import PAD, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.loss import CrossEntropyLoss
 from pytext.models.output_layers.doc_classification_output_layer import (
     ClassificationOutputLayer,
@@ -25,7 +26,7 @@ from pytext.models.output_layers.word_tagging_output_layer import (
 class OutputLayerTest(hu.HypothesisTestCase):
     def test_doc_classification_output_layer(self):
         tensorizer = LabelTensorizer()
-        tensorizer.vocab = Vocabulary([PAD, "foo", "bar"])
+        tensorizer.vocab = Vocabulary([SpecialTokens.PAD, "foo", "bar"])
         layer = ClassificationOutputLayer.from_config(
             config=ClassificationOutputLayer.Config(loss=CrossEntropyLoss.Config()),
             labels=tensorizer.vocab,

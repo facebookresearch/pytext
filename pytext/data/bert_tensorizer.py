@@ -7,10 +7,11 @@ import torch
 from fairseq.data.dictionary import Dictionary
 from fairseq.data.legacy.masked_lm_dictionary import BertDictionary
 from pytext import resources
+from pytext.common.constants import Token
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, SpecialToken, Vocabulary
+from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
 from pytext.torchscript.utils import ScriptBatchInput, pad_2d, pad_2d_mask
 from pytext.torchscript.vocab import ScriptVocabulary
@@ -21,7 +22,7 @@ from pytext.utils.lazy import lazy_property
 def build_fairseq_vocab(
     vocab_file: str,
     dictionary_class: Dictionary = Dictionary,
-    special_token_replacements: Dict[str, SpecialToken] = None,
+    special_token_replacements: Dict[str, Token] = None,
     max_vocab: int = -1,
     min_count: int = -1,
     tokens_to_add: Optional[List[str]] = None,

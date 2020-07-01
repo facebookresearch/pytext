@@ -4,13 +4,13 @@ from typing import Optional, Union
 
 import pytext.utils.cuda as cuda_util
 import torch
+from pytext.common.constants import SpecialTokens
 from pytext.data.tensorizers import (
     FloatTensorizer,
     LabelTensorizer,
     SlotLabelTensorizer,
     TokenTensorizer,
 )
-from pytext.data.utils import UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.embeddings import WordEmbedding
 from pytext.models.model import Model
@@ -88,7 +88,12 @@ class IntentSlotModel(Model):
     def create_embedding(cls, config, tensorizers):
         vocab = tensorizers["tokens"].vocab
         word_embedding = WordEmbedding(
-            len(vocab), config.word_embedding.embed_dim, None, None, vocab.idx[UNK], []
+            len(vocab),
+            config.word_embedding.embed_dim,
+            None,
+            None,
+            vocab.idx[SpecialTokens.UNK],
+            [],
         )
         return EmbeddingList([word_embedding], concat=True)
 

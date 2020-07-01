@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from fairseq.data.legacy.masked_lm_dictionary import MaskedLMDictionary
+from pytext.common.constants import SpecialTokens
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import (
     BERTTensorizerBase,
@@ -12,7 +13,7 @@ from pytext.data.bert_tensorizer import (
     build_fairseq_vocab,
 )
 from pytext.data.tokenizers import Tokenizer
-from pytext.data.utils import EOS, MASK, PAD, UNK, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.data.xlm_constants import LANG2ID_15
 from pytext.torchscript.utils import ScriptBatchInput
 from pytext.torchscript.vocab import ScriptVocabulary
@@ -146,10 +147,10 @@ class XLMTensorizer(BERTTensorizerBase):
                 max_vocab=config.max_vocab,
                 min_count=config.min_count,
                 special_token_replacements={
-                    "<unk>": UNK,
-                    "<pad>": PAD,
-                    "</s>": EOS,
-                    "<mask>": MASK,
+                    "<unk>": SpecialTokens.UNK,
+                    "<pad>": SpecialTokens.PAD,
+                    "</s>": SpecialTokens.EOS,
+                    "<mask>": SpecialTokens.MASK,
                 },
             )
         return cls(

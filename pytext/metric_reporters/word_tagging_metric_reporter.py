@@ -5,7 +5,7 @@ import re
 from collections import Counter
 from typing import Dict, List, NamedTuple
 
-from pytext.common.constants import DatasetFieldName, Stage
+from pytext.common.constants import DatasetFieldName, SpecialTokens, Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
     AllConfusions,
@@ -27,7 +27,7 @@ from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
 
 
-NAN_LABELS = ["__UNKNOWN__", "__PAD__"]
+NAN_LABELS = [SpecialTokens.UNK, SpecialTokens.PAD]
 
 
 def get_slots(word_names):

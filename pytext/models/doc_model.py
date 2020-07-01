@@ -15,7 +15,6 @@ from pytext.data.tensorizers import (
     UidTensorizer,
 )
 from pytext.data.tokenizers import DoNothingTokenizer
-from pytext.data.utils import PAD, UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
 from pytext.models.decoders.mlp_decoder import DecoderBase, MLPDecoder

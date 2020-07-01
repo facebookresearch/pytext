@@ -3,12 +3,13 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from pytext.common.constants import SpecialTokens
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.data.tokenizers import Tokenizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.utils.file_io import PathManager
 
 
@@ -106,11 +107,11 @@ class RoBERTaContextTensorizerForDenseRetrieval(
             vocab = build_fairseq_vocab(
                 vocab_file=file_path,
                 special_token_replacements={
-                    "<pad>": PAD,
-                    "<s>": BOS,
-                    "</s>": EOS,
-                    "<unk>": UNK,
-                    "<mask>": MASK,
+                    "<pad>": SpecialTokens.PAD,
+                    "<s>": SpecialTokens.BOS,
+                    "</s>": SpecialTokens.EOS,
+                    "<unk>": SpecialTokens.UNK,
+                    "<mask>": SpecialTokens.MASK,
                 },
             )
         return cls(

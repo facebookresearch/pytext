@@ -7,7 +7,7 @@ import sys
 from typing import List, Optional
 
 import torch
-from pytext.common import Padding
+from pytext.common import Padding, constants
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.data_structures.annotation import (
     REDUCE,
@@ -37,7 +37,6 @@ from .utils import (
     EOL,
     EOS,
     PAD,
-    SpecialToken,
     VocabBuilder,
     Vocabulary,
     align_target_label,
@@ -1135,7 +1134,7 @@ class FloatListTensorizer(Tensorizer):
         )
 
 
-NO_LABEL = SpecialToken("NoLabel")
+NO_LABEL = constants.Token("NoLabel")
 
 
 class SlotLabelTensorizer(Tensorizer):

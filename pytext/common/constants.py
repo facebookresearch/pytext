@@ -4,6 +4,35 @@
 from enum import Enum
 
 
+class Token(str):
+    def __eq__(self, other):
+        # We don't want to compare as equal to actual strings, but we want to behave
+        # like a string code-wise. Don't use `is` comparison because we want
+        # Token instances created across picklings to equals-compare
+        return isinstance(other, Token) and super().__eq__(other)
+
+    def __init__(self, input_str):
+        self.str = input_str
+        super().__init__()
+
+    __hash__ = str.__hash__
+
+
+class SpecialTokens:
+    UNK = Token("__UNKNOWN__")
+    PAD = Token("__PAD__")
+    BOS = Token("__BEGIN_OF_SENTENCE__")
+    EOS = Token("__END_OF_SENTENCE__")
+    BOL = Token("__BEGIN_OF_LIST__")
+    EOL = Token("__END_OF_LIST__")
+    MASK = Token("__MASK__")
+    # BOS and EOS is too long for Byte-level Language Model.
+    # Todo: find out conbination of bytes with low-frequency and shorter length
+    BYTE_BOS = Token("^")
+    BYTE_EOS = Token("#")
+    BYTE_SPACE = Token(" ")
+
+
 class DatasetFieldName:
     DOC_LABEL_FIELD = "doc_label"
     WORD_LABEL_FIELD = "word_label"
