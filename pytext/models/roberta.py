@@ -74,6 +74,11 @@ class RoBERTaEncoderJit(RoBERTaEncoderBase):
         )
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
+        config.pretrained_encoder.load_path = (
+            resources.roberta.RESOURCE_MAP[config.pretrained_encoder.load_path]
+            if config.pretrained_encoder.load_path in resources.roberta.RESOURCE_MAP
+            else config.pretrained_encoder.load_path
+        )
         super().__init__(config, output_encoded_layers=output_encoded_layers)
         assert config.pretrained_encoder.load_path, "Load path cannot be empty."
         self.encoder = create_module(config.pretrained_encoder)
