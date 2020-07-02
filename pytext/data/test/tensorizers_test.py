@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 import torch
+from pytext.common.constants import SpecialTokens
 from pytext.data.bert_tensorizer import BERTTensorizer, BERTTensorizerScriptImpl
 from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
@@ -44,7 +45,7 @@ from pytext.data.tokenizers import (
     Tokenizer,
     WordPieceTokenizer,
 )
-from pytext.data.utils import BOS, EOS, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.utils import precision
 from pytext.utils.test import import_tests_module
 
@@ -56,7 +57,7 @@ class LookupTokensTest(unittest.TestCase):
     def test_lookup_tokens(self):
         text = "let's tokenize this"
         tokenizer = Tokenizer()
-        vocab = Vocabulary(text.split() + [BOS, EOS])
+        vocab = Vocabulary(text.split() + [SpecialTokens.BOS, SpecialTokens.EOS])
         tokens, start_idx, end_idx = lookup_tokens(
             text, tokenizer=tokenizer, vocab=vocab, bos_token=None, eos_token=None
         )
@@ -65,7 +66,11 @@ class LookupTokensTest(unittest.TestCase):
         self.assertEqual(end_idx, (5, 14, 19))
 
         tokens, start_idx, end_idx = lookup_tokens(
-            text, tokenizer=tokenizer, vocab=vocab, bos_token=BOS, eos_token=EOS
+            text,
+            tokenizer=tokenizer,
+            vocab=vocab,
+            bos_token=SpecialTokens.BOS,
+            eos_token=SpecialTokens.EOS,
         )
         self.assertEqual(tokens, [3, 0, 1, 2, 4])
         self.assertEqual(start_idx, (-1, 0, 6, 15, -1))
@@ -572,7 +577,13 @@ class TensorizersTest(unittest.TestCase):
             self.assertEqual(
                 [
                     ["where", "do", "you", "wanna", "meet?"],
-                    ["mpk", "__PAD__", "__PAD__", "__PAD__", "__PAD__"],
+                    [
+                        "mpk",
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                    ],
                 ],
                 tokens,
             )
@@ -679,40 +690,40 @@ class TensorizersTest(unittest.TestCase):
             self.assertEqual(
                 [
                     [
-                        "__BEGIN_OF_SENTENCE__",
-                        "__BEGIN_OF_LIST__",
-                        "__END_OF_SENTENCE__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
+                        str(SpecialTokens.BOS),
+                        str(SpecialTokens.BOL),
+                        str(SpecialTokens.EOS),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
                     ],
                     [
-                        "__BEGIN_OF_SENTENCE__",
+                        str(SpecialTokens.BOS),
                         "where",
                         "do",
                         "you",
                         "wanna",
                         "meet?",
-                        "__END_OF_SENTENCE__",
+                        str(SpecialTokens.EOS),
                     ],
                     [
-                        "__BEGIN_OF_SENTENCE__",
+                        str(SpecialTokens.BOS),
                         "mpk",
-                        "__END_OF_SENTENCE__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
+                        str(SpecialTokens.EOS),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
                     ],
                     [
-                        "__BEGIN_OF_SENTENCE__",
-                        "__END_OF_LIST__",
-                        "__END_OF_SENTENCE__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
-                        "__PAD__",
+                        str(SpecialTokens.BOS),
+                        str(SpecialTokens.EOL),
+                        str(SpecialTokens.EOS),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
+                        str(SpecialTokens.PAD),
                     ],
                 ],
                 tokens,

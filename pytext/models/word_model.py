@@ -4,13 +4,13 @@
 from typing import List, Optional, Union
 
 import torch
+from pytext.common.constants import SpecialTokens
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
     SlotLabelTensorizer,
     TokenTensorizer,
 )
 from pytext.data.tokenizers import DoNothingTokenizer
-from pytext.data.utils import UNK
 from pytext.exporters.exporter import ModelExporter
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.embeddings import CharacterEmbedding, WordEmbedding
@@ -68,7 +68,12 @@ class WordTaggingModel(Model):
     def create_embedding(cls, config, tensorizers):
         vocab = tensorizers["tokens"].vocab
         return WordEmbedding(
-            len(vocab), config.embedding.embed_dim, None, None, vocab.idx[UNK], []
+            len(vocab),
+            config.embedding.embed_dim,
+            None,
+            None,
+            vocab.idx[SpecialTokens.UNK],
+            [],
         )
 
     @classmethod
@@ -263,7 +268,7 @@ class WordTaggingLiteModel(WordTaggingModel):
                 if tokens is None:
                     raise RuntimeError("tokens is required")
 
-                tokens = truncate_tokens(tokens, self.max_seq_len, "__PAD__")
+                tokens = truncate_tokens(tokens, self.max_seq_len, SpecialTokens.PAD)
                 seq_lens = make_sequence_lengths(tokens)
                 token_bytes, _ = make_byte_inputs(
                     tokens, self.max_byte_len, self.byte_offset_for_non_padding

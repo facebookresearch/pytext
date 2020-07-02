@@ -5,8 +5,8 @@ import os
 from random import Random
 from typing import Dict, List, Type
 
+from pytext.common.constants import SpecialTokens
 from pytext.data.sources.data_source import RootDataSource
-from pytext.data.utils import UNK
 from pytext.utils.file_io import PathManager
 
 
@@ -26,7 +26,7 @@ def reader(file_path, vocab):
     with PathManager.open(file_path, "r") as reader:
         for line in reader:
             yield " ".join(
-                vocab.get(s.strip(), UNK)
+                vocab.get(s.strip(), SpecialTokens.UNK)
                 # ATIS every row starts/ends with BOS/EOS: remove them
                 for s in line.split()[1:-1]
             )

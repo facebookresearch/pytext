@@ -6,17 +6,9 @@ from typing import Dict, List, NamedTuple, Optional
 import torch
 import torch.nn as nn
 from fairseq.data.dictionary import Dictionary
+from pytext.common.constants import SpecialTokens
 from pytext.data.bert_tensorizer import build_fairseq_vocab
-from pytext.data.utils import (
-    BOS,
-    EOS,
-    MASK,
-    PAD,
-    UNK,
-    SpecialToken,
-    VocabBuilder,
-    Vocabulary,
-)
+from pytext.data.utils import SpecialToken, VocabBuilder, Vocabulary
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 
@@ -182,11 +174,11 @@ def build_fairseq_vocab(
     """
     if not special_token_replacements:
         special_token_replacements = {
-            "<pad>": PAD,
-            "<s>": BOS,
-            "</s>": EOS,
-            "<unk>": UNK,
-            "<mask>": MASK,
+            "<pad>": SpecialTokens.PAD,
+            "<s>": SpecialTokens.BOS,
+            "</s>": SpecialTokens.EOS,
+            "<unk>": SpecialTokens.UNK,
+            "<mask>": SpecialTokens.MASK,
         }
     with PathManager.open(vocab_file) as f:
         dictionary = dictionary_class.load(f)

@@ -6,7 +6,21 @@ from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
 import torch
+from pytext.common.constants import SpecialTokens, Token as SpecialToken  # noqa
 from pytext.utils import cuda, precision
+
+
+UNK = SpecialTokens.UNK
+PAD = SpecialTokens.PAD
+BOS = SpecialTokens.BOS
+EOS = SpecialTokens.EOS
+BOL = SpecialTokens.BOL
+EOL = SpecialTokens.EOL
+MASK = SpecialTokens.MASK
+# BOS and EOS is too long for Byte-level Language Model.
+BYTE_BOS = SpecialTokens.BYTE_BOS
+BYTE_EOS = SpecialTokens.BYTE_EOS
+BYTE_SPACE = SpecialTokens.BYTE_SPACE
 
 
 def should_iter(i):
@@ -70,28 +84,6 @@ def shard(rows, rank, num_workers):
             queue = []
 
 
-class SpecialToken(str):
-    def __eq__(self, other):
-        # We don't want to compare as equal to actual strings, but we want to behave
-        # like a string code-wise. Don't use `is` comparison because we want
-        # SpecialToken instances created across picklings to equals-compare
-        return isinstance(other, SpecialToken) and super().__eq__(other)
-
-    __hash__ = str.__hash__
-
-
-UNK = SpecialToken("__UNKNOWN__")
-PAD = SpecialToken("__PAD__")
-BOS = SpecialToken("__BEGIN_OF_SENTENCE__")
-EOS = SpecialToken("__END_OF_SENTENCE__")
-BOL = SpecialToken("__BEGIN_OF_LIST__")
-EOL = SpecialToken("__END_OF_LIST__")
-MASK = SpecialToken("__MASK__")
-# BOS and EOS is too long for Byte-level Language Model.
-# Todo: find out conbination of bytes with low-frequency and shorter length
-BYTE_BOS = SpecialToken("^")
-BYTE_EOS = SpecialToken("#")
-BYTE_SPACE = SpecialToken(" ")
 UNK_INDEX = 0
 PAD_INDEX = 1
 
@@ -104,11 +96,11 @@ class Vocabulary:
         vocab_list: List[str],
         counts: List = None,
         replacements: Optional[Dict[str, str]] = None,
-        unk_token: str = UNK,
-        pad_token: str = PAD,
-        bos_token: str = BOS,
-        eos_token: str = EOS,
-        mask_token: str = MASK,
+        unk_token: str = SpecialTokens.UNK,
+        pad_token: str = SpecialTokens.PAD,
+        bos_token: str = SpecialTokens.BOS,
+        eos_token: str = SpecialTokens.EOS,
+        mask_token: str = SpecialTokens.MASK,
     ):
         self._vocab = vocab_list
         self.counts = counts
@@ -250,11 +242,11 @@ class VocabBuilder:
 
         # Some tokenization libraries use special tokens, expose them so they
         # can be configured
-        self.unk_token = UNK
-        self.pad_token = PAD
-        self.bos_token = BOS
-        self.eos_token = EOS
-        self.mask_token = MASK
+        self.unk_token = SpecialTokens.UNK
+        self.pad_token = SpecialTokens.PAD
+        self.bos_token = SpecialTokens.BOS
+        self.eos_token = SpecialTokens.EOS
+        self.mask_token = SpecialTokens.MASK
 
         self.delimiter = delimiter
 
@@ -308,14 +300,14 @@ class VocabBuilder:
             tokens_to_insert.append((self.eos_index, self.eos_token))
             del self._counter[self.eos_token]
         if self.use_bol:
-            tokens_to_insert.append((self.bol_index, BOL))
-            del self._counter[BOL]
+            tokens_to_insert.append((self.bol_index, SpecialTokens.BOL))
+            del self._counter[SpecialTokens.BOL]
         if self.use_eol:
-            tokens_to_insert.append((self.eol_index, EOL))
-            del self._counter[EOL]
+            tokens_to_insert.append((self.eol_index, SpecialTokens.EOL))
+            del self._counter[SpecialTokens.EOL]
         if self.use_mask:
-            tokens_to_insert.append((self.mask_index, MASK))
-            del self._counter[MASK]
+            tokens_to_insert.append((self.mask_index, SpecialTokens.MASK))
+            del self._counter[SpecialTokens.MASK]
         vocab_list = list(self._counter)
         for index, token in sorted(tokens_to_insert):
             vocab_list.insert(index, token)

@@ -4,19 +4,11 @@
 from typing import List
 
 import torch
+from pytext.common.constants import SpecialTokens
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import TokenTensorizer
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
-from pytext.data.utils import (
-    BOS,
-    EOS,
-    MASK,
-    PAD,
-    UNK,
-    VocabBuilder,
-    Vocabulary,
-    pad_and_tensorize,
-)
+from pytext.data.utils import VocabBuilder, Vocabulary, pad_and_tensorize
 
 
 class SquadTensorizer(TokenTensorizer):
@@ -45,11 +37,11 @@ class SquadTensorizer(TokenTensorizer):
         if isinstance(tokenizer, WordPieceTokenizer):
             print("Using WordPieceTokenizer")
             replacements = {
-                "[UNK]": UNK,
-                "[PAD]": PAD,
-                "[CLS]": BOS,
-                "[SEP]": EOS,
-                "[MASK]": MASK,
+                "[UNK]": SpecialTokens.UNK,
+                "[PAD]": SpecialTokens.PAD,
+                "[CLS]": SpecialTokens.BOS,
+                "[SEP]": SpecialTokens.EOS,
+                "[MASK]": SpecialTokens.MASK,
             }
             vocab = Vocabulary(
                 [token for token, _ in tokenizer.vocab.items()],

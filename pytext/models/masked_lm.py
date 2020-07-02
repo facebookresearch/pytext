@@ -5,11 +5,11 @@ from typing import Dict, List
 
 import torch
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
-from pytext.common.constants import Stage
+from pytext.common.constants import SpecialTokens, Stage
 from pytext.config import ConfigBase
 from pytext.data.bert_tensorizer import BERTTensorizerBase
 from pytext.data.tensorizers import Tensorizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.masking_utils import (
     MaskingStrategy,
@@ -116,9 +116,13 @@ class MaskedLanguageModel(BaseModel):
             # Set probability of masking special tokens to be very low, since it doesn't
             # make sense to use them for MLM (unless there are no other tokens in the
             # the batch).
-            tokens_to_avoid_masking = [PAD, UNK, MASK]
+            tokens_to_avoid_masking = [
+                SpecialTokens.PAD,
+                SpecialTokens.UNK,
+                SpecialTokens.MASK,
+            ]
             if not self.mask_bos:
-                tokens_to_avoid_masking.extend([BOS, EOS])
+                tokens_to_avoid_masking.extend([SpecialTokens.BOS, SpecialTokens.EOS])
             for token in tokens_to_avoid_masking:
                 token_idx = self.vocab.idx.get(token)
                 if token_idx is not None:
@@ -128,7 +132,9 @@ class MaskedLanguageModel(BaseModel):
     def arrange_model_inputs(self, tensor_dict):
         tokens, *other = tensor_dict["tokens"]
         self.mask, self.pad_mask, mask_mask, rand_mask = self._get_mask(tokens)
-        masked_tokens = self._mask_input(tokens, mask_mask, self.vocab.idx[MASK])
+        masked_tokens = self._mask_input(
+            tokens, mask_mask, self.vocab.idx[SpecialTokens.MASK]
+        )
         masked_tokens = self._mask_input(
             masked_tokens, rand_mask, torch.randint_like(tokens, high=len(self.vocab))
         )

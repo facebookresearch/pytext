@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 
 import torch
 from pytext import resources
+from pytext.common.constants import SpecialTokens
 from pytext.config.component import ComponentType, create_component
 from pytext.data.bert_tensorizer import (
     BERTTensorizerBase,
@@ -13,7 +14,7 @@ from pytext.data.bert_tensorizer import (
     build_fairseq_vocab,
 )
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
-from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, VocabBuilder, pad_and_tensorize
+from pytext.data.utils import VocabBuilder, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
@@ -51,11 +52,11 @@ class RoBERTaTensorizer(BERTTensorizerBase):
             vocab = build_fairseq_vocab(
                 vocab_file=f,
                 special_token_replacements={
-                    "<pad>": PAD,
-                    "<s>": BOS,
-                    "</s>": EOS,
-                    "<unk>": UNK,
-                    "<mask>": MASK,
+                    "<pad>": SpecialTokens.PAD,
+                    "<s>": SpecialTokens.BOS,
+                    "</s>": SpecialTokens.EOS,
+                    "<unk>": SpecialTokens.UNK,
+                    "<mask>": SpecialTokens.MASK,
                 },
             )
         return cls(
@@ -89,11 +90,11 @@ class RoBERTaTokenLevelTensorizer(RoBERTaTensorizer):
             vocab = build_fairseq_vocab(
                 vocab_file=f,
                 special_token_replacements={
-                    "<pad>": PAD,
-                    "<s>": BOS,
-                    "</s>": EOS,
-                    "<unk>": UNK,
-                    "<mask>": MASK,
+                    "<pad>": SpecialTokens.PAD,
+                    "<s>": SpecialTokens.BOS,
+                    "</s>": SpecialTokens.EOS,
+                    "<unk>": SpecialTokens.UNK,
+                    "<mask>": SpecialTokens.MASK,
                 },
             )
         return cls(

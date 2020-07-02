@@ -19,11 +19,11 @@ from pytext.builtin_task import (
     SeqNNTask,
     WordTaggingTask,
 )
-from pytext.common.constants import DatasetFieldName
+from pytext.common.constants import DatasetFieldName, SpecialTokens
 from pytext.config import config_from_json
 from pytext.config.component import create_exporter, create_model
 from pytext.data import CommonMetadata
-from pytext.data.utils import PAD, UNK, Vocabulary
+from pytext.data.utils import Vocabulary
 from pytext.exporters.exporter import ModelExporter
 from pytext.fields import (
     CharFeatureField,
@@ -285,7 +285,7 @@ CONTEXTUAL_INTENT_SLOT_CONFIG = """
     }
 }
 """
-WORD_VOCAB = [UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
+WORD_VOCAB = [SpecialTokens.UNK, "W1", "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9"]
 
 
 W_VOCAB_SIZE = 10
@@ -449,7 +449,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         for WORD_CONFIG in WORD_CONFIGS:
             config = self._get_config(WordTaggingTask.Config, WORD_CONFIG)
             tensorizers, data = _NewTask._init_tensorizers(config)
-            word_labels = [PAD, UNK, "NoLabel", "person"]
+            word_labels = [SpecialTokens.PAD, SpecialTokens.UNK, "NoLabel", "person"]
             tensorizers["labels"].vocab = Vocabulary(word_labels)
             tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
             py_model = _NewTask._init_model(config.model, tensorizers)
@@ -546,8 +546,8 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(IntentSlotTask.Config, JOINT_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
-        doc_labels = [UNK, "cu:other", "cu:address_Person"]
-        word_labels = [PAD, UNK, "NoLabel", "person"]
+        doc_labels = [SpecialTokens.UNK, "cu:other", "cu:address_Person"]
+        word_labels = [SpecialTokens.PAD, SpecialTokens.UNK, "NoLabel", "person"]
         tensorizers["word_labels"].vocab = Vocabulary(word_labels)
         tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
@@ -627,7 +627,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(SeqNNTask.Config, SEQ_NN_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
-        doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
+        doc_labels = [SpecialTokens.UNK, "cu:other", "cu:address_Person"]
         tensorizers["labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
         py_model = _NewTask._init_model(config.model, tensorizers)
@@ -676,8 +676,8 @@ class ModelExporterTest(hu.HypothesisTestCase):
     ):
         config = self._get_config(IntentSlotTask.Config, CONTEXTUAL_INTENT_SLOT_CONFIG)
         tensorizers, data = _NewTask._init_tensorizers(config)
-        doc_labels = ["__UNKNOWN__", "cu:other", "cu:address_Person"]
-        word_labels = ["__UNKNOWN__", "NoLabel", "person"]
+        doc_labels = [SpecialTokens.UNK, "cu:other", "cu:address_Person"]
+        word_labels = [SpecialTokens.UNK, "NoLabel", "person"]
         tensorizers["word_labels"].vocab = Vocabulary(word_labels)
         tensorizers["doc_labels"].vocab = Vocabulary(doc_labels)
         tensorizers["tokens"].vocab = Vocabulary(WORD_VOCAB)
