@@ -685,6 +685,226 @@ class ByteTokenTensorizer(Tensorizer):
         return len(row[0])
 
 
+class Float1DListTensorizer(Tensorizer):
+    """
+    Tensorizes the 1d list of floats -- List[float]
+    TODO: Even though very similar, 'FloatListTensorizer' currently does not support this vanilla case for tensorization of List[float].
+    In future, if 'FloatListTensorizer' accommodates this case, we do not need this separate tensorizer.
+    """
+
+    class Config(Tensorizer.Config):
+        # inputs
+        column: str = "float_list_column"
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return cls(config, **kwargs)
+
+    def __init__(self, config: Config, **kwargs):
+        # mention link probability
+        self.column = config.column
+
+    @property
+    def column_schema(self):
+        return [(self.column, List[float])]
+
+    def initialize(self, from_scratch=True):
+        # start reading through data source
+        while True:
+            yield
+
+    def numberize(self, row):
+        assert self.column in row, """1d float-list column not present in the data"""
+        return row[self.column]
+
+    def tensorize(self, batch):
+        values = pad_and_tensorize(batch, pad_token=1.0, dtype=torch.float)
+        return values
+
+
+class Integer1DListTensorizer(Tensorizer):
+    """
+    Tensorizes the 1d list of integers -- List[int]
+    """
+
+    SPAN_PAD_IDX = 0
+
+    class Config(Tensorizer.Config):
+        # inputs
+        column: str = "int_list_column"
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return cls(config, **kwargs)
+
+    def __init__(self, config: Config, **kwargs):
+        self.column = config.column
+
+    @property
+    def column_schema(self):
+        return [(self.column, List[int])]
+
+    def initialize(self, from_scratch=True):
+        # start reading through data source
+        while True:
+            yield
+
+    def numberize(self, row):
+        assert self.column in row, """Integer 1d list column not present in the data"""
+        return row[self.column]
+
+    def tensorize(self, batch):
+        values = pad_and_tensorize(batch, pad_token=self.SPAN_PAD_IDX)
+        return values
+
+
+class CharacterVocabTokenTensorizer(Tensorizer):
+    """Turn words into 2-dimensional tensors of ints based on the char vocab.
+    Words are padded to the maximum word length (also capped at `max_char_length`).
+    Sequence lengths are the length of each token.
+
+    The difference with pytext.data.tensorizers.CharacterTokenTensorizer is that the
+    CharacterTokenTensorizer uses the ascii value and does not require to build a vocab.
+    Here we tensorize based on the vocab.
+    """
+
+    class Config(Tensorizer.Config):
+        #: The name of the text column to parse from the data source.
+        column: str = "text"
+        #: The tokenizer to use to split input text into tokens.
+        tokenizer: Tokenizer.Config = Tokenizer.Config()
+        add_bos_token: bool = False
+        add_eos_token: bool = False
+        use_eos_token_for_bos: bool = False
+        max_seq_len: Optional[int] = None
+        vocab: VocabConfig = VocabConfig()
+        vocab_file_delimiter: str = " "
+
+    @classmethod
+    def from_config(cls, config: Config):
+        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
+        return cls(
+            text_column=config.column,
+            tokenizer=tokenizer,
+            add_bos_token=config.add_bos_token,
+            add_eos_token=config.add_eos_token,
+            use_eos_token_for_bos=config.use_eos_token_for_bos,
+            max_seq_len=config.max_seq_len,
+            vocab_config=config.vocab,
+            vocab_file_delimiter=config.vocab_file_delimiter,
+            is_input=config.is_input,
+        )
+
+    def __init__(
+        self,
+        text_column,
+        tokenizer=None,
+        add_bos_token=Config.add_bos_token,
+        add_eos_token=Config.add_eos_token,
+        use_eos_token_for_bos=Config.use_eos_token_for_bos,
+        max_seq_len=Config.max_seq_len,
+        vocab_config=None,
+        vocab=None,
+        vocab_file_delimiter=" ",
+        is_input=Config.is_input,
+    ):
+        self.text_column = text_column
+        self.tokenizer = tokenizer or Tokenizer()
+        self.vocab = vocab
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
+        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.vocab_builder = None
+        self.vocab_config = vocab_config or VocabConfig()
+        self.vocab_file_delimiter = vocab_file_delimiter
+        super().__init__(is_input)
+
+    @property
+    def column_schema(self):
+        return [(self.text_column, str)]
+
+    def initialize(self, vocab_builder=None, from_scratch=True):
+        """Build vocabulary based on training corpus."""
+        if self.vocab and from_scratch:
+            if self.vocab_config.build_from_data or self.vocab_config.vocab_files:
+                print(
+                    f"`{self.text_column}` column: vocab already provided, skipping "
+                    f"adding tokens from data and from vocab files."
+                )
+            return
+
+        if not self.vocab_config.build_from_data and not self.vocab_config.vocab_files:
+            raise ValueError(
+                f"To create token tensorizer for '{self.text_column}', either "
+                f"`build_from_data` or `vocab_files` must be set."
+            )
+        if not self.vocab_builder:
+            # else means not initialize from scratch, self.vocab_builder
+            # would be set already
+            self.vocab_builder = vocab_builder or VocabBuilder(
+                delimiter=self.vocab_file_delimiter
+            )
+            self.vocab_builder.use_bos = self.add_bos_token
+            self.vocab_builder.use_eos = self.add_eos_token
+        if not self.vocab_config.build_from_data:
+            self._add_vocab_from_files()
+            self.vocab = self.vocab_builder.make_vocab()
+            return
+
+        try:
+            while True:
+                row = yield
+                raw_text = row[self.text_column]
+                tokenized = self.tokenizer.tokenize(raw_text)
+                # tokenize the word tokens further
+                char_tokenized = self.character_tokenize(tokenized)
+                # build the vocab
+                self.vocab_builder.add_all(char_tokenized)
+        except GeneratorExit:
+            self.vocab_builder.truncate_to_vocab_size(
+                self.vocab_config.size_from_data, self.vocab_config.min_counts
+            )
+            self._add_vocab_from_files()
+            self.vocab = self.vocab_builder.make_vocab()
+
+    def character_tokenize(self, tokens: List[Token]):
+        res = []
+        for token in tokens:
+            chars = []
+            for char in token.value:
+                chars.append(char)
+            res.append(chars)
+        return res
+
+    def _add_vocab_from_files(self):
+        for vocab_file in self.vocab_config.vocab_files:
+            with PathManager.open(vocab_file.filepath) as f:
+                self.vocab_builder.add_from_file(
+                    f,
+                    vocab_file.skip_header_line,
+                    vocab_file.lowercase_tokens,
+                    vocab_file.size_limit,
+                )
+
+    def numberize(self, row):
+        """Tokenize, look up in vocabulary."""
+        raw_text = row[self.text_column]
+        tokenized = self.tokenizer.tokenize(raw_text)
+        tokens_in_chars = self.character_tokenize(tokenized)
+        char_tokens = self.vocab.lookup_all(tokens_in_chars)
+        char_tokens_lengths = [len(token) for token in tokens_in_chars]
+
+        return char_tokens, char_tokens_lengths
+
+    def tensorize(self, batch):
+        char_tokens, char_tokens_lengths = zip(*batch)
+        return (
+            pad_and_tensorize(char_tokens, self.vocab.get_pad_index()),
+            pad_and_tensorize(char_tokens_lengths),
+        )
+
+
 class CharacterTokenTensorizer(TokenTensorizer):
     """Turn words into 2-dimensional tensors of ints based on their ascii values.
     Words are padded to the maximum word length (also capped at `max_char_length`).
@@ -1739,21 +1959,30 @@ class FloatListSeqTensorizer(Tensorizer):
         column: str
         error_check: bool = False
         dim: Optional[int] = None
+        pad_token: float = -1.0
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.column, config.error_check, config.dim, config.is_input)
+        return cls(
+            config.column,
+            config.error_check,
+            config.dim,
+            config.pad_token,
+            config.is_input,
+        )
 
     def __init__(
         self,
         column: str,
         error_check: bool,
         dim: Optional[int],
+        pad_token: float = Config.pad_token,
         is_input: bool = Config.is_input,
     ):
         self.column = column
         self.error_check = error_check
         self.dim = dim
+        self.pad_token = pad_token
         assert not self.error_check or self.dim is not None, "Error check requires dim"
         super().__init__(is_input)
 
@@ -1774,7 +2003,7 @@ class FloatListSeqTensorizer(Tensorizer):
     def tensorize(self, batch):
         float_lists, lens = zip(*batch)
         padded_and_tensorized_float_lists = pad_and_tensorize(
-            float_lists, pad_token=-1.0, dtype=torch.float
+            float_lists, pad_token=self.pad_token, dtype=torch.float
         )
         return (padded_and_tensorized_float_lists, pad_and_tensorize(lens))
 

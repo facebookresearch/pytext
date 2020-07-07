@@ -11,6 +11,7 @@ from pytext.torchscript.tensorizer.tensorizer import VocabLookup
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
 from pytext.torchscript.utils import ScriptBatchInput, pad_2d
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils import cuda
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
 
@@ -358,7 +359,18 @@ class ScriptBasedTokenTensorizer(Tensorizer):
         return list(tokenized_texts), len(tokenized_texts), token_ranges
 
     def tensorize(self, batch):
-        return self.tensorizer_script_impl.tensorize_wrapper(*zip(*batch))
+        (
+            token_indices_tensor,
+            seq_lens_1d,
+            token_positions_tensor,
+        ) = self.tensorizer_script_impl.tensorize_wrapper(*zip(*batch))
+
+        # Need to map them to cuda tensors so that we can run this on GPU
+        return (
+            cuda.tensor(token_indices_tensor, dtype=torch.long),
+            cuda.tensor(seq_lens_1d, dtype=torch.long),
+            cuda.tensor(token_positions_tensor, dtype=torch.long),
+        )
 
     def sort_key(self, row):
         # use seq_len as sort key
