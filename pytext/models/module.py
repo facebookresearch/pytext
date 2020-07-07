@@ -45,22 +45,28 @@ def create_module(
     shared_module_key = getattr(module_config, "shared_module_key", None)
     typed_shared_module_key = (shared_module_key, type(module_config))
     load_path = getattr(module_config, "load_path", None)
-    is_torchscript_load_path = load_path and zipfile.is_zipfile(
-        PathManager.get_local_path(load_path)
-    )
     module = SHARED_MODULE_REGISTRY.get(typed_shared_module_key)
+
     if not module:
-        if is_torchscript_load_path:
+        if load_path:
             with PathManager.open(load_path, "rb") as load_file:
-                module = torch.jit.load(load_file)
+                loaded_module = torch.load(load_file, map_location="cpu")
+
+            if isinstance(loaded_module, dict):
+                # Loaded module is a state dict
+                module = create_fn(module_config, *args, **kwargs)
+                module.load_state_dict(loaded_module)
+            else:
+                # Loaded module is a torchscripted module
+                module = loaded_module
+
+            name = type(module).__name__
+            print(f"Loaded state of module {name} from {load_path} ...")
+
         else:
             module = create_fn(module_config, *args, **kwargs)
 
     name = type(module).__name__
-    if load_path and not is_torchscript_load_path:
-        print(f"Loading state of module {name} from {load_path} ...")
-        with PathManager.open(load_path, "rb") as load_file:
-            module.load_state_dict(torch.load(load_file, map_location="cpu"))
     if getattr(module_config, "freeze", False):
         print(f"Freezing the parameters of module {name} ...")
         module.freeze()
