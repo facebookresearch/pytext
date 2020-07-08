@@ -121,16 +121,6 @@ class WordTaggingModel(Model):
     def arrange_model_context(self, tensor_dict):
         return {"seq_lens": tensor_dict["tokens"][1]}
 
-    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
-        exporter = ModelExporter(
-            ModelExporter.Config(),
-            self.get_export_input_names(tensorizers),
-            self.arrange_model_inputs(tensor_dict),
-            self.vocab_to_export(tensorizers),
-            self.get_export_output_names(tensorizers),
-        )
-        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
-
     def torchscriptify(self, tensorizers, traced_model):
         output_layer = self.output_layer.torchscript_predictions()
 

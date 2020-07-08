@@ -104,15 +104,5 @@ class EnsembleModel(Model):
     def get_export_output_names(self, tensorizers):
         return self.models[0].get_export_output_names(tensorizers)
 
-    def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
-        exporter = ModelExporter(
-            ModelExporter.Config(),
-            self.get_export_input_names(tensorizers),
-            self.arrange_model_inputs(tensor_dict),
-            self.vocab_to_export(tensorizers),
-            self.get_export_output_names(tensorizers),
-        )
-        return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
-
     def torchscriptify(self, tensorizers, traced_model):
         return self.models[0].torchscriptify(tensorizers, traced_model)
