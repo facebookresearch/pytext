@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import itertools
+import json
 import math
 import os
 import sys
+from enum import Enum
 from typing import List
 
 import numpy as np
@@ -16,6 +18,11 @@ from pytext.models.crf import CRF
 from pytext.models.model import Model
 from pytext.utils import timing
 from pytext.utils.file_io import PathManager
+
+
+class State(Enum):
+    ANALYSIS = "Analysis"
+    OTHERS = "Others"
 
 
 class Sparsifier(Component):
@@ -355,6 +362,8 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         # allow the user to skip pruning for some weight. Here we set the max
         # number of weight tensor can be skipped for pruning.
         max_skipped_weight: int = 0
+        # if we already did sensitivity analysis before
+        pre_analysis_path: str = ""
 
     def __init__(
         self,
@@ -362,6 +371,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         analyzed_sparsity,
         max_analysis_batches,
         max_skipped_weight,
+        pre_analysis_path,
     ):
         assert PathManager.exists(
             pre_train_model_path
@@ -374,6 +384,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         self.max_analysis_batches = max_analysis_batches
         self.max_skipped_weight = max_skipped_weight
         self.require_mask_parameters = []
+        self.pre_analysis_path = pre_analysis_path
 
     @classmethod
     def from_config(cls, config: Config):
@@ -382,6 +393,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             config.analyzed_sparsity,
             config.max_analysis_batches,
             config.max_skipped_weight,
+            config.pre_analysis_path,
         )
 
     def get_prunable_params(self, train_config, state):
@@ -438,9 +450,9 @@ class SensitivityAnalysisSparsifier(Sparsifier):
 
         return current_metric, prunable_param_shape
 
-    def find_params_to_prune(self, param_dict, metric_dict, max_skip_weight_num):
+    def find_params_to_prune(self, metric_dict, max_skip_weight_num):
         require_mask_parameters = sorted(
-            param_dict.keys(), reverse=True, key=lambda param: metric_dict[param]
+            metric_dict.keys(), reverse=True, key=lambda param: metric_dict[param]
         )
         metric_sensitivities_by_param = [
             metric_dict[p] for p in require_mask_parameters
@@ -521,26 +533,54 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             current_metric, prunable_param_shape = self.layer_wise_analysis(
                 param_name, param_dict, trainer, state, eval_data, metric_reporter
             )
-            metric_dict[param_name] = current_metric
-            # write the test result into the checkpoint
-            if state.rank == 0:
-                with PathManager.open(output_path, "a") as fp:
-                    fp.write(
-                        "{}/{}/{}/{}\n".format(
-                            param_name,
-                            prunable_param_shape,
-                            current_metric,
-                            (current_metric - metric_dict[None]),
-                        )
-                    )
+            if param_name is None:
+                baseline_metric = current_metric
+            metric_dict[param_name] = current_metric - baseline_metric
         print("#" * 40)
-        sys.stdout.flush()
+
+        # remove baseline metric from the analysis results
+        if None in metric_dict:
+            del metric_dict[None]
+        # write the test result into the checkpoint
+        if state.rank == 0:
+            with PathManager.open(output_path, "w") as fp:
+                json.dump(metric_dict, fp)
+
+        return metric_dict
+
+    def sparsify(self, state):
+        """
+        obtain a mask and apply the mask to sparsify
+        """
+
+    def load_analysis_from_path(self):
+        assert PathManager.isfile(self.pre_analysis_path), "{} is not a file".format(
+            self.pre_analysis_path
+        )
+        with PathManager.open(self.pre_analysis_path, "r") as fp:
+            metric_dict = json.load(fp)
+
+        return metric_dict
+
+    @timing.time("sparsifier initialize")
+    def initialize(self, trainer, state, eval_data, metric_reporter, train_config):
+        # if user specify the analysis file, load it from path
+        if self.pre_analysis_path:
+            metric_dict = self.load_analysis_from_path()
+
+        else:
+            self.analysis_state = State.ANALYSIS
+            metric_dict = self.sensitivity_analysis(
+                trainer, state, eval_data, metric_reporter, train_config
+            )
+            # finish the analysis, sparsifier can apply prune mask.
+            self.analysis_state = State.OTHERS
 
         # skip some of the weight tensors from pruning. The user can
         # specify the max_skipped_weight, which limit the max number
         # of weight to be skipped.
         self.require_mask_parameters, skipped_weight_num = self.find_params_to_prune(
-            param_dict, metric_dict, self.max_skipped_weight
+            metric_dict, self.max_skipped_weight
         )
 
         for p in self.require_mask_parameters:
@@ -548,14 +588,3 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         print("#" * 40)
         sys.stdout.flush()
         print(str(skipped_weight_num) + " weight tensors are skipped for pruning")
-
-    def sparsify(self, state):
-        """
-        obtain a mask and apply the mask to sparsify
-        """
-
-    @timing.time("sparsifier initialize")
-    def initialize(self, trainer, state, eval_data, metric_reporter, train_config):
-        self.sensitivity_analysis(
-            trainer, state, eval_data, metric_reporter, train_config
-        )
