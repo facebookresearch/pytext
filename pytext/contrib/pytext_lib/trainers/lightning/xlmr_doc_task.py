@@ -24,7 +24,7 @@ from pytext.fb.optimizer import FairSeqAdam
 from torch.utils.data import DataLoader
 
 
-# @manual=//github/third-party/PyTorchLightning/pytorch-lightning:master
+# @manual=//github/third-party/PyTorchLightning/pytorch-lightning:lib
 from pytorch_lightning import LightningModule  # noqa isort:skip
 
 
