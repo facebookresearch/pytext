@@ -325,12 +325,14 @@ class TensorBoardChannel(Channel):
                 metrics object will be prepended with the prefix.
             metrics (Any): The metrics object.
         """
-        for field_name, field_value in metrics._asdict().items():
+        if hasattr(metrics, "_asdict"):
+            metrics = metrics._asdict()
+        for field_name, field_value in metrics.items():
             if isinstance(field_value, (int, float)):
                 self.summary_writer.add_scalar(
                     f"{prefix}/{field_name}", field_value, epoch
                 )
-            elif hasattr(field_value, "_asdict"):
+            elif hasattr(field_value, "_asdict") or isinstance(field_value, dict):
                 self.add_scalars(f"{prefix}/{field_name}", field_value, epoch)
 
     def close(self):
