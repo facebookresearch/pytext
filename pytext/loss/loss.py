@@ -517,6 +517,8 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         self.beta = config.beta
         self.source = config.source
         self.use_entropy = config.use_entropy
+        self.cross_entropy_loss = None
+        self.label_smoothing_loss = None
 
     def __call__(self, logits, targets, reduce=True):
         """
@@ -557,6 +559,9 @@ class LabelSmoothedCrossEntropyLoss(Loss):
             reduction="mean" if reduce else "none",
             weight=self.weight,
         )
+
+        self.cross_entropy_loss = cross_entropy_loss
+        self.label_smoothing_loss = label_smoothing_loss
 
         return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
 
@@ -606,4 +611,14 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
 
         total_loss = label_loss + self.lengths_weight * length_loss
 
-        return total_loss, {"label_loss": label_loss, "length_loss": length_loss}
+        return (
+            total_loss,
+            {
+                "label_loss": label_loss,
+                "length_loss": length_loss,
+                "labels_cross_entropy_loss": self.label_smoothing_loss.cross_entropy_loss,
+                "labels_label_smoothing_loss": self.label_smoothing_loss.label_smoothing_loss,
+                "lengths_cross_entropy_loss": self.length_loss.cross_entropy_loss,
+                "lengths_label_smoothing_loss": self.length_loss.label_smoothing_loss,
+            },
+        )
