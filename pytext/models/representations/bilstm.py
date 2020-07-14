@@ -45,6 +45,8 @@ class BiLSTM(RepresentationBase):
                 computing the final result. Defaults to 1.
             bidirectional (bool): If `True`, becomes a bidirectional LSTM. Defaults
                 to `True`.
+            disable_sort_in_jit (bool): If `True`, disable sort in pack_padded_sequence
+                to allow inference on GPU. Defaults to `False`.
         """
 
         dropout: float = 0.4
@@ -52,6 +54,7 @@ class BiLSTM(RepresentationBase):
         num_layers: int = 1
         bidirectional: bool = True
         pack_sequence: bool = True
+        disable_sort_in_jit: bool = False
 
     def __init__(
         self, config: Config, embed_dim: int, padding_value: float = 0.0
@@ -71,6 +74,7 @@ class BiLSTM(RepresentationBase):
             2 if config.bidirectional else 1
         )
         self.pack_sequence = config.pack_sequence
+        self.disable_sort_in_jit = config.disable_sort_in_jit
         log_class_usage(__class__)
 
     def forward(
@@ -136,8 +140,17 @@ class BiLSTM(RepresentationBase):
             new_state = (new_state_0, new_state_1)
         else:
             if self.pack_sequence:
+                # We need to disble sorting when jit trace because it introduce
+                # issues with sorted indices not in right device in pack_padded_sequence
+                # using GPU inference
                 rnn_input = pack_padded_sequence(
-                    embedded_tokens, seq_lengths, batch_first=True, enforce_sorted=False
+                    embedded_tokens,
+                    seq_lengths,
+                    batch_first=True,
+                    enforce_sorted=True
+                    if self.disable_sort_in_jit
+                    and torch._C._get_tracing_state() is not None
+                    else False,
                 )
             else:
                 rnn_input = embedded_tokens
