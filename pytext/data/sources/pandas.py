@@ -26,6 +26,21 @@ class PandasDataSource(RootDataSource):
 
     """
 
+    class Config(RootDataSource.Config):
+        train_df: Optional[DataFrame] = None
+        test_df: Optional[DataFrame] = None
+        eval_df: Optional[DataFrame] = None
+
+    @classmethod
+    def from_config(cls, config: Config, schema: Dict[str, Type]):
+        return cls(
+            train_df=config.train_df,
+            eval_df=config.eval_df,
+            test_df=config.test_df,
+            schema=schema,
+            column_mapping=config.column_mapping,
+        )
+
     def __init__(
         self,
         train_df: Optional[DataFrame] = None,
