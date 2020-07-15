@@ -43,8 +43,8 @@ class Seq2SeqMetricReporter(MetricReporter):
     class Config(MetricReporter.Config):
         pass
 
-    def __init__(self, channels, tensorizers):
-        super().__init__(channels)
+    def __init__(self, channels, log_gradient, tensorizers):
+        super().__init__(channels, log_gradient)
         self.tensorizers = tensorizers
 
     def _reset(self):
