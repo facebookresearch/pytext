@@ -45,6 +45,7 @@ class MetricReporter(Component):
     __COMPONENT_TYPE__ = ComponentType.METRIC_REPORTER
 
     lower_is_better: bool = False
+    log_gradient: bool = False
 
     class Config(ConfigBase):
         output_path: str = "/tmp/test_out.txt"
@@ -52,7 +53,8 @@ class MetricReporter(Component):
         #: Useful for KD training, column names that used by student but not teacher.
         student_column_names: List[str] = []
 
-    def __init__(self, channels, pep_format=False) -> None:
+    def __init__(self, channels, log_gradient=False, pep_format=False) -> None:
+        self.log_gradient = log_gradient
         self._reset()
         self.channels = channels
         self.pep_format = pep_format
@@ -66,6 +68,7 @@ class MetricReporter(Component):
         self.all_scores: List = []
         self.n_batches = 0
         self.batch_size: List = []
+        self.all_gradients: Dict[str, List[List]] = {}
 
     def _reset_realtime(self):
         self.realtime_meters: Dict = {}
@@ -110,6 +113,16 @@ class MetricReporter(Component):
         if DatasetFieldName.NUM_TOKENS in context:
             self.realtime_meters["tps"].update(context[DatasetFieldName.NUM_TOKENS])
             self.realtime_meters["ups"].update(1)
+
+    def add_gradients(self, model):
+        if self.log_gradient:
+            for key, value in model.named_parameters():
+                grad = value.grad
+                if grad is not None and len(grad) > 0 and not (grad == 0).all():
+                    if key in self.all_gradients:
+                        self.all_gradients[key].append(grad.cpu().numpy())
+                    else:
+                        self.all_gradients[key] = [grad.cpu().numpy()]
 
     def aggregate_preds(self, batch_preds, batch_context=None):
         self.aggregate_data(self.all_preds, batch_preds)
@@ -254,6 +267,8 @@ class MetricReporter(Component):
                         self.get_meta(),
                         model,
                         optimizer,
+                        self.log_gradient,
+                        self.get_gradients(),
                     )
 
         if reset:
@@ -306,6 +321,9 @@ class MetricReporter(Component):
         if new == old:
             return False
         return (new < old) == self.lower_is_better
+
+    def get_gradients(self):
+        return self.all_gradients
 
 
 class PureLossMetricReporter(MetricReporter):

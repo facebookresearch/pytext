@@ -67,8 +67,8 @@ class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
 
 
 class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
-    def __init__(self, channels, tensorizers, accept_flat_intents_slots):
-        super().__init__(channels, tensorizers)
+    def __init__(self, channels, log_gradient, tensorizers, accept_flat_intents_slots):
+        super().__init__(channels, log_gradient, tensorizers)
         self.accept_flat_intents_slots = accept_flat_intents_slots
 
     class Config(MetricReporter.Config):
