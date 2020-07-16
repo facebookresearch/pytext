@@ -86,6 +86,7 @@ class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
                     config.accept_flat_intents_slots,
                 ),
             ],
+            config.log_gradient,
             tensorizers,
             config.accept_flat_intents_slots,
         )
