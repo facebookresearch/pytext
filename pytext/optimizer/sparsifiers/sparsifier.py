@@ -364,6 +364,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         max_skipped_weight: int = 0
         # if we already did sensitivity analysis before
         pre_analysis_path: str = ""
+        sparsity: float = 0.8
 
     def __init__(
         self,
@@ -372,11 +373,13 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         max_analysis_batches,
         max_skipped_weight,
         pre_analysis_path,
+        sparsity,
     ):
         assert PathManager.exists(
             pre_train_model_path
         ), "The pre-trained model must be exist"
         self.pre_train_model_path = pre_train_model_path
+        self.param_dict = None
         assert (
             0.0 <= analyzed_sparsity <= 1.0
         ), "Analyzed sparsity need to be in the range of [0, 1]"
@@ -385,6 +388,12 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         self.max_skipped_weight = max_skipped_weight
         self.require_mask_parameters = []
         self.pre_analysis_path = pre_analysis_path
+        assert (
+            0.0 <= sparsity <= 1.0
+        ), "Pruning sparsity need to be in the range of [0, 1]"
+        self.sparsity = sparsity
+        self._masks = None
+        self.analysis_state = State.OTHERS
 
     @classmethod
     def from_config(cls, config: Config):
@@ -394,11 +403,12 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             config.max_analysis_batches,
             config.max_skipped_weight,
             config.pre_analysis_path,
+            config.sparsity,
         )
 
-    def get_prunable_params(self, train_config, state):
+    def get_sparsifiable_params(self, model):
         param_dict = {}
-        for module_name, m in state.model.named_modules():
+        for module_name, m in model.named_modules():
             # Search the name of all module_name in named_modules
             # only test the parameters in nn.Linear
             if isinstance(m, nn.Linear):
@@ -410,6 +420,26 @@ class SensitivityAnalysisSparsifier(Sparsifier):
 
         return param_dict
 
+    def get_mask_for_param(self, param, sparsity):
+        """
+        generate the prune mask for one weight tensor.
+        """
+        n = int(sparsity * param.nelement())
+        if n > 0:
+            # If n > 0, we need to remove n parameters, the threshold
+            # equals to the n-th largest parameters.x
+            threshold = float(param.abs().flatten().kthvalue(n - 1)[0])
+        else:
+            # If n == 0, it means all parameters need to be kept.
+            # Because the absolute parameter value >= 0, setting
+            # threshold to -1 ensures param.abs().ge(threshold)
+            # is True for all the parameters.
+            threshold = -1.0
+        # reverse_mask indiciates the weights that need to be kept
+        mask = param.abs().ge(threshold).float()
+
+        return mask
+
     def layer_wise_analysis(
         self, param_name, param_dict, trainer, state, eval_data, metric_reporter
     ):
@@ -420,23 +450,9 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             prunable_param = param_dict[param_name]
             # include the shape information for better analysis
             prunable_param_shape = list(prunable_param.shape)
-            n = int(self.analyzed_sparsity * prunable_param.nelement())
-            if n > 0:
-                # If n > 0, we need to remove n parameters, the threshold
-                # equals to the n-th largest parameters.
-                threshold = float(
-                    prunable_param.abs().flatten().cpu().kthvalue(n - 1)[0]
-                )
-            else:
-                # If n == 0, it means all parameters need to be kept.
-                # Because the absolute parameter value >= 0, setting
-                # threshold to -1 ensures prunable_param.abs().ge(threshold)
-                # is True for all the parameters.
-                threshold = -1.0
-            # reverse_mask indiciates the weights that need to be kept
-            reverse_mask = prunable_param.abs().ge(threshold).float()
+            mask = self.get_mask_for_param(prunable_param, self.analyzed_sparsity)
             with torch.no_grad():
-                param_dict[param_name].data.mul_(reverse_mask)
+                param_dict[param_name].data.mul_(mask)
         # get the eval_metric for the pruned model
         with torch.no_grad():
             # set the number of batches of eval data for analysis
@@ -503,7 +519,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         )
 
         # param_dict: the dict maps weight tensor to the parameter name
-        param_dict = self.get_prunable_params(train_config, state)
+        self.param_dict = self.get_sparsifiable_params(state.model)
 
         # load the pretrained model
         print("load the pretrained model from: " + self.pre_train_model_path)
@@ -516,7 +532,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         state.model.eval(Stage.EVAL)
 
         metric_dict = {}
-        all_param_list = [None] + list(param_dict.keys())
+        all_param_list = [None] + list(self.param_dict.keys())
         print("All prunable parameters", all_param_list)
 
         # print the sensitivity results for each weight
@@ -531,7 +547,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             state.model.load_state_dict(self.loaded_model["model_state"])
 
             current_metric, prunable_param_shape = self.layer_wise_analysis(
-                param_name, param_dict, trainer, state, eval_data, metric_reporter
+                param_name, self.param_dict, trainer, state, eval_data, metric_reporter
             )
             if param_name is None:
                 baseline_metric = current_metric
@@ -548,10 +564,79 @@ class SensitivityAnalysisSparsifier(Sparsifier):
 
         return metric_dict
 
+    def sparsification_condition(self, state):
+        return state.stage == Stage.TRAIN
+
+    def apply_masks(self, model: Model, masks: List[torch.Tensor]):
+        """
+        apply given masks to zero-out learnable weights in model
+        """
+        learnable_params = self.get_required_sparsifiable_params(model)
+        assert len(learnable_params) == len(masks)
+        for m, w in zip(masks, learnable_params):
+            if len(m.size()):
+                assert m.size() == w.size()
+                w.data *= m
+
+    def get_current_sparsity(self, model: Model) -> float:
+        trainable_params = sum(
+            module.weight.data.numel()
+            for name, module in model.named_modules()
+            if isinstance(module, nn.Linear)
+        )
+        nonzero_params = sum(
+            module.weight.data.nonzero().size(0)
+            for name, module in model.named_modules()
+            if isinstance(module, nn.Linear)
+        )
+        return (trainable_params - nonzero_params) / trainable_params
+
     def sparsify(self, state):
         """
-        obtain a mask and apply the mask to sparsify
+        apply the mask to sparsify the weight tensor
         """
+        # do not sparsify the weight tensor during the analysis
+        if self.analysis_state == State.ANALYSIS:
+            return
+
+        model = state.model
+        # compute new mask when conditions are True
+        if self.sparsification_condition(state):
+            # applied the computed mask to sparsify the weight
+            self.apply_masks(model, self._masks)
+
+    def get_required_sparsifiable_params(self, model: Model):
+        # param_dict contains all parameters, select requied weights
+        # if we reload analysis result from file, we need to calculate
+        # all param_dict again.
+        if self.param_dict is None:
+            self.param_dict = self.get_sparsifiable_params(model)
+
+        return [self.param_dict[p] for p in self.require_mask_parameters]
+
+    def get_masks(self, model: Model) -> List[torch.Tensor]:
+        """
+        Note: this function returns the masks for each weight tensor if
+        that tensor is required to be pruned
+
+        prune x% of weights items among the weights with "1" in mask (self._mask)
+        indicate the remained weights, with "0" indicate pruned weights
+
+        Args:
+            model: Model
+
+        Return:
+            masks: List[torch.Tensor], the prune mask for the weight of all
+            layers
+        """
+        learnable_params = self.get_required_sparsifiable_params(model)
+
+        masks = []
+        for param in learnable_params:
+            mask = self.get_mask_for_param(param, self.sparsity)
+            masks.append(mask)
+
+        return masks
 
     def load_analysis_from_path(self):
         assert PathManager.isfile(self.pre_analysis_path), "{} is not a file".format(
@@ -588,3 +673,7 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         print("#" * 40)
         sys.stdout.flush()
         print(str(skipped_weight_num) + " weight tensors are skipped for pruning")
+
+        # initialize and generate the pruning mask. We don't want to generate
+        # the mask for each step. Otherwise, it will be time inefficient.
+        self._masks = self.get_masks(state.model)
