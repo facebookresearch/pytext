@@ -52,6 +52,7 @@ class MetricReporter(Component):
         pep_format: bool = False
         #: Useful for KD training, column names that used by student but not teacher.
         student_column_names: List[str] = []
+        log_gradient: bool = False
 
     def __init__(self, channels, log_gradient=False, pep_format=False) -> None:
         self.log_gradient = log_gradient

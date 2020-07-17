@@ -59,6 +59,7 @@ class Seq2SeqMetricReporter(MetricReporter):
                 ConsoleChannel(),
                 Seq2SeqFileChannel([Stage.TEST], config.output_path, tensorizers),
             ],
+            config.log_gradient,
             tensorizers,
         )
 
