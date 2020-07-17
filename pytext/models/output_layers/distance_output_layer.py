@@ -122,9 +122,8 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
             # we will fake a distribution over two labels. We will insert the distance
             # at pred_index (pred_index = 0 or 1) in the scores tensor.
             scores = torch.zeros(logits[0].size(0), 2, device=logits[0].device)
-            scores = scores.scatter_(
-                dim=1, index=preds.unsqueeze(1), src=cosine_sim_scores.unsqueeze(1)
-            )
+            scores[:, 0] = (1.0 - cosine_sim_scores[:]) * 2.0
+            scores[:, 1] = cosine_sim_scores[:] * 2.0
         else:
             pos_scores, neg_scores = (
                 get_norm_cosine_scores(cosine_sim_scores)
