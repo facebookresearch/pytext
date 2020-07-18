@@ -44,6 +44,12 @@ class Sparsifier(Component):
     def initialize(self, *args, **kwargs):
         pass
 
+    def op_pre_epoch(self, *args, **kwargs):
+        pass
+
+    def save_model_state_for_all_rank(self):
+        return False
+
     def get_current_sparsity(self, model: Model) -> float:
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         nonzero_params = sum(
@@ -365,6 +371,13 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         # if we already did sensitivity analysis before
         pre_analysis_path: str = ""
         sparsity: float = 0.8
+        # if we use iterative pruning
+        iterative_pruning: bool = True
+        # the total number of pruning iterations for iterative pruning, where where
+        # we incrementally increase the sparsity at each iteration
+        pruning_iterations: int = 2
+        # the ratio of the start sparsity to the final sparsity
+        start_sparsity_ratio: float = 0.5
 
     def __init__(
         self,
@@ -374,6 +387,9 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         max_skipped_weight,
         pre_analysis_path,
         sparsity,
+        iterative_pruning,
+        pruning_iterations,
+        start_sparsity_ratio,
     ):
         assert PathManager.exists(
             pre_train_model_path
@@ -394,6 +410,18 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         self.sparsity = sparsity
         self._masks = None
         self.analysis_state = State.OTHERS
+        self.iterative_pruning = iterative_pruning
+
+        # members used for iterative pruning
+        if self.iterative_pruning:
+            assert (
+                pruning_iterations > 1
+            ), "iterative pruning should contains at least two pruning iterations"
+            self.pruning_iterations = pruning_iterations
+            self.start_sparsity = start_sparsity_ratio * sparsity
+            self.end_sparsity = self.sparsity
+            self.epochs_per_iter = 0
+            self.sparsity_increment = 0.0
 
     @classmethod
     def from_config(cls, config: Config):
@@ -404,6 +432,9 @@ class SensitivityAnalysisSparsifier(Sparsifier):
             config.max_skipped_weight,
             config.pre_analysis_path,
             config.sparsity,
+            config.iterative_pruning,
+            config.pruning_iterations,
+            config.start_sparsity_ratio,
         )
 
     def get_sparsifiable_params(self, model):
@@ -520,12 +551,6 @@ class SensitivityAnalysisSparsifier(Sparsifier):
 
         # param_dict: the dict maps weight tensor to the parameter name
         self.param_dict = self.get_sparsifiable_params(state.model)
-
-        # load the pretrained model
-        print("load the pretrained model from: " + self.pre_train_model_path)
-        self.loaded_model = torch.load(
-            self.pre_train_model_path, map_location=torch.device("cpu")
-        )
 
         # set model to evaluation mode
         state.stage = Stage.EVAL
@@ -649,6 +674,13 @@ class SensitivityAnalysisSparsifier(Sparsifier):
 
     @timing.time("sparsifier initialize")
     def initialize(self, trainer, state, eval_data, metric_reporter, train_config):
+        assert self.pre_train_model_path, "must have a pre-train model"
+        # load the pretrained model
+        print("load the pretrained model from: " + self.pre_train_model_path)
+        self.loaded_model = torch.load(
+            self.pre_train_model_path, map_location=torch.device("cpu")
+        )
+
         # if user specify the analysis file, load it from path
         if self.pre_analysis_path:
             metric_dict = self.load_analysis_from_path()
@@ -674,6 +706,68 @@ class SensitivityAnalysisSparsifier(Sparsifier):
         sys.stdout.flush()
         print(str(skipped_weight_num) + " weight tensors are skipped for pruning")
 
+        if self.iterative_pruning:
+            assert (
+                trainer.config.early_stop_after == 0
+            ), "Can not set early stop for iterative pruning"
+            assert (
+                trainer.config.epochs % self.pruning_iterations == 0
+            ), "total training epochs should be divided by the pruning iterations"
+            self.epochs_per_iter = trainer.config.epochs // self.pruning_iterations
+            # init sparsity as self.start_sparsity, calculate the sparsity
+            # increment of each pruning iteration.
+            self.sparsity_increment = (self.end_sparsity - self.start_sparsity) / (
+                self.pruning_iterations - 1
+            )
+            self.sparsity = self.start_sparsity
+            print(
+                "sparsity start from: ",
+                self.sparsity,
+                " increment of: ",
+                self.sparsity_increment,
+            )
+
+        # pruning from a pre-trained weights
+        state.model.load_state_dict(self.loaded_model["model_state"])
         # initialize and generate the pruning mask. We don't want to generate
         # the mask for each step. Otherwise, it will be time inefficient.
         self._masks = self.get_masks(state.model)
+
+    def increase_sparsity(self, state):
+        self.sparsity += self.sparsity_increment
+        print("sparsity increased to: ", self.sparsity)
+
+    def save_model_state_for_all_rank(self):
+        # all machines should save the best model of a pruning iteration
+        # if we use iterative pruning
+        return self.iterative_pruning
+
+    def _should_update_sparsity(self, epoch):
+        return (
+            self.iterative_pruning and epoch % self.epochs_per_iter == 0 and epoch > 0
+        )
+
+    def op_pre_epoch(self, trainer, state):
+        """
+        note: invoke this function at the begin of each pruning iteration. Each pruning
+        iteration contains several epochs. In this function, we will:
+        1. update the sparsity,
+        2. reload the best model from the previous iteration,
+        3. generate the prune mask, and
+        4. apply the mask to prune the weight of the model with increased sparsity.
+        """
+        # check if this epoch we need to update the pruning sparsity
+        if self._should_update_sparsity(state.epoch):
+            # init best model metric as None at the begin of each iteration.
+            # this can make sure the best_model is chosen from previous iteration
+            # instead of from the entire training.
+            state.best_model_metric = None
+            # load best model from previous pruning iteration
+            assert state.best_model_state is not None
+            trainer.load_best_model(state)
+
+            # the sparsity is initialized as start_sparsity, increased every iteration
+            self.increase_sparsity(state)
+            # start from the second iteration, generate the new mask with increased sparsity
+            self._masks = self.get_masks(state.model)
+            self.apply_masks(state.model, self._masks)

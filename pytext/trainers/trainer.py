@@ -300,7 +300,8 @@ class Trainer(TrainerBase):
         print(f"Found a better model!")
 
         # Only one worker should save checkpoints
-        if state.rank != 0:
+        # unless doing iterative pruning
+        if state.rank != 0 and not self.sparsifier.save_model_state_for_all_rank():
             return
 
         model_state = state.model.state_dict()
@@ -430,6 +431,7 @@ class Trainer(TrainerBase):
         )
 
         while self.continue_training(state):
+            self.sparsifier.op_pre_epoch(self, state)
             state.epoch += 1
             state.epochs_since_last_improvement += 1
             lrs = learning_rates(state.optimizer)
