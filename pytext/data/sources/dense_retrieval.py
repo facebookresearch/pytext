@@ -10,10 +10,14 @@ from pytext.utils.file_io import PathManager
 
 
 class DenseRetrievalDataSource(DataSource):
+    """ Data source for DPR (https://github.com/facebookresearch/DPR).
+
+    Expects multiline json for lazy loading and improved memory usage.
+    The original DPR files can be converted to multiline json using `jq -c .[]`
+    """
 
     # TODO: Remove assumption that only 1 +ve passage is sample per question.
     DEFAULT_SCHEMA = {"question": str, "positive_ctx": str, "negative_ctxs": List[str]}
-    SEP = " "
 
     class Config(DataSource.Config):
         train_filename: Optional[str] = "train-v2.0.json"
@@ -55,11 +59,11 @@ class DenseRetrievalDataSource(DataSource):
 
     @generator_property
     def test(self):
-        return self.process_file(self.test_filename, is_train=True)
+        return self.process_file(self.test_filename, is_train=False)
 
     @generator_property
     def eval(self):
-        return self.process_file(self.eval_filename, is_train=True)
+        return self.process_file(self.eval_filename, is_train=False)
 
     def process_file(self, fname, is_train):
         if not fname:
@@ -70,33 +74,35 @@ class DenseRetrievalDataSource(DataSource):
             return
 
         with PathManager.open(fname) as infile:
-            dump = json.load(infile)
+            # Code pointer: https://fburl.com/yv8osgvo
+            for line in infile:
+                row = json.loads(line)
+                question = row["question"]
+                positive_ctx = combine_title_text(
+                    row["positive_ctxs"][0], self.use_title
+                )
 
-        # Code pointer: https://fburl.com/yv8osgvo
-        for row in dump:
-            question = row["question"]
-            positive_ctx = combine_title_text(row["positive_ctxs"][0], self.use_title)
-            negative_ctxs = (
-                [
+                negative_ctxs = [
                     combine_title_text(ctx, self.use_title)
                     for ctx in row["negative_ctxs"]
                 ]
-                if is_train
-                else None
-            )
-            num_negative_ctx = min(self.num_negative_ctxs, len(negative_ctxs))
-            yield {
-                "question": question,
-                "positive_ctx": positive_ctx,
-                "negative_ctxs": random.shuffle(negative_ctxs),
-                "label": "1",  # Make LabelTensorizer.initialize() happy.
-                "num_negative_ctx": num_negative_ctx,
-            }
+
+                if is_train:
+                    random.shuffle(negative_ctxs)
+                else:
+                    # for non training runs, always take the num_negative_ctxs without shuffling
+                    # this makes the evaluation and test sets deterministic
+                    negative_ctxs = negative_ctxs[: self.num_negative_ctxs]
+
+                num_negative_ctx = min(self.num_negative_ctxs, len(negative_ctxs))
+                yield {
+                    "question": question,
+                    "positive_ctx": positive_ctx,
+                    "negative_ctxs": negative_ctxs,
+                    "label": "1",  # Make LabelTensorizer.initialize() happy.
+                    "num_negative_ctx": num_negative_ctx,
+                }
 
 
 def combine_title_text(ctx, use_title):
-    return (
-        ctx["title"] + DenseRetrievalDataSource.SEP + ctx["text"]
-        if use_title
-        else ctx["text"]
-    )
+    return (ctx["title"], ctx["text"]) if use_title else (ctx["text"],)

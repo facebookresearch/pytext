@@ -23,19 +23,22 @@ class BERTContextTensorizerForDenseRetrieval(BERTTensorizer):
         needed to run the actual model. It works off of one sample.
         """
         positive_ctx = row["positive_ctx"]
-        positive_ctx_tokens = self.tokenizer.tokenize(positive_ctx)
+        positive_ctx_tokens = [
+            self.tokenizer.tokenize(content) for content in positive_ctx
+        ]
         (
             positive_ctx_token_ids,
             positive_ctx_segment_labels,
             positive_ctx_seq_len,
             positive_ctx_positions,
-        ) = self.tensorizer_script_impl.numberize([positive_ctx_tokens])
+        ) = self.tensorizer_script_impl.numberize(positive_ctx_tokens)
 
         negative_ctxs = row["negative_ctxs"]  # returns List[str]
-        if negative_ctxs:
-            negative_ctx_tokens = self.tokenizer.tokenize(
-                negative_ctxs[: row["num_negative_ctx"]]
-            )
+        if negative_ctxs and row["num_negative_ctx"] == 1:
+            # currerntly only num_negative_ctx == 1 is supported
+            negative_ctx_tokens = [
+                self.tokenizer.tokenize(content) for content in negative_ctxs[0]
+            ]
             (
                 negative_ctx_token_ids,
                 negative_ctx_segment_labels,

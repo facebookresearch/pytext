@@ -14,6 +14,7 @@ from pytext.metrics.dense_retrieval_metrics import DenseRetrievalMetrics
 class DenseRetrievalMetricNames(Enum):
     ACCURACY = "accuracy"
     AVG_RANK = "avg_rank"
+    MEAN_RECIPROCAL_RANK = "mean_reciprocal_rank"
     # use negative because the reporter's lower_is_better value is False
     NEGATIVE_LOSS = "negative_loss"
 
@@ -85,10 +86,12 @@ class DenseRetrievalMetricReporter(MetricReporter):
         return context
 
     def calculate_metric(self) -> DenseRetrievalMetrics:
+        average_rank, mean_reciprocal_rank = self._get_ranking_metrics()
         return DenseRetrievalMetrics(
             num_examples=len(self.all_preds),
             accuracy=self._get_accuracy(),
-            average_rank=self._get_avg_rank(),
+            average_rank=average_rank,
+            mean_reciprocal_rank=mean_reciprocal_rank,
         )
 
     def get_model_select_metric(self, metrics: DenseRetrievalMetrics):
@@ -96,6 +99,8 @@ class DenseRetrievalMetricReporter(MetricReporter):
             metric = metrics.accuracy
         elif self.model_select_metric == DenseRetrievalMetricNames.AVG_RANK:
             metric = metrics.average_rank
+        elif self.model_select_metric == DenseRetrievalMetricNames.MEAN_RECIPROCAL_RANK:
+            metric = metrics.mean_reciprocal_rank
         else:
             raise ValueError(f"Unknown metric: {self.model_select_metric}")
 
@@ -105,7 +110,7 @@ class DenseRetrievalMetricReporter(MetricReporter):
         num_correct = sum(int(p == t) for p, t in zip(self.all_preds, self.all_targets))
         return num_correct / len(self.all_preds)
 
-    def _get_avg_rank(self):
+    def _get_ranking_metrics(self):
         dot_products = np.matmul(
             self.all_question_logits, np.transpose(self.all_context_logits)
         )
@@ -115,23 +120,27 @@ class DenseRetrievalMetricReporter(MetricReporter):
         num_questions = inverse_sorted_indices.shape[0]
         num_docs = inverse_sorted_indices.shape[1]
         rank_sum = 0
+        reciprocal_rank_sum = 0
         # Sum up the rank of positive context in sorted scores for each question
         for i, pos_ctx_idx in enumerate(positive_indices_per_question):
             # Numpy returns a tuple of lists. So handle that.
             gold_idx = (inverse_sorted_indices[i] == pos_ctx_idx).nonzero()[0][0]
-            rank_sum += num_docs - gold_idx
+            rank = num_docs - gold_idx
+            rank_sum += rank
+            reciprocal_rank_sum += 1.0 / rank
 
-        return rank_sum / num_questions
+        average_rank = rank_sum / num_questions
+        mean_reciprocal_rank = reciprocal_rank_sum / num_questions
+
+        return average_rank, mean_reciprocal_rank
 
     def _get_positive_indices(self):
         positive_indices_per_question = []
         batch_id, total_ctxs = 0, 0
+        batch_size = self.task_batch_size * (1 + self.num_negative_ctxs)
         for i, pos_ctx_idx in enumerate(self.all_targets):
-            if i == self.task_batch_size:
-                batch_id += 1
-                total_ctxs = (
-                    batch_id * self.task_batch_size * (1 + self.num_negative_ctxs)
-                )
+            batch_id = i // self.task_batch_size
+            total_ctxs = batch_id * batch_size
             positive_indices_per_question.append(total_ctxs + pos_ctx_idx)
 
         return positive_indices_per_question
