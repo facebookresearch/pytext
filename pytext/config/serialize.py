@@ -31,6 +31,10 @@ class IncorrectTypeError(Exception):
     pass
 
 
+class ValueSerializationError(Exception):
+    pass
+
+
 def _canonical_typename(cls):
     if "_name" in dir(cls):
         name = cls._name
@@ -264,7 +268,13 @@ def config_to_json(cls, config_obj):
         raise IncorrectTypeError(f"{cls} is not a valid config class")
     for field, f_cls in cls.__annotations__.items():
         value = getattr(config_obj, field)
-        json_result[field] = _value_to_json(f_cls, value)
+        try:
+            json_result[field] = _value_to_json(f_cls, value)
+        except Exception as e:
+            cls_name = getattr(cls, "__name__", cls)
+            raise ValueSerializationError(
+                f"Failed to serialise the config field '{field}' of class {cls_name}"
+            ) from e
     return json_result
 
 
