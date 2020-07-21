@@ -85,10 +85,55 @@ class Batcher(Component):
 
 class PoolingBatcher(Batcher):
     """
-    Batcher that loads a pool of data, sorts it, and batches it.
+    Batcher that shuffles and (if requested) sorts data.
 
-    Shuffling is performed before pooling, by loading `num_shuffled_pools` worth
-    of data, shuffling, and then splitting that up into pools.
+    **Rationale**
+
+    There is a trade-off between having batches of data that are truly randomly
+    shuffled, and batches of data that are efficiently padded. If we wanted
+    to maximise the efficiency of padding (i.e. minimise the amount of padding
+    that is needed), we would have to enforce that all inputs of a similar
+    length appear in the same batch. This however would lead to a dramatic
+    decrease in the randomness of batches. On the other end of the spectrum,
+    if we wanted to maximise randomness, we would often end up with inputs of
+    wildly different lengths in the same batch, which would lead to a lot of
+    padding.
+
+    **Operation**
+
+    This batcher uses a multi-staged approach.
+
+    1. It first loads a number of "pools" of data, and shuffles them (this is
+       controlled by `num_shuffled_pools`).
+    2. It then splits up the shuffled data sequentially into individual pools,
+       and the examples within each pool are sorted (if requested).
+    3. Finally, each pool is split up sequentially into batches, and yielded.
+       If sorting was requested in step #2, the order in which the batches are
+       yielded is randomised.
+
+    The size of a pool is expressed as a multiple of the batch size, and is
+    controlled by `pool_num_batches`.
+
+
+    **Examples**
+
+    Assuming sorting is enabled, with the default settings of
+    `pool_num_batches: 1000` and `num_shuffled_pools: 1`, a pool of
+    `1k * batch_size` examples is loaded, sorted by length, and split up into
+    1k batches. These batches are then yielded in random order. Once they run
+    out, a new pool is loaded, and the process is repeated. An advantage of
+    this approach is that padding will be somewhat reduced. A disadvantage is
+    that, for every epoch, the first 1k batches will be always the same (albeit
+    in a different order).
+
+    On the other hand, specifying `pool_num_batches: 1000` and
+    `num_shuffled_pools: 1000` would achieve the following:
+    `1k * 1k * batch_size` examples are loaded, and shuffled. These are then
+    split up into pools of size `1k * batch_size`, which are then sorted
+    internally, split into individual batches, and yielded in random order.
+    Compared to the previous example, we no longer have the problem that the
+    first 1k batches are always the same in each epoch, but we've had to load
+    in memory 1M examples.
     """
 
     class Config(Batcher.Config):
