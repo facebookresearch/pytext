@@ -55,7 +55,7 @@ class MultiheadSelfAttention(nn.Module):
         # input projection
         projection = self.input_projection(query)
         q, k, v = projection.chunk(3, dim=-1)
-        q *= self.scaling
+        q = self.scaling * q
 
         batch_heads = batch_size * self.num_heads
 
