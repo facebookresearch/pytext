@@ -35,6 +35,11 @@ from pytext.models.representations.huggingface_bert_sentence_encoder import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
+from pytext.torchscript.module import (
+    ScriptPyTextEmbeddingModuleIndex,
+    ScriptPyTextEmbeddingModuleWithDenseIndex,
+)
+from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
 from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
 
@@ -221,3 +226,55 @@ class BertPairwiseModel(BasePairwiseModel):
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
         self._save_modules(self.encoders, base_path, suffix)
+
+    def torchscriptify(self, tensorizers, traced_model, trace_both_encoders):
+        if trace_both_encoders:
+
+            class ScriptModel(torch.jit.ScriptModule):
+                def __init__(self, model, tensorizer1, tensorizer2):
+                    super().__init__()
+                    self.model = model
+                    self.tensorizer1 = tensorizer1
+                    self.tensorizer2 = tensorizer2
+
+                @torch.jit.script_method
+                def forward(
+                    self,
+                    # first input
+                    texts1: Optional[List[str]] = None,
+                    tokens1: Optional[List[List[str]]] = None,
+                    # second input
+                    texts2: Optional[List[str]] = None,
+                    tokens2: Optional[List[List[str]]] = None,
+                ):
+                    inputs1: ScriptBatchInput = ScriptBatchInput(
+                        texts=squeeze_1d(texts1),
+                        tokens=squeeze_2d(tokens1),
+                        languages=None,
+                    )
+                    inputs2: ScriptBatchInput = ScriptBatchInput(
+                        texts=squeeze_1d(texts2),
+                        tokens=squeeze_2d(tokens2),
+                        languages=None,
+                    )
+                    input_tensors1 = self.tensorizer1(inputs1)
+                    input_tensors2 = self.tensorizer2(inputs2)
+                    return self.model(input_tensors1, input_tensors2)
+
+            tensorizer1 = tensorizers["tokens1"].torchscriptify()
+            tensorizer2 = tensorizers["tokens2"].torchscriptify()
+            return ScriptModel(traced_model, tensorizer1, tensorizer2)
+        else:
+            # optionally trace only one encoder
+            script_tensorizer = tensorizers["tokens1"].torchscriptify()
+            if "dense" in tensorizers:
+                return ScriptPyTextEmbeddingModuleWithDenseIndex(
+                    model=traced_model,
+                    tensorizer=script_tensorizer,
+                    normalizer=tensorizers["dense"].normalizer,
+                    index=0,
+                )
+            else:
+                return ScriptPyTextEmbeddingModuleIndex(
+                    model=traced_model, tensorizer=script_tensorizer, index=0
+                )

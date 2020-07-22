@@ -3,6 +3,7 @@
 from typing import Dict, Union
 
 from pytext.common.constants import Stage
+from pytext.config.component import create_trainer
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
 from pytext.data.packed_lm_data import PackedLMData
@@ -53,7 +54,9 @@ from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
 from pytext.models.seq_models.seqnn import SeqNNModel
 from pytext.models.word_model import WordTaggingModel
 from pytext.task.new_task import NewTask
-from pytext.trainers import EnsembleTrainer, HogwildTrainer
+from pytext.trainers import EnsembleTrainer, HogwildTrainer, TaskTrainer
+from pytext.utils import cuda
+from torch import jit
 
 
 class QueryDocumentPairwiseRankingTask(NewTask):
@@ -186,6 +189,64 @@ class PairwiseClassificationTask(NewTask):
         metric_reporter: ClassificationMetricReporter.Config = (
             ClassificationMetricReporter.Config(text_column_names=["text1", "text2"])
         )
+        trace_both_encoders: bool = True
+
+    @classmethod
+    def from_config(
+        cls,
+        config: Config,
+        unused_metadata=None,
+        model_state=None,
+        tensorizers=None,
+        rank=0,
+        world_size=1,
+    ):
+        tensorizers, data = cls._init_tensorizers(config, tensorizers, rank, world_size)
+        model = cls._init_model(config.model, tensorizers, model_state)
+        metric_reporter = cls.create_metric_reporter(config, tensorizers)
+        trainer = create_trainer(config.trainer, model)
+        return cls(data, model, metric_reporter, trainer, config.trace_both_encoders)
+
+    def __init__(
+        self,
+        data: Data,
+        model: BaseModel,
+        metric_reporter: ClassificationMetricReporter,
+        trainer: TaskTrainer,
+        trace_both_encoders: bool = True,
+    ):
+        super().__init__(data, model, metric_reporter, trainer)
+        self.trace_both_encoders = trace_both_encoders
+
+    def torchscript_export(self, model, export_path=None, quantize=False):
+        cuda.CUDA_ENABLED = False
+        model.cpu()
+        optimizer = self.trainer.optimizer
+        optimizer.pre_export(model)
+
+        model.eval()
+        model.prepare_for_onnx_export_()
+
+        unused_raw_batch, batch = next(
+            iter(self.data.batches(Stage.TRAIN, load_early=True))
+        )
+        inputs = model.onnx_trace_input(batch)
+        model(*inputs)
+        if quantize:
+            model.quantize()
+        if self.trace_both_encoders:
+            trace = jit.trace(model, inputs)
+        else:
+            trace = jit.trace(model.encoder1, (inputs[0],))
+        if hasattr(model, "torchscriptify"):
+            trace = model.torchscriptify(
+                self.data.tensorizers, trace, self.trace_both_encoders
+            )
+        trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
+        if export_path is not None:
+            print(f"Saving torchscript model to: {export_path}")
+            trace.save(export_path)
+        return trace
 
 
 class PairwiseClassificationForDenseRetrievalTask(PairwiseClassificationTask):
