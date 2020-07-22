@@ -78,6 +78,15 @@ def rename_component_from_root(state, old_name, new_name):
     )
 
 
+def check_state_keys(state, keys_regex):
+    """check if keys exists in state using full python paths"""
+    regex = re.compile(keys_regex)
+    for k, v in state.items():
+        if regex.findall(k):
+            return True
+    return False
+
+
 def merge_input_projection(state):
     """
     New checkpoints of fairseq multihead attention split in_projections into
@@ -121,9 +130,14 @@ def merge_input_projection(state):
 
 def translate_roberta_state_dict(state_dict):
     """Translate the public RoBERTa weights to ones which match SentenceEncoder."""
+
     new_state = rename_component_from_root(
         state_dict, "decoder.sentence_encoder", "transformer"
     )
+    new_state = rename_component_from_root(
+        new_state, "encoder.sentence_encoder", "transformer"
+    )
+
     new_state = rename_state_keys(new_state, "embed_tokens", "token_embedding")
     # TODO: segment_embeddings?
     new_state = rename_state_keys(
@@ -131,7 +145,12 @@ def translate_roberta_state_dict(state_dict):
     )
     new_state = rename_state_keys(new_state, "emb_layer_norm", "embedding_layer_norm")
     new_state = rename_state_keys(new_state, "self_attn", "attention")
-    new_state = merge_input_projection(new_state)
+    # Linformer special handling
+    if check_state_keys(new_state, "compress_k"):
+        new_state = remove_state_keys(new_state, "compress_layer")
+    else:
+        new_state = merge_input_projection(new_state)
+
     new_state = rename_state_keys(new_state, "_proj.(.*)", r"put_projection.\1")
     new_state = rename_state_keys(new_state, "fc1", "residual_mlp.mlp.0")
     new_state = rename_state_keys(new_state, "fc2", "residual_mlp.mlp.3")
@@ -139,5 +158,7 @@ def translate_roberta_state_dict(state_dict):
     new_state = remove_state_keys(new_state, "^sentence_")
     new_state = remove_state_keys(new_state, "_classification_head.")
     new_state = remove_state_keys(new_state, r"^decoder\.lm_head")
+    new_state = remove_state_keys(new_state, r"^encoder\.lm_head")
     new_state = remove_state_keys(new_state, r"segment_embedding")
+
     return new_state

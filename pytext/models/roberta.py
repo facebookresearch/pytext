@@ -24,10 +24,14 @@ from pytext.models.model import BaseModel
 from pytext.models.module import Module, create_module
 from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
+    MultiheadLinearAttention,
     MultiheadSelfAttention,
     SentenceEncoder,
     Transformer,
     TransformerLayer,
+)
+from pytext.models.representations.transformer.transformer import (
+    DEFAULT_MAX_SEQUENCE_LENGTH,
 )
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
@@ -35,6 +39,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 from pytext.torchscript.module import ScriptPyTextModule, ScriptPyTextModuleWithDense
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
+from torch import nn
 from torch.serialization import default_restore_location
 
 
@@ -106,6 +111,10 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         # dont need to translate the state dict and can just load it`
         # directly.
         is_finetuned: bool = False
+        max_seq_len: int = DEFAULT_MAX_SEQUENCE_LENGTH
+        # Linformer hyperparameters
+        use_linformer_encoder: bool = False
+        linformer_compressed_ratio: int = 4
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -117,6 +126,15 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             else config.model_path
         )
         # assert config.pretrained_encoder.load_path, "Load path cannot be empty."
+        # sharing compression across each layers
+
+        # create compress layer if use linear multihead attention
+        if config.use_linformer_encoder:
+            compress_layer = nn.Linear(
+                config.max_seq_len - 2,
+                (config.max_seq_len - 2) // config.linformer_compressed_ratio,
+            )
+
         self.encoder = SentenceEncoder(
             transformer=Transformer(
                 vocab_size=config.vocab_size,
@@ -124,12 +142,20 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 layers=[
                     TransformerLayer(
                         embedding_dim=config.embedding_dim,
-                        attention=MultiheadSelfAttention(
-                            config.embedding_dim, config.num_attention_heads
+                        attention=MultiheadLinearAttention(
+                            embed_dim=config.embedding_dim,
+                            num_heads=config.num_attention_heads,
+                            compress_layer=compress_layer,
+                        )
+                        if config.use_linformer_encoder
+                        else MultiheadSelfAttention(
+                            embed_dim=config.embedding_dim,
+                            num_heads=config.num_attention_heads,
                         ),
                     )
                     for _ in range(config.num_encoder_layers)
                 ],
+                max_seq_len=config.max_seq_len,
             )
         )
         self.apply(init_params)

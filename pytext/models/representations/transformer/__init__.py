@@ -16,6 +16,7 @@ the corresponding values in this implementation.
 
 
 from .multihead_attention import MultiheadSelfAttention
+from .multihead_linear_attention import MultiheadLinearAttention
 from .positional_embedding import PositionalEmbedding
 from .residual_mlp import ResidualMLP
 from .sentence_encoder import SentenceEncoder
@@ -23,6 +24,7 @@ from .transformer import Transformer, TransformerLayer
 
 
 __all__ = [
+    "MultiheadLinearAttention",
     "MultiheadSelfAttention",
     "PositionalEmbedding",
     "ResidualMLP",
