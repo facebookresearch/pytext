@@ -21,6 +21,7 @@ from pytext.models.output_layers import (
 from pytext.models.representations.bilstm_doc_attention import BiLSTMDocAttention
 from pytext.models.representations.docnn import DocNNRepresentation
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.utils.file_io import PathManager
 from scipy.special import comb
 
 
@@ -95,18 +96,22 @@ class BasePairwiseModel(BaseModel):
             encodings.append(rep_l * rep_r)
         return encodings
 
-    def _save_modules(self, modules: nn.ModuleList, base_path: str, suffix: str):
+    def _save_modules(self, modules: Dict[str, nn.Module], base_path: str, suffix: str):
         super().save_modules(base_path, suffix)
         # Special case to also save the multi-representations separately, if needed.
-        for module in modules:
+        for key, module in modules.items():
             if getattr(module.config, "save_path", None):
-                path = module.config.save_path + suffix
+                path = f"{module.config.save_path}-{key}{suffix}"
                 if base_path:
                     path = os.path.join(base_path, path)
                 print(
                     f"Saving state of module {type(module).__name__} " f"to {path} ..."
                 )
-                torch.save(module.state_dict(), path)
+                with PathManager.open(path, "wb") as save_file:
+                    if isinstance(module, torch.jit.ScriptModule):
+                        module.save(save_file)
+                    else:
+                        torch.save(module.state_dict(), save_file)
 
 
 class PairwiseModel(BasePairwiseModel):
@@ -159,10 +164,12 @@ class PairwiseModel(BasePairwiseModel):
         decoder: MLPDecoder,
         output_layer: ClassificationOutputLayer,
         encode_relations: bool,
+        shared_representations: bool,
     ) -> None:
         super().__init__(decoder, output_layer, encode_relations)
         self.embeddings = embeddings
         self.representations = representations
+        self.shared_representations = shared_representations
 
     # from_config and helper function
     @classmethod
@@ -219,7 +226,12 @@ class PairwiseModel(BasePairwiseModel):
             config.output_layer, labels=tensorizers["labels"].vocab
         )
         return cls(
-            embeddings, representations, decoder, output_layer, config.encode_relations
+            embeddings,
+            representations,
+            decoder,
+            output_layer,
+            config.encode_relations,
+            config.shared_representations,
         )
 
     def arrange_model_inputs(self, tensor_dict):
@@ -304,4 +316,8 @@ class PairwiseModel(BasePairwiseModel):
         return self.decoder(representation)
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
-        self._save_modules(self.representations, base_path, suffix)
+        modules = {}
+        if not self.shared_representations:
+            # need to save all representations
+            modules = {f"rep{i + 1}": rep for i, rep in enumerate(self.representations)}
+        self._save_modules(modules, base_path, suffix)

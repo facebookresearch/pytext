@@ -170,12 +170,18 @@ class BertPairwiseModel(BasePairwiseModel):
         shared_encoder: bool = True
 
     def __init__(
-        self, encoder1, encoder2, decoder, output_layer, encode_relations
+        self,
+        encoder1,
+        encoder2,
+        decoder,
+        output_layer,
+        encode_relations,
+        shared_encoder,
     ) -> None:
         super().__init__(decoder, output_layer, encode_relations)
         self.encoder1 = encoder1
         self.encoder2 = encoder2
-        self.encoders = [encoder1, encoder2]
+        self.shared_encoder = shared_encoder
         log_class_usage(__class__)
 
     @classmethod
@@ -206,7 +212,14 @@ class BertPairwiseModel(BasePairwiseModel):
         output_layer = create_module(
             config.output_layer, labels=tensorizers["labels"].vocab
         )
-        return cls(encoder1, encoder2, decoder, output_layer, config.encode_relations)
+        return cls(
+            encoder1,
+            encoder2,
+            decoder,
+            output_layer,
+            config.encode_relations,
+            config.shared_encoder,
+        )
 
     def arrange_model_inputs(self, tensor_dict):
         return tensor_dict["tokens1"], tensor_dict["tokens2"]
@@ -225,7 +238,11 @@ class BertPairwiseModel(BasePairwiseModel):
         return self.decoder(torch.cat(encodings, -1)) if self.decoder else encodings
 
     def save_modules(self, base_path: str = "", suffix: str = ""):
-        self._save_modules(self.encoders, base_path, suffix)
+        modules = {}
+        if not self.shared_encoder:
+            # need to save both encoders
+            modules = {"encoder1": self.encoder1, "encoder2": self.encoder2}
+        self._save_modules(modules, base_path, suffix)
 
     def torchscriptify(self, tensorizers, traced_model, trace_both_encoders):
         if trace_both_encoders:

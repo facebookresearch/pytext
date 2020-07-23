@@ -74,7 +74,14 @@ class QueryDocPairwiseRankingModel(PairwiseModel):
             to_dim=config.decoder_output_dim,
         )
         output_layer = create_module(config.output_layer)
-        return cls(embeddings, representations, decoder, output_layer, False)
+        return cls(
+            embeddings,
+            representations,
+            decoder,
+            output_layer,
+            encode_relations=False,
+            shared_representations=config.shared_representations,
+        )
 
     def arrange_model_inputs(self, tensor_dict):
         return (
