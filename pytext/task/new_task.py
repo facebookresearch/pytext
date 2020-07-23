@@ -303,7 +303,7 @@ class _NewTask(TaskBase):
         model(*inputs)
         if quantize:
             model.quantize()
-        trace = jit.trace(model, inputs)
+        trace = model.trace(inputs)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
