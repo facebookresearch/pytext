@@ -65,6 +65,7 @@ class LanguageModelMetricReporter(MetricReporter):
             config.aggregate_metrics,
             config.perplexity_type,
             config.pep_format,
+            config.log_gradient,
         )
 
     def __init__(
@@ -75,8 +76,9 @@ class LanguageModelMetricReporter(MetricReporter):
         aggregate_metrics,
         perplexity_type,
         pep_format,
+        log_gradient=False,
     ):
-        super().__init__(channels, pep_format=pep_format)
+        super().__init__(channels, log_gradient=log_gradient, pep_format=pep_format)
         self.metadata = metadata
         self.tensorizers = tensorizers
         self.aggregate_metrics = aggregate_metrics
