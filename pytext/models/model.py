@@ -215,6 +215,9 @@ class BaseModel(nn.Module, Component):
         # default behavior is the same as getting model inputs
         return self.arrange_model_inputs(tensor_dict)
 
+    def trace(self, inputs):
+        return torch.jit.trace(self, inputs)
+
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         pass
 

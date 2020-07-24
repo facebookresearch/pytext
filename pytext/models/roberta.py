@@ -36,7 +36,11 @@ from pytext.models.representations.transformer.transformer import (
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
-from pytext.torchscript.module import ScriptPyTextModule, ScriptPyTextModuleWithDense
+from pytext.torchscript.module import (
+    ScriptPyTextEmbeddingModuleIndex,
+    ScriptPyTextModule,
+    ScriptPyTextModuleWithDense,
+)
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch import nn
@@ -115,6 +119,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         # Linformer hyperparameters
         use_linformer_encoder: bool = False
         linformer_compressed_ratio: int = 4
+        export_encoder: bool = False
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -173,6 +178,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 self.load_state_dict(roberta_state)
 
         self.representation_dim = self._embedding().weight.size(-1)
+        self.export_encoder = config.export_encoder
         log_class_usage(__class__)
 
     def _embedding(self):
@@ -190,25 +196,36 @@ class RoBERTa(NewBertModel):
         inputs: InputConfig = InputConfig()
         encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
 
+    def trace(self, inputs):
+        if self.encoder.export_encoder:
+            return torch.jit.trace(self.encoder, inputs)
+        else:
+            return torch.jit.trace(self, inputs)
+
     def torchscriptify(self, tensorizers, traced_model):
         """Using the traced model, create a ScriptModule which has a nicer API that
         includes generating tensors from simple data types, and returns classified
         values according to the output layer (eg. as a dict mapping class name to score)
         """
         script_tensorizer = tensorizers["tokens"].torchscriptify()
-        if "dense" in tensorizers:
-            return ScriptPyTextModuleWithDense(
-                model=traced_model,
-                output_layer=self.output_layer.torchscript_predictions(),
-                tensorizer=script_tensorizer,
-                normalizer=tensorizers["dense"].normalizer,
+        if self.encoder.export_encoder:
+            return ScriptPyTextEmbeddingModuleIndex(
+                traced_model, script_tensorizer, index=0
             )
         else:
-            return ScriptPyTextModule(
-                model=traced_model,
-                output_layer=self.output_layer.torchscript_predictions(),
-                tensorizer=script_tensorizer,
-            )
+            if "dense" in tensorizers:
+                return ScriptPyTextModuleWithDense(
+                    model=traced_model,
+                    output_layer=self.output_layer.torchscript_predictions(),
+                    tensorizer=script_tensorizer,
+                    normalizer=tensorizers["dense"].normalizer,
+                )
+            else:
+                return ScriptPyTextModule(
+                    model=traced_model,
+                    output_layer=self.output_layer.torchscript_predictions(),
+                    tensorizer=script_tensorizer,
+                )
 
 
 class RoBERTaRegression(NewBertRegressionModel):

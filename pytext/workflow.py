@@ -186,7 +186,9 @@ def save_and_export(
         )
     if config.export_torchscript_path:
         task.torchscript_export(
-            task.model, config.export_torchscript_path, config.torchscript_quantize
+            model=task.model,
+            export_path=config.export_torchscript_path,
+            quantize=config.torchscript_quantize,
         )
 
 
@@ -344,7 +346,7 @@ def get_logits(
                     )
 
 
-def save_pytext_snapshot(config: PyTextConfig,) -> None:
+def save_pytext_snapshot(config: PyTextConfig) -> None:
     task, training_state = prepare_task(
         config,
         dist_init_url=None,
