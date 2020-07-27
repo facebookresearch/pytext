@@ -5,7 +5,7 @@ import caffe2.python.hypothesis_test_util as hu
 import hypothesis.strategies as st
 import numpy as np
 import torch
-from hypothesis import given
+from hypothesis import given, settings
 from pytext.common.constants import Padding
 from pytext.models.crf import CRF
 from scipy.special import logsumexp
@@ -18,6 +18,7 @@ class CRFTest(hu.HypothesisTestCase):
             elements=st.integers(min_value=1, max_value=10), min_size=1, max_size=10
         ),
     )
+    @settings(deadline=10000)
     def test_crf_forward(self, num_tags, seq_lens):
 
         crf_model = CRF(
@@ -108,6 +109,7 @@ class CRFTest(hu.HypothesisTestCase):
             elements=st.integers(min_value=1, max_value=10), min_size=1, max_size=10
         ),
     )
+    @settings(deadline=10000)
     def test_crf_decode_torchscript(self, num_tags, seq_lens):
         crf_model = CRF(
             num_tags,

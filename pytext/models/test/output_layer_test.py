@@ -8,7 +8,7 @@ import caffe2.python.hypothesis_test_util as hu
 import hypothesis.strategies as st
 import numpy as np
 import torch
-from hypothesis import given
+from hypothesis import given, settings
 from pytext.common.constants import SpecialTokens
 from pytext.data.tensorizers import LabelTensorizer
 from pytext.data.utils import Vocabulary
@@ -59,6 +59,7 @@ class OutputLayerTest(hu.HypothesisTestCase):
             elements=st.integers(min_value=1, max_value=10), min_size=1, max_size=10
         ),
     )
+    @settings(deadline=10000)
     def test_torchscript_word_tagging_output_layer(self, num_labels, seq_lens):
         batch_size = len(seq_lens)
         vocab = Vocabulary(
@@ -98,6 +99,7 @@ class OutputLayerTest(hu.HypothesisTestCase):
             elements=st.integers(min_value=4, max_value=10), min_size=1, max_size=10
         ),
     )
+    @settings(deadline=10000)
     def test_torchscript_intent_slot_output_layer(
         self, num_doc_labels, num_word_labels, seq_lens
     ):
