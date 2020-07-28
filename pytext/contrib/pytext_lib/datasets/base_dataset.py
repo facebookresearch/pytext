@@ -54,7 +54,13 @@ class BaseDataset(IterableDataset):
             for row in chunk:
                 transformed_row = {}
                 for column_name, transforms in self.transforms_dict.items():
-                    value = row[column_name]
+                    and_indx = column_name.find("&")
+                    if and_indx is not -1:
+                        first_column = transformed_row[column_name[:and_indx]]
+                        second_column = row[column_name[and_indx + 1 :]]
+                        value = [first_column, second_column]
+                    else:
+                        value = row[column_name]
                     for transform in transforms:
                         value = transform(value)
                     transformed_row[column_name] = value
@@ -234,7 +240,7 @@ def docnn_collate_fn(
         if "label_ids" in model_inputs
         else torch.empty(0)
     )
-    token_ids: List[torch.Tensor] = base_collate_fn(batch)["token_ids"]
+    token_ids: List[torch.Tensor] = model_inputs["token_ids"]
     seq_lens: List[int] = []
     for token_ids_per_sequence in token_ids:
         seq_lens.append(len(token_ids_per_sequence))
