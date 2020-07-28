@@ -145,7 +145,7 @@ class BiLSTM(RepresentationBase):
                 # using GPU inference
                 rnn_input = pack_padded_sequence(
                     embedded_tokens,
-                    seq_lengths,
+                    seq_lengths.cpu(),
                     batch_first=True,
                     enforce_sorted=True
                     if self.disable_sort_in_jit
