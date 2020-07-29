@@ -15,6 +15,6 @@ regex==2019.11.1
 requests
 scipy
 sentencepiece
-tensorboard==1.14
-torch==1.5.0
+tensorboard
+torch
 torchtext

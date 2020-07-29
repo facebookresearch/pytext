@@ -1,4 +1,3 @@
-https://download.pytorch.org/whl/cpu/torch-1.2.0%2Bcpu-cp37-cp37m-manylinux1_x86_64.whl
 click
 fairseq
 future
@@ -11,6 +10,7 @@ pytorch-pretrained-bert
 requests
 sentencepiece
 torchtext
-tensorboard==1.14
+tensorboard
+torch
 pandas
 pytorch-dp
