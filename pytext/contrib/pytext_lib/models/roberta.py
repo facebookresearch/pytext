@@ -164,9 +164,9 @@ def xlmr_dummy_binary_doc_classifier(pretrained=False):
     return build_model(
         model_path=model_path,
         dense_dim=0,
-        embedding_dim=768,
+        embedding_dim=32,
         out_dim=2,
-        vocab_size=250002,
+        vocab_size=100,
         num_attention_heads=1,
         num_encoder_layers=1,
         output_dropout=0.4,

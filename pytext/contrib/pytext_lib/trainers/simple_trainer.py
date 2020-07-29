@@ -26,3 +26,4 @@ class SimpleTrainer:
                 optimizer.step()
                 losses.append(loss.item())
             print("Epoch: {}, Train Loss: {}".format(i_epoch, mean(losses)))
+        return model

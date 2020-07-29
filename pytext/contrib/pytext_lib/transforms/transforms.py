@@ -149,6 +149,10 @@ class LabelTransform(Transform):
     def is_jitable(self) -> bool:
         return False
 
+    @property
+    def labels(self) -> Dict[str, int]:
+        return self.vocab.idx
+
 
 def build_vocab(vocab_file):
     vocab_builder = VocabBuilder()

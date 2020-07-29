@@ -204,10 +204,6 @@ def base_collate_fn(
     for example in batch:
         for _, transformed_rows in example.items():
             for k, v in transformed_rows.items():
-                if len(v.size()) == 0:
-                    # convert 0 dim to 1 dim tensor,
-                    # as cat() doesn't work for 0-dim tensor
-                    v = v.unsqueeze(0)
                 if k in dic:
                     dic[k].append(v)
                 else:
