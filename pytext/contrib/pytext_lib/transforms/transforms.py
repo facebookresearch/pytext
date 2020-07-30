@@ -157,6 +157,10 @@ class LabelTransform(Transform):
     def is_jitable(self) -> bool:
         return False
 
+    @property
+    def labels(self) -> Dict[str, int]:
+        return self.vocab.idx
+
 
 class SlotLabelTransform(Transform):
     def __init__(self, poss_slots: List[str], tokenizer: nn.Module = None):
