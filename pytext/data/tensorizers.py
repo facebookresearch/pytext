@@ -961,6 +961,10 @@ class LabelTensorizer(Tensorizer):
         pad_in_vocab: bool = False
         #: The label values, if known. Will skip initialization step if provided.
         label_vocab: Optional[List[str]] = None
+        #: File with the label values. This can be used when the label space is
+        #: too large to specify these as a list. The file should not contain
+        #: a header
+        label_vocab_file: Optional[str] = None
         # Indicate if it can be used to generate input Tensors for prediction
         is_input: bool = False
 
@@ -971,6 +975,7 @@ class LabelTensorizer(Tensorizer):
             config.allow_unknown,
             config.pad_in_vocab,
             config.label_vocab,
+            config.label_vocab_file,
             config.is_input,
         )
 
@@ -980,6 +985,7 @@ class LabelTensorizer(Tensorizer):
         allow_unknown: bool = False,
         pad_in_vocab: bool = False,
         label_vocab: Optional[List[str]] = None,
+        label_vocab_file: Optional[str] = None,
         is_input: bool = Config.is_input,
     ):
         self.label_column = label_column
@@ -989,8 +995,17 @@ class LabelTensorizer(Tensorizer):
         self.vocab_builder.use_unk = allow_unknown
         self.vocab = None
         self.pad_idx = -1
+        assert (
+            label_vocab is None or label_vocab_file is None
+        ), "Cannot specify both label_vocab and label_vocab_file"
         if label_vocab:
             self.vocab_builder.add_all(label_vocab)
+            self.vocab, self.pad_idx = self._create_vocab()
+        elif label_vocab_file:
+            with PathManager.open(label_vocab_file) as f:
+                self.vocab_builder.add_from_file(
+                    f, skip_header_line=False, lowercase_tokens=False, size=None
+                )
             self.vocab, self.pad_idx = self._create_vocab()
         super().__init__(is_input)
 
@@ -1054,6 +1069,7 @@ class LabelListTensorizer(LabelTensorizer):
             config.allow_unknown,
             config.pad_in_vocab,
             config.label_vocab,
+            config.label_vocab_file,
             config.is_input,
             pad_missing=config.pad_missing,
         )
@@ -1187,6 +1203,7 @@ class SoftLabelTensorizer(LabelTensorizer):
             config.probs_column,
             config.logits_column,
             config.labels_column,
+            config.label_vocab_file,
             config.is_input,
         )
 
@@ -1199,10 +1216,16 @@ class SoftLabelTensorizer(LabelTensorizer):
         probs_column: str = "target_probs",
         logits_column: str = "target_logits",
         labels_column: str = "target_labels",
+        label_vocab_file: Optional[str] = None,
         is_input: bool = Config.is_input,
     ):
         super().__init__(
-            label_column, allow_unknown, pad_in_vocab, label_vocab, is_input
+            label_column,
+            allow_unknown,
+            pad_in_vocab,
+            label_vocab,
+            label_vocab_file,
+            is_input,
         )
         self.probs_column = probs_column
         self.logits_column = logits_column
