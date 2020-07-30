@@ -233,9 +233,6 @@ class Trainer(TrainerBase):
             return
 
         self.sparsifier.sparsify(state)
-        if state.rank == 0:
-            current_sparsity = self.sparsifier.get_current_sparsity(state.model)
-            print(f"sparsity in the model: {current_sparsity}")
 
     def continue_training(self, state: TrainingState) -> bool:
         # Are we done?
@@ -565,6 +562,10 @@ class Trainer(TrainerBase):
                 )
         else:
             metric_reporter._reset()
+
+        if state.rank == 0 and self.config.sparsifier:
+            current_sparsity = self.sparsifier.get_current_sparsity(state.model)
+            print(f"sparsity in the model: {current_sparsity}")
 
         return metrics
 
