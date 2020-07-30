@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) Facebook, Inc. and its affiliates. All Rights ReservedTransforms
+
+#!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from typing import Dict, List, NamedTuple, Optional
@@ -6,10 +9,11 @@ from typing import Dict, List, NamedTuple, Optional
 import torch
 import torch.nn as nn
 from fairseq.data.dictionary import Dictionary
-from pytext.common.constants import SpecialTokens
+from pytext.common.constants import SpecialTokens, Token
 from pytext.data.bert_tensorizer import build_fairseq_vocab
 from pytext.data.utils import SpecialToken, VocabBuilder, Vocabulary
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
 
 
@@ -37,6 +41,9 @@ class TokenizerTransform(Transform):
         for token in self.tokenizer.tokenize(text):
             if isinstance(token, str):
                 token_texts.append(token)
+                find_start_idx = end_ids[-1] if len(end_ids) > 0 else 0
+                start_ids.append(text.find(token, find_start_idx))
+                end_ids.append(start_ids[-1] + len(token))
             elif isinstance(token, (list, tuple)):
                 token_texts.append(token[0])
                 if len(token) >= 3:
@@ -83,6 +90,7 @@ class VocabTransform(Transform):
             bos_idx=vocab.get_bos_index(-1),
             eos_idx=vocab.get_eos_index(-1),
             unk_idx=vocab.get_unk_index(-1),
+            unk_token=vocab.unk_token,
         )
 
     def forward(self, tokens: Tokens) -> Dict[str, torch.Tensor]:
@@ -144,6 +152,63 @@ class LabelTransform(Transform):
     def forward(self, label: str) -> Dict[str, torch.Tensor]:
         label_id = self.vocab.lookup_all(label)
         return {"label_ids": torch.tensor(label_id, dtype=torch.long)}
+
+    @property
+    def is_jitable(self) -> bool:
+        return False
+
+
+class SlotLabelTransform(Transform):
+    def __init__(self, poss_slots: List[str], tokenizer: nn.Module = None):
+        super().__init__()
+        self.NO_LABEL = Token("NoLabel")
+        poss_slots = list(poss_slots)
+        if self.NO_LABEL not in poss_slots:
+            poss_slots.insert(0, self.NO_LABEL)
+        if SpecialTokens.PAD not in poss_slots:
+            poss_slots.insert(1, SpecialTokens.PAD)
+        self.vocab = Vocabulary(poss_slots)
+
+    def process_slots(self, slots_list: str) -> List[Slot]:
+        if "," in slots_list:
+            slots_list = slots_list.split(",")
+        elif slots_list != "":
+            slots_list = [slots_list]
+        else:
+            return []
+        slot_labels: List[Slot] = []
+        for curr_slot in slots_list:
+            first_delim = curr_slot.find(":")
+            second_delim = curr_slot.find(":", first_delim + 1)
+            start_ind = int(curr_slot[0:first_delim])
+            end_ind = int(curr_slot[first_delim + 1 : second_delim])
+            slot_name = curr_slot[second_delim + 1 :]
+            slot_labels.append(Slot(slot_name, start_ind, end_ind))
+        return slot_labels
+
+    def forward(self, text_and_slots):
+        """
+        Turn slot labels and text into a list of token labels with the same
+        length as the number of tokens in the text.
+        """
+        tokens, start, end = text_and_slots[0].values()
+        slots = self.process_slots(text_and_slots[1])
+        curr_slot_i = 0
+        curr_token_i = 0
+        slot_labels: List[str] = []
+        while curr_token_i < len(tokens) and curr_slot_i < len(slots):
+            curr_slot = slots[curr_slot_i]
+            if int(start[curr_token_i]) > curr_slot.end:
+                curr_slot_i += 1
+            else:
+                if int(end[curr_token_i]) > curr_slot.start:
+                    slot_labels.append(curr_slot.label)
+                else:
+                    slot_labels.append(self.NO_LABEL)
+                curr_token_i += 1
+        slot_labels += [self.NO_LABEL] * (len(tokens) - curr_token_i)
+        slot_label_idx = self.vocab.lookup_all(slot_labels)
+        return {"slot_labels": torch.tensor(slot_label_idx)}
 
     @property
     def is_jitable(self) -> bool:

@@ -18,6 +18,7 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         bos_idx: int = -1,
         eos_idx: int = -1,
         mask_idx: int = -1,
+        unk_token: Optional[str] = None,
     ):
         super().__init__()
         self.vocab = torch.jit.Attribute(vocab_list, List[str])
@@ -31,6 +32,13 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         )
         pad_token = vocab_list[pad_idx] if pad_idx >= 0 else SpecialTokens.PAD
         self.pad_token = torch.jit.Attribute(pad_token, str)
+        self.unk_token = unk_token
+
+    def get_pad_index(self):
+        return self.pad_idx
+
+    def get_unk_index(self):
+        return self.unk_idx
 
     @torch.jit.script_method
     def lookup_indices_1d(self, values: List[str]) -> List[int]:
