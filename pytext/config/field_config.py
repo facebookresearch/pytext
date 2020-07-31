@@ -83,6 +83,7 @@ class ContextualTokenEmbeddingConfig(ConfigBase):
     embed_dim: int = 0
     model_paths: Optional[Dict[str, str]] = None
     export_input_names: List[str] = ["contextual_token_embedding"]
+    downsample_dim: Optional[int] = None
 
 
 class FloatVectorConfig(ConfigBase):
