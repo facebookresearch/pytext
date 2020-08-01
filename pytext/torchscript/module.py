@@ -201,3 +201,36 @@ class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithD
         if self.tensorizer.device != "":
             dense_tensor = dense_tensor.to(self.tensorizer.device)
         return self.model(input_tensors, dense_tensor)[self.index].cpu()
+
+
+class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
+    """
+    Assumes model returns a tuple of representations and sequence lengths, then slices
+    each example's representation according to length. Returns a list of tensors. The
+    slicing is easier to do outside a traced model.
+    """
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        reps, seq_lens = self.model(input_tensors)
+        reps = reps.cpu()
+        seq_lens = seq_lens.cpu()
+        return [reps[i, : seq_lens[i]] for i in range(len(seq_lens))]
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> List[torch.Tensor]:
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        return self._forward(inputs)
