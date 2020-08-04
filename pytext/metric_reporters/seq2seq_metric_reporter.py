@@ -3,7 +3,7 @@
 from typing import Dict, List
 
 import torch
-from fairseq import bleu
+from fairseq.scoring import bleu
 from pytext.common.constants import (
     BatchContext,
     DatasetFieldName,
