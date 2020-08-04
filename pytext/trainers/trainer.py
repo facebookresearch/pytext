@@ -122,6 +122,7 @@ class Trainer(TrainerBase):
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
         # PrivacyEngine related args
         privacy_engine: Optional[PrivacyEngine.Config] = None
+        use_tensorboard: bool = False
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
