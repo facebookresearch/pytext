@@ -6,7 +6,7 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.loss import BinaryCrossEntropyLoss
+from pytext.loss import BinaryCrossEntropyLoss, CrossEntropyLoss, Loss
 
 
 class BinaryClassificationHead(nn.Module):
@@ -17,6 +17,20 @@ class BinaryClassificationHead(nn.Module):
     def forward(self, logits):
         preds = torch.max(logits, -1)[1]
         scores = F.logsigmoid(logits)
+        return preds, scores
+
+    def get_loss(self, logits, targets, reduce: bool = True):
+        return self.loss(logits, targets, reduce=reduce)
+
+
+class SequenceClassificationHead(nn.Module):
+    def __init__(self, loss: Loss = None):
+        super().__init__()
+        self.loss = loss or CrossEntropyLoss(CrossEntropyLoss.Config())
+
+    def forward(self, logits):
+        preds = torch.max(logits, 1)[1]
+        scores = F.log_softmax(logits, 1)
         return preds, scores
 
     def get_loss(self, logits, targets, reduce: bool = True):
