@@ -12,7 +12,6 @@ from pytext.data.utils import Vocabulary
 from pytext.loss.loss import Loss
 
 from .classification_heads import SequenceClassificationHead
-
 # import torch.nn.functional as F
 from .doc_model import DocNNEncoder, WordEmbedding
 from .mlp_decoder import MLPDecoder
