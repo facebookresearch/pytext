@@ -3,7 +3,6 @@
 from typing import Dict, List
 
 import torch
-from fairseq.scoring import bleu
 from pytext.common.constants import (
     BatchContext,
     DatasetFieldName,
@@ -15,6 +14,11 @@ from pytext.metric_reporters.channel import ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics import safe_division
 from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics
+
+try:
+    from fairseq.scoring import bleu
+except:
+    from fairseq import bleu
 
 
 class Seq2SeqFileChannel(FileChannel):
