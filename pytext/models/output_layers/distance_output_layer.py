@@ -60,7 +60,7 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
             or config.score_type == OutputScore.sigmoid_cosine
         ), f"Invalid score_type {config.score_type}. See OutputScore enum."
         return cls(
-            list(labels),
+            list(labels) if labels is not None else None,
             create_loss(config.loss, weight=label_weights),
             config.score_threshold,
             config.score_type,
