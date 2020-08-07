@@ -29,7 +29,7 @@ class MLPDecoder(nn.Module):
         self.mlp = nn.Sequential(*layers)
 
     def forward(
-        self, representation: torch.Tensor, dense: Optional[torch.Tensor]
+        self, representation: torch.Tensor, dense: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         if dense is not None:
             representation = torch.cat([representation, dense], 1)
