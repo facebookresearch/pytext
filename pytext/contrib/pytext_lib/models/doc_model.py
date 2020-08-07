@@ -7,9 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.config.module_config import PoolingType
-from pytext.contrib.pytext_lib.models.classification_heads import (
-    BinaryClassificationHead,
-)
+from pytext.contrib.pytext_lib.models.classification_heads import ClassificationHead
 from pytext.contrib.pytext_lib.transforms import build_vocab
 from pytext.data.utils import Vocabulary
 from pytext.models.embeddings import WordEmbedding
@@ -168,7 +166,7 @@ class DocModelForBinaryDocClassification(nn.Module):
             dense_dim=dense_dim,
             decoder_hidden_dims=decoder_hidden_dims,
         )
-        self.head = BinaryClassificationHead()
+        self.head = ClassificationHead()
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> List[torch.Tensor]:
         logits = self.doc_model(inputs)

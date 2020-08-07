@@ -22,7 +22,7 @@ from pytext.models.representations.transformer.sentence_encoder import (
 from pytext.utils.file_io import PathManager
 from torch.serialization import default_restore_location
 
-from .classification_heads import BinaryClassificationHead
+from .classification_heads import ClassificationHead
 from .mlp_decoder import MLPDecoder
 
 
@@ -98,7 +98,7 @@ class RobertaModel(nn.Module):
 class RobertaModelForBinaryDocClassification(RobertaModel):
     def __init__(self, encoder: nn.Module, decoder: nn.Module):
         super().__init__(encoder, decoder)
-        self.head = BinaryClassificationHead()
+        self.head = ClassificationHead()
 
     def get_pred(self, logits: torch.Tensor) -> torch.Tensor:
         return self.head(logits)

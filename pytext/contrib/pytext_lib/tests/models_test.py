@@ -5,7 +5,7 @@ import unittest
 import torch.nn as nn
 from pytext.contrib.pytext_lib import models
 from pytext.contrib.pytext_lib.models.intent_slot_model import (
-    build_dumb_slot_labelling_model,
+    build_dumb_intent_slot_model,
 )
 
 
@@ -26,5 +26,5 @@ class TestModels(unittest.TestCase):
         assert isinstance(model, nn.Module)
 
     def test_load_intent_slot(self):
-        model = build_dumb_slot_labelling_model()
+        model = build_dumb_intent_slot_model()
         assert isinstance(model, nn.Module)
