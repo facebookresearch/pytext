@@ -278,3 +278,19 @@ def roberta_collate_fn(
         "positions": padded_positions,
         "label_ids": label_ids,
     }
+
+
+def intent_slot_collate_fn(
+    batch: List[Dict[str, Dict[str, torch.Tensor]]], pad_idx: int = 1
+):
+    col_to_val_dic = docnn_collate_fn(batch, pad_idx)
+    model_inputs: Dict[str, List[torch.Tensor]] = base_collate_fn(batch)
+    size = [int(x.size()[0]) for x in model_inputs["slot_labels"]]
+    padded_slots = (
+        pad_2d(model_inputs["slot_labels"], size, pad_idx)
+        if "slot_labels" in model_inputs
+        else None
+    )
+    slot_label_ids = padded_slots if "slot_labels" in model_inputs else torch.empty(0)
+    col_to_val_dic["slot_label_ids"] = slot_label_ids
+    return col_to_val_dic
