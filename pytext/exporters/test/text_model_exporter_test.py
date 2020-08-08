@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from caffe2.python import workspace
-from hypothesis import given
+from hypothesis import given, settings
 from pytext.builtin_task import (
     DocumentClassificationTask,
     IntentSlotTask,
@@ -443,6 +443,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_words=st.integers(1, 7),
         num_predictions=st.integers(2, 5),
     )
+    @settings(max_examples=10, deadline=None)
     def test_wordblstm_export_to_caffe2(
         self, export_num_words, num_word_classes, test_num_words, num_predictions
     ):
@@ -536,6 +537,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         test_num_words=st.integers(1, 7),
         num_predictions=st.integers(1, 5),
     )
+    @settings(max_examples=10, deadline=None)
     def test_joint_export_to_caffe2(
         self,
         export_num_words,
@@ -617,6 +619,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         num_predictions=st.integers(1, 5),
         test_num_seq=st.integers(1, 7),
     )
+    @settings(max_examples=10, deadline=None)
     def test_seq_nn_export_to_caffe2(
         self,
         export_num_words,
@@ -671,6 +674,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
         num_predictions=st.integers(1, 5),
         test_num_seq=st.integers(1, 7),
     )
+    @settings(max_examples=10, deadline=None)
     def test_contextual_intent_slot_export_to_caffe2(
         self, test_num_words, num_predictions, test_num_seq
     ):
