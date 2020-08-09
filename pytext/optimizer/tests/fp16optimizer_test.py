@@ -10,7 +10,7 @@ from pytext.optimizer import fp16_optimizer
 from torch.autograd import Variable
 
 
-class TestFp16Optimizer(unittest.TestCase):
+class Testfp16Optimizer(unittest.TestCase):
     def _generate_inner_optim(self, memory_efficient):
         param_groups = []
         tensors = []
@@ -31,7 +31,7 @@ class TestFp16Optimizer(unittest.TestCase):
             memory_efficient=memory_efficient,
         )
 
-    """ unit tests for fp16Optimizer
+    """ unit tests for FP16Optimizer in pytext/optimizer/fp16_optimizer.py
     - test_init: check data type of master and model params after initialization
     - test_zero_grad: after initializing grad of model params, call zero_grad and
             check data type and value
@@ -47,57 +47,55 @@ class TestFp16Optimizer(unittest.TestCase):
             in charge of the grads. Check whether those two cases have the same values.
     """
 
-    def test_master_maintain_init(self):
+    def test_FP16Optimizer_init(self):
         self._generate_inner_optim(False)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
 
-    def test_master_maintain_zero_grad(self):
+    def test_FP16Optimizer_zero_grad(self):
         self._generate_inner_optim(False)
-        self._pseudo_backward(self.fp16_optim.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
+        self._pseudo_backward(self.fp16_optim.model_params)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
         self.fp16_optim.zero_grad()
-        self._is_all_zero(self.fp16_optim.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
+        self._is_all_zero(self.fp16_optim.model_params)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
 
-    def test_master_maintain_grads_from_model_to_master(self):
+    def test_FP16Optimizer_grads_from_model_to_master(self):
         self._generate_inner_optim(False)
-        self._pseudo_backward(self.fp16_optim.param_groups)
+        self._pseudo_backward(self.fp16_optim.model_params)
         # check data type before calling sync grads
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
         self.fp16_optim.grads_update_needed = True
         self.fp16_optim._grads_from_model_to_master()
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
 
         for p in self._generate_params(self.fp16_optim.inner_optimizer.param_groups):
             p.grad.data.mul_(self.fp16_optim.loss_scaler.scale)
 
-        self._is_grad_equal(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
-        )
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
+        self._is_grad_equal(self.fp16_optim.model_params, self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
 
-    def test_master_maintain_weights_from_master_to_model(self):
+    def test_FP16Optimizer_weights_from_master_to_model(self):
         self._generate_inner_optim(False)
         self._pseudo_step(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
         self.fp16_optim.weights_update_needed = True
         self.fp16_optim._weights_from_master_to_model()
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
         self._is_weight_equal(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
+            self.fp16_optim.model_params, self.fp16_optim.master_params
         )
 
-    def test_master_maintain_two_iterations(self):
+    def test_FP16Optimizer_two_iterations(self):
         self._generate_inner_optim(False)
-        self._pseudo_backward(self.fp16_optim.param_groups)
+        self._pseudo_backward(self.fp16_optim.model_params)
         self.fp16_optim.grads_update_needed = True
         self.fp16_optim._grads_from_model_to_master()
         for p in self._generate_params(self.fp16_optim.inner_optimizer.param_groups):
@@ -106,27 +104,25 @@ class TestFp16Optimizer(unittest.TestCase):
         self.fp16_optim.weights_update_needed = True
         self.fp16_optim._weights_from_master_to_model()
         self.fp16_optim.zero_grad()
-        self._pseudo_backward(self.fp16_optim.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._pseudo_backward(self.fp16_optim.model_params)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
         self.fp16_optim.grads_update_needed = True
         self.fp16_optim._grads_from_model_to_master()
         for p in self._generate_params(self.fp16_optim.inner_optimizer.param_groups):
             p.grad.data.mul_(self.fp16_optim.loss_scaler.scale)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
-        self._is_grad_equal(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
-        )
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
+        self._is_grad_equal(self.fp16_optim.model_params, self.fp16_optim.master_params)
         self._pseudo_step_pair(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
         self.fp16_optim.weights_update_needed = True
         self.fp16_optim._weights_from_master_to_model()
-        self._is_all_float(self.fp16_optim.inner_optimizer.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_float(self.fp16_optim.master_params)
+        self._is_all_half(self.fp16_optim.model_params)
         self._is_weight_equal(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
+            self.fp16_optim.master_params, self.fp16_optim.model_params
         )
 
     def _test_logic_prepare(self):
@@ -192,7 +188,7 @@ class TestFp16Optimizer(unittest.TestCase):
             memory_efficient=True,
         )
 
-    def _test_master_maintain_logic_baseline(self):
+    def _test_FP16Optimizer_logic_baseline(self):
         for _t in range(10):
             self.optimizer.zero_grad()
             for pair in self.data_set:
@@ -229,7 +225,7 @@ class TestFp16Optimizer(unittest.TestCase):
                     model.data.copy_(master.data)
                 self.fake_fp16_optim.loss_scaler.update_scale()
 
-    def _test_master_maintain_logic_experiment(self):
+    def _test_FP16Optimizer_logic_experiment(self):
         for _t in range(10):
             self.ffp16_optim.zero_grad()
             for pair in self.data_set:
@@ -246,23 +242,23 @@ class TestFp16Optimizer(unittest.TestCase):
             # Check for overflow
             self.ffp16_optim.step()
 
-    def test_master_maintain_logic(self):
+    def test_FP16Optimizer_logic(self):
         self._test_logic_prepare()
         cpu_sum_base = []
         for p in self._generate_params(self.optimizer.param_groups):
             cpu_sum_base_init = float(p.data.float().sum())
             cpu_sum_base.append(cpu_sum_base_init)
-        self._test_master_maintain_logic_baseline()
+        self._test_FP16Optimizer_logic_baseline()
         for p in self._generate_params(self.optimizer.param_groups):
             cpu_sum_base_final = float(p.data.float().sum())
             cpu_sum_base.append(cpu_sum_base_final)
 
         cpu_sum_exp = []
-        for p in self._generate_params(self.ffp16_optim.param_groups):
+        for p in self.ffp16_optim.model_params:
             cpu_sum_exp_init = float(p.data.float().sum())
             cpu_sum_exp.append(cpu_sum_exp_init)
-        self._test_master_maintain_logic_experiment()
-        for p in self._generate_params(self.ffp16_optim.param_groups):
+        self._test_FP16Optimizer_logic_experiment()
+        for p in self.ffp16_optim.model_params:
             cpu_sum_exp_final = float(p.data.float().sum())
             cpu_sum_exp.append(cpu_sum_exp_final)
 
@@ -270,7 +266,8 @@ class TestFp16Optimizer(unittest.TestCase):
         for i, j in zip(cpu_sum_base, cpu_sum_exp):
             self.assertEqual(i, j)
 
-    """test functionality and calculation results of memory efficient optimizer.
+    """test functionality and calculation results of PureFP16Optimizer in
+    pytext/optimizer/fp16_optimizer.py.
     - test init: after initialization, check whether optimizer.param_groups and
             inner_optimizer.param_groups point to the same object, and data type.
     - test zero_grad: after calling zero_grad, checking whether data type and
@@ -290,46 +287,46 @@ class TestFp16Optimizer(unittest.TestCase):
         between fp32 and fp16.
     """
 
-    def test_memory_efficient_init(self):
+    def test_PureFP16Optimizer_init(self):
         self._generate_inner_optim(True)
         self.assertIs(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
+            self.fp16_optim._param_groups, self.fp16_optim.inner_optimizer.param_groups
         )
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_half(self.fp16_optim._param_groups)
 
-    def test_memory_efficient_zero_grad(self):
+    def test_PureFP16Optimizer_zero_grad(self):
         self._generate_inner_optim(True)
-        self._pseudo_backward(self.fp16_optim.param_groups)
+        self._pseudo_backward(self.fp16_optim._param_groups)
         self.fp16_optim.zero_grad()
         self.assertIs(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
+            self.fp16_optim._param_groups, self.fp16_optim.inner_optimizer.param_groups
         )
-        self._is_all_zero(self.fp16_optim.param_groups)
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_zero(self.fp16_optim._param_groups)
+        self._is_all_half(self.fp16_optim._param_groups)
 
-    def test_memory_efficient_step_chain(self):
+    def test_PureFP16Optimizer_step_chain(self):
         self._generate_inner_optim(True)
-        self._pseudo_backward(self.fp16_optim.param_groups)
+        self._pseudo_backward(self.fp16_optim._param_groups)
         # pseudo upscale
         self.fp16_optim._fp16_to_fp32()
-        self.fp16_optim.loss_scaler.check_overflow(self.fp16_optim.param_groups)
+        self.fp16_optim.loss_scaler.check_overflow(self.fp16_optim._param_groups)
         if not self.fp16_optim.loss_scaler.is_overflow:
             self.assertIs(
-                self.fp16_optim.param_groups,
+                self.fp16_optim._param_groups,
                 self.fp16_optim.inner_optimizer.param_groups,
             )
-            self._is_all_float(self.fp16_optim.param_groups)
+            self._is_all_float(self.fp16_optim._param_groups)
 
             self._pseudo_step(self.fp16_optim.inner_optimizer.param_groups)
         self.fp16_optim._fp32_to_fp16()
         self.assertIs(
-            self.fp16_optim.param_groups, self.fp16_optim.inner_optimizer.param_groups
+            self.fp16_optim._param_groups, self.fp16_optim.inner_optimizer.param_groups
         )
-        self._is_all_half(self.fp16_optim.param_groups)
+        self._is_all_half(self.fp16_optim._param_groups)
 
         self.fp16_optim.loss_scaler.update_scale()
 
-    def _test_memory_efficient_logic_baseline(self):
+    def _test_PureFP16Optimizer_logic_baseline(self):
         for _t in range(10):
             self.optimizer_c.zero_grad()
             for pair in self.data_set:
@@ -351,7 +348,7 @@ class TestFp16Optimizer(unittest.TestCase):
                     param.grad.data.div_(self.MEoptim_c.loss_scaler.scale)
                 self.optimizer_c.step()
 
-    def _test_memory_efficient_logic_exp(self):
+    def _test_PureFP16Optimizer_logic_exp(self):
         for _t in range(10):
             self.MEoptim.zero_grad()
             for pair in self.data_set:
@@ -366,10 +363,10 @@ class TestFp16Optimizer(unittest.TestCase):
                     scaled_loss.backward()
             # Run backprop
             # Check for overflow
-            self.MEoptim.loss_scaler.check_overflow(self.MEoptim.param_groups)
+            self.MEoptim.loss_scaler.check_overflow(self.MEoptim._param_groups)
             # If no overflow, unscale grad and update as usual
             if not self.MEoptim.loss_scaler.is_overflow:
-                self.MEoptim.loss_scaler.unscale_grads(self.MEoptim.param_groups)
+                self.MEoptim.loss_scaler.unscale_grads(self.MEoptim._param_groups)
                 self.MEoptim.is_scaled = False
                 self.MEoptim.inner_optimizer.step()
 
@@ -383,14 +380,14 @@ class TestFp16Optimizer(unittest.TestCase):
             self.MEoptim._FP16toFP32()
             """
 
-    def test_memory_efficient_logic(self):
+    def test_PureFP16Optimizer_logic(self):
         self._test_logic_prepare()
         # =================this is baseline class===============
         cpu_sum_base = []
         for p in self._generate_params(self.MEoptim_c.param_groups):
             cpu_sum = float(p.data.float().sum())
             cpu_sum_base.append(cpu_sum)
-        self._test_memory_efficient_logic_baseline()
+        self._test_PureFP16Optimizer_logic_baseline()
         for p in self._generate_params(self.MEoptim_c.param_groups):
             cpu_sum_e = float(p.data.float().sum())
             cpu_sum_base.append(cpu_sum_e)
@@ -400,7 +397,7 @@ class TestFp16Optimizer(unittest.TestCase):
         for p in self._generate_params(self.MEoptim.param_groups):
             cpu_sum_x = float(p.data.float().sum())
             cpu_sum_exp.append(cpu_sum_x)
-        self._test_memory_efficient_logic_exp()
+        self._test_PureFP16Optimizer_logic_exp()
         for p in self._generate_params(self.MEoptim.param_groups):
             cpu_sum_p = float(p.data.float().sum())
             cpu_sum_exp.append(cpu_sum_p)
@@ -458,5 +455,8 @@ class TestFp16Optimizer(unittest.TestCase):
 
     def _generate_params(self, param_groups):
         for group in param_groups:
-            for p in group["params"]:
-                yield p
+            if not isinstance(group, dict):
+                yield group
+            else:
+                for p in group["params"]:
+                    yield p
