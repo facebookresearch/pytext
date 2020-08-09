@@ -104,6 +104,7 @@ class PyTextConfig(ConfigBase):
     # resume training from the latest snapshot automatically
     auto_resume_from_snapshot: bool = False
     # Exported caffe model will be stored here
+    # WARNING: caffe2 export is deprecated, please use export_torchscript_path.
     export_caffe2_path: Optional[str] = None
     # Exported onnx model will be stored here
     export_onnx_path: str = "/tmp/model.onnx"
