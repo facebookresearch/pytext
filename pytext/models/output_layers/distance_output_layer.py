@@ -91,10 +91,14 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
             if isinstance(self.loss_fn, CosineEmbeddingLoss):
                 return logits
             elif isinstance(self.loss_fn, NLLLoss):
+                # log probability shall be returned in this case
+                # the factor 2.3 = log(10) is used to make sure the consistency between matric reporting and loss function
                 cosine_sim_scores = F.cosine_similarity(logits[0], logits[1], dim=1)
-                pos_scores, neg_scores = get_sigmoid_scores(cosine_sim_scores)
-                return torch.log(
-                    torch.cat((pos_scores.unsqueeze(1), neg_scores.unsqueeze(1)), dim=1)
+                pos_scores = cosine_sim_scores * 2.0 * 2.3
+                neg_scores = (1.0 - cosine_sim_scores) * 2.0 * 2.3
+
+                return F.log_softmax(
+                    torch.stack((neg_scores, pos_scores), dim=1), dim=1
                 )
             else:
                 return F.cosine_similarity(logits[0], logits[1], dim=1)
