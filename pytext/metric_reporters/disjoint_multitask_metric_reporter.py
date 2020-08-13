@@ -56,7 +56,7 @@ class DisjointMultitaskMetricReporter(MetricReporter):
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **context
     ):
-        self.total_loss += loss
+        self.total_loss += loss.item()
         self.num_batches += 1
         # losses are weighted in DisjointMultitaskModel. Here we undo the
         # weighting for proper reporting.
