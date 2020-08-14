@@ -113,6 +113,28 @@ class Seq2SeqModelExportTests(unittest.TestCase):
         res = ts_model(["call", "mom"], contextual_token_embedding=[0.42] * (7 * 2))
         assert res is not None
 
+    def test_tokens_contextual_downsampled(self):
+        model = Seq2SeqModel.from_config(
+            Seq2SeqModel.Config(
+                source_embedding=WordEmbedding.Config(embed_dim=512),
+                target_embedding=WordEmbedding.Config(embed_dim=512),
+                inputs=Seq2SeqModel.Config.ModelInput(
+                    contextual_token_embedding=ByteTokenTensorizer.Config()
+                ),
+                contextual_token_embedding=ContextualTokenEmbedding.Config(
+                    embed_dim=7, downsample_dim=312
+                ),
+                encoder_decoder=RNNModel.Config(
+                    encoder=LSTMSequenceEncoder.Config(embed_dim=824)
+                ),
+            ),
+            get_tensorizers(add_contextual_feat=True),
+        )
+        model.eval()
+        ts_model = model.torchscriptify()
+        res = ts_model(["call", "mom"], contextual_token_embedding=[0.42] * (7 * 2))
+        assert res is not None
+
     def test_tokens_dictfeat(self):
         model = Seq2SeqModel.from_config(
             Seq2SeqModel.Config(
