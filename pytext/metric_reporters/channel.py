@@ -310,9 +310,11 @@ class TensorBoardChannel(Channel):
             tag (str): The tag name for the metric. If a field needs to be
                 flattened further, it will be prepended as a prefix to the field
                 name.
-            metrics (Any): The metrics object.
+            metrics (Any): The metrics object/dict.
         """
-        for field_name, field_value in metrics._asdict().items():
+        if hasattr(metrics, "_asdict"):
+            metrics = metrics._asdict()
+        for field_name, field_value in metrics.items():
             if isinstance(field_value, (int, float)):
                 self.summary_writer.add_text(tag, f"{field_name}={field_value}")
             elif hasattr(field_value, "_asdict"):
