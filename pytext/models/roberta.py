@@ -120,6 +120,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         use_linformer_encoder: bool = False
         linformer_compressed_ratio: int = 4
         export_encoder: bool = False
+        variable_size_embedding: bool = True
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -179,6 +180,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
         self.representation_dim = self._embedding().weight.size(-1)
         self.export_encoder = config.export_encoder
+        self.variable_size_embedding = config.variable_size_embedding
         log_class_usage(__class__)
 
     def _embedding(self):
