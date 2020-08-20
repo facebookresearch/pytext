@@ -34,7 +34,7 @@ class IntentSlotTask(LightningModule):
         self.config = config
         self.joint_model: nn.Module = None
         self.infer_transforms: Dict[str, List[Transform]] = {}
-        self.train_transforms: Dict[str, List[Transform]] = {}
+        self.train_transforms: List[Transform] = {}
         self.slot_accuracy_list: List[Tensor] = []
         self.slot_precision_list: List[Tensor] = []
         self.slot_f1_list: List[Tensor] = []
@@ -72,11 +72,11 @@ class IntentSlotTask(LightningModule):
             self.joint_model.parameters(), **self.config.optimizer
         )
 
-    def forward(self, texts: List[str]) -> List[torch.Tensor]:
-        model_outputs: List[torch.Tensor] = []
+    def forward(self, texts: List[str]) -> List[List[torch.Tensor]]:
+        model_outputs: List[List[torch.Tensor]] = []
         for text in texts:
             transformed_text = text
-            for transform in self.infer_transforms["utterance"]:
+            for transform in self.infer_transforms:
                 transformed_text = transform(transformed_text)
             logits = self.joint_model(transformed_text)
             predictions = self.joint_model.get_preds(logits)
@@ -178,7 +178,7 @@ class IntentSlotTask(LightningModule):
             "intent": [doc_label_transform],
             "utterance&slots": [slot_label_transform],  # needs slot labels and text
         }
-        infer_transforms = {"utterance": train_transforms["utterance"]}
+        infer_transforms = train_transforms["utterance"]
         return train_transforms, infer_transforms
 
     def _build_dataloaders(
