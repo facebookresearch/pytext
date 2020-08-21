@@ -11,6 +11,7 @@ from pytext.contrib.pytext_lib.datasets.base_dataset import (
 )
 from pytext.contrib.pytext_lib.datasets.fb_hive_dataset import HiveDataset
 from pytext.contrib.pytext_lib.models.intent_slot_model import build_intent_joint_model
+from pytext.contrib.pytext_lib.resources.intent_slot_input import TaskWrapper
 from pytext.contrib.pytext_lib.transforms.transforms import (
     LabelTransform,
     SlotLabelTransform,
@@ -29,7 +30,7 @@ from torch.utils.data import DataLoader
 
 
 class IntentSlotTask(LightningModule):
-    def __init__(self, config):
+    def __init__(self, config: TaskWrapper):
         super().__init__()
         self.config = config
         self.joint_model: nn.Module = None
@@ -44,20 +45,20 @@ class IntentSlotTask(LightningModule):
 
     def prepare(self):
         (self.train_transforms, self.infer_transforms) = self._build_transforms(
-            **self.config.transforms
+            **vars(self.config.transforms)
         )
         (
             self._train_dataloader,
             self._val_dataloader,
             self._test_dataloader,
-        ) = self._build_dataloaders(**self.config.data)
+        ) = self._build_dataloaders(**vars(self.config.data))
         num_slots = len(self.train_transforms["utterance&slots"][0].vocab.idx.keys())
         num_intents = len(self.train_transforms["intent"][0].vocab.idx.keys())
         add_feat_len = 0
         if self.config.model.use_intent:
             add_feat_len += num_intents
         self.joint_model = build_intent_joint_model(
-            **self.config.model,
+            **vars(self.config.model),
             num_slots=num_slots,
             num_intents=num_intents,
             vocab=self.train_transforms["utterance"][1].vocab,
@@ -69,7 +70,7 @@ class IntentSlotTask(LightningModule):
         self.slot_f1_metric = F1(num_classes=num_slots)
         self.doc_f1_metric = F1(num_classes=num_intents)
         self.optimizer = FairSeqAdam(
-            self.joint_model.parameters(), **self.config.optimizer
+            self.joint_model.parameters(), **vars(self.config.optimizer)
         )
 
     def forward(self, texts: List[str]) -> List[List[torch.Tensor]]:
@@ -116,9 +117,7 @@ class IntentSlotTask(LightningModule):
         return self._val_dataloader
 
     def export(self):
-        # export to TorchScript
-        # TODO: make self.forward jitable
-        return torch.jit.script(self)
+        pass
 
     def get_metrics(self, last_n_batches: int = 1):
         start_index = len(self.accuracy_list) - (last_n_batches + 1)

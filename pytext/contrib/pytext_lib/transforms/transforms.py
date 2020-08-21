@@ -147,6 +147,8 @@ class TruncateTransform(Transform):
 class LabelTransform(Transform):
     def __init__(self, label_names: List[str]):
         super().__init__()
+        if SpecialTokens.UNK not in label_names:
+            label_names.insert(0, SpecialTokens.UNK)
         self.vocab = Vocabulary(label_names)
 
     def forward(self, label: str) -> Dict[str, torch.Tensor]:
@@ -171,6 +173,8 @@ class SlotLabelTransform(Transform):
             poss_slots.insert(0, self.NO_LABEL)
         if SpecialTokens.PAD not in poss_slots:
             poss_slots.insert(1, SpecialTokens.PAD)
+        if SpecialTokens.UNK not in poss_slots:
+            poss_slots.insert(2, SpecialTokens.UNK)
         self.vocab = Vocabulary(poss_slots)
 
     def process_slots(self, slots_list: str) -> List[Slot]:
