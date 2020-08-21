@@ -2,11 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, List, Optional
 
+from pytext.contrib.pytext_lib.datasets.base_dataset_deprecated import BaseDataset
+from pytext.contrib.pytext_lib.transforms import Transform
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSV
-
-from ..transforms import Transform
-from .base_dataset import BaseDataset
 
 
 class TsvDataset(BaseDataset):

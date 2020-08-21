@@ -3,8 +3,11 @@
 import unittest
 
 import torch
-from pytext.contrib.pytext_lib.datasets import BaseDataset, PoolingBatcher
-from pytext.contrib.pytext_lib.transforms import (
+from pytext.contrib.pytext_lib.datasets.base_dataset_deprecated import (
+    BaseDataset,
+    PoolingBatcher,
+)
+from pytext.contrib.pytext_lib.transforms.transforms_deprecated import (
     VocabTransform,
     WhitespaceTokenizerTransform,
 )
