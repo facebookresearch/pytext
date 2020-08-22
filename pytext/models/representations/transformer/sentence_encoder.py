@@ -56,6 +56,20 @@ class SentenceEncoder(nn.Module):
         return self.load_state_dict(translate_roberta_state_dict(state_dict))
 
 
+class PostEncoder(SentenceEncoder):
+    def forward(self, tokens, dense):
+        all_layers = self.extract_features(tokens, dense)
+        last_layer = all_layers[-1]  # T x B x C
+        return last_layer.transpose(0, 1)
+
+    def extract_features(self, tokens, dense):
+        # support passing in a single sentence
+        if tokens.dim() == 1:
+            tokens = tokens.unsqueeze(0)
+
+        return self.transformer(tokens, dense)
+
+
 def remove_state_keys(state, keys_regex):
     """Remove keys from state that match a regex"""
     regex = re.compile(keys_regex)

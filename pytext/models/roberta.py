@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext import resources
@@ -26,6 +26,8 @@ from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
     MultiheadSelfAttention,
+    PostEncoder,
+    SELFIETransformer,
     SentenceEncoder,
     Transformer,
     TransformerLayer,
@@ -34,6 +36,7 @@ from pytext.models.representations.transformer.transformer import (
     DEFAULT_MAX_SEQUENCE_LENGTH,
 )
 from pytext.models.representations.transformer_sentence_encoder_base import (
+    PoolingMethod,
     TransformerSentenceEncoderBase,
 )
 from pytext.torchscript.module import (
@@ -66,10 +69,12 @@ class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
     class Config(TransformerSentenceEncoderBase.Config):
         pass
 
-    def _encoder(self, inputs):
+    def _encoder(self, inputs, *args):
         # NewBertModel expects the output as a tuple and grabs the first element
         tokens, _, _, _ = inputs
-        full_representation = self.encoder(tokens)
+        full_representation = (
+            self.encoder(tokens, args[0]) if len(args) > 0 else self.encoder(tokens)
+        )
         sentence_rep = full_representation[:, 0, :]
         return [full_representation], sentence_rep
 
@@ -121,6 +126,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         linformer_compressed_ratio: int = 4
         export_encoder: bool = False
         variable_size_embedding: bool = True
+        use_selfie_encoder: bool = False
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -141,27 +147,41 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 (config.max_seq_len - 2) // config.linformer_compressed_ratio,
             )
 
-        self.encoder = SentenceEncoder(
-            transformer=Transformer(
-                vocab_size=config.vocab_size,
+        self.use_selfie_encoder = config.use_selfie_encoder
+
+        layers = [
+            TransformerLayer(
                 embedding_dim=config.embedding_dim,
-                layers=[
-                    TransformerLayer(
-                        embedding_dim=config.embedding_dim,
-                        attention=MultiheadLinearAttention(
-                            embed_dim=config.embedding_dim,
-                            num_heads=config.num_attention_heads,
-                            compress_layer=compress_layer,
-                        )
-                        if config.use_linformer_encoder
-                        else MultiheadSelfAttention(
-                            embed_dim=config.embedding_dim,
-                            num_heads=config.num_attention_heads,
-                        ),
-                    )
-                    for _ in range(config.num_encoder_layers)
-                ],
-                max_seq_len=config.max_seq_len,
+                attention=MultiheadLinearAttention(
+                    embed_dim=config.embedding_dim,
+                    num_heads=config.num_attention_heads,
+                    compress_layer=compress_layer,
+                )
+                if config.use_linformer_encoder
+                else MultiheadSelfAttention(
+                    embed_dim=config.embedding_dim, num_heads=config.num_attention_heads
+                ),
+            )
+            for _ in range(config.num_encoder_layers)
+        ]
+
+        self.encoder = (
+            SentenceEncoder(
+                transformer=Transformer(
+                    vocab_size=config.vocab_size,
+                    embedding_dim=config.embedding_dim,
+                    layers=layers,
+                    max_seq_len=config.max_seq_len,
+                )
+            )
+            if not self.use_selfie_encoder
+            else PostEncoder(
+                transformer=SELFIETransformer(
+                    vocab_size=config.vocab_size,
+                    embedding_dim=config.embedding_dim,
+                    layers=layers,
+                    max_seq_len=config.max_seq_len,
+                )
             )
         )
         self.apply(init_params)
@@ -186,6 +206,31 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
     def _embedding(self):
         # used to tie weights in MaskedLM model
         return self.encoder.transformer.token_embedding
+
+    def forward(
+        self, input_tuple: Tuple[torch.Tensor, ...], *args
+    ) -> Tuple[torch.Tensor, ...]:
+
+        encoded_layers, pooled_output = (
+            self._encoder(input_tuple, args[0])
+            if self.use_selfie_encoder
+            else self._encoder(input_tuple)
+        )
+
+        pad_mask = input_tuple[1]
+
+        if self.pooling != PoolingMethod.CLS_TOKEN:
+            pooled_output = self._pool_encoded_layers(encoded_layers, pad_mask)
+
+        if pooled_output is not None:
+            pooled_output = self.output_dropout(pooled_output)
+
+        output = []
+        if self.output_encoded_layers:
+            output.append(encoded_layers)
+        if self.pooling != PoolingMethod.NO_POOL:
+            output.append(pooled_output)
+        return tuple(output)
 
 
 class RoBERTa(NewBertModel):
@@ -228,6 +273,28 @@ class RoBERTa(NewBertModel):
                     output_layer=self.output_layer.torchscript_predictions(),
                     tensorizer=script_tensorizer,
                 )
+
+
+class SELFIE(RoBERTa):
+    class Config(NewBertModel.Config):
+        class InputConfig(ConfigBase):
+            tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            dense: Optional[FloatListTensorizer.Config] = None
+            labels: LabelTensorizer.Config = LabelTensorizer.Config()
+
+        inputs: InputConfig = InputConfig()
+        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
+        use_selfie: bool = True
+
+    def forward(
+        self, encoder_inputs: Tuple[torch.Tensor, ...], *args
+    ) -> List[torch.Tensor]:
+        if self.encoder.output_encoded_layers:
+            # if encoded layers are returned, discard them
+            representation = self.encoder(encoder_inputs, args[0])[1]
+        else:
+            representation = self.encoder(encoder_inputs, args[0])[0]
+        return self.decoder(representation)
 
 
 class RoBERTaRegression(NewBertRegressionModel):

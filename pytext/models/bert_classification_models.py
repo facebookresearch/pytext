@@ -100,7 +100,11 @@ class NewBertModel(BaseModel):
         encoder = create_module(
             config.encoder, padding_idx=vocab.get_pad_index(), vocab_size=len(vocab)
         )
-        dense_dim = tensorizers["dense"].dim if "dense" in tensorizers else 0
+        if getattr(config, "use_selfie", False):
+            # No MLP fusion in SELFIE
+            dense_dim = 0
+        else:
+            dense_dim = tensorizers["dense"].dim if "dense" in tensorizers else 0
         decoder = create_module(
             config.decoder,
             in_dim=encoder.representation_dim + dense_dim,

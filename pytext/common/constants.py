@@ -26,6 +26,7 @@ class SpecialTokens:
     BOL = Token("__BEGIN_OF_LIST__")
     EOL = Token("__END_OF_LIST__")
     MASK = Token("__MASK__")
+    SELFIE_RAW_IMAGE = Token("__RAW_IMAGE__")
     # BOS and EOS is too long for Byte-level Language Model.
     # Todo: find out conbination of bytes with low-frequency and shorter length
     BYTE_BOS = Token("^")

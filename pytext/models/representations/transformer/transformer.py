@@ -4,6 +4,7 @@
 from typing import List, Optional
 
 import torch
+import torch.nn.functional as F
 from pytext.utils.usage import log_class_usage
 from torch import nn
 
@@ -86,6 +87,41 @@ class Transformer(nn.Module):
         normed = self.dropout(normed)
         # account for padding while computing the representation
         padded_normed = normed * (1 - padding_mask.unsqueeze(-1).type_as(normed))
+
+        # B x T x C -> T x B x C
+        encoded = padded_normed.transpose(0, 1)
+
+        states = [encoded]
+
+        for layer in self.layers:
+            encoded = layer(encoded, padding_mask)
+            states.append(encoded)
+
+        # states are returned as T x B x C
+        # commonly you can retrieve a single "sentence representation" as
+        # states[-1].transpose(0, 1)
+        return states
+
+
+class SELFIETransformer(Transformer):
+    def forward(self, tokens: torch.Tensor, dense: torch.Tensor) -> List[torch.Tensor]:
+        # compute padding mask. This is needed for multi-head attention
+        padding_mask = tokens.eq(self.padding_idx)
+
+        embedded = self.token_embedding(tokens)
+        embedded_positions = self.positional_embedding(tokens)
+
+        normed = self.embedding_layer_norm(embedded + embedded_positions)
+        normed = self.dropout(normed)
+        # account for padding while computing the representation
+        padded_normed = normed * (1 - padding_mask.unsqueeze(-1).type_as(normed))
+
+        # Selfie transformer prepends dense input as first token.
+        # Dim of dense must be <= embedding_dim, for now
+        dense = F.pad(dense, (0, embedded.size(2) - dense.size(1), 0, 0), value=1)
+        padded_normed = torch.cat([dense.unsqueeze(1), padded_normed], dim=1)
+
+        padding_mask = F.pad(padding_mask, (1, 0, 0, 0), value=False)
 
         # B x T x C -> T x B x C
         encoded = padded_normed.transpose(0, 1)

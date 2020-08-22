@@ -32,6 +32,7 @@ class RoBERTaTensorizer(BERTTensorizerBase):
         vocab_file: str = resources.roberta.GPT2_BPE_DICT
         tokenizer: Tokenizer.Config = GPT2BPETokenizer.Config()
         max_seq_len: int = 256
+        add_selfie_token: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
@@ -58,6 +59,9 @@ class RoBERTaTensorizer(BERTTensorizerBase):
                     "<unk>": SpecialTokens.UNK,
                     "<mask>": SpecialTokens.MASK,
                 },
+                tokens_to_add=[SpecialTokens.SELFIE_RAW_IMAGE]
+                if config.add_selfie_token
+                else None,
             )
         return cls(
             columns=config.columns,
