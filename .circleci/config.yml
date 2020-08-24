@@ -24,7 +24,7 @@ _do_tests: &do_tests
   - run: *install_test_deps
   - run:
       name: run tests and gather coverag
-      command: pytest --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
+      command: pytest --ignore=pytext/contrib --junitxml=test-reports/junit.xml --cov=pytext --cov-report=html:htmlcov
   - store_test_results:
       path: test-reports
   - store_artifacts:
