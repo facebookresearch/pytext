@@ -2,7 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import unittest
 
-from pytext.contrib.pytext_lib.transforms.transforms import SlotLabelTransform
+from pytext.contrib.pytext_lib.transforms.transforms_deprecated import (
+    SlotLabelTransform,
+)
 from pytext.utils.data import Slot
 
 
