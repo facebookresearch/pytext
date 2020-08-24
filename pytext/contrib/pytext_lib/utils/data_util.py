@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from collections import defaultdict
+from dataclasses import asdict, is_dataclass
 from typing import Any, Dict
+
+
+def dataclass_to_dict(obj):
+    return asdict(obj) if is_dataclass(obj) else obj
 
 
 def rows_to_columnar(rows) -> Dict[str, Any]:

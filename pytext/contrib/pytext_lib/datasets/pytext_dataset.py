@@ -10,7 +10,7 @@ from pytext.contrib.pytext_lib.transforms.transforms import (
     RowsToColumnarTransform,
     Transform,
 )
-from pytext.contrib.pytext_lib.utils import (
+from pytext.contrib.pytext_lib.utils.data_util import (
     columnar_tuple_to_rows,
     rows_to_columnar_tuple,
 )
@@ -31,11 +31,11 @@ class PyTextDataset(IterableDataset):
         is_cycle: bool = False,
         length: Optional[int] = None,
         rank: int = 0,
-        num_workers: int = 1,
+        world_size: int = 1,
     ):
         self.iterable = itertools.cycle(iterable) if is_cycle else iterable
-        if num_workers > 1:
-            self.iterable = shard(self.iterable, rank, num_workers)
+        if world_size > 1:
+            self.iterable = shard(self.iterable, rank, world_size)
         self.batch(batch_size, custom_batcher)
         self.is_shuffle = is_shuffle
         self.transform = RowsToColumnarTransform(transform) or IdentityTransform()

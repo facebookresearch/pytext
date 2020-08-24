@@ -24,36 +24,28 @@ EXCLUDE_JSON = {
 # TODO: @stevenliu T52746850 include all config files from demo, include
 # as many as possible from fb
 EXCLUDE_DIRS = {
-    "config/test/json_config",
-    "tests/data",
-    "data/test/data",
-    "fb",
-    "demo",
+    "pytext/contrib",
     "pytext/config/test/json_config",
+    "pytext/demo",
     "pytext/data/test/data",
+    "pytext/fb",
+    "pytext/tests/data",
 }
 
 
 class LoadAllConfigTest(unittest.TestCase):
-    def setUp(self):
-        os.chdir(PYTEXT_HOME)
-
     def test_load_all_configs(self):
         """
             Try an load all the json files in pytext to make sure we didn't
             break the config API.
         """
-        print()
-        exclude_json_path = {*[get_absolute_path(p) for p in EXCLUDE_JSON]}
-        exclude_json_dir = {*[get_absolute_path(p) for p in EXCLUDE_DIRS]}
-        for filename in glob.iglob("./**/*.json", recursive=True):
-            filepath = get_absolute_path(filename)
-            if any(filepath.endswith(suffix) for suffix in exclude_json_path):
+        for filename in glob.iglob("pytext/**/*.json", recursive=True):
+            if any(f in filename for f in EXCLUDE_JSON):
                 continue
-            if any(filepath.startswith(prefix) for prefix in exclude_json_dir):
+            if any(d in filename for d in EXCLUDE_DIRS):
                 continue
-            print("--- loading:", filepath)
-            with PathManager.open(filepath) as file:
+            print("--- loading:", filename)
+            with PathManager.open(filename) as file:
                 config_json = json.load(file)
                 config = parse_config(config_json)
                 self.assertIsNotNone(config)
