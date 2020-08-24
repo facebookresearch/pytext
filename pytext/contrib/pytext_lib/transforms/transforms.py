@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import torch.nn as nn
 from pytext.data.bert_tensorizer import build_fairseq_vocab
+from pytext.data.utils import BOS, EOS, MASK, PAD, UNK
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 
@@ -74,7 +75,16 @@ class VocabTransform(ScriptTransform):
             self.vocab = ScriptVocabulary(vocab_list)
         else:
             with PathManager.open(vocab_path) as f:
-                vocab = build_fairseq_vocab(f)
+                special_token_replacements = {
+                    "[UNK]": UNK,
+                    "[PAD]": PAD,
+                    "[CLS]": BOS,
+                    "[MASK]": MASK,
+                    "[SEP]": EOS,
+                }
+                vocab = build_fairseq_vocab(
+                    f, special_token_replacements=special_token_replacements
+                )
                 self.vocab = ScriptVocabulary(
                     list(vocab),
                     pad_idx=vocab.get_pad_index(-1),

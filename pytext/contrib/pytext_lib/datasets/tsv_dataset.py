@@ -26,7 +26,7 @@ class TsvDataset(PyTextDataset):
         is_cycle: bool = False,
         length: Optional[int] = None,
         rank: int = 0,
-        num_workers: int = 1,
+        world_size: int = 1,
     ):
         columns = columns or ["text", "label"]
         if column_mapping:
@@ -44,5 +44,5 @@ class TsvDataset(PyTextDataset):
             is_cycle=is_cycle,
             length=length,
             rank=rank,
-            num_workers=num_workers,
+            world_size=world_size,
         )
