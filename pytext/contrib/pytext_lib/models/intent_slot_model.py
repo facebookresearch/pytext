@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union  # nora
 import torch
 import torch.nn as nn
 from pytext.common.constants import SpecialTokens
-from pytext.contrib.pytext_lib.transforms.transforms import Tokens
+from pytext.contrib.pytext_lib.transforms.transforms_deprecated import Tokens
 from pytext.data.utils import Vocabulary
 from torch import jit
 

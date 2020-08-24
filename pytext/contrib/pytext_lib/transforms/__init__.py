@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reservedimport pytext_lib
 
-from .transforms import (
+from .transforms_deprecated import (
     LabelTransform,
     TokenizerTransform,
     Transform,
