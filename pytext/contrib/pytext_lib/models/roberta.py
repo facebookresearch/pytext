@@ -98,7 +98,7 @@ class RobertaModel(nn.Module):
 class RobertaModelForBinaryDocClassification(RobertaModel):
     def __init__(self, encoder: nn.Module, decoder: nn.Module):
         super().__init__(encoder, decoder)
-        self.head = ClassificationHead()
+        self.head = ClassificationHead(is_binary=False)
 
     def get_pred(self, logits: torch.Tensor) -> torch.Tensor:
         return self.head(logits)
