@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.loss import BinaryCrossEntropyLoss, CrossEntropyLoss, Loss
+from pytext.loss import BinaryCrossEntropyLoss, CrossEntropyLoss
 
 
 class ClassificationHead(nn.Module):
@@ -28,4 +28,7 @@ class ClassificationHead(nn.Module):
         return preds, scores
 
     def get_loss(self, logits, targets, reduce: bool = True):
+        # for GPU training, targets is in CPU by default, moving it to cuda explicitly
+        # TODO: handle it by Lightning implicitly
+        targets = targets.to(logits.device)
         return self.loss(logits, targets, reduce=reduce)
