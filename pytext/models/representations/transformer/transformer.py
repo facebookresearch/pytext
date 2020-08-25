@@ -118,10 +118,10 @@ class SELFIETransformer(Transformer):
 
         # Selfie transformer prepends dense input as first token.
         # Dim of dense must be <= embedding_dim, for now
-        dense = F.pad(dense, (0, embedded.size(2) - dense.size(1), 0, 0), value=1)
+        dense = F.pad(dense, (0, embedded.size(2) - dense.size(1), 0, 0), value=1.0)
         padded_normed = torch.cat([dense.unsqueeze(1), padded_normed], dim=1)
 
-        padding_mask = F.pad(padding_mask, (1, 0, 0, 0), value=False)
+        padding_mask = F.pad(padding_mask, (1, 0, 0, 0), value=0.0)
 
         # B x T x C -> T x B x C
         encoded = padded_normed.transpose(0, 1)
