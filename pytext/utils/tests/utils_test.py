@@ -7,7 +7,7 @@ import unittest
 
 import numpy as np
 import torch
-from pytext.utils import set_random_seeds
+from pytext.utils import recursive_map, round_seq, set_random_seeds
 from pytext.utils.data import (
     align_slot_labels,
     merge_token_labels_to_slot,
@@ -111,3 +111,15 @@ class UtilTest(unittest.TestCase):
                 ).tolist()[0]
             )
         )
+
+    def test_recursive_map(self):
+        arr = [[[1], [2], [3]]]
+        arr_str = list(recursive_map(arr, str))
+
+        self.assertEqual(arr_str[0][0][0], "1")
+
+    def test_round_seq(self):
+        arr = [[[0.0001], [0.0002], [0.0003]]]
+        arr_rounded = round_seq(arr, 1)
+
+        self.assertEqual(str(arr_rounded[0][0][0]), "0.0")

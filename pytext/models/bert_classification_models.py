@@ -236,7 +236,7 @@ class BertPairwiseModel(BasePairwiseModel):
         input_tuple1: Tuple[torch.Tensor, ...],
         input_tuple2: Tuple[torch.Tensor, ...],
     ) -> torch.Tensor:
-        encodings = [self.encoder1(input_tuple1)[0], self.encoder2(input_tuple2)[0]]
+        encodings = (self.encoder1(input_tuple1)[0], self.encoder2(input_tuple2)[0])
         if self.encode_relations:
             encodings = self._encode_relations(encodings)
         return self.decoder(torch.cat(encodings, -1)) if self.decoder else encodings

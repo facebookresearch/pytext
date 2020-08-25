@@ -81,13 +81,15 @@ class BERTContextTensorizerForDenseRetrieval(BERTTensorizer):
             # Make sure the positive and hard negative context for a given
             # question are one after another in the batch.
             all_ctx_tokens_2d.append(positive_ctx_token_ids)
-            all_ctx_tokens_2d.append(negative_ctx_token_ids)
             all_ctx_segment_labels_2d.append(positive_ctx_segment_labels)
-            all_ctx_segment_labels_2d.append(negative_ctx_segment_labels)
             all_ctx_seq_lens_1d.append(positive_ctx_seq_len)
-            all_ctx_seq_lens_1d.append(negative_ctx_seq_len)
             all_ctx_positions_2d.append(positive_ctx_positions)
-            all_ctx_positions_2d.append(negative_ctx_positions)
+
+            if negative_ctx_seq_len > 0:
+                all_ctx_tokens_2d.append(negative_ctx_token_ids)
+                all_ctx_segment_labels_2d.append(negative_ctx_segment_labels)
+                all_ctx_seq_lens_1d.append(negative_ctx_seq_len)
+                all_ctx_positions_2d.append(negative_ctx_positions)
 
         return self.tensorizer_script_impl.tensorize_wrapper(
             all_ctx_tokens_2d,

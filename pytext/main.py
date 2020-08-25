@@ -469,16 +469,75 @@ def predict_py(context, model_file):
     help="""Field names for the test-path. If this is not set, the first line of
          each file will be assumed to be a header containing the field names.""",
 )
+@click.option(
+    "--dump-raw-input/--no-dump-raw-input",
+    default=False,
+    help="Store the input data as a column in the output file.",
+)
+@click.option(
+    "--batch-size",
+    default=16,
+    show_default=True,
+    help="The batch size. Bigger batch sizes lead to better GPU utlization",
+)
+@click.option(
+    "--ndigits-precision",
+    default=0,
+    show_default=True,
+    help="""The digists precision of serialized floats.
+    The default 0 means don't round float and results a larger output file.""",
+)
+@click.option(
+    "--output-columns",
+    type=str,
+    default=None,
+    help="""If the model returns mutliple outputs, only the output-columns will be kept.
+    Takes a comma separated list of integers. By default all outputs are written.""",
+)
+@click.option(
+    "--use-gzip/--no-gzip",
+    default=False,
+    help="Using gzip significantly reduces the output size by 3-4x",
+)
+@click.option("--device-id", default=0, show_default=True, help="""CUDA device id.""")
 @click.pass_context
-def get_logits(context, model_snapshot, test_path, use_cuda, output_path, field_names):
+def get_logits(
+    context,
+    model_snapshot,
+    test_path,
+    use_cuda,
+    output_path,
+    field_names,
+    dump_raw_input,
+    batch_size,
+    ndigits_precision,
+    output_columns,
+    use_gzip,
+    device_id,
+):
     """print logits from  a trained model snapshot to output_path
     """
 
     model_snapshot, use_cuda, _ = _get_model_snapshot(
         context, model_snapshot, use_cuda, False
     )
+    if output_columns:
+        output_columns = [int(x) for x in output_columns.split(",")]
+
     print("\n=== Starting get_logits...")
-    workflow_get_logits(model_snapshot, use_cuda, output_path, test_path, field_names)
+    workflow_get_logits(
+        model_snapshot,
+        use_cuda,
+        output_path,
+        test_path,
+        field_names,
+        dump_raw_input,
+        batch_size,
+        ndigits_precision,
+        output_columns,
+        use_gzip,
+        device_id,
+    )
 
 
 @main.command()

@@ -162,6 +162,16 @@ class TestConfig(ConfigBase):
 class LogitsConfig(TestConfig):
     # Whether to dump the raw input to output file.
     dump_raw_input: bool = False
+    # The batch size. Bigger batch sizes lead to better GPU utlization
+    batch_size: int = 16
+    # The digists precision of serialized floats.
+    # The default 0 means don't round float and results a larger output file
+    ndigits_precision: int = 0
+    # If the model returns mutliple outputs, only the output-columns will be kept.
+    # By default all outputs are written
+    output_columns: Optional[List[int]] = None
+    # Usign gzip significantly reduces the output size by 3-4x
+    use_gzip: bool = False
 
 
 LATEST_VERSION = 20

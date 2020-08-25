@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import gzip
 import json
 import os
-from typing import Any, Dict, List, Optional, Tuple, get_type_hints
+from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_type_hints
 
 import torch
 from pytext.common.constants import Stage
@@ -22,7 +23,14 @@ from pytext.task import (
 )
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.trainers import TrainingState
-from pytext.utils import cuda, distributed, precision, set_random_seeds, timing
+from pytext.utils import (
+    cuda,
+    distributed,
+    precision,
+    round_seq,
+    set_random_seeds,
+    timing,
+)
 from pytext.utils.file_io import PathManager
 
 
@@ -299,6 +307,105 @@ def _get_data_source(test_path, data_config, field_names, task):
     return data_source
 
 
+class LogitsWriter:
+    """Writes model logits to a file.
+
+    The class is designed for use in an asynchronous process spawned by torch.multiprocessing.spawn, e.g.
+      logits_writer = LogitsWriter(...)
+      logits_writer_ctx = torch.multiprocessing.spawn(logits_writer.run, join=False)
+      logits_writer_ctx.join()
+    """
+
+    def __init__(
+        self,
+        results: torch.multiprocessing.Queue,
+        output_path: str,
+        use_gzip: bool,
+        output_columns: Optional[List[str]],
+        ndigits_precision: int,
+    ):
+        self.results = results
+        self.output_path = output_path
+        self.use_gzip = use_gzip
+        self.output_columns = output_columns
+        self.ndigits_precision = ndigits_precision
+
+    def run(self, process_index):
+        open_options = self._get_open_options()
+        with PathManager.open(self.output_path, **open_options) as fout:
+            gzip_fout = (
+                gzip.GzipFile(mode="wb", fileobj=fout) if self.use_gzip else None
+            )
+
+            while True:
+                raw_input_tuple, model_outputs = self.results.get()
+                if model_outputs is None:
+                    # None means shutdown
+                    break
+
+                # multi-encoder output
+                if isinstance(model_outputs, tuple):
+                    model_outputs_tuple = []
+                    for i, m in enumerate(model_outputs):
+                        if self.output_columns and i not in self.output_columns:
+                            continue
+
+                        if self.ndigits_precision:
+                            model_outputs_tuple.append(
+                                round_seq(m.tolist(), self.ndigits_precision)
+                            )
+                        else:
+                            model_outputs_tuple.append(m.tolist())
+
+                    self._write(
+                        fout, gzip_fout, zip(*raw_input_tuple, *model_outputs_tuple)
+                    )
+                # single encoder output
+                elif isinstance(model_outputs, list):
+                    model_outputs_list = model_outputs.tolist()
+
+                    if self.ndigits_precision:
+                        model_outputs_list = round_seq(
+                            model_outputs_list, self.ndigits_precision
+                        )
+
+                    self._write(
+                        fout, gzip_fout, zip(*raw_input_tuple, model_outputs_list)
+                    )
+                else:
+                    raise Exception(
+                        "Expecting tuple or torchTensor types for model_outputs"
+                    )
+
+            if self.use_gzip:
+                gzip_fout.close()
+
+    def _get_open_options(self):
+        """We must open the file in binary model for gzip
+        """
+        if self.use_gzip:
+            return {"mode": "wb"}
+        else:
+            return {"mode": "w", "encoding": "utf-8"}
+
+    def _write(
+        self,
+        fout: Union[IO[str], IO[bytes]],
+        gzip_fout: gzip.GzipFile,
+        rows: Iterator[Any],
+    ):
+        """Conditionally write to gzip or normal text file depending on the settings.
+        """
+        for row in rows:
+            dump_row = "\t".join(json.dumps(r) for r in row)
+            text = f"{dump_row}\n"
+
+            if self.use_gzip:
+                gzip_fout.write(text.encode())
+            else:
+                fout.write(text)
+
+
 def get_logits(
     snapshot_path: str,
     use_cuda_if_available: bool,
@@ -306,9 +413,14 @@ def get_logits(
     test_path: Optional[str] = None,
     field_names: Optional[List[str]] = None,
     dump_raw_input: bool = False,
+    batch_size: int = 16,
+    ndigits_precision: int = 0,
+    output_columns: Optional[List[int]] = None,
+    use_gzip: bool = False,
+    device_id: int = 0,
 ):
-    _set_cuda(use_cuda_if_available)
-    task, train_config, _traing_state = load(snapshot_path)
+    _set_cuda(use_cuda_if_available, device_id)
+    task, train_config, _training_state = load(snapshot_path)
     print(f"Successfully loaded model from {snapshot_path}")
     print(f"Model on GPU? {next(task.model.parameters()).is_cuda}")
 
@@ -317,33 +429,35 @@ def get_logits(
         data_source = _get_data_source(
             test_path, train_config.task.data, field_names, task
         )
-        task.data.batcher = Batcher()
+        task.data.batcher = Batcher(test_batch_size=batch_size)
         task.data.sort_key = None
         batches = task.data.batches(Stage.TEST, data_source=data_source)
 
-        with PathManager.open(
-            output_path, "w", encoding="utf-8"
-        ) as fout, torch.no_grad():
+        mp = torch.multiprocessing.get_context("spawn")
+
+        with torch.no_grad():
+            results = mp.Queue()
+            logits_writer = LogitsWriter(
+                results, output_path, use_gzip, output_columns, ndigits_precision
+            )
+            logits_writer_ctx = torch.multiprocessing.spawn(
+                logits_writer.run, join=False
+            )
+
             for (raw_batch, tensor_dict) in batches:
                 raw_input_tuple = (
                     dict_zip(*raw_batch, value_only=True) if dump_raw_input else ()
                 )
+
                 model_inputs = task.model.arrange_model_inputs(tensor_dict)
                 model_outputs = task.model(*model_inputs)
-                if isinstance(model_outputs, tuple):
-                    model_outputs_tuple = tuple(m.tolist() for m in model_outputs)
-                    for row in zip(*raw_input_tuple, *model_outputs_tuple):
-                        dump_row = "\t".join(json.dumps(r) for r in row)
-                        fout.write(f"{dump_row}\n")
-                elif isinstance(model_outputs, torch.Tensor):
-                    model_outputs_list = model_outputs.tolist()
-                    for row in zip(*raw_input_tuple, model_outputs_list):
-                        dump_row = "\t".join(json.dumps(r) for r in row)
-                        fout.write(f"{dump_row}\n")
-                else:
-                    raise Exception(
-                        "Expecting tuple or torchTensor types for model_outputs"
-                    )
+
+                results.put((raw_input_tuple, model_outputs))
+
+            results.put((None, None))
+            results.close()
+            results.join_thread()
+            logits_writer_ctx.join()
 
 
 def save_pytext_snapshot(config: PyTextConfig) -> None:
