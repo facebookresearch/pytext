@@ -276,14 +276,7 @@ class RoBERTa(NewBertModel):
 
 
 class SELFIE(RoBERTa):
-    class Config(NewBertModel.Config):
-        class InputConfig(ConfigBase):
-            tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
-            dense: Optional[FloatListTensorizer.Config] = None
-            labels: LabelTensorizer.Config = LabelTensorizer.Config()
-
-        inputs: InputConfig = InputConfig()
-        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
+    class Config(RoBERTa.Config):
         use_selfie: bool = True
 
     def forward(
