@@ -27,8 +27,6 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
           before or after self_attention. This is similar to original
           implementation from Google.
         - activation_fn can be set to 'gelu' instead of the default of 'relu'.
-        - projection_dim adds a linear projection to projection_dim + tanh to
-          the pooled output in the style of BERT.
     """
 
     class Config(TransformerSentenceEncoderBase.Config, ConfigBase):
@@ -58,7 +56,6 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         # Misc. Params
         encoder_normalize_before: bool = True
         activation_fn: str = "relu"
-        projection_dim: int = 0
         max_seq_len: int = 128
 
         # multilingual is set to true for cross-lingual LM training
@@ -112,11 +109,6 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
             assert hasattr(self.sentence_encoder, "traceable")
             self.sentence_encoder.traceable = self.use_torchscript
 
-        self.projection = (
-            torch.nn.Linear(self.representation_dim, config.projection_dim)
-            if config.projection_dim > 0
-            else None
-        )
         log_class_usage(__class__)
 
     def load_state_dict(self, state_dict):
@@ -152,8 +144,6 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         # Each tensor in encoded_layers output by the Fairseq module has
         # the shape: T x B x C. Convert this to B x T x C
         encoded_layers = [x.transpose(0, 1) for x in encoded_layers]
-        if self.projection:
-            pooled_output = self.projection(pooled_output).tanh()
         return encoded_layers, pooled_output
 
     def _embedding(self):

@@ -60,6 +60,7 @@ class TransformerSentenceEncoderBase(RepresentationBase):
         embedding_dim: int = 768
         pooling: PoolingMethod = PoolingMethod.CLS_TOKEN
         export: bool = False
+        projection_dim: int = 0
 
     @classmethod
     def from_config(cls, config: Config, output_encoded_layers=False, *args, **kwargs):
@@ -79,9 +80,18 @@ class TransformerSentenceEncoderBase(RepresentationBase):
         ), "If PoolingMethod is no_pool then output_encoded_layers should be True"
 
         if self.pooling == PoolingMethod.AVG_CONCAT_LAST_4_LAYERS:
-            self.representation_dim = config.embedding_dim * 4
+            representation_dim = config.embedding_dim * 4
         else:
-            self.representation_dim = config.embedding_dim
+            representation_dim = config.embedding_dim
+
+        self.projection = (
+            torch.nn.Linear(representation_dim, config.projection_dim)
+            if config.projection_dim > 0
+            else None
+        )
+
+        self.representation_dim = config.projection_dim or representation_dim
+
         log_class_usage(__class__)
 
     def _encoder(
@@ -122,6 +132,9 @@ class TransformerSentenceEncoderBase(RepresentationBase):
 
         if self.pooling != PoolingMethod.CLS_TOKEN:
             pooled_output = self._pool_encoded_layers(encoded_layers, pad_mask)
+
+        if self.projection:
+            pooled_output = self.projection(pooled_output).tanh()
 
         if pooled_output is not None:
             pooled_output = self.output_dropout(pooled_output)

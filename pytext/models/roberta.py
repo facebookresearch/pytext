@@ -198,7 +198,6 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             else:
                 self.load_state_dict(roberta_state)
 
-        self.representation_dim = self._embedding().weight.size(-1)
         self.export_encoder = config.export_encoder
         self.variable_size_embedding = config.variable_size_embedding
         log_class_usage(__class__)
@@ -221,6 +220,9 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
         if self.pooling != PoolingMethod.CLS_TOKEN:
             pooled_output = self._pool_encoded_layers(encoded_layers, pad_mask)
+
+        if self.projection:
+            pooled_output = self.projection(pooled_output).tanh()
 
         if pooled_output is not None:
             pooled_output = self.output_dropout(pooled_output)
