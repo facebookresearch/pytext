@@ -109,28 +109,6 @@ class ScriptableEmbeddingList(EmbeddingBase):
 
         return torch.cat(tensors, 2)
 
-    def get_param_groups_for_optimizer(self) -> List[Dict[str, torch.nn.Parameter]]:
-        """
-        Organize child embedding parameters into param_groups (or layers), so the
-        optimizer and / or schedulers can have custom behavior per layer. The
-        param_groups from each child embedding are aligned at the first (lowest)
-        param_group.
-        """
-        param_groups: List[Dict[str, torch.nn.Parameter]] = []
-
-        for module_name, embedding_module in self.embeddings_list.named_children():
-            child_params = embedding_module.get_param_groups_for_optimizer()
-
-            for i, child_param_group in enumerate(child_params):
-                if i >= len(param_groups):
-                    param_groups.append({})
-
-                for param_name, param in child_param_group.items():
-                    param_name = "%s.%s" % (module_name, param_name)
-                    param_groups[i][param_name] = param
-
-        return param_groups
-
     def visualize(self, summary_writer: SummaryWriter):
         for child in self:
             child.visualize(summary_writer)

@@ -602,12 +602,6 @@ class RNNGParserBase(BaseModel):
                 self.actions_vocab.itos[target_action_idx]
             )
 
-    def get_param_groups_for_optimizer(self):
-        """
-        This is called by code that looks for an instance of pytext.models.model.Model.
-        """
-        return [{"params": self.parameters()}]
-
     def get_loss(
         self,
         logits: List[Tuple[torch.Tensor, torch.Tensor]],

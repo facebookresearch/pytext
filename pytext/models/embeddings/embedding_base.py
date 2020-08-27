@@ -31,13 +31,6 @@ class EmbeddingBase(Module):
         self.embedding_dim = embedding_dim
         log_class_usage(__class__)
 
-    def get_param_groups_for_optimizer(self) -> List[Dict[str, nn.Parameter]]:
-        """
-        Organize module parameters into param_groups (or layers), so the optimizer
-        and / or schedulers can have custom behavior per layer.
-        """
-        return [dict(self.named_parameters())]
-
     def visualize(self, summary_writer: SummaryWriter):
         """
         Overridden in sub classes to implement Tensorboard visualization of
