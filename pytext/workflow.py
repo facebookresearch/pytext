@@ -197,6 +197,8 @@ def save_and_export(
             model=task.model,
             export_path=config.export_torchscript_path,
             quantize=config.torchscript_quantize,
+            inference_interface=config.inference_interface,
+            accelerate=config.accelerate,
         )
 
 
@@ -217,10 +219,14 @@ def export_saved_model_to_caffe2(
 
 
 def export_saved_model_to_torchscript(
-    saved_model_path: str, path: str, quantize: bool = False
+    saved_model_path: str,
+    path: str,
+    quantize: bool = False,
+    inference_interface: Optional[str] = None,
+    accelerate: List[str] = [],  # noqa mutable default is read only
 ) -> None:
     task, train_config, _training_state = load(saved_model_path)
-    task.torchscript_export(task.model, path, quantize)
+    task.torchscript_export(task.model, path, quantize, inference_interface, accelerate)
 
 
 def test_model(
