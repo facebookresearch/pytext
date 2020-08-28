@@ -4,9 +4,16 @@ from collections import defaultdict
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict
 
+from omegaconf import OmegaConf
 
-def dataclass_to_dict(obj):
-    return asdict(obj) if is_dataclass(obj) else obj
+
+def to_omega_conf(obj):
+    if OmegaConf.is_config(obj):
+        return obj
+    elif is_dataclass(obj):
+        return OmegaConf.create(asdict(obj))
+    else:
+        return OmegaConf.create(obj)
 
 
 def rows_to_columnar(rows) -> Dict[str, Any]:

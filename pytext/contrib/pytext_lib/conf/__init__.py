@@ -19,16 +19,17 @@ project_defaults = [
 
 @dataclass
 class DataConf:
+    # MISSING doesn't work with non "str" type in flow
     train_path: str = MISSING
     val_path: Optional[str] = None
     test_path: Optional[str] = None
-    columns: List[str] = MISSING
+    columns: List[str] = field(default_factory=lambda: ["text", "label"])
     batch_size: int = 8
 
 
 @dataclass
 class TransformConf:
-    label_names: List[str] = MISSING
+    label_names: Optional[List[str]] = field(default_factory=lambda: ["True", "False"])
     vocab_path: str = MISSING
 
 
@@ -36,12 +37,12 @@ class TransformConf:
 class ModelConf:
     model_path: Optional[str] = None
     dense_dim: Optional[int] = 0
-    embedding_dim: int = MISSING
-    out_dim: int = MISSING
-    vocab_size: int = MISSING
-    num_attention_heads: int = MISSING
-    num_encoder_layers: int = MISSING
-    output_dropout: float = MISSING
+    embedding_dim: int = 32
+    out_dim: int = 2
+    vocab_size: int = 100
+    num_attention_heads: int = 1
+    num_encoder_layers: int = 1
+    output_dropout: float = 0.4
     bias: bool = True
 
 
@@ -56,10 +57,14 @@ class OptimConf:
 
 @dataclass
 class TrainerConf:
+    """Config for Lightning Trainer
+    See the usage of each arg in pytorch_lightning/trainer/trainer.py
+    """
+
     max_epochs: int = 1
-    # Hydra doesn't support Union yet so we use Any
     # `gpus` should be of type Optional[Union[List[int], str, int]]
-    gpus: Any = None
+    # However, Hydra doesn't support Union yet, and flow type doesn't support Any
+    gpus: Optional[int] = None
     distributed_backend: Optional[str] = None
     num_nodes: int = 1
     checkpoint_callback: bool = False
@@ -74,10 +79,11 @@ class TrainerConf:
 
 @dataclass
 class DocClassificationConfig:
-    data: DataConf = MISSING
-    transform: TransformConf = MISSING
-    model: ModelConf = MISSING
-    optim: OptimConf = MISSING
+    # MISSING doesn't work with non "str" type in flow
+    data: DataConf
+    transform: TransformConf
+    model: ModelConf
+    optim: OptimConf
     trainer: TrainerConf = TrainerConf()
     defaults: List[Any] = field(default_factory=lambda: project_defaults)
 
