@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import itertools
+import logging
 import random
 from typing import Iterable, Optional
 
@@ -16,6 +17,9 @@ from pytext.contrib.pytext_lib.utils.data_util import (
 )
 from pytext.data.sources.data_source import shard
 from torch.utils.data import IterableDataset
+
+
+logger = logging.getLogger("PyTextDataset")
 
 
 class PyTextDataset(IterableDataset):
@@ -35,6 +39,7 @@ class PyTextDataset(IterableDataset):
     ):
         self.iterable = itertools.cycle(iterable) if is_cycle else iterable
         if world_size > 1:
+            logger.error(f"data sharding for rank: {rank}, world_size: {world_size}")
             self.iterable = shard(self.iterable, rank, world_size)
         self.batch(batch_size, custom_batcher)
         self.is_shuffle = is_shuffle
