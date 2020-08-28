@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import csv
+import logging
 import sys
 import threading
 from typing import Dict, List, Optional, Type
@@ -61,9 +62,9 @@ class TSV:
             self._access_lock.release()
 
     def __del__(self):
-        print("Destroying TSV object")
-        print(f"Total number of rows read: {self.total_rows_count}")
-        print(f"Total number of rows dropped: {self.incomplete_rows_count}")
+        logging.debug("Destroying TSV object")
+        logging.debug(f"Total number of rows read: {self.total_rows_count}")
+        logging.debug(f"Total number of rows dropped: {self.incomplete_rows_count}")
 
 
 class TSVDataSource(RootDataSource):
