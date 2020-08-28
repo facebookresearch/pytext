@@ -76,7 +76,7 @@ jobs:
       - run:
           name: setup lint
           command: |
-              sudo pip install black isort==4.3.21
+              sudo pip install black==19.3b0 isort==4.3.21
       - run:
           name: run black
           command: black pytext --check --diff
