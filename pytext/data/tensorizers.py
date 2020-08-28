@@ -1340,8 +1340,13 @@ class FloatListTensorizer(Tensorizer):
         self.column = column
         self.error_check = error_check
         self.dim = dim
-        self.normalizer = VectorNormalizer(dim, normalize)
+        assert not normalize or self.dim is not None, "Normalization requires dim"
         assert not self.error_check or self.dim is not None, "Error check requires dim"
+        # If normalize and error_check both are false and dim is still None, set
+        # it to 0 so that it can successfully create VectorNormalizer
+        if dim is None:
+            dim = 0
+        self.normalizer = VectorNormalizer(dim, normalize)
         super().__init__(is_input)
 
     @property

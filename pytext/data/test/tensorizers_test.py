@@ -758,6 +758,19 @@ class TensorizersTest(unittest.TestCase):
         self.assertEqual(tensor.dtype, torch.float16)
         precision.FP16_ENABLED = False
 
+        # Test the case when dim is None
+        tensorizer = FloatListTensorizer(
+            column="dense", dim=None, error_check=False, normalize=False
+        )
+        tests = [
+            ("[0.1,0.2]", [0.1, 0.2]),  # two elements
+            ("[0.1, 0.2, 0.3]", [0.1, 0.2, 0.3]),  # three elements
+        ]
+        for raw, expected in tests:
+            row = {"dense": load_float_list(raw)}
+            numberized = tensorizer.numberize(row)
+            self.assertEqual(expected, numberized)
+
     def test_float_list_tensor_prepare_input(self):
         tensorizer = FloatListTensorizer(
             column="dense", dim=2, error_check=True, normalize=False
