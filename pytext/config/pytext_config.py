@@ -111,17 +111,6 @@ class PyTextConfig(ConfigBase):
     export_torchscript_path: Optional[str] = None
     # Export quantized torchscript model
     torchscript_quantize: Optional[bool] = False
-    # Accelerator options.
-    # Options:
-    # "half" - demote model to half precision
-    # "nnpi" - freeze model for use with Glow on NNPI accelerator
-    accelerate: List[str] = []
-    # Inference Interface.
-    # Specifies which of the 3 optional list parameters a model takes,
-    # when the model implements the inference_ionterface() method.:
-    # Possible values: texts, multi_texts, tokens (and/or others as
-    # supported by inference_interface method).
-    inference_interface: Optional[str] = None
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules if they are best yet
