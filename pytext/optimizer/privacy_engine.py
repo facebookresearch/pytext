@@ -3,14 +3,20 @@
 
 from typing import List, Optional
 
-import torchdp
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 
 
+# Temporary fix until we publish on PyPi
+try:
+    import opacus
+except ImportError:
+    import torchdp as opacus
+
+
 class PrivacyEngine(Component):
     """
-    A wrapper around PrivacyEngine of pytorch-dp
+    A wrapper around PrivacyEngine of Opacus
     """
 
     __COMPONENT_TYPE__ = ComponentType.PRIVACY_ENGINE
@@ -44,7 +50,7 @@ class PrivacyEngine(Component):
         self.target_delta = target_delta
         self.alphas = alphas
 
-        self._privacy_engine = torchdp.PrivacyEngine(
+        self._privacy_engine = opacus.PrivacyEngine(
             model,
             self.batch_size,
             self.dataset_size,
