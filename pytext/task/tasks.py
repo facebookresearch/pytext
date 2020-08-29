@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, Union
 
+import torch
 from pytext.common.constants import Stage
 from pytext.config.component import create_trainer
 from pytext.data.bert_tensorizer import BERTTensorizer
@@ -218,7 +219,14 @@ class PairwiseClassificationTask(NewTask):
         super().__init__(data, model, metric_reporter, trainer)
         self.trace_both_encoders = trace_both_encoders
 
-    def torchscript_export(self, model, export_path=None, quantize=False):
+    def torchscript_export(
+        self,
+        model,
+        export_path=None,
+        quantize=False,
+        inference_interface=None,
+        accelerate=None,
+    ):
         cuda.CUDA_ENABLED = False
         model.cpu()
         optimizer = self.trainer.optimizer
@@ -234,10 +242,18 @@ class PairwiseClassificationTask(NewTask):
         model(*inputs)
         if quantize:
             model.quantize()
+        if accelerate is not None:
+            if "half" in accelerate:
+                model.half()
+        if inference_interface is not None:
+            model.inference_interface(inference_interface)
         if self.trace_both_encoders:
             trace = jit.trace(model, inputs)
         else:
             trace = jit.trace(model.encoder1, (inputs[0],))
+        if accelerate is not None:
+            if "nnpi" in accelerate:
+                trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(
                 self.data.tensorizers, trace, self.trace_both_encoders
@@ -328,7 +344,14 @@ class SequenceLabelingTask(NewTask):
             Seq2SeqCompositionalMetricReporter.Config()
         )
 
-    def torchscript_export(self, model, export_path, quantize=False):
+    def torchscript_export(
+        self,
+        model,
+        export_path=None,
+        quantize=False,
+        inference_interface=None,
+        accelerate=None,
+    ):
         model.cpu()
         # Trace needs eval mode, to disable dropout etc
         model.eval()

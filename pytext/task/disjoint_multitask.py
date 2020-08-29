@@ -238,5 +238,12 @@ class NewDisjointMultitask(_NewTask):
     def export(self, model, export_path, metric_channels=None, export_onnx_path=None):
         pass
 
-    def torchscript_export(self, model, export_path, quantize=False):
+    def torchscript_export(
+        self,
+        model,
+        export_path,
+        quantize=False,
+        inference_interface=None,
+        accelerate=None,
+    ):
         pass

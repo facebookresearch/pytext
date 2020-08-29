@@ -286,7 +286,7 @@ class _NewTask(TaskBase):
         sort_input=False,
         sort_key=1,
         inference_interface=None,
-        accelerate=[],  # noqa mutable default is read only
+        accelerate=None,
     ):
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
@@ -310,13 +310,15 @@ class _NewTask(TaskBase):
         model(*inputs)
         if quantize:
             model.quantize()
-        if "half" in accelerate:
-            model.half()
+        if accelerate is not None:
+            if "half" in accelerate:
+                model.half()
         if inference_interface is not None:
             model.inference_interface(inference_interface)
         trace = jit.trace(model, inputs)
-        if "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(trace._c)
+        if accelerate is not None:
+            if "nnpi" in accelerate:
+                trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
