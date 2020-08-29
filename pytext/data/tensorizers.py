@@ -948,24 +948,29 @@ class CharacterTokenTensorizer(TokenTensorizer):
 
 
 class LabelTensorizer(Tensorizer):
-    """Numberize labels. Label can be used as either input or target """
+    """Numberize labels. Label can be used as either input or target.
+
+    NB: if the labels are used as targets for binary classification with a loss
+    such as cosine distance, the order of the `label_vocab` *does* matter,
+    and it should be `[negative_class, positive_class]`.
+    """
 
     __EXPANSIBLE__ = True
 
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str = "label"
-        #: Whether to allow for unknown labels at test/prediction time
+        #: Whether to allow for unknown labels at test/prediction time.
         allow_unknown: bool = False
-        #: if vocab should have pad, usually false when label is used as target
+        #: Whether vocab should have pad, usually false when label is used as target.
         pad_in_vocab: bool = False
         #: The label values, if known. Will skip initialization step if provided.
         label_vocab: Optional[List[str]] = None
         #: File with the label values. This can be used when the label space is
         #: too large to specify these as a list. The file should not contain
-        #: a header
+        #: a header.
         label_vocab_file: Optional[str] = None
-        # Indicate if it can be used to generate input Tensors for prediction
+        # Indicate if it can be used to generate input Tensors for prediction.
         is_input: bool = False
 
     @classmethod
