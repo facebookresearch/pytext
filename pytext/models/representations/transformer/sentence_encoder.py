@@ -41,9 +41,8 @@ class SentenceEncoder(nn.Module):
         log_class_usage(__class__)
 
     def forward(self, tokens):
-        all_layers = self.extract_features(tokens)
-        last_layer = all_layers[-1]  # T x B x C
-        return last_layer.transpose(0, 1)
+        all_layers = self.extract_features(tokens)  # list of [T x B x C]
+        return [layer.transpose(0, 1) for layer in all_layers]
 
     def extract_features(self, tokens):
         # support passing in a single sentence
@@ -58,9 +57,8 @@ class SentenceEncoder(nn.Module):
 
 class PostEncoder(SentenceEncoder):
     def forward(self, tokens, dense):
-        all_layers = self.extract_features(tokens, dense)
-        last_layer = all_layers[-1]  # T x B x C
-        return last_layer.transpose(0, 1)
+        all_layers = self.extract_features(tokens, dense)  # list of [T x B x C]
+        return [layer.transpose(0, 1) for layer in all_layers]
 
     def extract_features(self, tokens, dense):
         # support passing in a single sentence

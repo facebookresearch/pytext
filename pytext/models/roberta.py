@@ -75,8 +75,8 @@ class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
         full_representation = (
             self.encoder(tokens, args[0]) if len(args) > 0 else self.encoder(tokens)
         )
-        sentence_rep = full_representation[:, 0, :]
-        return [full_representation], sentence_rep
+        sentence_rep = full_representation[-1][:, 0, :]
+        return full_representation, sentence_rep
 
 
 class RoBERTaEncoderJit(RoBERTaEncoderBase):
