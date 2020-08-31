@@ -90,6 +90,48 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
         return self.output_layer(logits)
 
 
+class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        right_normalizer: VectorNormalizer,
+        left_normalizer: VectorNormalizer,
+    ):
+        super().__init__(model, output_layer, tensorizer)
+        self.right_normalizer = right_normalizer
+        self.left_normalizer = left_normalizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_dense_feat: List[List[float]],
+        left_dense_feat: List[List[float]],
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
+        right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
+        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+
+        right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
+        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        if self.tensorizer.device != "":
+            right_dense_tensor = right_dense_tensor.to(self.tensorizer.device)
+            left_dense_tensor = left_dense_tensor.to(self.tensorizer.device)
+        logits = self.model(input_tensors, right_dense_tensor, left_dense_tensor)
+        return self.output_layer(logits)
+
+
 class ScriptPyTextEmbeddingModule(ScriptModule):
     def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
         super().__init__()
