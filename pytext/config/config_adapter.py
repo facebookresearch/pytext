@@ -296,8 +296,6 @@ def old_tasks_deprecated(json_config):
     deprecate(json_config, "FLQueryDocumentPairwiseRankingTask")
     deprecate(json_config, "KDDocClassificationTask")
     deprecate(json_config, "LMTask")
-    deprecate(json_config, "PairClassificationTask")
-    deprecate(json_config, "PairwiseAttentionClassificationTask")
     deprecate(json_config, "QueryDocumentPairwiseRankingTask")
     deprecate(json_config, "SCLSTMCompositionalTask")
     deprecate(json_config, "SCLSTMTask")
@@ -467,7 +465,6 @@ def v12_to_v13(json_config):
         "SeqNNTask",
         "ShallowClassificationTask_Deprecated",
         "KDDocClassificationTask_Deprecated",
-        "PairwiseAttentionClassificationTask_Deprecated",
         "ElmoFineTunePairwiseClassificationTask_Deprecated",
         "XLMDocumentClassification",
         "XLMPairClassification",
