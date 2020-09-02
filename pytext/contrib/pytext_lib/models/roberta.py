@@ -5,12 +5,7 @@ from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
-from pytext.contrib.pytext_lib import resources
-from pytext.contrib.pytext_lib.resources import (
-    ROBERTA_BASE_TORCH,
-    XLMR_BASE,
-    XLMR_DUMMY,
-)
+from pytext.contrib.pytext_lib.resources import url
 from pytext.models.representations.transformer import (
     MultiheadSelfAttention,
     Transformer,
@@ -132,7 +127,7 @@ def build_model(
 
 
 def roberta_base_binary_doc_classifier(pretrained=True):
-    model_path = resources.models.URL[ROBERTA_BASE_TORCH] if pretrained else None
+    model_path = url.URL[url.ROBERTA_BASE_TORCH] if pretrained else None
     return build_model(
         model_path=model_path,
         dense_dim=0,
@@ -146,7 +141,7 @@ def roberta_base_binary_doc_classifier(pretrained=True):
 
 
 def xlmr_base_binary_doc_classifier(pretrained=True):
-    model_path = resources.models.URL[XLMR_BASE] if pretrained else None
+    model_path = url.URL[url.XLMR_BASE] if pretrained else None
     return build_model(
         model_path=model_path,
         dense_dim=0,
@@ -160,7 +155,7 @@ def xlmr_base_binary_doc_classifier(pretrained=True):
 
 
 def xlmr_dummy_binary_doc_classifier(pretrained=False):
-    model_path = resources.models.URL[XLMR_DUMMY] if pretrained else None
+    model_path = url.URL[url.XLMR_DUMMY] if pretrained else None
     return build_model(
         model_path=model_path,
         dense_dim=0,
