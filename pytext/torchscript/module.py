@@ -139,6 +139,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         self.tensorizer = tensorizer
         self.argno = -1
 
+    @torch.jit.script_method
     def inference_interface(self, argument_type: str):
 
         # Argument types and Tuple indices
@@ -224,7 +225,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
                     # batch elements (and which ones) were malformed
                     raise RuntimeError("Malformed request.")
 
-            flat_result = self.forward(
+            flat_result: torch.Tensor = self.forward(
                 texts=flat_texts,
                 multi_texts=None,
                 tokens=None,
@@ -242,6 +243,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         start = 0
         for elems in client_batch:
             end = start + elems
+            # res_list.append(flat_result[start:elems])
             res_list.append(flat_result.narrow(0, start, elems))
             start = end
 
