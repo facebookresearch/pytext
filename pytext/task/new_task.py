@@ -315,10 +315,10 @@ class _NewTask(TaskBase):
                 model.half()
         if inference_interface is not None:
             model.inference_interface(inference_interface)
-        trace = jit.trace(model, inputs)
         if accelerate is not None:
             if "nnpi" in accelerate:
                 trace._c = torch._C._freeze_module(trace._c)
+        trace = model.trace(inputs)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
