@@ -315,7 +315,7 @@ class _NewTask(TaskBase):
                 model.half()
         if inference_interface is not None:
             model.inference_interface(inference_interface)
-        trace = jit.trace(model, inputs)
+        trace = model.trace(inputs)
         if accelerate is not None:
             if "nnpi" in accelerate:
                 trace._c = torch._C._freeze_module(trace._c)
