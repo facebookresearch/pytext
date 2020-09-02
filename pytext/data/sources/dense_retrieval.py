@@ -87,6 +87,14 @@ class DenseRetrievalDataSource(DataSource):
                     for ctx in row["negative_ctxs"]
                 ]
 
+                if not negative_ctxs and row.get("distant_negatives"):
+                    # use distant_negatives in case we don't have hard negatives
+                    # it's better to have at least one negative for training
+                    negative_ctxs = [
+                        combine_title_text(ctx, self.use_title)
+                        for ctx in row["distant_negatives"]
+                    ]
+
                 if is_train:
                     random.shuffle(negative_ctxs)
                 else:
