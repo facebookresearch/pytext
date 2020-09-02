@@ -22,8 +22,8 @@ class ScriptTransform(Transform):
 
 
 class IdentityTransform(Transform):
-    def forward(self, x: Any) -> Any:
-        return x
+    def forward(self, **kwargs) -> Any:
+        return kwargs
 
 
 class RowsToColumnarTransform(Transform):
