@@ -22,7 +22,7 @@ class PyTextDataset(IterableDataset):
     def __init__(
         self,
         iterable: Iterable,
-        batch_size: Optional[int] = None,
+        batch_size: int = 1,
         is_shuffle: bool = True,
         transform: Optional[Transform] = None,
         custom_batcher: Optional[Batcher] = None,
@@ -38,7 +38,7 @@ class PyTextDataset(IterableDataset):
             self.iterable = shard(self.iterable, rank, world_size)
         self.batch(batch_size, custom_batcher)
         self.is_shuffle = is_shuffle
-        self.transform = RowsToColumnarTransform(transform) or IdentityTransform()
+        self.transform = RowsToColumnarTransform(transform or IdentityTransform())
         self.collate_fn = collate_fn
 
         self.chunk_size = chunk_size  # num of batches per chunk
