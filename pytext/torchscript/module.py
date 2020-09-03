@@ -252,7 +252,6 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         start = 0
         for elems in client_batch:
             end = start + elems
-            # res_list.append(flat_result[start:elems])
             res_list.append(flat_result.narrow(0, start, elems))
             start = end
 
@@ -374,3 +373,75 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
             languages=squeeze_1d(languages),
         )
         return self._forward(inputs)
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+            ]
+        ],
+    ) -> List[List[torch.Tensor]]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        batchsize = len(batch)
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        client_batch: List[int] = []
+        res_list: List[List[torch.Tensor]] = []
+
+        if argno == TEXTS:
+            flat_texts: List[str] = []
+
+            for i in range(batchsize):
+                batch_element = batch[i][0]
+                if batch_element is not None:
+                    flat_texts.extend(batch_element)
+                    client_batch.append(len(batch_element))
+                else:
+                    # At present, we abort the entire batch if
+                    # any batch element is malformed.
+                    #
+                    # Possible refinement:
+                    # we can skip malformed requests,
+                    # and return a list plus an indiction that one or more
+                    # batch elements (and which ones) were malformed
+                    raise RuntimeError("Malformed request.")
+
+            flat_result: List[torch.Tensor] = self.forward(
+                texts=flat_texts,
+                multi_texts=None,
+                tokens=None,
+                languages=None,
+                dense_feat=None,
+            )
+
+        else:
+            raise RuntimeError("Parameter type unsupported")
+
+        # destructure flat result list combining
+        #   cross-request batches and client side
+        #   batches into a cross-request list of
+        #  client-side batch result lists
+        start = 0
+        for elems in client_batch:
+            end = start + elems
+            res_list.append(flat_result[start:elems])
+            start = end
+
+        return res_list
