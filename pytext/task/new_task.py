@@ -279,15 +279,14 @@ class _NewTask(TaskBase):
         )
 
     def torchscript_export(
-        self,
-        model,
-        export_path=None,
-        quantize=False,
-        sort_input=False,
-        sort_key=1,
-        inference_interface=None,
-        accelerate=None,
+        self, model, export_path=None, sort_input=False, sort_key=1, **options
     ):
+        # unpack export options
+        quantize = options.get("quantize", False)
+        accelerate = options.get("accelerate", [])
+        padding_control = options.get("padding_control")
+        inference_interface = options.get("inference_interface")
+
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
@@ -310,17 +309,29 @@ class _NewTask(TaskBase):
         model(*inputs)
         if quantize:
             model.quantize()
-        if accelerate is not None:
-            if "half" in accelerate:
-                model.half()
-        if inference_interface is not None:
-            model.inference_interface(inference_interface)
-        trace = jit.trace(model, inputs)
-        if accelerate is not None:
-            if "nnpi" in accelerate:
-                trace._c = torch._C._freeze_module(trace._c)
+        if "half" in accelerate:
+            model.half()
+        trace = model.trace(inputs)
+        if "nnpi" in accelerate:
+            trace._c = torch._C._freeze_module(
+                trace._c, preservedAttrs=["make_prediction", "make_batch"]
+            )
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
+        if padding_control is not None:
+            if hasattr(trace, "set_padding_control"):
+                trace.set_padding_control(padding_control)
+            else:
+                print(
+                    "Padding_control not supported by model. Ignoring padding_control"
+                )
+        if inference_interface is not None:
+            if hasattr(trace, "inference_interface"):
+                trace.inference_interface(inference_interface)
+            else:
+                print(
+                    "inference_interface not supported by model. Ignoring inference_interface"
+                )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
