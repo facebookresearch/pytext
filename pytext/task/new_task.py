@@ -279,15 +279,13 @@ class _NewTask(TaskBase):
         )
 
     def torchscript_export(
-        self,
-        model,
-        export_path=None,
-        quantize=False,
-        sort_input=False,
-        sort_key=1,
-        inference_interface=None,
-        accelerate=None,
+        self, model, export_path=None, sort_input=False, sort_key=1, **kwargs
     ):
+        # unpack export kwargs
+        quantize = kwargs.get("quantize", False)
+        accelerate = kwargs.get("accelerate", [])
+        inference_interface = kwargs.get("inference_interface")
+
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
@@ -310,17 +308,20 @@ class _NewTask(TaskBase):
         model(*inputs)
         if quantize:
             model.quantize()
-        if accelerate is not None:
-            if "half" in accelerate:
-                model.half()
-        if inference_interface is not None:
-            model.inference_interface(inference_interface)
+        if "half" in accelerate:
+            model.half()
         trace = model.trace(inputs)
-        if accelerate is not None:
-            if "nnpi" in accelerate:
-                trace._c = torch._C._freeze_module(trace._c)
+        if "nnpi" in accelerate:
+            trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
+        if inference_interface is not None:
+            if hasattr(trace, "inference_interface"):
+                trace.inference_interface(inference_interface)
+            else:
+                print(
+                    "inference_interface not supported by model. Ignoring inference_interface"
+                )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
