@@ -313,7 +313,9 @@ class _NewTask(TaskBase):
             model.half()
         trace = model.trace(inputs)
         if "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(trace._c)
+            trace._c = torch._C._freeze_module(
+                trace._c, preservedAttrs=["make_prediction", "make_batch"]
+            )
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         if padding_control is not None:
