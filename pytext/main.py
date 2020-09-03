@@ -403,22 +403,13 @@ def export(context, model, output_path, output_onnx_path):
 @click.option("--output-path", help="where to save the exported torchscript model")
 @click.option("--quantize", help="whether to quantize the model")
 @click.pass_context
-def torchscript_export(
-    context,
-    model,
-    output_path=None,
-    quantize=False,
-    inference_interface=None,
-    accelerate=None,
-):
+def torchscript_export(context, model, output_path=None, **kwargs):
     """Convert a pytext model snapshot to a torchscript model."""
     config = context.obj.load_config()
     model = model or config.save_snapshot_path
     output_path = output_path or f"{config.save_snapshot_path}.torchscript"
     print(f"Exporting {model} to torchscript file: {output_path}")
-    export_saved_model_to_torchscript(
-        model, output_path, quantize, inference_interface, accelerate
-    )
+    export_saved_model_to_torchscript(model, output_path, **kwargs)
 
 
 @main.command()
