@@ -246,7 +246,6 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         start = 0
         for elems in client_batch:
             end = start + elems
-            # res_list.append(flat_result[start:elems])
             res_list.append(flat_result.narrow(0, start, elems))
             start = end
 
