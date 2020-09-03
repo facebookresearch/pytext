@@ -74,14 +74,30 @@ def long_tensor_2d(shape: Tuple[int, int], fill_value: int = 0) -> torch.Tensor:
 
 @torch.jit.script
 def pad_2d_mask(
-    input: List[List[int]], pad_value: int = 0
+    input: List[List[int]],
+    pad_value: int = 0,
+    padding_control: Optional[List[int]] = None,
+    max_pad_len: int = -1,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Pad a list to a 2d tensor. Returns a pair of tensors, the padded tensor
     as well as a mask tensor. The mask tensor has the same shape as the padded tensor,
-    with a 1 in the position of non-pad values and a 0 in the position of pads."""
+    with a 1 in the position of non-pad values and a 0 in the position of pads.
+    If padding_control is set, perform padding according to the specified padding style"""
     max_len = 0
     for i in input:
         max_len = max(max_len, len(i))
+    if padding_control is not None:
+        if len(padding_control) < 2:
+            raise NotImplementedError
+        elif padding_control[0] != 0:
+            raise NotImplementedError
+        else:
+            for pad in padding_control:
+                if pad >= max_len:
+                    max_len = pad
+                    break
+        if max_pad_len != -1:
+            max_len = min(max_len, max_pad_len)
     tensor = long_tensor_2d((len(input), max_len), pad_value)
     mask = long_tensor_2d((len(input), max_len), 0)
     for i in range(len(input)):

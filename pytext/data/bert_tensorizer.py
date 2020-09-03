@@ -159,7 +159,12 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         """
         Convert instance level vectors into batch level tensors.
         """
-        tokens, pad_mask = pad_2d_mask(tokens_2d, pad_value=self.vocab.pad_idx)
+        tokens, pad_mask = pad_2d_mask(
+            tokens_2d,
+            pad_value=self.vocab.pad_idx,
+            padding_control=self.padding_control,
+            max_pad_len=self.max_seq_len,
+        )
         segment_labels = torch.tensor(
             pad_2d(segment_labels_2d, seq_lens=seq_lens_1d, pad_idx=0), dtype=torch.long
         )

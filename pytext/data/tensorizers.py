@@ -109,13 +109,29 @@ def lookup_tokens(
 
 
 class TensorizerScriptImpl(torch.nn.Module):
+    device: str
+    padding_control: Optional[List[int]]
+
     def __init__(self):
         super().__init__()
         self.device: str = ""
+        # padding_control options:
+        # None - no padding
+        # [0, pad1, pad2, pad3,...] - pads sequence length to smallest padX larger than sequence
+        self.padding_control = torch.jit.annotate(Optional[List[int]], None)
 
     @torch.jit.export
     def set_device(self, device: str):
         self.device = device
+
+    @torch.jit.export
+    def set_padding_control(self, control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        self.padding_control = control
 
     def batch_size(self, inputs: ScriptBatchInput) -> int:
         texts: Optional[List[List[str]]] = inputs.texts
