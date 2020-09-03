@@ -69,12 +69,12 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
     @torch.jit.script_method
     def forward(
         self,
-        dense_feat: List[List[float]],
         texts: Optional[List[str]] = None,
         # multi_texts is of shape [batch_size, num_columns]
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -107,13 +107,13 @@ class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextModule):
     @torch.jit.script_method
     def forward(
         self,
-        right_dense_feat: List[List[float]],
-        left_dense_feat: List[List[float]],
         texts: Optional[List[str]] = None,
         # multi_texts is of shape [batch_size, num_columns]
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        right_dense_feat: Optional[List[List[float]]] = None,
+        left_dense_feat: Optional[List[List[float]]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
