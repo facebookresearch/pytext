@@ -223,6 +223,7 @@ class PairwiseClassificationTask(NewTask):
         # unpack export options
         quantize = options.get("quantize", False)
         accelerate = options.get("accelerate", [])
+        padding_control = options.get("padding_control")
         inference_interface = options.get("inference_interface")
 
         cuda.CUDA_ENABLED = False
@@ -252,6 +253,13 @@ class PairwiseClassificationTask(NewTask):
             trace = model.torchscriptify(
                 self.data.tensorizers, trace, self.trace_both_encoders
             )
+        if padding_control is not None:
+            if hasattr(trace, "set_padding_control"):
+                trace.set_padding_control(padding_control)
+            else:
+                print(
+                    "Padding_control not supported by model. Ignoring padding_control"
+                )
         if inference_interface is not None:
             if hasattr(trace, "inference_interface"):
                 trace.inference_interface(inference_interface)
