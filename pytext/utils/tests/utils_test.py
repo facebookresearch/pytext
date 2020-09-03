@@ -2,7 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import os
 import random
+import shutil
+import tempfile
 import unittest
 
 import numpy as np
@@ -15,7 +18,7 @@ from pytext.utils.data import (
     unkify,
 )
 from pytext.utils.distributed import get_shard_range
-from pytext.utils.file_io import PathManager
+from pytext.utils.file_io import PathManager, chunk_file
 from pytext.utils.meter import TimeMeter
 from pytext.utils.test import import_tests_module
 
@@ -123,3 +126,22 @@ class UtilTest(unittest.TestCase):
         arr_rounded = round_seq(arr, 1)
 
         self.assertEqual(str(arr_rounded[0][0][0]), "0.0")
+
+    def test_chunk_file(self):
+        tmp_work_dir = tempfile.mkdtemp()
+        try:
+            file_path = os.path.join(tmp_work_dir, "file.txt")
+            with open(file_path, "w+") as fout:
+                fout.write("\n".join([str(i) for i in range(10)]))
+            output_paths = chunk_file(file_path, 3, tmp_work_dir)
+
+            self.assertEqual(len(output_paths), 3)
+            self.assertEqual(
+                open(output_paths[0]).readlines(), ["0\n", "1\n", "2\n", "3\n"]
+            )
+            self.assertEqual(
+                open(output_paths[1]).readlines(), ["4\n", "5\n", "6\n", "7\n"]
+            )
+            self.assertEqual(open(output_paths[2]).readlines(), ["8\n", "9\n"])
+        finally:
+            shutil.rmtree(tmp_work_dir)

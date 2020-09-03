@@ -327,13 +327,11 @@ class LogitsWriter:
         results: torch.multiprocessing.Queue,
         output_path: str,
         use_gzip: bool,
-        output_columns: Optional[List[str]],
         ndigits_precision: int,
     ):
         self.results = results
         self.output_path = output_path
         self.use_gzip = use_gzip
-        self.output_columns = output_columns
         self.ndigits_precision = ndigits_precision
 
     def run(self, process_index):
@@ -349,39 +347,17 @@ class LogitsWriter:
                     # None means shutdown
                     break
 
+                if self.ndigits_precision:
+                    model_outputs = round_seq(model_outputs, self.ndigits_precision)
+
                 # multi-encoder output
                 if isinstance(model_outputs, tuple):
-                    model_outputs_tuple = []
-                    for i, m in enumerate(model_outputs):
-                        if self.output_columns and i not in self.output_columns:
-                            continue
-
-                        if self.ndigits_precision:
-                            model_outputs_tuple.append(
-                                round_seq(m.tolist(), self.ndigits_precision)
-                            )
-                        else:
-                            model_outputs_tuple.append(m.tolist())
-
-                    self._write(
-                        fout, gzip_fout, zip(*raw_input_tuple, *model_outputs_tuple)
-                    )
+                    self._write(fout, gzip_fout, zip(*raw_input_tuple, *model_outputs))
                 # single encoder output
                 elif isinstance(model_outputs, list):
-                    model_outputs_list = model_outputs.tolist()
-
-                    if self.ndigits_precision:
-                        model_outputs_list = round_seq(
-                            model_outputs_list, self.ndigits_precision
-                        )
-
-                    self._write(
-                        fout, gzip_fout, zip(*raw_input_tuple, model_outputs_list)
-                    )
+                    self._write(fout, gzip_fout, zip(*raw_input_tuple, model_outputs))
                 else:
-                    raise Exception(
-                        "Expecting tuple or torchTensor types for model_outputs"
-                    )
+                    raise Exception("Expecting tuple or tensor types for model_outputs")
 
             if self.use_gzip:
                 gzip_fout.close()
@@ -424,14 +400,20 @@ def get_logits(
     output_columns: Optional[List[int]] = None,
     use_gzip: bool = False,
     device_id: int = 0,
+    fp16: bool = False,
 ):
     _set_cuda(use_cuda_if_available, device_id)
     task, train_config, _training_state = load(snapshot_path)
     print(f"Successfully loaded model from {snapshot_path}")
     print(f"Model on GPU? {next(task.model.parameters()).is_cuda}")
+    print(f"CUDA device id: {torch.cuda.current_device()}")
 
     if isinstance(task, NewTask):
         task.model.eval()
+
+        if fp16:
+            task.model.half()
+
         data_source = _get_data_source(
             test_path, train_config.task.data, field_names, task
         )
@@ -442,9 +424,9 @@ def get_logits(
         mp = torch.multiprocessing.get_context("spawn")
 
         with torch.no_grad():
-            results = mp.Queue()
+            results = mp.SimpleQueue()
             logits_writer = LogitsWriter(
-                results, output_path, use_gzip, output_columns, ndigits_precision
+                results, output_path, use_gzip, ndigits_precision
             )
             logits_writer_ctx = torch.multiprocessing.spawn(
                 logits_writer.run, join=False
@@ -458,12 +440,26 @@ def get_logits(
                 model_inputs = task.model.arrange_model_inputs(tensor_dict)
                 model_outputs = task.model(*model_inputs)
 
+                # multi-encoder output
+                if isinstance(model_outputs, tuple):
+                    model_outputs = tuple(
+                        m.tolist()
+                        for i, m in enumerate(model_outputs)
+                        if i in output_columns
+                    )
+                # single encoder output
+                elif isinstance(model_outputs, list):
+                    model_outputs = model_outputs.tolist()
+                else:
+                    raise Exception("Expecting tuple or tensor types for model_outputs")
+
                 results.put((raw_input_tuple, model_outputs))
 
             results.put((None, None))
-            results.close()
-            results.join_thread()
             logits_writer_ctx.join()
+            print(
+                f"Finished logits generation for file {test_path} with output {output_path}"
+            )
 
 
 def save_pytext_snapshot(config: PyTextConfig) -> None:

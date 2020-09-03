@@ -171,6 +171,8 @@ class TestConfig(ConfigBase):
 
 
 class LogitsConfig(TestConfig):
+    # List of test data paths
+    gpus: int = 1
     # Whether to dump the raw input to output file.
     dump_raw_input: bool = False
     # The batch size. Bigger batch sizes lead to better GPU utlization
@@ -183,6 +185,8 @@ class LogitsConfig(TestConfig):
     output_columns: Optional[List[int]] = None
     # Usign gzip significantly reduces the output size by 3-4x
     use_gzip: bool = False
+    # Use fp16 for inference
+    fp16: bool = False
 
 
 LATEST_VERSION = 20
