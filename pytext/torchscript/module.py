@@ -6,6 +6,7 @@ import torch
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
+from pytext.utils.usage import log_class_usage
 
 
 @torch.jit.script
@@ -64,6 +65,7 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
     ):
         super().__init__(model, output_layer, tensorizer)
         self.normalizer = normalizer
+        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def forward(
@@ -138,6 +140,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         self.model = model
         self.tensorizer = tensorizer
         self.argno = -1
+        log_class_usage(self.__class__)
 
     def inference_interface(self, argument_type: str):
 
@@ -257,6 +260,7 @@ class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
     ):
         super().__init__(model, tensorizer)
         self.index = torch.jit.Attribute(index, int)
+        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
@@ -275,6 +279,7 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         super().__init__(model, tensorizer)
         self.normalizer = normalizer
         self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
@@ -323,6 +328,7 @@ class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithD
     ):
         super().__init__(model, tensorizer, normalizer, concat_dense)
         self.index = torch.jit.Attribute(index, int)
+        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
@@ -338,6 +344,10 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
     each example's representation according to length. Returns a list of tensors. The
     slicing is easier to do outside a traced model.
     """
+
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+        super().__init__(model, tensorizer)
+        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
