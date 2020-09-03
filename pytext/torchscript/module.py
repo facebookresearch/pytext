@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
+from pytext.torchscript.batchutils import pytextBatchSortClassEmbeddingModule
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
@@ -257,6 +258,72 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
 
         return res_list
 
+    @torch.jit.script_method
+    def make_batch(
+        self,
+        mega_batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+                int,
+            ]
+        ],
+        goals: Dict[str, str],
+    ) -> List[
+        List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+                int,
+            ]
+        ]
+    ]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        # sorted_mega_batch = sorted(mega_batch,key=lambda element : len(element[argno]))
+
+        myClassList = [
+            pytextBatchSortClassEmbeddingModule(x, argno) for x in mega_batch
+        ]
+        mySortedClassList = sorted(myClassList)
+        sorted_mega_batch = [x.t() for x in mySortedClassList]
+
+        max_bs: int = 10  # goals['max_bs']
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    Optional[List[str]],  # texts
+                    Optional[List[List[str]]],  # multi_texts
+                    Optional[List[List[str]]],  # tokens
+                    Optional[List[str]],  # language,
+                    Optional[List[List[float]]],  # dense_feat
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
+
 
 class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
     def __init__(
@@ -445,3 +512,6 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
             start = end
 
         return res_list
+
+
+#     def make_batch - inherited from ScriptPyTextEmbeddingModule
