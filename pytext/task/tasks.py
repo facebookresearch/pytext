@@ -219,14 +219,12 @@ class PairwiseClassificationTask(NewTask):
         super().__init__(data, model, metric_reporter, trainer)
         self.trace_both_encoders = trace_both_encoders
 
-    def torchscript_export(
-        self,
-        model,
-        export_path=None,
-        quantize=False,
-        inference_interface=None,
-        accelerate=None,
-    ):
+    def torchscript_export(self, model, export_path=None, **kwargs):
+        # unpack export kwargs
+        quantize = kwargs.get("quantize", False)
+        accelerate = kwargs.get("accelerate", [])
+        inference_interface = kwargs.get("inference_interface")
+
         cuda.CUDA_ENABLED = False
         model.cpu()
         optimizer = self.trainer.optimizer
@@ -242,22 +240,25 @@ class PairwiseClassificationTask(NewTask):
         model(*inputs)
         if quantize:
             model.quantize()
-        if accelerate is not None:
-            if "half" in accelerate:
-                model.half()
-        if inference_interface is not None:
-            model.inference_interface(inference_interface)
+        if "half" in accelerate:
+            model.half()
         if self.trace_both_encoders:
             trace = jit.trace(model, inputs)
         else:
             trace = jit.trace(model.encoder1, (inputs[0],))
-        if accelerate is not None:
-            if "nnpi" in accelerate:
-                trace._c = torch._C._freeze_module(trace._c)
+        if "nnpi" in accelerate:
+            trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(
                 self.data.tensorizers, trace, self.trace_both_encoders
             )
+        if inference_interface is not None:
+            if hasattr(trace, "inference_interface"):
+                trace.inference_interface(inference_interface)
+            else:
+                print(
+                    "inference_interface not supported by model. Ignoring inference_interface"
+                )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
@@ -344,14 +345,7 @@ class SequenceLabelingTask(NewTask):
             Seq2SeqCompositionalMetricReporter.Config()
         )
 
-    def torchscript_export(
-        self,
-        model,
-        export_path=None,
-        quantize=False,
-        inference_interface=None,
-        accelerate=None,
-    ):
+    def torchscript_export(self, model, export_path=None, **kwargs):
         model.cpu()
         # Trace needs eval mode, to disable dropout etc
         model.eval()
