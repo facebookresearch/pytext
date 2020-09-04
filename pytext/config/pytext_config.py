@@ -122,6 +122,13 @@ class PyTextConfig(ConfigBase):
     # Possible values: texts, multi_texts, tokens (and/or others as
     # supported by inference_interface method).
     inference_interface: Optional[str] = None
+    # Padding boundaries for padded tensor sequence length dimension.
+    # Specified as a list of boundaries to be rounded up to.
+    # Each batch seq length dimension will be rounded to the smallest number
+    # larger than the actual longest sequence in a batch.
+    # The list of padding boundaries must be sorted in asecending order.
+    # The first list element must be 0.  (Will serve as future padding control "version number")
+    padding_control: Optional[List[int]] = None
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules if they are best yet

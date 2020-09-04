@@ -158,6 +158,15 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
             raise RuntimeError("Unsupported argument type.")
 
     @torch.jit.script_method
+    def set_padding_control(self, control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        self.tensorizer.set_padding_control(control)
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors).cpu()

@@ -284,6 +284,7 @@ class _NewTask(TaskBase):
         # unpack export kwargs
         quantize = kwargs.get("quantize", False)
         accelerate = kwargs.get("accelerate", [])
+        padding_control = kwargs.get("padding_control")
         inference_interface = kwargs.get("inference_interface")
 
         # Make sure to put the model on CPU and disable CUDA before exporting to
@@ -315,6 +316,13 @@ class _NewTask(TaskBase):
             trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
+        if padding_control is not None:
+            if hasattr(trace, "set_padding_control"):
+                trace.set_padding_control(padding_control)
+            else:
+                print(
+                    "Padding_control not supported by model. Ignoring padding_control"
+                )
         if inference_interface is not None:
             if hasattr(trace, "inference_interface"):
                 trace.inference_interface(inference_interface)
