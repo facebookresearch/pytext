@@ -248,10 +248,10 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         else:
             raise RuntimeError("Parameter type unsupported")
 
-        # destructure flat result list combining
+        # destructure flat result tensor combining
         #   cross-request batches and client side
         #   batches into a cross-request list of
-        #  client-side batch result lists
+        #   client-side batch tensors
         start = 0
         for elems in client_batch:
             end = start + elems
@@ -447,7 +447,7 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         # destructure flat result list combining
         #   cross-request batches and client side
         #   batches into a cross-request list of
-        #  client-side batch result lists
+        #   client-side batch result lists
         start = 0
         for elems in client_batch:
             end = start + elems
