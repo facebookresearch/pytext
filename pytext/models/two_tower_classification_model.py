@@ -39,54 +39,45 @@ class TwoTowerClassificationModel(BaseModel):
 
     class Config(BaseModel.Config):
         class InputConfig(ConfigBase):
-            tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            right_tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            left_tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
             right_dense: FloatListTensorizer.Config = None
             left_dense: FloatListTensorizer.Config = None
 
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
         inputs: InputConfig = InputConfig()
-        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
+        right_encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
+        left_encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
         decoder: MLPDecoderTwoTower.Config = MLPDecoderTwoTower.Config()
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
 
     def trace(self, inputs):
-        if self.encoder.export_encoder:
-            return torch.jit.trace(self.encoder, inputs)
-        else:
-            return torch.jit.trace(self, inputs)
+        return torch.jit.trace(self, inputs)
 
     def torchscriptify(self, tensorizers, traced_model):
         """Using the traced model, create a ScriptModule which has a nicer API that
         includes generating tensors from simple data types, and returns classified
         values according to the output layer (eg. as a dict mapping class name to score)
         """
-        script_tensorizer = tensorizers["tokens"].torchscriptify()
-        if self.encoder.export_encoder:
-            return ScriptPyTextEmbeddingModuleIndex(
-                traced_model, script_tensorizer, index=0
-            )
-        else:
-            if "right_dense" in tensorizers and "left_dense" in tensorizers:
-                return ScriptPyTextTwoTowerModuleWithDense(
-                    model=traced_model,
-                    output_layer=self.output_layer.torchscript_predictions(),
-                    tensorizer=script_tensorizer,
-                    right_normalizer=tensorizers["right_dense"].normalizer,
-                    left_normalizer=tensorizers["left_dense"].normalizer,
-                )
-            else:
-                return ScriptPyTextModule(
-                    model=traced_model,
-                    output_layer=self.output_layer.torchscript_predictions(),
-                    tensorizer=script_tensorizer,
-                )
+        right_script_tensorizer = tensorizers["right_tokens"].torchscriptify()
+        left_script_tensorizer = tensorizers["left_tokens"].torchscriptify()
+
+        return ScriptPyTextTwoTowerModuleWithDense(
+            model=traced_model,
+            output_layer=self.output_layer.torchscript_predictions(),
+            right_tensorizer=right_script_tensorizer,
+            left_tensorizer=left_script_tensorizer,
+            right_normalizer=tensorizers["right_dense"].normalizer,
+            left_normalizer=tensorizers["left_dense"].normalizer,
+        )
 
     def arrange_model_inputs(self, tensor_dict):
         model_inputs = (
-            tensor_dict["tokens"],
+            tensor_dict["right_tokens"],
+            tensor_dict["left_tokens"],
             tensor_dict["right_dense"],
             tensor_dict["left_dense"],
         )
@@ -97,14 +88,22 @@ class TwoTowerClassificationModel(BaseModel):
         return tensor_dict["labels"]
 
     def forward(
-        self, encoder_inputs: Tuple[torch.Tensor, ...], *args
+        self,
+        right_encoder_inputs: Tuple[torch.Tensor, ...],
+        left_encoder_inputs: Tuple[torch.Tensor, ...],
+        *args
     ) -> List[torch.Tensor]:
-        if self.encoder.output_encoded_layers:
+        if self.right_encoder.output_encoded_layers:
             # if encoded layers are returned, discard them
-            representation = self.encoder(encoder_inputs)[1]
+            right_representation = self.right_encoder(right_encoder_inputs)[1]
         else:
-            representation = self.encoder(encoder_inputs)[0]
-        return self.decoder(representation, *args)
+            right_representation = self.right_encoder(right_encoder_inputs)[0]
+        if self.left_encoder.output_encoded_layers:
+            # if encoded layers are returned, discard them
+            left_representation = self.left_encoder(left_encoder_inputs)[1]
+        else:
+            left_representation = self.left_encoder(left_encoder_inputs)[0]
+        return self.decoder(right_representation, left_representation, *args)
 
     def caffe2_export(self, tensorizers, tensor_dict, path, export_onnx_path=None):
         raise NotImplementedError
@@ -115,9 +114,17 @@ class TwoTowerClassificationModel(BaseModel):
         if not labels:
             raise ValueError("Labels were not created, see preceding errors")
 
-        vocab = tensorizers["tokens"].vocab
-        encoder = create_module(
-            config.encoder, padding_idx=vocab.get_pad_index(), vocab_size=len(vocab)
+        right_vocab = tensorizers["right_tokens"].vocab
+        right_encoder = create_module(
+            config.right_encoder,
+            padding_idx=right_vocab.get_pad_index(),
+            vocab_size=len(right_vocab),
+        )
+        left_vocab = tensorizers["left_tokens"].vocab
+        left_encoder = create_module(
+            config.left_encoder,
+            padding_idx=left_vocab.get_pad_index(),
+            vocab_size=len(left_vocab),
         )
 
         right_dense_dim = tensorizers["right_dense"].dim
@@ -125,8 +132,8 @@ class TwoTowerClassificationModel(BaseModel):
 
         decoder = create_module(
             config.decoder,
-            right_dim=encoder.representation_dim + right_dense_dim,
-            left_dim=left_dense_dim,
+            right_dim=right_encoder.representation_dim + right_dense_dim,
+            left_dim=left_encoder.representation_dim + left_dense_dim,
             to_dim=len(labels),
         )
 
@@ -146,14 +153,16 @@ class TwoTowerClassificationModel(BaseModel):
             output_layer_cls = MulticlassOutputLayer
 
         output_layer = output_layer_cls(list(labels), loss)
-        return cls(encoder, decoder, output_layer)
+        return cls(right_encoder, left_encoder, decoder, output_layer)
 
-    def __init__(self, encoder, decoder, output_layer, stage=Stage.TRAIN) -> None:
+    def __init__(
+        self, right_encoder, left_encoder, decoder, output_layer, stage=Stage.TRAIN
+    ) -> None:
         super().__init__(stage=stage)
-        self.encoder = encoder
+        self.right_encoder = right_encoder
+        self.left_encoder = left_encoder
         self.decoder = decoder
-        self.module_list = [encoder, decoder]
+        self.module_list = [right_encoder, left_encoder, decoder]
         self.output_layer = output_layer
         self.stage = stage
-        self.module_list = [encoder, decoder]
         log_class_usage(__class__)
