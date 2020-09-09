@@ -27,6 +27,30 @@ class TokenizeTest(unittest.TestCase):
         tokens = tokenizer.tokenize(sentence)
         self.assertListEqual(expected, [t.value for t in tokens])
 
+    def test_tokenize_use_byte_offsets(self):
+        tokenizer = Tokenizer(use_byte_offsets=True)
+        sentence = "Ordér mê å ćoƒfee"
+        expected = [
+            Token("ordér", 0, 6),
+            Token("mê", 7, 10),
+            Token("å", 11, 13),
+            Token("ćoƒfee", 14, 22),
+        ]
+        tokens = tokenizer.tokenize(sentence)
+        self.assertListEqual(expected, tokens)
+
+    def test_tokenize_no_byte_offsets(self):
+        tokenizer = Tokenizer()
+        sentence = "Ordér mê å ćoƒfee"
+        expected = [
+            Token("ordér", 0, 5),
+            Token("mê", 6, 8),
+            Token("å", 9, 10),
+            Token("ćoƒfee", 11, 17),
+        ]
+        tokens = tokenizer.tokenize(sentence)
+        self.assertListEqual(expected, tokens)
+
     def test_split_with_regex(self):
         tokenizer = Tokenizer(split_regex=r"[\s,;!.?\"\(\)\-]+")
         sentence = """
