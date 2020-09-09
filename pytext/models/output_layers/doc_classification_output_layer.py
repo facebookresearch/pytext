@@ -108,10 +108,11 @@ class ClassificationOutputLayer(OutputLayerBase):
 
 
 class ClassificationScores(jit.ScriptModule):
-    def __init__(self, classes, score_function):
+    def __init__(self, classes, score_function, score_function_dim=None):
         super().__init__()
         self.classes = jit.Attribute(classes, List[str])
         self.score_function = score_function
+        self.score_function_dim = score_function_dim
 
     @jit.script_method
     def forward(self, logits: torch.Tensor):
@@ -122,7 +123,11 @@ class ClassificationScores(jit.ScriptModule):
         #     for example_scores in scores.tolist()
         #   ]
         # Extra verbosity is due to jit.script.
-        scores = self.score_function(logits)
+        if self.score_function_dim is None:
+            scores = self.score_function(logits)
+        else:
+            scores = self.score_function(logits, dim=self.score_function_dim)
+
         results = jit.annotate(List[Dict[str, float]], [])
         for example_scores in scores.chunk(len(scores)):
             example_scores = example_scores.squeeze(dim=0)
@@ -166,7 +171,7 @@ class MulticlassOutputLayer(ClassificationOutputLayer):
         return preds, scores
 
     def torchscript_predictions(self):
-        return ClassificationScores(self.target_names, F.log_softmax)
+        return ClassificationScores(self.target_names, F.log_softmax, -1)
 
     def export_to_caffe2(
         self,
