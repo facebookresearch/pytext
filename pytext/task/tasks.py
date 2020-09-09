@@ -57,6 +57,7 @@ from pytext.models.word_model import WordTaggingModel
 from pytext.task.new_task import NewTask
 from pytext.trainers import EnsembleTrainer, HogwildTrainer, TaskTrainer
 from pytext.utils import cuda
+from pytext.utils.file_io import PathManager
 from torch import jit
 
 
@@ -270,7 +271,8 @@ class PairwiseClassificationTask(NewTask):
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
-            trace.save(export_path)
+            with PathManager.open(export_path, "wb") as f:
+                torch.jit.save(trace, f)
         return trace
 
 
@@ -359,4 +361,5 @@ class SequenceLabelingTask(NewTask):
         model.eval()
         if hasattr(model, "torchscriptify"):
             jit_module = model.torchscriptify()
-            jit_module.save(export_path)
+            with PathManager.open(export_path, "wb") as f:
+                torch.jit.save(jit_module, f)

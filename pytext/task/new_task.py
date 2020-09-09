@@ -14,6 +14,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx
+from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch import jit, sort
 
@@ -333,7 +334,8 @@ class _NewTask(TaskBase):
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
-            trace.save(export_path)
+            with PathManager.open(export_path, "wb") as f:
+                torch.jit.save(trace, f)
         return trace
 
 
