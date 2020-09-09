@@ -2,6 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import random
 import string
+import sys
+from contextlib import contextmanager
+from io import StringIO
 from typing import Dict, List
 
 import caffe2.python.hypothesis_test_util as hu
@@ -21,6 +24,21 @@ from pytext.models.output_layers.word_tagging_output_layer import (
     CRFOutputLayer,
     WordTaggingOutputLayer,
 )
+
+
+@contextmanager
+def redirect_stdout():
+    string_io = StringIO()
+    real_stdout = sys.stdout
+    real_stderr = sys.stderr
+    sys.stdout = string_io
+    sys.stderr = string_io
+    try:
+        yield string_io
+    finally:
+        sys.stdout = real_stdout
+        sys.stderr = real_stderr
+        string_io.close()
 
 
 class OutputLayerTest(hu.HypothesisTestCase):
@@ -127,7 +145,13 @@ class OutputLayerTest(hu.HypothesisTestCase):
         pt_output = intent_slot_output_layer.get_pred(
             (doc_logits, word_logits), None, context
         )[1]
-        ts_output = torchscript_output_layer((doc_logits, word_logits), context)
+        with redirect_stdout() as redirected_stdout:
+            ts_output = torchscript_output_layer((doc_logits, word_logits), context)
+            buffer = redirected_stdout.getvalue()
+            assert (
+                "Implicit dimension choice for log_softmax has been deprecated"
+                not in buffer
+            )
 
         self._validate_doc_classification_result(pt_output[0], ts_output[0], doc_vocab)
         self._validate_word_tagging_result(pt_output[1], ts_output[1], word_vocab)
