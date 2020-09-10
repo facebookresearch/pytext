@@ -40,15 +40,18 @@ class Tokenizer(Component):
         split_regex: str = r"\s+"
         #: Whether token values should be lowercased or not.
         lowercase: bool = True
+        #: Whether to use utf8 byte offsets
+        use_byte_offsets: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.split_regex, config.lowercase)
+        return cls(config.split_regex, config.lowercase, config.use_byte_offsets)
 
-    def __init__(self, split_regex=r"\s+", lowercase=True):
+    def __init__(self, split_regex=r"\s+", lowercase=True, use_byte_offsets=False):
         super().__init__(None)
         self.split_regex = split_regex
         self.lowercase = lowercase
+        self.use_byte_offsets = use_byte_offsets
 
     def tokenize(self, input: str) -> List[Token]:
         tokens = []
@@ -59,7 +62,22 @@ class Tokenizer(Component):
             tokens.append(Token(tokenize_input[start:split_start], start, split_start))
             start = split_end
         tokens.append(Token(tokenize_input[start : len(input)], start, len(input)))
-        return [token for token in tokens if token.value]
+        if self.use_byte_offsets:
+            return [
+                self._convert_token(input, token) for token in tokens if token.value
+            ]
+        else:
+            return [token for token in tokens if token.value]
+
+    def _convert_token(self, inp: str, token: Token) -> Token:
+        return Token(
+            token.value,
+            self._convert_char_to_byte_offsets(inp, token.start),
+            self._convert_char_to_byte_offsets(inp, token.end),
+        )
+
+    def _convert_char_to_byte_offsets(self, input: str, char_offset: int) -> int:
+        return len(input[:char_offset].encode("utf8"))
 
     def torchscriptify(self):
         raise NotImplementedError
