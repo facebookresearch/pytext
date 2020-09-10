@@ -124,6 +124,7 @@ class BiLSTM(RepresentationBase):
                 embedded_tokens.size(0),  # batch size
                 self.config.lstm_dim,
                 device=torch.cuda.current_device() if cuda.CUDA_ENABLED else None,
+                dtype=embedded_tokens.dtype,
             )
             states = (state, state)
         if torch.onnx.is_in_onnx_export():
