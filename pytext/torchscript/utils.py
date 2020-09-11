@@ -96,7 +96,7 @@ def pad_2d_mask(
                 if pad >= max_len:
                     max_len = pad
                     break
-        if max_pad_len != -1:
+        if max_pad_len > 0:
             max_len = min(max_len, max_pad_len)
     tensor = long_tensor_2d((len(input), max_len), pad_value)
     mask = long_tensor_2d((len(input), max_len), 0)
