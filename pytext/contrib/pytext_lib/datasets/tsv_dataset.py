@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import logging
 from typing import Any, Dict, List, Optional
 
 from pytext.contrib.pytext_lib.datasets.batchers import Batcher
@@ -8,6 +9,9 @@ from pytext.data.sources.tsv import TSV
 
 from ..transforms import Transform
 from .pytext_dataset import PyTextDataset
+
+
+logger = logging.getLogger(__name__)
 
 
 class TsvDataset(PyTextDataset):
@@ -27,7 +31,10 @@ class TsvDataset(PyTextDataset):
         length: Optional[int] = None,
         rank: int = 0,
         world_size: int = 1,
+        *args,
+        **kwargs,
     ):
+        logger.debug(f"init TsvDataset from: {path}")
         columns = columns or ["text", "label"]
         if column_mapping:
             raise NotImplementedError("column mapping is not supported for tsv yet!")
