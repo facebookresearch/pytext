@@ -102,6 +102,7 @@ class SquadMetricReporter(MetricReporter):
         self.true_idx = 1 - self.false_idx
 
     def _reset(self):
+        super()._reset()
         self.all_start_pos_preds: List = []
         self.all_start_pos_targets: List = []
         self.all_start_pos_scores: List = []
@@ -130,7 +131,6 @@ class SquadMetricReporter(MetricReporter):
         self.all_context: Dict = {}
         self.all_loss: List = []
         self.all_pred_answers: List = []
-        # self.all_true_answers: List = []
         self.batch_size: List = []
         self.n_batches = 0
 
