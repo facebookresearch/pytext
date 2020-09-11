@@ -213,6 +213,8 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         # LANGUAGES = 3
         # DENSE_FEAT = 4
 
+        if self.argno != -1:
+            raise RuntimeError("Cannot change argument type.")
         if argument_type == "texts":
             self.argno = TEXTS
         else:
