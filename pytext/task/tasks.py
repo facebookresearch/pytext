@@ -247,8 +247,6 @@ class PairwiseClassificationTask(NewTask):
             trace = jit.trace(model, inputs)
         else:
             trace = jit.trace(model.encoder1, (inputs[0],))
-        if "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(
                 self.data.tensorizers, trace, self.trace_both_encoders
@@ -268,6 +266,11 @@ class PairwiseClassificationTask(NewTask):
                     "inference_interface not supported by model. Ignoring inference_interface"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
+        if "nnpi" in accelerate:
+            trace._c = torch._C._freeze_module(
+                trace._c,
+                preservedAttrs=["make_prediction", "make_batch", "set_padding_control"],
+            )
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
             trace.save(export_path)

@@ -312,8 +312,6 @@ class _NewTask(TaskBase):
         if "half" in accelerate:
             model.half()
         trace = model.trace(inputs)
-        if "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(trace._c)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         if padding_control is not None:
@@ -331,6 +329,11 @@ class _NewTask(TaskBase):
                     "inference_interface not supported by model. Ignoring inference_interface"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
+        if "nnpi" in accelerate:
+            trace._c = torch._C._freeze_module(
+                trace._c,
+                preservedAttrs=["make_prediction", "make_batch", "set_padding_control"],
+            )
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
             trace.save(export_path)
