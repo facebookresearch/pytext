@@ -107,8 +107,8 @@ class Seq2SeqModel(Model):
         torch.Tensor,
         torch.Tensor,
     ]:
-        src_tokens, src_lengths, _ = tensor_dict["src_seq_tokens"]
-        trg_tokens, trg_lengths, _ = tensor_dict["trg_seq_tokens"]
+        src_tokens, src_lengths = tensor_dict["src_seq_tokens"]
+        trg_tokens, trg_lengths = tensor_dict["trg_seq_tokens"]
 
         def _shift_target(in_sequences, seq_lens, eos_idx, pad_idx):
             shifted_sequence = GetTensor(
@@ -136,7 +136,7 @@ class Seq2SeqModel(Model):
         )
 
     def arrange_targets(self, tensor_dict):
-        trg_tokens, trg_lengths, _ = tensor_dict["trg_seq_tokens"]
+        trg_tokens, trg_lengths = tensor_dict["trg_seq_tokens"]
         return (trg_tokens, trg_lengths)
 
     def __init__(
@@ -196,7 +196,7 @@ class Seq2SeqModel(Model):
     ):
         additional_features: List[List[torch.Tensor]] = []
 
-        if dict_feats:
+        if dict_feats is not None:
             additional_features.append(list(dict_feats))
 
         if contextual_token_embedding is not None:
@@ -206,7 +206,7 @@ class Seq2SeqModel(Model):
             src_tokens, additional_features, src_lengths, trg_tokens
         )
 
-        if dict_feats:
+        if dict_feats is not None:
             (
                 output_dict["dict_tokens"],
                 output_dict["dict_weights"],
