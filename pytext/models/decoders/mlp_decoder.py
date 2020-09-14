@@ -35,6 +35,10 @@ class MLPDecoder(DecoderBase):
 
         Attributes:
             hidden_dims (List[int]): Dimensions of the outputs of hidden layers..
+            temperature (float): Scales logits by this value (before the softmax
+            operation) during test-time only. Temperature scaling has no effect on
+            the top prediction but changes the shape of the posterior distribution,
+            which can be useful for a range of tasks (e.g., model calibration).
         """
 
         hidden_dims: List[int] = []
@@ -43,6 +47,7 @@ class MLPDecoder(DecoderBase):
         dropout: float = 0.0
         bias: bool = True
         activation: Activation = Activation.RELU
+        temperature: float = 1.0
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -63,10 +68,16 @@ class MLPDecoder(DecoderBase):
 
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
+        self.temperature = config.temperature
         log_class_usage(__class__)
 
     def forward(self, *input: torch.Tensor) -> torch.Tensor:
-        return self.mlp(torch.cat(input, 1))
+        mlp_out = self.mlp(torch.cat(input, 1))
+        return (
+            mlp_out
+            if self.training or self.temperature == 1.0
+            else mlp_out / self.temperature
+        )
 
     def get_decoder(self) -> List[nn.Module]:
         """Returns the MLP module that is used as a decoder.
