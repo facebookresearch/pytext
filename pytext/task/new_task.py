@@ -307,11 +307,15 @@ class _NewTask(TaskBase):
             _, sorted_indices = sort(inputs[sort_key], descending=True)
             inputs = [i.index_select(0, sorted_indices) for i in inputs]
         model(*inputs)
-        if quantize:
-            model.quantize()
         if "half" in accelerate:
             model.half()
-        trace = model.trace(inputs)
+        if quantize and hasattr(model, "graph_mode_quantize"):
+            data_loader = self.data.batches(Stage.TRAIN, load_early=False)
+            trace = model.graph_mode_quantize(inputs, data_loader)
+        else:
+            if quantize:
+                model.quantize()
+            trace = model.trace(inputs)
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         if padding_control is not None:
