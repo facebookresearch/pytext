@@ -3,12 +3,11 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from pytext.contrib.pytext_lib.datasets.batchers import Batcher
+from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
+from pytext.contrib.pytext_lib.data.datasets.pytext_dataset import PyTextDataset
+from pytext.contrib.pytext_lib.transforms import Transform
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSV
-
-from ..transforms import Transform
-from .pytext_dataset import PyTextDataset
 
 
 logger = logging.getLogger(__name__)
