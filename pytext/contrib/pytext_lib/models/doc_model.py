@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -8,8 +8,8 @@ import torch.nn.functional as F
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.config.module_config import PoolingType
 from pytext.contrib.pytext_lib.models.classification_heads import ClassificationHead
+from pytext.contrib.pytext_lib.models.pytext_model import PyTextModel
 from pytext.contrib.pytext_lib.transforms import build_vocab
-from pytext.data.utils import Vocabulary
 from pytext.models.embeddings import WordEmbedding
 from pytext.utils.embeddings import PretrainedEmbedding
 
@@ -22,7 +22,7 @@ class DocNNEncoder(nn.Module):
         embed_dim: int,
         kernel_num: int = 100,
         kernel_sizes: Optional[Sequence[int]] = None,
-        pooling_type: PoolingType = PoolingType.MAX,
+        pooling_type: str = "max",
         dropout: float = 0.4,
     ) -> None:
         super().__init__()
@@ -31,7 +31,7 @@ class DocNNEncoder(nn.Module):
             [nn.Conv1d(embed_dim, kernel_num, k, padding=k) for k in kernel_sizes]
         )
         self.dropout = nn.Dropout(dropout)
-        self.pooling_type = pooling_type
+        self.pooling_type = PoolingType(pooling_type)
         self.out_dim = len(kernel_sizes) * kernel_num
 
     def forward(self, embedded_tokens: torch.Tensor) -> torch.Tensor:
@@ -50,7 +50,6 @@ class WordEmbedding(nn.Module):
     def __init__(
         self,
         pretrained_embeddings_path: str,
-        vocab: Vocabulary,
         embedding_dim: int,
         mlp_layer_dims: Optional[Sequence[int]] = None,
         lowercase_tokens: bool = False,
@@ -58,6 +57,7 @@ class WordEmbedding(nn.Module):
         delimiter: str = " ",
     ) -> None:
         super().__init__()
+        vocab = build_vocab(pretrained_embeddings_path)
         pretrained_embedding = PretrainedEmbedding(
             pretrained_embeddings_path,
             lowercase_tokens=lowercase_tokens,
@@ -108,19 +108,32 @@ class WordEmbedding(nn.Module):
 class DocModel(nn.Module):
     def __init__(
         self,
-        # word embedding object
-        word_embedding: WordEmbedding,
+        # word embedding config
+        pretrained_embeddings_path: str,
+        embedding_dim: int,
+        mlp_layer_dims: Optional[Sequence[int]] = None,
+        lowercase_tokens: bool = False,
+        skip_header: bool = True,
+        delimiter: str = " ",
         # DocNN config
         kernel_num: int = 100,
         kernel_sizes: Optional[Sequence[int]] = None,
-        pooling_type: PoolingType = PoolingType.MAX,
+        pooling_type: str = "max",
         dropout: float = 0.4,
         # decoder config
-        dense_dim=0,
+        dense_dim: int = 0,
         decoder_hidden_dims: Optional[Sequence[int]] = None,
+        out_dim: int = 2,
     ) -> None:
         super().__init__()
-        self.word_embedding = word_embedding
+        self.word_embedding = WordEmbedding(
+            pretrained_embeddings_path,
+            embedding_dim,
+            mlp_layer_dims,
+            lowercase_tokens,
+            skip_header,
+            delimiter,
+        )
         self.encoder = DocNNEncoder(
             embed_dim=self.word_embedding.get_output_dim(),
             kernel_num=kernel_num,
@@ -130,7 +143,7 @@ class DocModel(nn.Module):
         )
         self.decoder = MLPDecoder(
             in_dim=self.encoder.out_dim + dense_dim,
-            out_dim=2,
+            out_dim=out_dim,
             bias=True,
             hidden_dims=decoder_hidden_dims,
         )
@@ -143,134 +156,52 @@ class DocModel(nn.Module):
         return self.decoder(encoder_output, denses)
 
 
-class DocModelForBinaryDocClassification(nn.Module):
+class DocClassificationModel(PyTextModel):
     def __init__(
         self,
-        word_embedding: WordEmbedding,
+        # word embedding config
+        pretrained_embeddings_path: str,
+        embedding_dim: int,
+        mlp_layer_dims: Optional[Sequence[int]] = None,
+        lowercase_tokens: bool = False,
+        skip_header: bool = True,
+        delimiter: str = " ",
         # DocNN config
         kernel_num: int = 100,
         kernel_sizes: Optional[Sequence[int]] = None,
-        pooling_type: PoolingType = PoolingType.MAX,
+        pooling_type: str = "max",
         dropout: float = 0.4,
         # decoder config
         dense_dim: int = 0,
         decoder_hidden_dims: Optional[Sequence[int]] = None,
+        out_dim: int = 2,
     ) -> None:
         super().__init__()
         self.doc_model = DocModel(
-            word_embedding=word_embedding,
-            kernel_num=kernel_num,
-            kernel_sizes=kernel_sizes,
-            pooling_type=pooling_type,
-            dropout=dropout,
-            dense_dim=dense_dim,
-            decoder_hidden_dims=decoder_hidden_dims,
+            pretrained_embeddings_path,
+            embedding_dim,
+            mlp_layer_dims,
+            lowercase_tokens,
+            skip_header,
+            delimiter,
+            # DocNN config
+            kernel_num,
+            kernel_sizes,
+            pooling_type,
+            dropout,
+            # decoder config
+            dense_dim,
+            decoder_hidden_dims,
+            out_dim,
         )
         self.head = ClassificationHead()
 
-    def forward(self, inputs: Dict[str, torch.Tensor]) -> List[torch.Tensor]:
+    def forward(
+        self, inputs: Dict[str, torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         logits = self.doc_model(inputs)
         return self.head(logits)
 
     def get_loss(self, inputs: Dict[str, torch.Tensor], targets) -> torch.Tensor:
         logits = self.doc_model(inputs)
         return self.head.get_loss(logits, targets)
-
-
-def build_model(
-    model_name: str,
-    word_embedding_file: str,
-    embedding_dim: int,
-    mlp_layer_dims: Sequence[int],
-    lowercase_tokens: bool,
-    skip_header: bool,
-    kernel_num: int,
-    kernel_sizes: Sequence[int],
-    dropout: int,
-    dense_dim: int,
-    decoder_hidden_dims: Sequence[int],
-):
-    """build a custom doc model
-    """
-    vocab = build_vocab(word_embedding_file)
-    word_embedding = WordEmbedding(
-        pretrained_embeddings_path=word_embedding_file,
-        vocab=vocab,
-        embedding_dim=embedding_dim,
-        mlp_layer_dims=mlp_layer_dims,
-        lowercase_tokens=lowercase_tokens,
-        skip_header=skip_header,
-    )
-    if model_name == DocModelForBinaryDocClassification.__name__:
-        doc_model = DocModelForBinaryDocClassification(
-            word_embedding=word_embedding,
-            # DocNN config
-            kernel_num=kernel_num,
-            kernel_sizes=kernel_sizes,
-            dropout=dropout,
-            # decoder config
-            dense_dim=dense_dim,
-            decoder_hidden_dims=decoder_hidden_dims,
-        )
-    else:
-        raise RuntimeError(f"unknown model_name: {model_name}")
-    return doc_model
-
-
-def doc_model_with_spm_embedding(
-    model_name: str,
-    word_embedding_file: str,
-    embedding_dim: int = 1024,
-    mlp_layer_dims: Sequence[int] = (150,),
-    lowercase_tokens: bool = False,
-    skip_header: bool = False,
-    kernel_num: int = 100,
-    kernel_sizes: Sequence[int] = (3, 4, 5),
-    dropout: int = 0.25,
-    dense_dim: int = 0,
-    decoder_hidden_dims: Sequence[int] = (128,),
-):
-    """a shortcut to build a doc model with the best defaults for spm embedding
-    """
-    return build_model(
-        model_name=DocModelForBinaryDocClassification.__name__,
-        word_embedding_file=word_embedding_file,
-        embedding_dim=embedding_dim,
-        mlp_layer_dims=mlp_layer_dims,
-        lowercase_tokens=lowercase_tokens,
-        skip_header=skip_header,
-        kernel_num=kernel_num,
-        kernel_sizes=kernel_sizes,
-        dropout=dropout,
-        dense_dim=dense_dim,
-        decoder_hidden_dims=decoder_hidden_dims,
-    )
-
-
-def doc_model_with_xlu_embedding(
-    word_embedding_file: str,
-    embedding_dim: int = 300,
-    mlp_layer_dims: Sequence[int] = (256,),
-    lowercase_tokens: bool = False,
-    skip_header: bool = True,
-    kernel_num: int = 100,
-    kernel_sizes: Sequence[int] = (3, 4, 5),
-    dropout: int = 0.25,
-    dense_dim: int = 0,
-    decoder_hidden_dims: Sequence[int] = (128,),
-):
-    """a shortcut to build a doc model with the best defaults for xlu embedding
-    """
-    return build_model(
-        model_name=DocModelForBinaryDocClassification.__name__,
-        word_embedding_file=word_embedding_file,
-        embedding_dim=embedding_dim,
-        mlp_layer_dims=mlp_layer_dims,
-        lowercase_tokens=lowercase_tokens,
-        skip_header=skip_header,
-        kernel_num=kernel_num,
-        kernel_sizes=kernel_sizes,
-        dropout=dropout,
-        dense_dim=dense_dim,
-        decoder_hidden_dims=decoder_hidden_dims,
-    )
