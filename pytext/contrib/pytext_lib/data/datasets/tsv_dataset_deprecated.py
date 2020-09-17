@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, List, Optional
 
+import torch.nn as nn
 from pytext.contrib.pytext_lib.data.datasets.base_dataset_deprecated import BaseDataset
-from pytext.contrib.pytext_lib.transforms import Transform
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSV
 
@@ -16,7 +16,7 @@ class TsvDataset(BaseDataset):
         delimiter: str = "\t",
         batch_size: int = 1,
         is_shuffle: bool = True,
-        transforms_dict: Dict[str, List[Transform]] = None,
+        transforms_dict: Dict[str, List[nn.Module]] = None,
         batcher=None,
         collate_fn=None,
         chunk_size: int = 1000,
