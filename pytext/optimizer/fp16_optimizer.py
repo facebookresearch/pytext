@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import contextlib
+from collections import namedtuple
 from sys import stderr
 from typing import Optional
 
@@ -344,7 +345,11 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
         super().__init__(fp32_optimizer)
 
         self.fp16_params = fp16_params
-        self.fp32_params = self.build_fp32_params(fp16_params)
+        args = {"pipeline_model_parallel": False, "distributed_no_spawn": False}
+        fairseq_args = namedtuple("args", args.keys())(*args.values())
+        self.fp32_params = self.build_fp32_params(
+            args=fairseq_args, params=fp16_params, flatten=True
+        )
 
         if scale_window is None:
             scale_window = (
@@ -363,7 +368,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
 
         # reset fp32_optimizer param groups to using master weights
         fp32_param_group = self.fp32_optimizer.param_groups[0]
-        fp32_param_group["params"] = [self.fp32_params]
+        fp32_param_group["params"] = [self.fp32_params[torch.cuda.current_device()]]
         self.fp32_optimizer.param_groups = []
         self.fp32_optimizer.add_param_group(fp32_param_group)
 
