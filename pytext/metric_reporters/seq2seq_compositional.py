@@ -56,12 +56,12 @@ class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
             yield [
                 context[BatchContext.INDEX][i],
                 context[DatasetFieldName.RAW_SEQUENCE][i],
-                stringify(preds[i][0], target_vocab._vocab).upper(),
+                self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]),
                 self.validated_annotation(
-                    stringify(preds[i][0], target_vocab._vocab).upper()
+                    self.tensorizers["trg_seq_tokens"].stringify(preds[i][0])
                 ),
                 self.validated_annotation(
-                    stringify(targets[i], target_vocab._vocab).upper()
+                    self.tensorizers["trg_seq_tokens"].stringify(targets[i])
                 ),
             ]
 
