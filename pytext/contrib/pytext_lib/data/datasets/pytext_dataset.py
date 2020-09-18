@@ -5,11 +5,11 @@ import logging
 import random
 from typing import Iterable, Optional
 
+import torch.nn as nn
 from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
 from pytext.contrib.pytext_lib.transforms.transforms import (
     IdentityTransform,
     RowsToColumnarTransform,
-    Transform,
 )
 from pytext.contrib.pytext_lib.utils.data_util import (
     columnar_tuple_to_rows,
@@ -28,7 +28,7 @@ class PyTextDataset(IterableDataset):
         iterable: Iterable,
         batch_size: int = 1,
         is_shuffle: bool = True,
-        transform: Optional[Transform] = None,
+        transform: Optional[nn.Module] = None,
         custom_batcher: Optional[Batcher] = None,
         collate_fn=None,
         chunk_size: Optional[int] = 1000,

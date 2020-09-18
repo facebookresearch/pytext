@@ -6,7 +6,7 @@ import random
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
-from pytext.contrib.pytext_lib.transforms import Transform
+import torch.nn as nn
 from pytext.data.sources.data_source import shard
 from pytext.torchscript.utils import long_tensor_2d
 from torch.nn.utils.rnn import pad_sequence
@@ -19,7 +19,7 @@ class BaseDataset(IterableDataset):
         iterable: Iterable,
         batch_size: Optional[int] = None,
         is_shuffle: bool = True,
-        transforms_dict: Dict[str, List[Transform]] = None,
+        transforms_dict: Dict[str, List[nn.Module]] = None,
         batcher=None,
         collate_fn=None,
         chunk_size: int = 1000,

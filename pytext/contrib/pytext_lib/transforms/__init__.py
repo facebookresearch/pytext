@@ -5,8 +5,6 @@ from .transforms import (
     IdentityTransform,
     LabelTransform,
     RowsToColumnarTransform,
-    ScriptTransform,
-    Transform,
     VocabTransform,
     WhitespaceTokenizerTransform,
 )
@@ -17,8 +15,6 @@ __all__ = [
     "IdentityTransform",
     "LabelTransform",
     "RowsToColumnarTransform",
-    "ScriptTransform",
-    "Transform",
     "VocabTransform",
     "WhitespaceTokenizerTransform",
     "build_fairseq_vocab",
