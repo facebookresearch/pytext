@@ -3,7 +3,7 @@
 import itertools
 import logging
 import random
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional, Union
 
 import torch.nn as nn
 from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
@@ -28,9 +28,9 @@ class PyTextDataset(IterableDataset):
         iterable: Iterable,
         batch_size: int = 1,
         is_shuffle: bool = True,
-        transform: Optional[nn.Module] = None,
+        transform: Optional[Union[nn.Module, Callable]] = None,
         custom_batcher: Optional[Batcher] = None,
-        collate_fn=None,
+        collate_fn: Optional[Callable] = None,
         chunk_size: Optional[int] = 1000,
         is_cycle: bool = False,
         length: Optional[int] = None,
