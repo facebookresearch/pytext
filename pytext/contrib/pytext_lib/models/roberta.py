@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -95,7 +95,7 @@ class RobertaModelForBinaryDocClassification(RobertaModel):
         super().__init__(encoder, decoder)
         self.head = ClassificationHead(is_binary=False)
 
-    def get_pred(self, logits: torch.Tensor) -> torch.Tensor:
+    def get_pred(self, logits: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.head(logits)
 
     def get_loss(self, logits, targets):
@@ -161,7 +161,7 @@ def xlmr_dummy_binary_doc_classifier(pretrained=False):
         dense_dim=0,
         embedding_dim=32,
         out_dim=2,
-        vocab_size=100,
+        vocab_size=105,
         num_attention_heads=1,
         num_encoder_layers=1,
         output_dropout=0.4,
