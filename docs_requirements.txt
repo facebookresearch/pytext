@@ -13,4 +13,4 @@ torchtext
 tensorboard
 torch
 pandas
-pytorch-dp
+opacus

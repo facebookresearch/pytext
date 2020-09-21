@@ -3,15 +3,9 @@
 
 from typing import List, Optional
 
+import opacus
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
-
-
-# Temporary fix until we publish on PyPi
-try:
-    import opacus
-except ImportError:
-    import torchdp as opacus
 
 
 class PrivacyEngine(Component):

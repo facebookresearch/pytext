@@ -10,7 +10,7 @@ onnx>=1.6.0
 python-dateutil==2.8.0
 pandas
 pytorch-pretrained-bert
-pytorch-dp
+opacus
 regex==2019.11.1
 requests
 scipy
