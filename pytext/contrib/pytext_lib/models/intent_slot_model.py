@@ -217,7 +217,7 @@ def build_intent_joint_model(
     dropout=0.4,
     add_feat_len=0,
 ):
-    embedder = WordEmbedding(pretrain_embed, vocab, embed_dim)
+    embedder = WordEmbedding(pretrain_embed, embed_dim)
     slot_encoder = DocNNEncoder(
         embed_dim, slot_kernel_num, slot_kernel_sizes, dropout=dropout
     )

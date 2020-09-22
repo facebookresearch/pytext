@@ -222,10 +222,11 @@ class SlotLabelTransform(Transform):
 
 def build_vocab(vocab_file):
     vocab_builder = VocabBuilder()
-    with PathManager.open(vocab_file) as f:
-        vocab_builder.add_from_file(
-            f, skip_header_line=False, lowercase_tokens=False, size=0
-        )
+    if vocab_file:
+        with PathManager.open(vocab_file) as f:
+            vocab_builder.add_from_file(
+                f, skip_header_line=False, lowercase_tokens=False, size=0
+            )
     return vocab_builder.make_vocab()
 
 
