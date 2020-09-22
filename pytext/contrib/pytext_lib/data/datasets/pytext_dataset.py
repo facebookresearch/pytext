@@ -5,7 +5,7 @@ import logging
 import random
 from typing import Iterable, Optional
 
-from pytext.contrib.pytext_lib.datasets.batchers import Batcher
+from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
 from pytext.contrib.pytext_lib.transforms.transforms import (
     IdentityTransform,
     RowsToColumnarTransform,
