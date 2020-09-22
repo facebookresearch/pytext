@@ -6,12 +6,11 @@ import random
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import torch
+from pytext.contrib.pytext_lib.transforms import Transform
 from pytext.data.sources.data_source import shard
 from pytext.torchscript.utils import long_tensor_2d
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import IterableDataset
-
-from ..transforms import Transform
 
 
 class BaseDataset(IterableDataset):
