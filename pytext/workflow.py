@@ -126,6 +126,13 @@ def prepare_task(
     metric_channels: Optional[List[Channel]] = None,
     metadata: CommonMetadata = None,
 ) -> Tuple[Task_Deprecated, TrainingState]:
+    if world_size > 1 and config.random_seed is None:
+        msg = (
+            "Must set random seed when using world_size > 1, so that parameters have "
+            "same initialization across workers."
+        )
+        raise ValueError(msg)
+
     if rank == 0:
         print("\nParameters: {}\n".format(config), flush=True)
     _set_cuda(config.use_cuda_if_available, device_id, world_size)

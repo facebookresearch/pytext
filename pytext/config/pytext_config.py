@@ -138,7 +138,7 @@ class PyTextConfig(ConfigBase):
     # Whether to use TensorBoard
     use_tensorboard: bool = True
     #: Seed value to seed torch, python, and numpy random generators.
-    random_seed: Optional[int] = None
+    random_seed: Optional[int] = 0
     #: Whether to allow CuDNN to behave deterministically.
     use_deterministic_cudnn: bool = False
     # Run eval set after model has been trained - for hyperparameter search
