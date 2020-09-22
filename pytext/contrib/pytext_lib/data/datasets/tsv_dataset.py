@@ -3,9 +3,9 @@
 import logging
 from typing import Any, Dict, List, Optional
 
+import torch.nn as nn
 from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
 from pytext.contrib.pytext_lib.data.datasets.pytext_dataset import PyTextDataset
-from pytext.contrib.pytext_lib.transforms import Transform
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSV
 
@@ -22,7 +22,7 @@ class TsvDataset(PyTextDataset):
         delimiter: str = "\t",
         batch_size: Optional[int] = None,
         is_shuffle: bool = True,
-        transform: Optional[Transform] = None,
+        transform: Optional[nn.Module] = None,
         custom_batcher: Optional[Batcher] = None,
         collate_fn=None,
         chunk_size: int = 1000,
