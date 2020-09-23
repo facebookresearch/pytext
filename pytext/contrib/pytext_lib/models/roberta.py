@@ -5,6 +5,7 @@ from typing import Dict, Optional, Tuple
 
 import torch
 import torch.nn as nn
+from pytext.config.module_config import Activation
 from pytext.contrib.pytext_lib.resources import url
 from pytext.models.representations.transformer import (
     MultiheadSelfAttention,
@@ -121,7 +122,12 @@ def build_model(
         output_dropout=output_dropout,
         model_path=model_path,
     )
-    decoder = MLPDecoder(in_dim=embedding_dim + dense_dim, out_dim=out_dim, bias=bias)
+    decoder = MLPDecoder(
+        in_dim=embedding_dim + dense_dim,
+        out_dim=out_dim,
+        bias=bias,
+        activation=Activation.GELU,
+    )
     model = RobertaModelForBinaryDocClassification(encoder=encoder, decoder=decoder)
     return model
 
