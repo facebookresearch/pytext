@@ -49,6 +49,9 @@ config_json = """
       "weight_decay": 0,
       "amsgrad": false
     },
+    "metric_reporter": {
+      "recall_at_precision_thresholds": [0.2, 0.4, 0.6, 0.8, 0.9]
+    },
     "trainer": {
       "max_epochs": 2,
       "gpus": null,

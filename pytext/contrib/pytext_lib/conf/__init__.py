@@ -78,12 +78,20 @@ class TrainerConf:
 
 
 @dataclass
+class ClassificationMetricReporterConf:
+    recall_at_precision_thresholds: List[float] = field(
+        default_factory=lambda: [0.2, 0.4, 0.6, 0.8, 0.9]
+    )
+
+
+@dataclass
 class DocClassificationConfig:
     # MISSING doesn't work with non "str" type in flow
     data: DataConf
     transform: TransformConf
     model: ModelConf
     optim: OptimConf
+    metric_reporter: ClassificationMetricReporterConf = ClassificationMetricReporterConf()
     trainer: TrainerConf = TrainerConf()
     defaults: List[Any] = field(default_factory=lambda: project_defaults)
 
