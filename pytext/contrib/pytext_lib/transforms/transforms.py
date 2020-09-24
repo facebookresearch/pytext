@@ -105,3 +105,13 @@ class LabelTransform(ScriptTransform):
 
     def forward(self, labels: List[str]) -> List[int]:
         return self.label_vocab.lookup_indices_1d(labels)
+
+
+class TruncateTransform(ScriptTransform):
+    def __init__(self, max_seq_len: int):
+        super().__init__()
+        assert max_seq_len > 0
+        self.max_seq_len: int = max_seq_len
+
+    def forward(self, token_ids: List[List[int]]) -> List[List[int]]:
+        return [token_id[: self.max_seq_len] for token_id in token_ids]

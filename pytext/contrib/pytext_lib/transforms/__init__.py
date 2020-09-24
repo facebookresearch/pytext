@@ -7,6 +7,7 @@ from .transforms import (
     RowsToColumnarTransform,
     ScriptTransform,
     Transform,
+    TruncateTransform,
     VocabTransform,
     WhitespaceTokenizerTransform,
 )
@@ -19,6 +20,7 @@ __all__ = [
     "RowsToColumnarTransform",
     "ScriptTransform",
     "Transform",
+    "TruncateTransform",
     "VocabTransform",
     "WhitespaceTokenizerTransform",
     "build_fairseq_vocab",
