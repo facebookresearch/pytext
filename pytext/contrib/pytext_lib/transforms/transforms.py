@@ -10,23 +10,12 @@ from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 
 
-class Transform(nn.Module):
-    def forward(self, x: Any) -> Any:
-        raise NotImplementedError()
-
-
-class ScriptTransform(Transform):
-    def forward(self, x):
-        """If your transform is TorchScriptable, extend this"""
-        raise NotImplementedError()
-
-
-class IdentityTransform(Transform):
+class IdentityTransform(nn.Module):
     def forward(self, **kwargs) -> Any:
         return kwargs
 
 
-class RowsToColumnarTransform(Transform):
+class RowsToColumnarTransform(nn.Module):
     """Adapter to process rows format with columnar transform
 
     Many datasets are stored in rows format. It's flexible to manipulate(e.g. batching).
@@ -56,12 +45,12 @@ class RowsToColumnarTransform(Transform):
         return self.transform(**columnar)
 
 
-class WhitespaceTokenizerTransform(ScriptTransform):
+class WhitespaceTokenizerTransform(nn.Module):
     def forward(self, text: List[str]) -> List[List[str]]:
         return [t.split() for t in text]
 
 
-class VocabTransform(ScriptTransform):
+class VocabTransform(nn.Module):
     def __init__(
         self, vocab_path: Optional[str] = None, vocab_list: Optional[List[str]] = None
     ):
@@ -97,7 +86,7 @@ class VocabTransform(ScriptTransform):
         return self.vocab.lookup_indices_2d(tokens)
 
 
-class LabelTransform(ScriptTransform):
+class LabelTransform(nn.Module):
     def __init__(self, label_names: List[str]):
         super().__init__()
 
@@ -107,7 +96,7 @@ class LabelTransform(ScriptTransform):
         return self.label_vocab.lookup_indices_1d(labels)
 
 
-class TruncateTransform(ScriptTransform):
+class TruncateTransform(nn.Module):
     def __init__(self, max_seq_len: int):
         super().__init__()
         assert max_seq_len > 0
