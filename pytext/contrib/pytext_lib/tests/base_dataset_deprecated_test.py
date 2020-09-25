@@ -3,7 +3,7 @@
 import unittest
 
 import torch
-from pytext.contrib.pytext_lib.datasets.base_dataset_deprecated import (
+from pytext.contrib.pytext_lib.data.datasets.base_dataset_deprecated import (
     BaseDataset,
     PoolingBatcher,
 )
