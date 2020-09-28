@@ -1,4 +1,5 @@
 # @package _group_
+_target_: "torch.optim.AdamW"
 lr: 1.0e-05
 betas:
 - 0.9
