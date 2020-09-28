@@ -80,6 +80,7 @@ class VocabTransform(nn.Module):
                     bos_idx=vocab.get_bos_index(-1),
                     eos_idx=vocab.get_eos_index(-1),
                     unk_idx=vocab.get_unk_index(-1),
+                    unk_token=vocab.unk_token,
                 )
 
     def forward(self, tokens: List[List[str]]) -> List[List[int]]:

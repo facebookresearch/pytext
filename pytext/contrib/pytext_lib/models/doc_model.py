@@ -11,6 +11,7 @@ from pytext.contrib.pytext_lib.models.classification_heads import Classification
 from pytext.contrib.pytext_lib.models.pytext_model import PyTextModel
 from pytext.contrib.pytext_lib.transforms import build_vocab
 from pytext.models.embeddings import WordEmbedding
+from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.embeddings import PretrainedEmbedding
 
 from .mlp_decoder import MLPDecoder
@@ -55,9 +56,10 @@ class WordEmbedding(nn.Module):
         lowercase_tokens: bool = False,
         skip_header: bool = True,
         delimiter: str = " ",
+        vocab: ScriptVocabulary = None,
     ) -> None:
         super().__init__()
-        vocab = build_vocab(pretrained_embeddings_path)
+        vocab = vocab or build_vocab(pretrained_embeddings_path)
         pretrained_embedding = PretrainedEmbedding(
             pretrained_embeddings_path,
             lowercase_tokens=lowercase_tokens,
@@ -111,28 +113,30 @@ class DocModel(nn.Module):
         # word embedding config
         pretrained_embeddings_path: str,
         embedding_dim: int,
-        mlp_layer_dims: Optional[Sequence[int]] = None,
+        mlp_layer_dims: Optional[Sequence[int]] = (150,),
         lowercase_tokens: bool = False,
         skip_header: bool = True,
         delimiter: str = " ",
         # DocNN config
         kernel_num: int = 100,
-        kernel_sizes: Optional[Sequence[int]] = None,
+        kernel_sizes: Optional[Sequence[int]] = (3, 4, 5),
         pooling_type: str = "max",
         dropout: float = 0.4,
         # decoder config
         dense_dim: int = 0,
-        decoder_hidden_dims: Optional[Sequence[int]] = None,
+        decoder_hidden_dims: Optional[Sequence[int]] = (128,),
         out_dim: int = 2,
+        vocab: ScriptVocabulary = None,
     ) -> None:
         super().__init__()
         self.word_embedding = WordEmbedding(
-            pretrained_embeddings_path,
-            embedding_dim,
-            mlp_layer_dims,
-            lowercase_tokens,
-            skip_header,
-            delimiter,
+            pretrained_embeddings_path=pretrained_embeddings_path,
+            embedding_dim=embedding_dim,
+            mlp_layer_dims=mlp_layer_dims,
+            lowercase_tokens=lowercase_tokens,
+            skip_header=skip_header,
+            delimiter=delimiter,
+            vocab=vocab,
         )
         self.encoder = DocNNEncoder(
             embed_dim=self.word_embedding.get_output_dim(),
@@ -162,19 +166,20 @@ class DocClassificationModel(PyTextModel):
         # word embedding config
         pretrained_embeddings_path: str,
         embedding_dim: int,
-        mlp_layer_dims: Optional[Sequence[int]] = None,
+        mlp_layer_dims: Optional[Sequence[int]] = (150,),
         lowercase_tokens: bool = False,
         skip_header: bool = True,
         delimiter: str = " ",
         # DocNN config
         kernel_num: int = 100,
-        kernel_sizes: Optional[Sequence[int]] = None,
+        kernel_sizes: Optional[Sequence[int]] = (3, 4, 5),
         pooling_type: str = "max",
         dropout: float = 0.4,
         # decoder config
         dense_dim: int = 0,
-        decoder_hidden_dims: Optional[Sequence[int]] = None,
+        decoder_hidden_dims: Optional[Sequence[int]] = (128,),
         out_dim: int = 2,
+        vocab: ScriptVocabulary = None,
     ) -> None:
         super().__init__()
         self.doc_model = DocModel(
@@ -193,6 +198,7 @@ class DocClassificationModel(PyTextModel):
             dense_dim,
             decoder_hidden_dims,
             out_dim,
+            vocab,
         )
         self.head = ClassificationHead()
 
