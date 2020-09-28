@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import torch.nn as nn
 from pytext.contrib.pytext_lib.data.datasets.batchers import Batcher
@@ -24,7 +24,7 @@ class TsvDataset(PyTextDataset):
         is_shuffle: bool = True,
         transform: Optional[nn.Module] = None,
         custom_batcher: Optional[Batcher] = None,
-        collate_fn=None,
+        collate_fn: Optional[Callable] = None,
         chunk_size: int = 1000,
         is_cycle: bool = False,
         length: Optional[int] = None,
