@@ -7,6 +7,18 @@ from typing import Any, Dict
 from omegaconf import OmegaConf
 
 
+def to_kwargs(obj):
+    if OmegaConf.is_config(obj):
+        kwargs = dict(obj)
+    elif is_dataclass(obj):
+        kwargs = asdict(obj)
+    else:
+        kwargs = obj
+    if "_target_" in kwargs:
+        del kwargs["_target_"]
+    return kwargs
+
+
 def to_omega_conf(obj):
     if OmegaConf.is_config(obj):
         return obj

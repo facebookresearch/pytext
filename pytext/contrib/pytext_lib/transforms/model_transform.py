@@ -12,3 +12,11 @@ class ModelTransform(nn.Module):
 
     def collate_fn(self):
         raise NotImplementedError
+
+    @property
+    def label_names(self):
+        raise NotImplementedError
+
+    @property
+    def vocab(self):
+        raise NotImplementedError

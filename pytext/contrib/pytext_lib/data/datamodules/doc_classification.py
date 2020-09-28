@@ -9,7 +9,6 @@ import pytorch_lightning as pl
 import torch
 from pytext.contrib.pytext_lib.data.datasets import TsvDataset
 from pytext.contrib.pytext_lib.transforms import ModelTransform
-from pytext.contrib.pytext_lib.transforms.fb_doc_model import DocTransform
 from torch.utils.data import DataLoader
 
 
@@ -19,6 +18,7 @@ logger = logging.getLogger(__name__)
 class DocClassificationDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        transform: ModelTransform,
         # Dataset args
         train_path: str,
         val_path: str,
@@ -31,11 +31,6 @@ class DocClassificationDataModule(pl.LightningDataModule):
         chunk_size: int = 1000,
         is_cycle: bool = False,
         length: Optional[int] = None,
-        # Transform args
-        label_names: Optional[List[str]] = None,
-        sp_model_path: Optional[str] = None,
-        vocab_path: Optional[str] = None,
-        transform: Optional[ModelTransform] = None,
         *args,
         **kwargs,
     ):
@@ -43,10 +38,7 @@ class DocClassificationDataModule(pl.LightningDataModule):
         self.train_path = train_path
         self.val_path = val_path
         self.test_path = test_path
-        self.transform = transform or DocTransform(
-            sp_model_path, vocab_path, label_names
-        )
-
+        self.transform = transform
         self.dataset_partial = partial(
             TsvDataset,
             columns=columns,
