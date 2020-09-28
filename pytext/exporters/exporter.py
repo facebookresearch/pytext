@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import tempfile
 from typing import Callable, Dict, List, Tuple, Union
 
 import torch
@@ -13,7 +12,6 @@ from pytext.config.field_config import FeatureConfig
 from pytext.data import CommonMetadata
 from pytext.fields import FieldMeta
 from pytext.utils import onnx
-from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 
 
@@ -180,17 +178,12 @@ class ModelExporter(Component):
 
         print(f"Saving caffe2 model to: {export_path}")
 
-        # caffe2/onnx doesn't support internal uri(i.e. manifold)
-        # workaround: save to a temp file and copy to model_path
-        # this will be deprecated soon after caffe2 fully deprecated
-        _, temp_path = tempfile.mkstemp(prefix="pytext")
-
         c2_prepared = onnx.pytorch_to_caffe2(
             model,
             self.dummy_model_input,
             self.input_names,
             self.output_names,
-            temp_path,
+            export_path,
             export_onnx_path,
         )
         c2_prepared, final_input_names = self.prepend_operators(
@@ -215,10 +208,9 @@ class ModelExporter(Component):
             c2_prepared,
             final_input_names,
             final_out_names,
-            temp_path,
+            export_path,
             self.get_extra_params(),
         )
-        PathManager.copy_from_local(temp_path, export_path, overwrite=True)
         return final_out_names
 
     def export_to_metrics(self, model, metric_channels):
