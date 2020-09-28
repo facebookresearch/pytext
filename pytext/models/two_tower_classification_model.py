@@ -7,10 +7,6 @@ import torch
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
-from pytext.data.dense_retrieval_tensorizer import (  # noqa
-    BERTContextTensorizerForDenseRetrieval,
-    PositiveLabelTensorizerForDenseRetrieval,
-)
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import FloatListTensorizer, LabelTensorizer, Tensorizer
 from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
@@ -24,11 +20,7 @@ from pytext.models.output_layers.doc_classification_output_layer import (
     MultiLabelOutputLayer,
 )
 from pytext.models.roberta import RoBERTaEncoder, RoBERTaEncoderBase
-from pytext.torchscript.module import (
-    ScriptPyTextEmbeddingModuleIndex,
-    ScriptPyTextModule,
-    ScriptPyTextTwoTowerModuleWithDense,
-)
+from pytext.torchscript.module import ScriptPyTextTwoTowerModuleWithDense
 from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
 
