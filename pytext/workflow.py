@@ -446,6 +446,12 @@ def get_logits(
 
                 # multi-encoder output
                 if isinstance(model_outputs, tuple):
+                    # prevent breaking behaviour in default case
+                    output_columns = (
+                        range(len(model_outputs))
+                        if not output_columns
+                        else output_columns
+                    )
                     model_outputs = tuple(
                         m.tolist()
                         for i, m in enumerate(model_outputs)
