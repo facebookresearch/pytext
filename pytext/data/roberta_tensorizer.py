@@ -14,7 +14,7 @@ from pytext.data.bert_tensorizer import (
     build_fairseq_vocab,
 )
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
-from pytext.data.utils import VocabBuilder, pad_and_tensorize
+from pytext.data.utils import VocabBuilder, Vocabulary, pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
@@ -25,6 +25,7 @@ RoBERTaTensorizerScriptImpl = BERTTensorizerBaseScriptImpl
 
 class RoBERTaTensorizer(BERTTensorizerBase):
 
+    __EXPANSIBLE__ = True
     __TENSORIZER_SCRIPT_IMPL__ = RoBERTaTensorizerScriptImpl
 
     class Config(BERTTensorizerBase.Config):
@@ -35,7 +36,7 @@ class RoBERTaTensorizer(BERTTensorizerBase):
         add_selfie_token: bool = False
 
     @classmethod
-    def from_config(cls, config: Config):
+    def from_config(cls, config: Config, **kwargs):
         tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
         base_tokenizer = None
         if config.base_tokenizer:
@@ -69,6 +70,23 @@ class RoBERTaTensorizer(BERTTensorizerBase):
             tokenizer=tokenizer,
             max_seq_len=config.max_seq_len,
             base_tokenizer=base_tokenizer,
+            **kwargs,
+        )
+
+    def __init__(
+        self,
+        columns: List[str] = Config.columns,
+        vocab: Vocabulary = None,
+        tokenizer: Tokenizer = None,
+        max_seq_len: int = Config.max_seq_len,
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            columns=columns,
+            vocab=vocab,
+            tokenizer=tokenizer,
+            max_seq_len=max_seq_len,
+            **kwargs,
         )
 
 

@@ -5,17 +5,12 @@ import itertools
 from typing import List
 
 import torch
-from pytext import resources
-from pytext.common.constants import SpecialTokens
-from pytext.config.component import ComponentType, create_component
-from pytext.data.bert_tensorizer import BERTTensorizer, build_fairseq_vocab
+from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import lookup_tokens
-from pytext.data.tokenizers import Tokenizer
-from pytext.data.utils import Vocabulary, pad_and_tensorize
+from pytext.data.utils import pad_and_tensorize
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizerWithIndices
 from pytext.torchscript.vocab import ScriptVocabulary
-from pytext.utils.file_io import PathManager
 
 
 class SquadForBERTTensorizer(BERTTensorizer):
@@ -251,8 +246,10 @@ class SquadForBERTTensorizerForKD(SquadForBERTTensorizer):
         return logits[:pad_start]
 
 
-class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
+class SquadForRoBERTaTensorizer(RoBERTaTensorizer, SquadForBERTTensorizer):
     """Produces RoBERTa inputs and answer spans for Squad."""
+
+    __EXPANSIBLE__ = True
 
     class Config(RoBERTaTensorizer.Config):
         columns: List[str] = ["question", "doc"]
@@ -262,50 +259,25 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
         max_seq_len: int = 256
 
     @classmethod
-    def from_config(cls, config: Config):
-        tokenizer = create_component(ComponentType.TOKENIZER, config.tokenizer)
-
-        config.vocab_file = (
-            resources.roberta.RESOURCE_MAP[config.vocab_file]
-            if config.vocab_file in resources.roberta.RESOURCE_MAP
-            else config.vocab_file
-        )
-        with PathManager.open(config.vocab_file) as file_path:
-            vocab = build_fairseq_vocab(
-                vocab_file=file_path,
-                special_token_replacements={
-                    "<pad>": SpecialTokens.PAD,
-                    "<s>": SpecialTokens.BOS,
-                    "</s>": SpecialTokens.EOS,
-                    "<unk>": SpecialTokens.UNK,
-                    "<mask>": SpecialTokens.MASK,
-                },
-            )
-        return cls(
-            columns=config.columns,
-            vocab=vocab,
-            tokenizer=tokenizer,
-            max_seq_len=config.max_seq_len,
+    def from_config(cls, config: Config, **kwargs):
+        # reuse parent class's from_config, which will pass extra args
+        # in **kwargs to cls.__init__
+        return super().from_config(
+            config,
             answers_column=config.answers_column,
             answer_starts_column=config.answer_starts_column,
+            **kwargs,
         )
 
     def __init__(
         self,
-        columns: List[str] = Config.columns,
-        vocab: Vocabulary = None,
-        tokenizer: Tokenizer = None,
-        max_seq_len: int = Config.max_seq_len,
         answers_column: str = Config.answers_column,
         answer_starts_column: str = Config.answer_starts_column,
+        **kwargs,
     ):
-        RoBERTaTensorizer.__init__(
-            self,
-            columns=columns,
-            vocab=vocab,
-            tokenizer=tokenizer,
-            max_seq_len=max_seq_len,
-        )
+        # Arguments which are common to both current and base class are passed
+        # as **kwargs. These are then passed to the __init__ of the base class
+        super().__init__(**kwargs)
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
         self.wrap_special_tokens = False
@@ -332,3 +304,110 @@ class SquadForRoBERTaTensorizer(SquadForBERTTensorizer, RoBERTaTensorizer):
             ),
             max_seq_len=self.max_seq_len,
         )
+
+
+class SquadForRoBERTaTensorizerForKD(SquadForRoBERTaTensorizer):
+    class Config(SquadForRoBERTaTensorizer.Config):
+        start_logits_column: str = "start_logits"
+        end_logits_column: str = "end_logits"
+        has_answer_logits_column: str = "has_answer_logits"
+        pad_mask_column: str = "pad_mask"
+        segment_labels_column: str = "segment_labels"
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return super().from_config(
+            config,
+            start_logits_column=config.start_logits_column,
+            end_logits_column=config.end_logits_column,
+            has_answer_logits_column=config.has_answer_logits_column,
+            pad_mask_column=config.pad_mask_column,
+            segment_labels_column=config.segment_labels_column,
+        )
+
+    def __init__(
+        self,
+        start_logits_column=Config.start_logits_column,
+        end_logits_column=Config.end_logits_column,
+        has_answer_logits_column=Config.has_answer_logits_column,
+        pad_mask_column=Config.pad_mask_column,
+        segment_labels_column=Config.segment_labels_column,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.start_logits_column = start_logits_column
+        self.end_logits_column = end_logits_column
+        self.has_answer_logits_column = has_answer_logits_column
+        self.pad_mask_column = pad_mask_column
+        self.segment_labels_column = segment_labels_column
+
+        # For logging
+        self.total = 0
+        self.mismatches = 0
+
+    def __del__(self):
+        print("Destroying SquadForRoBERTaTensorizerForKD object")
+        print(f"SquadForRoBERTaTensorizerForKD: Number of rows read: {self.total}")
+        print(
+            f"SquadForRoBERTaTensorizerForKD: Number of rows dropped: {self.mismatches}"
+        )
+
+    def numberize(self, row):
+        self.total += 1
+        numberized_row_tuple = super().numberize(row)
+        tup = numberized_row_tuple + (
+            self._get_token_logits(
+                row[self.start_logits_column], row[self.pad_mask_column]
+            ),
+            self._get_token_logits(
+                row[self.end_logits_column], row[self.pad_mask_column]
+            ),
+            row[self.has_answer_logits_column],
+        )
+        try:
+            assert len(tup[0]) == len(tup[6])
+        except AssertionError:
+            self.mismatches += 1
+            print(
+                f"len(tup[0]) = {len(tup[0])} and len(tup[6]) = {len(tup[6])}",
+                flush=True,
+            )
+            raise
+        return tup
+
+    def tensorize(self, batch):
+        (
+            tokens,
+            segment_labels,
+            seq_lens,
+            positions,
+            answer_start_idx,
+            answer_end_idx,
+            start_logits,
+            end_logits,
+            has_answer_logits,
+        ) = zip(*batch)
+
+        tensor_tuple = super().tensorize(
+            zip(
+                tokens,
+                segment_labels,
+                seq_lens,
+                positions,
+                answer_start_idx,
+                answer_end_idx,
+            )
+        )
+        return tensor_tuple + (
+            pad_and_tensorize(start_logits, dtype=torch.float),
+            pad_and_tensorize(end_logits, dtype=torch.float),
+            pad_and_tensorize(
+                has_answer_logits,
+                dtype=torch.float,
+                pad_shape=[len(has_answer_logits), len(has_answer_logits[0])],
+            ),
+        )
+
+    def _get_token_logits(self, logits, pad_mask):
+        pad_start = pad_mask.count(self.vocab.get_pad_index())
+        return logits[:pad_start]
