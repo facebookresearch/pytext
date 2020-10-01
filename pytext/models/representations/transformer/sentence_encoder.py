@@ -46,9 +46,7 @@ class SentenceEncoder(nn.Module):
 
     def extract_features(self, tokens):
         # support passing in a single sentence
-        if tokens.dim() == 1:
-            tokens = tokens.unsqueeze(0)
-
+        tokens = tokens.view(-1, tokens.shape[-1])
         return self.transformer(tokens)
 
     def load_roberta_state_dict(self, state_dict):
@@ -62,9 +60,7 @@ class PostEncoder(SentenceEncoder):
 
     def extract_features(self, tokens, dense):
         # support passing in a single sentence
-        if tokens.dim() == 1:
-            tokens = tokens.unsqueeze(0)
-
+        tokens = tokens.view(-1, tokens.shape[-1])
         return self.transformer(tokens, dense)
 
 
