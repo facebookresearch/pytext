@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext.common.constants import Stage
@@ -33,8 +33,8 @@ class TwoTowerClassificationModel(BaseModel):
         class InputConfig(ConfigBase):
             right_tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
             left_tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
-            right_dense: FloatListTensorizer.Config = None
-            left_dense: FloatListTensorizer.Config = None
+            right_dense: Optional[FloatListTensorizer.Config] = None
+            left_dense: Optional[FloatListTensorizer.Config] = None
 
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
