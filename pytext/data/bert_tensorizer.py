@@ -162,8 +162,9 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         tokens, pad_mask = pad_2d_mask(
             tokens_2d,
             pad_value=self.vocab.pad_idx,
-            padding_control=self.padding_control,
-            max_pad_len=self.max_seq_len,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
         segment_labels = torch.tensor(
             pad_2d(segment_labels_2d, seq_lens=seq_lens_1d, pad_idx=0), dtype=torch.long

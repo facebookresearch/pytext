@@ -21,7 +21,7 @@ from pytext.data.data_structures.annotation import (
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import VectorNormalizer
-from pytext.torchscript.utils import ScriptBatchInput
+from pytext.torchscript.utils import ScriptBatchInput, validate_padding_control
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
@@ -110,28 +110,37 @@ def lookup_tokens(
 
 class TensorizerScriptImpl(torch.nn.Module):
     device: str
-    padding_control: Optional[List[int]]
+    seq_padding_control: Optional[List[int]]
+    batch_padding_control: Optional[List[int]]
 
     def __init__(self):
         super().__init__()
         self.device: str = ""
         # padding_control options:
         # None - no padding
-        # [0, pad1, pad2, pad3,...] - pads sequence length to smallest padX larger than sequence
-        self.padding_control = torch.jit.annotate(Optional[List[int]], None)
+        # [0, pad1, pad2, pad3,...] - pads sequence/batch length to smallest padX larger than sequence
+        self.seq_padding_control = None
+        self.batch_padding_control = None
 
     @torch.jit.export
     def set_device(self, device: str):
         self.device = device
 
     @torch.jit.export
-    def set_padding_control(self, control: Optional[List[int]]):
+    def set_padding_control(self, dimension: str, padding_control: Optional[List[int]]):
         """
         This functions will be called to set a padding style.
         None - No padding
         List: first element 0, round seq length to the smallest list element larger than inputs
         """
-        self.padding_control = control
+        if not validate_padding_control(padding_control):
+            raise RuntimeError("Malformed padding_control value")
+        if dimension == "sequence_length":
+            self.seq_padding_control = padding_control
+        elif dimension == "batch_length":
+            self.batch_padding_control = padding_control
+        else:
+            raise RuntimeError("Illegal padding dimension specified.")
 
     def batch_size(self, inputs: ScriptBatchInput) -> int:
         texts: Optional[List[List[str]]] = inputs.texts

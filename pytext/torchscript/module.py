@@ -224,13 +224,13 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
             raise RuntimeError("Unsupported argument type.")
 
     @torch.jit.script_method
-    def set_padding_control(self, control: Optional[List[int]]):
+    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
         """
         This functions will be called to set a padding style.
         None - No padding
         List: first element 0, round seq length to the smallest list element larger than inputs
         """
-        self.tensorizer.set_padding_control(control)
+        self.tensorizer.set_padding_control(dimension, control)
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
@@ -302,6 +302,9 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
                     # and return a list plus an indiction that one or more
                     # batch elements (and which ones) were malformed
                     raise RuntimeError("Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
 
             flat_result: torch.Tensor = self.forward(
                 texts=flat_texts,
@@ -551,8 +554,8 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         if argno == TEXTS:
             flat_texts: List[str] = []
 
-            for i in range(batchsize):
-                batch_element = batch[i][0]
+            for be in batch:
+                batch_element = be[0]
                 if batch_element is not None:
                     flat_texts.extend(batch_element)
                     client_batch.append(len(batch_element))
@@ -564,7 +567,10 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
                     # we can skip malformed requests,
                     # and return a list plus an indiction that one or more
                     # batch elements (and which ones) were malformed
-                    raise RuntimeError("Malformed request.")
+                    raise RuntimeError("(VE) Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
 
             flat_result: List[torch.Tensor] = self.forward(
                 texts=flat_texts,
@@ -584,7 +590,7 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         start = 0
         for elems in client_batch:
             end = start + elems
-            res_list.append(flat_result[start:elems])
+            res_list.append(flat_result[start:end])
             start = end
 
         return res_list
@@ -622,14 +628,14 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
             raise RuntimeError("Unsupported argument type.")
 
     @torch.jit.script_method
-    def set_padding_control(self, control: Optional[List[int]]):
+    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
         """
         This functions will be called to set a padding style.
         None - No padding
         List: first element 0, round seq length to the smallest list element larger than inputs
         """
-        self.right_tensorizer.set_padding_control(control)
-        self.left_tensorizer.set_padding_control(control)
+        self.right_tensorizer.set_padding_control(dimension, control)
+        self.left_tensorizer.set_padding_control(dimension, control)
 
     @torch.jit.script_method
     def _forward(self, right_inputs: ScriptBatchInput, left_inputs: ScriptBatchInput):

@@ -206,7 +206,8 @@ def save_and_export(
             quantize=config.torchscript_quantize,
             inference_interface=config.inference_interface,
             accelerate=config.accelerate,
-            padding_control=config.padding_control,
+            seq_padding_control=config.seq_padding_control,
+            batch_padding_control=config.batch_padding_control,
         )
 
 

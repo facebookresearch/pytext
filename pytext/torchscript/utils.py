@@ -51,6 +51,34 @@ def list_membership(item: int, list: List[int]):
 
 
 @torch.jit.script
+def validate_padding_control(padding_control: Optional[List[int]]) -> bool:
+    if padding_control is not None:
+        if len(padding_control) < 2:
+            return False
+        elif padding_control[0] != 0:
+            return False
+
+    return True
+
+
+@torch.jit.script
+def pad_length(
+    len: int, padding_control: Optional[List[int]], max_len: int = -1
+) -> int:
+    if not validate_padding_control(padding_control):
+        raise NotImplementedError
+
+    if padding_control is not None:
+        for pad in padding_control:
+            if pad >= len:
+                len = pad
+                break
+    if max_len > 0:
+        len = min(len, max_len)
+    return len
+
+
+@torch.jit.script
 def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
     l_len = len(int_list)
     res = []
@@ -76,34 +104,27 @@ def long_tensor_2d(shape: Tuple[int, int], fill_value: int = 0) -> torch.Tensor:
 def pad_2d_mask(
     input: List[List[int]],
     pad_value: int = 0,
-    padding_control: Optional[List[int]] = None,
-    max_pad_len: int = -1,
+    seq_padding_control: Optional[List[int]] = None,
+    max_seq_pad_len: int = -1,
+    batch_padding_control: Optional[List[int]] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Pad a list to a 2d tensor. Returns a pair of tensors, the padded tensor
     as well as a mask tensor. The mask tensor has the same shape as the padded tensor,
     with a 1 in the position of non-pad values and a 0 in the position of pads.
     If padding_control is set, perform padding according to the specified padding style"""
-    max_len = 0
-    for i in input:
-        max_len = max(max_len, len(i))
-    if padding_control is not None:
-        if len(padding_control) < 2:
-            raise NotImplementedError
-        elif padding_control[0] != 0:
-            raise NotImplementedError
-        else:
-            for pad in padding_control:
-                if pad >= max_len:
-                    max_len = pad
-                    break
-        if max_pad_len > 0:
-            max_len = min(max_len, max_pad_len)
-    tensor = long_tensor_2d((len(input), max_len), pad_value)
-    mask = long_tensor_2d((len(input), max_len), 0)
+
+    # List comprehension required for TorchScript
+    max_seq_len = max([len(i) for i in input])  # noqa
+    max_seq_len = pad_length(max_seq_len, seq_padding_control, max_seq_pad_len)
+
+    max_batch_len = len(input)
+    max_batch_len = pad_length(max_batch_len, batch_padding_control, -1)
+
+    tensor = long_tensor_2d((max_batch_len, max_seq_len), pad_value)
     for i in range(len(input)):
         for j in range(len(input[i])):
             tensor[i][j] = input[i][j]
-            mask[i][j] = 1
+    mask = tensor.ne(pad_value).to(torch.long)
     return tensor, mask
 
 
