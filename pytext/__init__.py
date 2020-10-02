@@ -77,7 +77,8 @@ def create_predictor(
     workspace_id = str(uuid.uuid4())
     workspace.SwitchWorkspace(workspace_id, True)
     predict_net = predictor_exporter.prepare_prediction_net(
-        filename=model_file or config.export_caffe2_path, db_type=db_type
+        filename=model_file or PathManager.get_local_path(config.export_caffe2_path),
+        db_type=db_type,
     )
 
     new_task = task or NewTask.from_config(config.task)
@@ -132,9 +133,13 @@ def batch_predict_caffe2_model(
         task, train_config, _ = load(pytext_model_file)
 
     data_source = data_source or task.data.data_source
-    logging.info("Loading Caffe2 model")
+    logging.info(f"Loading Caffe2 model: {caffe2_model_file}")
     predictor = create_predictor(
-        train_config, caffe2_model_file, db_type, task, cache_size
+        train_config,
+        PathManager.get_local_path(caffe2_model_file),
+        db_type,
+        task,
+        cache_size,
     )
     logging.info(f"Model loaded, start testing")
     predictions = [predictor(example) for example in data_source.test]
