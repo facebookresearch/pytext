@@ -703,6 +703,37 @@ def fix_fl_local_optimizer_and_trainer(json_config):
     return json_config
 
 
+@register_adapter(from_version=20)
+def v20_to_v21(json_config):
+    """
+    Support DecompWordEmbedding for FB Seq2Seq Models
+    """
+    [(task_name, task)] = json_config["task"].items()
+    if task_name not in (
+        "ScriptedNLGSeq2SeqTask",
+        "ScriptedDecoupledSeq2SeqTask",
+        "MaskSeq2SeqTask",
+        "MaskDecoupledSeq2SeqTask",
+        "FB_Seq2SeqTask",
+    ):
+        return json_config
+
+    model = task.get("model")
+    if not model:
+        return json_config
+
+    source_embedding = model["source_embedding"]
+    target_embedding = model["target_embedding"]
+    json_config["task"][task_name]["source_embedding"] = {
+        "WordEmbedding": source_embedding
+    }
+    json_config["task"][task_name]["target_embedding"] = {
+        "WordEmbedding": target_embedding
+    }
+
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
