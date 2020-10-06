@@ -703,6 +703,15 @@ def fix_fl_local_optimizer_and_trainer(json_config):
     return json_config
 
 
+@register_adapter(from_version=20)
+def upgrade_padding(json_config):
+    """
+    Upgrade config option padding_control to seq_padding_control.
+    """
+    json_config["seq_padding_control"] = json_config.pop("padding_control", None)
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
