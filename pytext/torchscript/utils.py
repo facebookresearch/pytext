@@ -122,7 +122,7 @@ def pad_2d_mask(
 
     tensor = long_tensor_2d((max_batch_len, max_seq_len), pad_value)
     for i in range(len(input)):
-        for j in range(len(input[i])):
+        for j in range(min(len(input[i]), max_seq_len)):
             tensor[i][j] = input[i][j]
     mask = tensor.ne(pad_value).to(torch.long)
     return tensor, mask
