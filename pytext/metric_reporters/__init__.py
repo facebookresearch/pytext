@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from .calibration_metric_reporter import CalibrationMetricReporter
 from .channel import Channel
 from .classification_metric_reporter import (
     ClassificationMetricReporter,
@@ -25,6 +26,7 @@ from .word_tagging_metric_reporter import (
 __all__ = [
     "Channel",
     "MetricReporter",
+    "CalibrationMetricReporter",
     "ClassificationMetricReporter",
     "MultiLabelClassificationMetricReporter",
     "MultiLabelSequenceTaggingMetricReporter",
