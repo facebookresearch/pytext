@@ -9,7 +9,7 @@ from pytext.config.field_config import EmbedInitStrategy
 from pytext.config.module_config import PoolingType
 from pytext.contrib.pytext_lib.models.classification_heads import ClassificationHead
 from pytext.contrib.pytext_lib.models.pytext_model import PyTextModel
-from pytext.contrib.pytext_lib.transforms import build_vocab
+from pytext.contrib.pytext_lib.utils.vocab_util import build_vocab
 from pytext.models.embeddings import WordEmbedding
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.embeddings import PretrainedEmbedding
