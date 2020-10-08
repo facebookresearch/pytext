@@ -10,7 +10,6 @@ from .transforms import (
     VocabTransform,
     WhitespaceTokenizerTransform,
 )
-from .transforms_deprecated import build_fairseq_vocab, build_vocab
 
 
 __all__ = [
@@ -21,6 +20,4 @@ __all__ = [
     "TruncateTransform",
     "VocabTransform",
     "WhitespaceTokenizerTransform",
-    "build_fairseq_vocab",
-    "build_vocab",
 ]
