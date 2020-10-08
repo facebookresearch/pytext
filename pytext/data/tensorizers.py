@@ -997,6 +997,10 @@ class LabelTensorizer(Tensorizer):
         label_vocab_file: Optional[str] = None
         # Indicate if it can be used to generate input Tensors for prediction.
         is_input: bool = False
+        #: Add these labels to the vocabulary during the initialization step (only
+        #: if the initialization step is not skipped). Useful when the dataset may
+        #: not include all labels, as for incremental trainings.
+        add_labels: Optional[List[str]] = None
 
     @classmethod
     def from_config(cls, config: Config):
@@ -1017,12 +1021,14 @@ class LabelTensorizer(Tensorizer):
         label_vocab: Optional[List[str]] = None,
         label_vocab_file: Optional[str] = None,
         is_input: bool = Config.is_input,
+        add_labels: Optional[List[str]] = None,
     ):
         self.label_column = label_column
         self.pad_in_vocab = pad_in_vocab
         self.vocab_builder = VocabBuilder()
         self.vocab_builder.use_pad = pad_in_vocab
         self.vocab_builder.use_unk = allow_unknown
+        self.add_labels = add_labels
         self.vocab = None
         self.pad_idx = -1
         assert (
@@ -1055,6 +1061,8 @@ class LabelTensorizer(Tensorizer):
                 labels = row[self.label_column]
                 self.vocab_builder.add_all(labels)
         except GeneratorExit:
+            if self.add_labels:
+                self.vocab_builder.add_all(self.add_labels)
             self.vocab, self.pad_idx = self._create_vocab()
 
     def _create_vocab(self):
