@@ -55,8 +55,8 @@ class RobertaModelConf(ModelConf):
 
 
 @dataclass
-class DocClassificationModelConf(ModelConf):
-    _target_: str = "pytext.contrib.pytext_lib.models.DocClassificationModel"
+class DocModelConf(ModelConf):
+    _target_: str = "pytext.contrib.pytext_lib.models.DocModel"
     # word embedding config
     pretrained_embeddings_path: str = MISSING
     embedding_dim: int = MISSING
@@ -158,10 +158,10 @@ cs.store(group="schema/task/model", name="xlmr", node=RobertaModelConf)
 cs.store(group="task/model", name="xlmr_base", node=RobertaModelConf)
 cs.store(group="task/model", name="xlmr_dummy", node=RobertaModelConf)
 
-cs.store(group="schema/task/model", name="doc_model", node=DocClassificationModelConf)
-cs.store(group="task/model", name="doc_model_dummy", node=DocClassificationModelConf)
-cs.store(group="task/model", name="doc_model_with_spm", node=DocClassificationModelConf)
-cs.store(group="task/model", name="doc_model_with_xlu", node=DocClassificationModelConf)
+cs.store(group="schema/task/model", name="doc_model", node=DocModelConf)
+cs.store(group="task/model", name="doc_model_dummy", node=DocModelConf)
+cs.store(group="task/model", name="doc_model_with_spm", node=DocModelConf)
+cs.store(group="task/model", name="doc_model_with_xlu", node=DocModelConf)
 
 cs.store(group="task/optim", name="adamw", node=OptimConf)
 cs.store(group="task/optim", name="fairseq_adam", node=OptimConf)

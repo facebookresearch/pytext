@@ -27,7 +27,7 @@ class TestModels(unittest.TestCase):
     def test_load_doc_model(self):
         transform = VocabTransform(os.path.join(self.base_dir, "vocab_dummy"))
         vocab = transform.vocab
-        model = models.DocClassificationModel(
+        model = models.DocModel(
             pretrained_embeddings_path=os.path.join(
                 self.base_dir, "word_embedding_dummy"
             ),
