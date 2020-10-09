@@ -5,5 +5,5 @@ max_epochs: 1
 num_sanity_val_steps: 0
 log_gpu_memory: min_max
 reload_dataloaders_every_epoch: true
-row_log_interval: 10
+log_every_n_steps: 10
 checkpoint_callback: false
