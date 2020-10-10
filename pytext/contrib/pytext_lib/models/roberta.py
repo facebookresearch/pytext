@@ -18,11 +18,10 @@ from pytext.models.representations.transformer.sentence_encoder import (
 from pytext.utils.file_io import PathManager
 from torch.serialization import default_restore_location
 
-from .classification_heads import ClassificationHead
 from .mlp_decoder import MLPDecoder
 
 
-class RoBERTaEncoder(nn.Module):
+class RobertaEncoder(nn.Module):
     def __init__(
         self,
         vocab_size: int,
@@ -79,96 +78,36 @@ def init_params(module):
 
 
 class RobertaModel(nn.Module):
-    def __init__(self, encoder: nn.Module, decoder: nn.Module):
+    def __init__(
+        self,
+        model_path: str,
+        dense_dim: int,
+        embedding_dim: int,
+        out_dim: int,
+        vocab_size: int,
+        num_attention_heads: int,
+        num_encoder_layers: int,
+        output_dropout: float,
+        bias: bool = True,
+    ):
         super().__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = RobertaEncoder(
+            vocab_size=vocab_size,
+            embedding_dim=embedding_dim,
+            num_attention_heads=num_attention_heads,
+            num_encoder_layers=num_encoder_layers,
+            output_dropout=output_dropout,
+            model_path=model_path,
+        )
+        self.decoder = MLPDecoder(
+            in_dim=embedding_dim + dense_dim,
+            out_dim=out_dim,
+            bias=bias,
+            activation=Activation.GELU,
+        )
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
         tokens = inputs["token_ids"]
         dense: Optional[torch.Tensor] = inputs["dense"] if "dense" in inputs else None
         representation = self.encoder(tokens)
         return self.decoder(representation, dense=dense)
-
-
-class RobertaModelForBinaryDocClassification(RobertaModel):
-    def __init__(self, encoder: nn.Module, decoder: nn.Module):
-        super().__init__(encoder, decoder)
-        self.head = ClassificationHead(is_binary=False)
-
-    def get_pred(self, logits: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.head(logits)
-
-    def get_loss(self, logits, targets):
-        return self.head.get_loss(logits, targets)
-
-
-def build_model(
-    model_path: str,
-    dense_dim: int,
-    embedding_dim: int,
-    out_dim: int,
-    vocab_size: int,
-    num_attention_heads: int,
-    num_encoder_layers: int,
-    output_dropout: float,
-    bias: bool = True,
-):
-    encoder = RoBERTaEncoder(
-        vocab_size=vocab_size,
-        embedding_dim=embedding_dim,
-        num_attention_heads=num_attention_heads,
-        num_encoder_layers=num_encoder_layers,
-        output_dropout=output_dropout,
-        model_path=model_path,
-    )
-    decoder = MLPDecoder(
-        in_dim=embedding_dim + dense_dim,
-        out_dim=out_dim,
-        bias=bias,
-        activation=Activation.GELU,
-    )
-    model = RobertaModelForBinaryDocClassification(encoder=encoder, decoder=decoder)
-    return model
-
-
-def roberta_base_binary_doc_classifier(pretrained=True):
-    model_path = url.URL[url.ROBERTA_BASE_TORCH] if pretrained else None
-    return build_model(
-        model_path=model_path,
-        dense_dim=0,
-        embedding_dim=768,
-        out_dim=2,
-        vocab_size=50265,
-        num_attention_heads=12,
-        num_encoder_layers=12,
-        output_dropout=0.4,
-    )
-
-
-def xlmr_base_binary_doc_classifier(pretrained=True):
-    model_path = url.URL[url.XLMR_BASE] if pretrained else None
-    return build_model(
-        model_path=model_path,
-        dense_dim=0,
-        embedding_dim=768,
-        out_dim=2,
-        vocab_size=250002,
-        num_attention_heads=12,
-        num_encoder_layers=12,
-        output_dropout=0.4,
-    )
-
-
-def xlmr_dummy_binary_doc_classifier(pretrained=False):
-    model_path = url.URL[url.XLMR_DUMMY] if pretrained else None
-    return build_model(
-        model_path=model_path,
-        dense_dim=0,
-        embedding_dim=32,
-        out_dim=2,
-        vocab_size=105,
-        num_attention_heads=1,
-        num_encoder_layers=1,
-        output_dropout=0.4,
-    )

@@ -42,6 +42,7 @@ class ModelConf:
 
 @dataclass
 class RobertaModelConf(ModelConf):
+    _target_: str = "pytext.contrib.pytext_lib.models.RobertaModel"
     model_path: Optional[str] = None
     dense_dim: Optional[int] = 0
     embedding_dim: int = 32
@@ -51,7 +52,6 @@ class RobertaModelConf(ModelConf):
     num_encoder_layers: int = 1
     output_dropout: float = 0.4
     bias: bool = True
-    # TODO: @steven make Roberta model accept primitive atgs, then add _target_
 
 
 @dataclass

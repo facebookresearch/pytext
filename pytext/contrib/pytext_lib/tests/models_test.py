@@ -12,17 +12,18 @@ class TestModels(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.join(os.path.dirname(__file__), "data")
 
-    def test_load_xlmr_dummy(self):
-        model = models.xlmr_dummy_binary_doc_classifier(pretrained=False)
-        assert isinstance(model, nn.Module)
-
-    def test_load_roberta_base(self):
-        model = models.roberta_base_binary_doc_classifier(pretrained=False)
-        assert isinstance(model, nn.Module)
-
-    def test_load_xlmr_base(self):
-        model = models.xlmr_base_binary_doc_classifier(pretrained=False)
-        assert isinstance(model, nn.Module)
+    def test_load_roberta(self):
+        model = models.RobertaModel(
+            model_path=None,
+            dense_dim=0,
+            embedding_dim=32,
+            out_dim=2,
+            vocab_size=105,
+            num_attention_heads=1,
+            num_encoder_layers=1,
+            output_dropout=0.4,
+        )
+        self.assertTrue(isinstance(model, nn.Module))
 
     def test_load_doc_model(self):
         transform = VocabTransform(os.path.join(self.base_dir, "vocab_dummy"))
@@ -39,4 +40,4 @@ class TestModels(unittest.TestCase):
             decoder_hidden_dims=(2,),
             vocab=vocab,
         )
-        assert isinstance(model, nn.Module)
+        self.assertTrue(isinstance(model, nn.Module))
