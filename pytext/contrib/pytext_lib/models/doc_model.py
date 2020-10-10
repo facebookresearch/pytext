@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.config.module_config import PoolingType
-from pytext.contrib.pytext_lib.models.classification_heads import ClassificationHead
-from pytext.contrib.pytext_lib.models.pytext_model import PyTextModel
 from pytext.contrib.pytext_lib.utils.vocab_util import build_vocab
 from pytext.models.embeddings import WordEmbedding
 from pytext.torchscript.vocab import ScriptVocabulary
@@ -158,56 +156,3 @@ class DocModel(nn.Module):
         word_embedding_output = self.word_embedding(tokens)
         encoder_output = self.encoder(word_embedding_output)
         return self.decoder(encoder_output, denses)
-
-
-class DocClassificationModel(PyTextModel):
-    def __init__(
-        self,
-        # word embedding config
-        pretrained_embeddings_path: str,
-        embedding_dim: int,
-        mlp_layer_dims: Optional[Sequence[int]] = (150,),
-        lowercase_tokens: bool = False,
-        skip_header: bool = True,
-        delimiter: str = " ",
-        # DocNN config
-        kernel_num: int = 100,
-        kernel_sizes: Optional[Sequence[int]] = (3, 4, 5),
-        pooling_type: str = "max",
-        dropout: float = 0.4,
-        # decoder config
-        dense_dim: int = 0,
-        decoder_hidden_dims: Optional[Sequence[int]] = (128,),
-        out_dim: int = 2,
-        vocab: ScriptVocabulary = None,
-    ) -> None:
-        super().__init__()
-        self.doc_model = DocModel(
-            pretrained_embeddings_path,
-            embedding_dim,
-            mlp_layer_dims,
-            lowercase_tokens,
-            skip_header,
-            delimiter,
-            # DocNN config
-            kernel_num,
-            kernel_sizes,
-            pooling_type,
-            dropout,
-            # decoder config
-            dense_dim,
-            decoder_hidden_dims,
-            out_dim,
-            vocab,
-        )
-        self.head = ClassificationHead()
-
-    def forward(
-        self, inputs: Dict[str, torch.Tensor]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        logits = self.doc_model(inputs)
-        return self.head(logits)
-
-    def get_loss(self, inputs: Dict[str, torch.Tensor], targets) -> torch.Tensor:
-        logits = self.doc_model(inputs)
-        return self.head.get_loss(logits, targets)
