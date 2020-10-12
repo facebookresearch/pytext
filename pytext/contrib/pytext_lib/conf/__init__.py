@@ -30,9 +30,26 @@ class DataConf:
 
 @dataclass
 class TransformConf:
-    _target_: str = "pytext.contrib.pytext_lib.transforms.fb_doc_transform.DocTransform"
     label_names: Optional[List[str]] = field(default_factory=lambda: ["True", "False"])
+
+
+@dataclass
+class DocTransformConf(TransformConf):
+    _target_: str = "pytext.contrib.pytext_lib.transforms.fb_doc_transform.DocTransform"
     vocab_path: Optional[str] = None
+    sp_model_path: Optional[str] = None
+
+
+@dataclass
+class RobertaTransformConf(TransformConf):
+    _target_: str = "pytext.contrib.pytext_lib.transforms.fb_roberta.RobertaTransform"
+
+
+@dataclass
+class XlmrTransformConf(TransformConf):
+    _target_: str = "pytext.contrib.pytext_lib.transforms.fb_roberta.XlmrTransform"
+    vocab_path: Optional[str] = None
+    sp_model_path: Optional[str] = None
 
 
 @dataclass
@@ -124,24 +141,25 @@ class DocClassificationDataModuleConf(DataModuleConf):
     chunk_size: int = 1000
     is_cycle: bool = False
     length: Optional[int] = None
-    transform: TransformConf = TransformConf()
 
 
 @dataclass
 class TaskConf:
     _target_: str = "pytext.contrib.pytext_lib.tasks.fb_doc_classification_task.DocClassificationTask"
+    transform: TransformConf = MISSING
+    datamodule: DataModuleConf = MISSING
     model: ModelConf = MISSING
     optim: OptimConf = MISSING
 
 
 @dataclass
 class PyTextConf:
-    datamodule: DataModuleConf = MISSING
     task: TaskConf = TaskConf()
     trainer: TrainerConf = TrainerConf()
     defaults: List[Any] = field(
         default_factory=lambda: (
-            {"datamodule": "doc_classification"},
+            {"task/transform": "doc_transform"},
+            {"task/datamodule": "doc_classification"},
             {"task/model": "doc_model_with_spm"},
             {"task/optim": "fairseq_adam"},
             {"trainer": "cpu"},
@@ -152,7 +170,18 @@ class PyTextConf:
 cs = ConfigStore.instance()
 cs.store(group="data", name="sst2", node=DataConf)
 cs.store(group="data", name="sst2_dummy", node=DataConf)
-cs.store(group="transform", name="roberta", node=TransformConf)
+
+cs.store(group="schema/task/transform", name="doc_transform", node=DocTransformConf)
+cs.store(group="task/transform", name="doc_transform", node=DocTransformConf)
+
+cs.store(
+    group="schema/task/transform", name="roberta_transform", node=RobertaTransformConf
+)
+cs.store(group="task/transform", name="roberta_transform", node=RobertaTransformConf)
+
+cs.store(group="schema/task/transform", name="xlmr_transform", node=XlmrTransformConf)
+cs.store(group="task/transform", name="xlmr_transform", node=XlmrTransformConf)
+cs.store(group="task/transform", name="xlmr_dummy_transform", node=XlmrTransformConf)
 
 cs.store(group="schema/task/model", name="xlmr", node=RobertaModelConf)
 cs.store(group="task/model", name="xlmr_base", node=RobertaModelConf)
@@ -170,15 +199,17 @@ cs.store(group="task/optim", name="fairseq_adam", node=OptimConf)
 cs.store(name="config", node=DocClassificationConfig)
 
 cs.store(
-    group="schema/datamodule",
+    group="schema/task/datamodule",
     name="doc_classification",
     node=DocClassificationDataModuleConf,
 )
 cs.store(
-    group="datamodule", name="doc_classification", node=DocClassificationDataModuleConf
+    group="task/datamodule",
+    name="doc_classification",
+    node=DocClassificationDataModuleConf,
 )
 cs.store(
-    group="datamodule",
+    group="task/datamodule",
     name="doc_classification_dummy",
     node=DocClassificationDataModuleConf,
 )

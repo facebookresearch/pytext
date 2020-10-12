@@ -1,0 +1,6 @@
+# @package _group_
+label_names:
+- '0'
+- '1'
+vocab_path: manifold://nlp_technologies/tree/xlm/models/xlm_r/vocab
+sp_model_path: manifold://nlp_technologies/tree/xlm/models/xlm_r/sp_model
