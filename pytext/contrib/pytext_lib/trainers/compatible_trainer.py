@@ -6,6 +6,7 @@ from contextlib import ExitStack as contextlib_ExitStack
 from typing import Any, List, Tuple
 
 import torch
+import torch.nn.functional as F
 from pytext.common.constants import Stage
 from pytext.config import PyTextConfig
 from pytext.metric_reporters import ClassificationMetricReporter, MetricReporter
@@ -36,6 +37,7 @@ class CompatibleTrainer(TaskTrainer):
         if not config:
             config = CompatibleTrainer.Config(**kwargs)
 
+        self.loss = torch.nn.CrossEntropyLoss()
         super().__init__(config, model)
 
     def train(
@@ -225,7 +227,7 @@ class CompatibleTrainer(TaskTrainer):
                 maybe_accumulate_gradients(exit_stack, model, idx, sample_size)
                 logits = model(batch)
                 targets = batch["label_ids"]
-                loss = model.get_loss(logits, targets)
+                loss = self.loss(logits, targets)
                 if sample_size > 1:
                     # gradients averaged per batch and accumulated across samples.
                     # divide sample_size to let gradients averaged per example
@@ -234,7 +236,8 @@ class CompatibleTrainer(TaskTrainer):
 
             if report_metric:
                 with timing.time("add metrics"):
-                    predictions, scores = model.get_pred(logits)
+                    predictions = torch.max(logits, -1)[1]
+                    scores = F.log_softmax(logits)
                     # [len(targets)] means the batch_size, it's required by add_batch_stats
                     # Will rewrite metric_reporter rather than fixing it
                     metric_data = (predictions, targets, scores, loss, [targets])
