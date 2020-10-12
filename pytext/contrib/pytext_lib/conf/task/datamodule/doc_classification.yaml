@@ -7,8 +7,3 @@ columns:
 - label
 batch_size: 32
 is_shuffle: False
-transform:
-  label_names:
-    - 0
-    - 1
-  vocab_path: manifold://nlp_technologies/tree/xlm/models/xlm_r/vocab
