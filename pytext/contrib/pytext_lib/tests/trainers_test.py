@@ -21,7 +21,16 @@ class TestTrainers(unittest.TestCase):
 
     def test_simple_trainer(self):
         train_dataloader = self._generate_data()
-        model = models.xlmr_dummy_binary_doc_classifier(pretrained=False)
+        model = models.RobertaModel(
+            model_path=None,
+            dense_dim=0,
+            embedding_dim=32,
+            out_dim=2,
+            vocab_size=105,
+            num_attention_heads=1,
+            num_encoder_layers=1,
+            output_dropout=0.4,
+        )
         optimizer = Adam(model.parameters(), lr=0.001, weight_decay=0.00001, eps=1e-8)
         trainer = SimpleTrainer()
         trained_model = trainer.fit(train_dataloader, model, optimizer, epoch=1)
@@ -30,7 +39,16 @@ class TestTrainers(unittest.TestCase):
     def test_compatible_trainer(self):
         train_dataloader = self._generate_data()
         val_dataloader = self._generate_data()
-        model = models.xlmr_dummy_binary_doc_classifier(pretrained=False)
+        model = models.RobertaModel(
+            model_path=None,
+            dense_dim=0,
+            embedding_dim=32,
+            out_dim=2,
+            vocab_size=105,
+            num_attention_heads=1,
+            num_encoder_layers=1,
+            output_dropout=0.4,
+        )
         optimizer = Adam(model.parameters(), lr=0.001, weight_decay=0.00001, eps=1e-8)
         trainer = CompatibleTrainer(model, epochs=1)
         trained_model, _ = trainer.train(
