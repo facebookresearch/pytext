@@ -1011,6 +1011,7 @@ class LabelTensorizer(Tensorizer):
             config.label_vocab,
             config.label_vocab_file,
             config.is_input,
+            config.add_labels,
         )
 
     def __init__(
