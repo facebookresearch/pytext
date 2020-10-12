@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reservedimport pytext_lib
 
-from .doc_model import DocClassificationModel
+from .doc_model import DocModel
 from .roberta import (
     roberta_base_binary_doc_classifier,
     xlmr_base_binary_doc_classifier,
@@ -10,7 +10,7 @@ from .roberta import (
 
 
 __all__ = [
-    "DocClassificationModel",
+    "DocModel",
     "roberta_base_binary_doc_classifier",
     "xlmr_base_binary_doc_classifier",
     "xlmr_dummy_binary_doc_classifier",

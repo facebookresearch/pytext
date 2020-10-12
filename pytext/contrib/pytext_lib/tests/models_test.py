@@ -5,9 +5,6 @@ import unittest
 
 import torch.nn as nn
 from pytext.contrib.pytext_lib import models
-from pytext.contrib.pytext_lib.models.intent_slot_model import (
-    build_dumb_intent_slot_model,
-)
 from pytext.contrib.pytext_lib.transforms import VocabTransform
 
 
@@ -27,14 +24,10 @@ class TestModels(unittest.TestCase):
         model = models.xlmr_base_binary_doc_classifier(pretrained=False)
         assert isinstance(model, nn.Module)
 
-    def test_load_intent_slot(self):
-        model = build_dumb_intent_slot_model()
-        assert isinstance(model, nn.Module)
-
     def test_load_doc_model(self):
         transform = VocabTransform(os.path.join(self.base_dir, "vocab_dummy"))
         vocab = transform.vocab
-        model = models.DocClassificationModel(
+        model = models.DocModel(
             pretrained_embeddings_path=os.path.join(
                 self.base_dir, "word_embedding_dummy"
             ),

@@ -124,7 +124,10 @@ class CharacterEmbedding(EmbeddingBase):
             Token embedding size = `out_channels * len(self.convs))`
 
         """
-        batch_size, max_sent_length, max_word_length = tuple(chars.size())
+        batch_size = chars.size(0)
+        max_sent_length = chars.size(1)
+        max_word_length = chars.size(2)
+
         chars = chars.view(batch_size * max_sent_length, max_word_length)
 
         # char_embedding: (bsize * max_sent_length, max_word_length, embed_dim)
