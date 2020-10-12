@@ -14,6 +14,7 @@ from torch import jit
 
 from .doc_classification_output_layer import ClassificationOutputLayer
 from .output_layer_base import OutputLayerBase
+from .utils import query_word_reprs
 from .word_tagging_output_layer import CRFOutputLayer, WordTaggingOutputLayer
 
 
@@ -31,11 +32,7 @@ class IntentSlotScores(nn.Module):
     ) -> Tuple[List[Dict[str, float]], List[List[Dict[str, float]]]]:
         d_logits, w_logits = logits
         if "token_indices" in context:
-            w_logits = torch.gather(
-                w_logits,
-                1,
-                context["token_indices"].unsqueeze(2).expand(-1, -1, w_logits.size(-1)),
-            )
+            w_logits = query_word_reprs(w_logits, context["token_indices"])
 
         d_results = self.doc_scores(d_logits)
         w_results = self.word_scores(w_logits, context)
@@ -114,13 +111,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
         """
         d_logit, w_logit = logits
         if DatasetFieldName.TOKEN_INDICES in context:
-            w_logit = torch.gather(
-                w_logit,
-                1,
-                context[DatasetFieldName.TOKEN_INDICES]
-                .unsqueeze(2)
-                .expand(-1, -1, w_logit.size(-1)),
-            )
+            w_logit = query_word_reprs(w_logit, context[DatasetFieldName.TOKEN_INDICES])
         d_target, w_target = targets
         d_weight = context[DatasetFieldName.DOC_WEIGHT_FIELD]  # noqa
         w_weight = context[DatasetFieldName.WORD_WEIGHT_FIELD]  # noqa
@@ -161,13 +152,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
         """
         d_logit, w_logit = logits
         if DatasetFieldName.TOKEN_INDICES in context:
-            w_logit = torch.gather(
-                w_logit,
-                1,
-                context[DatasetFieldName.TOKEN_INDICES]
-                .unsqueeze(2)
-                .expand(-1, -1, w_logit.size(-1)),
-            )
+            w_logit = query_word_reprs(w_logit, context[DatasetFieldName.TOKEN_INDICES])
         d_pred, d_score = self.doc_output.get_pred(d_logit, None, context)
         w_pred, w_score = self.word_output.get_pred(w_logit, None, context)
         return (d_pred, w_pred), (d_score, w_score)
