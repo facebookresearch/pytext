@@ -101,17 +101,21 @@ class WordpieceTokenizerTest(unittest.TestCase):
 
 class GPT2BPETest(unittest.TestCase):
     def test_gpt2_bpe_tokenizer(self):
-        text = "Prototype"
-        expected = [Token("19703", 0, 4), Token("8690", 4, 9)]
         tokenizer = GPT2BPETokenizer.from_config(
             GPT2BPETokenizer.Config(
                 bpe_vocab_path="pytext/data/test/data/gpt2_vocab.bpe",
                 bpe_encoder_path="pytext/data/test/data/gpt2_encoder.json",
             )
         )
-        tokens = tokenizer.tokenize(text)
-        print(tokens)
-        self.assertEqual(tokens, expected)
+        text_list = ["Prototype", " Prototype"]
+        expected_list = [
+            [Token("19703", 0, 4), Token("8690", 4, 9)],
+            [Token("220", 0, 0), Token("19703", 1, 5), Token("8690", 5, 10)],
+        ]
+
+        for (text, expected) in zip(text_list, expected_list):
+            tokens = tokenizer.tokenize(text)
+            self.assertEqual(tokens, expected)
 
 
 class SentencePieceTokenizerTest(unittest.TestCase):
