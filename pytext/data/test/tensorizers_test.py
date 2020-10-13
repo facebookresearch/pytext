@@ -471,15 +471,17 @@ class TensorizersTest(unittest.TestCase):
 
     def test_create_label_tensors_add_labels(self):
         add_labels = ["add_label_1", "add_label_2"]
-        tensorizer = LabelTensorizer(label_column="label", add_labels=add_labels)
+        tensorizer = LabelTensorizer.from_config(
+            LabelTensorizer.Config(add_labels=add_labels)
+        )
         self._initialize_tensorizer(tensorizer)
         self.assertEqual(7 + len(add_labels), len(tensorizer.vocab))
 
     def test_create_label_tensors_label_vocab(self):
         add_labels = ["add_label_1", "add_label_2"]
         label_vocab = ["label_1", "label_2"]
-        tensorizer = LabelTensorizer(
-            label_column="label", label_vocab=label_vocab, add_labels=add_labels
+        tensorizer = LabelTensorizer.from_config(
+            LabelTensorizer.Config(label_vocab=label_vocab, add_labels=add_labels)
         )
         # skip initialization when using label_vocab.
         with self.assertRaises(StopIteration):
