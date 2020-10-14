@@ -150,21 +150,14 @@ class TaskConf:
     datamodule: DataModuleConf = MISSING
     model: ModelConf = MISSING
     optim: OptimConf = MISSING
+    metric: ClassificationMetricReporterConf = ClassificationMetricReporterConf()
 
 
 @dataclass
 class PyTextConf:
     task: TaskConf = TaskConf()
     trainer: TrainerConf = TrainerConf()
-    defaults: List[Any] = field(
-        default_factory=lambda: (
-            {"task/transform": "doc_transform"},
-            {"task/datamodule": "doc_classification"},
-            {"task/model": "doc_model_with_spm"},
-            {"task/optim": "fairseq_adam"},
-            {"trainer": "cpu"},
-        )
-    )
+    use_mock: bool = False
 
 
 cs = ConfigStore.instance()
@@ -214,3 +207,4 @@ cs.store(
     node=DocClassificationDataModuleConf,
 )
 cs.store(name="pytext_config", node=PyTextConf)
+cs.store(name="xlmr_classifier_sst2", node=PyTextConf)
