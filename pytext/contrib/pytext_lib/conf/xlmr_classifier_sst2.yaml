@@ -1,0 +1,6 @@
+defaults:
+  - task/transform: xlmr_transform
+  - task/datamodule: doc_classification
+  - task/model: xlmr_base
+  - task/optim: adamw
+  - trainer: cpu
