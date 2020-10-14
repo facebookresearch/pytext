@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import pytorch_lightning as pl
 import torch
-from pytext.contrib.pytext_lib.data.datasets import TsvDataset
+from pytext.contrib.pytext_lib.data.datasets import DeprecatedTsvDataset as TsvDataset
 from pytext.contrib.pytext_lib.transforms import ModelTransform
 from torch.utils.data import DataLoader
 

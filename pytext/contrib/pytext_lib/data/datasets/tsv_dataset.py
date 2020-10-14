@@ -13,7 +13,7 @@ from pytext.data.sources.tsv import TSV
 logger = logging.getLogger(__name__)
 
 
-class TsvDataset(PyTextDataset):
+class DeprecatedTsvDataset(PyTextDataset):
     def __init__(
         self,
         path: str,
