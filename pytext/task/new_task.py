@@ -18,6 +18,7 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch import jit, sort
 
+from .quantize import quantize_statically
 from .task import TaskBase
 
 
@@ -313,7 +314,11 @@ class _NewTask(TaskBase):
             model.half()
         if quantize and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
-            trace = model.graph_mode_quantize(inputs, data_loader)
+            print("Quantizing the model ...")
+            quantize_linear_only = "nnpi_quantize" in accelerate
+            trace = quantize_statically(
+                model, inputs, data_loader, quantize_linear_only
+            )
         else:
             if quantize:
                 model.quantize()

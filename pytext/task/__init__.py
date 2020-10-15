@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .new_task import NewTask, _NewTask
+from .quantize import quantize_statically
 from .serialize import get_latest_checkpoint_path, load, save
 from .task import Task_Deprecated, TaskBase, create_task
 
@@ -15,4 +16,5 @@ __all__ = [
     "load",
     "create_task",
     "get_latest_checkpoint_path",
+    "quantize_statically",
 ]

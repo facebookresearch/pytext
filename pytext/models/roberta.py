@@ -278,15 +278,14 @@ class RoBERTa(NewBertModel):
                     tensorizer=script_tensorizer,
                 )
 
-    def graph_mode_quantize(self, inputs, data_loader, calibration_num_batches=64):
-        """Quantize the model during export with graph mode quantization for linformer encoder."""
-        if (
-            isinstance(self.encoder, RoBERTaEncoder)
-            and self.encoder.use_linformer_encoder
-        ):
+    def graph_mode_quantize(
+        self, inputs, data_loader, calibration_num_batches=64, qconfig_dict=None
+    ):
+        """Quantize the model during export with graph mode quantization."""
+        if isinstance(self.encoder, RoBERTaEncoder):
             trace = self.trace(inputs)
-            qconfig = get_default_qconfig("fbgemm")
-            qconfig_dict = {"": qconfig}
+            if not qconfig_dict:
+                qconfig_dict = {"": get_default_qconfig("fbgemm")}
             prepare_m = prepare_jit(trace, qconfig_dict, inplace=False)
             prepare_m.eval()
             with torch.no_grad():
