@@ -12,8 +12,8 @@ def get_single_unk_token(
     src_tokens: List[str], word_ids: List[int], copy_unk_token: bool, unk_idx: int
 ):
     """Returns the string representation of the first UNK
-       we get in our source utterance. We can then use this string instead of
-       writing "<UNK>" in our decoding.
+    we get in our source utterance. We can then use this string instead of
+    writing "<UNK>" in our decoding.
     """
     if copy_unk_token:
         for i, x in enumerate(word_ids):

@@ -153,7 +153,9 @@ class WordPieceTokenizer(Tokenizer):
 
     class Config(ConfigBase):
         basic_tokenizer: BERTInitialTokenizer.Config = BERTInitialTokenizer.Config()
-        wordpiece_vocab_path: str = "/mnt/vol/nlp_technologies/bert/uncased_L-12_H-768_A-12/vocab.txt"
+        wordpiece_vocab_path: str = (
+            "/mnt/vol/nlp_technologies/bert/uncased_L-12_H-768_A-12/vocab.txt"
+        )
 
     def __init__(self, wordpiece_vocab, basic_tokenizer, wordpiece_tokenizer) -> None:
         self.vocab = wordpiece_vocab

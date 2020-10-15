@@ -65,7 +65,7 @@ class IntentSlotModel(Model):
             SharedCNNRepresentation.Config,
             PassThroughRepresentation.Config,
         ] = BiLSTMDocSlotAttention.Config()
-        output_layer: IntentSlotOutputLayer.Config = (IntentSlotOutputLayer.Config())
+        output_layer: IntentSlotOutputLayer.Config = IntentSlotOutputLayer.Config()
         decoder: IntentSlotModelDecoder.Config = IntentSlotModelDecoder.Config()
         default_doc_loss_weight: float = 0.2
         default_word_loss_weight: float = 0.5

@@ -10,7 +10,7 @@ from pytext.utils.file_io import PathManager
 
 
 class DenseRetrievalDataSource(DataSource):
-    """ Data source for DPR (https://github.com/facebookresearch/DPR).
+    """Data source for DPR (https://github.com/facebookresearch/DPR).
 
     Expects multiline json for lazy loading and improved memory usage.
     The original DPR files can be converted to multiline json using `jq -c .[]`

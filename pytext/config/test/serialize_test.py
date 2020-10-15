@@ -45,8 +45,8 @@ class SerializeTest(unittest.TestCase):
 
     def test_config_to_json_for_dict(self):
         """For a config that contains a dict inside it, verify that config
-           can be correctly created from a json/dict, and config can be correctly
-           serialized and de-serialized
+        can be correctly created from a json/dict, and config can be correctly
+        serialized and de-serialized
         """
 
         class TestConfigContainer(ConfigBase):

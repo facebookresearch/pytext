@@ -368,8 +368,7 @@ class LogitsWriter:
                 gzip_fout.close()
 
     def _get_open_options(self):
-        """We must open the file in binary model for gzip
-        """
+        """We must open the file in binary model for gzip"""
         if self.use_gzip:
             return {"mode": "wb"}
         else:
@@ -381,8 +380,7 @@ class LogitsWriter:
         gzip_fout: gzip.GzipFile,
         rows: Iterator[Any],
     ):
-        """Conditionally write to gzip or normal text file depending on the settings.
-        """
+        """Conditionally write to gzip or normal text file depending on the settings."""
         for row in rows:
             dump_row = "\t".join(json.dumps(r) for r in row)
             text = f"{dump_row}\n"

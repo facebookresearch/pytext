@@ -119,8 +119,8 @@ class Vocabulary:
 
     def replace_tokens(self, replacements):
         """Replace tokens in vocab with given replacement.
-           Used for replacing special strings for special tokens.
-           e.g. '[UNK]' for UNK"""
+        Used for replacing special strings for special tokens.
+        e.g. '[UNK]' for UNK"""
         for token, replacement in replacements.items():
             idx = self.idx.pop(token, len(self._vocab))
             if idx == len(self._vocab):

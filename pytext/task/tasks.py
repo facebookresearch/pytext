@@ -100,7 +100,7 @@ class DocumentClassificationTask(NewTask):
         model: BaseModel.Config = DocModel.Config()
         metric_reporter: Union[
             ClassificationMetricReporter.Config, PureLossMetricReporter.Config
-        ] = (ClassificationMetricReporter.Config())
+        ] = ClassificationMetricReporter.Config()
         #   for multi-label classification task,
         #   choose MultiLabelClassificationMetricReporter
 
@@ -180,9 +180,7 @@ class MaskedLMTask(NewTask):
     class Config(NewTask.Config):
         data: Data.Config = PackedLMData.Config()
         model: MaskedLanguageModel.Config = MaskedLanguageModel.Config()
-        metric_reporter: MaskedLMMetricReporter.Config = (
-            MaskedLMMetricReporter.Config()
-        )
+        metric_reporter: MaskedLMMetricReporter.Config = MaskedLMMetricReporter.Config()
 
 
 class PairwiseClassificationTask(NewTask):

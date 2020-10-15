@@ -9,18 +9,18 @@ from .cuda import FloatTensor
 def range_to_anchors_and_delta(precision_range, num_anchors):
     """Calculates anchor points from precision range.
 
-        Args:
-            precision_range: an interval (a, b), where 0.0 <= a <= b <= 1.0
-            num_anchors: int, number of equally spaced anchor points.
+    Args:
+        precision_range: an interval (a, b), where 0.0 <= a <= b <= 1.0
+        num_anchors: int, number of equally spaced anchor points.
 
-        Returns:
-            precision_values: A `Tensor` of [num_anchors] equally spaced values
-                in the interval precision_range.
+    Returns:
+        precision_values: A `Tensor` of [num_anchors] equally spaced values
+            in the interval precision_range.
 
-            delta: The spacing between the values in precision_values.
+        delta: The spacing between the values in precision_values.
 
-        Raises:
-            ValueError: If precision_range is invalid.
+    Raises:
+        ValueError: If precision_range is invalid.
     """
     # Validate precision_range.
     if len(precision_range) != 2:

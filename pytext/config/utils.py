@@ -11,9 +11,9 @@ def is_component_class(obj):
 
 def find_param(root, suffix, parent=""):
     """
-        Recursively look at all fields in config to find where `suffix` would fit.
-        This is used to change configs so that they don't use default values.
-        Return the list of field paths matching.
+    Recursively look at all fields in config to find where `suffix` would fit.
+    This is used to change configs so that they don't use default values.
+    Return the list of field paths matching.
     """
     ret = []
     for k in getattr(root.__class__, "__annotations__", []):

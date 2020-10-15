@@ -50,7 +50,7 @@ class RNNGParserBase(BaseModel):
     class Config(ConfigBase):
         class CompositionalType(Enum):
             """Whether to use summation of the vectors or a BiLSTM based composition to
-             generate embedding for a subtree"""
+            generate embedding for a subtree"""
 
             BLSTM = "blstm"
             SUM = "sum"

@@ -10,11 +10,11 @@ from torch.optim import Optimizer as PT_Optimizer
 
 class RAdam(Optimizer, PT_Optimizer):
     """Implements rectified adam as derived in the following paper:
-       "On the Variance of the Adaptive Learning Rate and Beyond"
-       (https://arxiv.org/abs/1908.03265)
+    "On the Variance of the Adaptive Learning Rate and Beyond"
+    (https://arxiv.org/abs/1908.03265)
 
-       This code is mostly a direct copy-paste of the code provided by the authors here:
-       https://github.com/LiyuanLucasLiu/RAdam/blob/master/radam.py
+    This code is mostly a direct copy-paste of the code provided by the authors here:
+    https://github.com/LiyuanLucasLiu/RAdam/blob/master/radam.py
     """
 
     class Config(Optimizer.Config):

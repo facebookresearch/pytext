@@ -10,14 +10,14 @@ from torch.optim import Optimizer as PT_Optimizer
 
 class Lamb(Optimizer, PT_Optimizer):
     r"""Implements Lamb algorithm.
-        THIS WAS DIRECTLY COPIED OVER FROM pytorch/contrib:
-        https://github.com/cybertronai/pytorch-lamb
-        It has been proposed in `Large Batch Optimization for Deep Learning: Training BERT in 76 minutes`.
-        https://arxiv.org/abs/1904.00962
+    THIS WAS DIRECTLY COPIED OVER FROM pytorch/contrib:
+    https://github.com/cybertronai/pytorch-lamb
+    It has been proposed in `Large Batch Optimization for Deep Learning: Training BERT in 76 minutes`.
+    https://arxiv.org/abs/1904.00962
 
-        Has the option for minimum trust LAMB as described in "Single Headed
-        Attention RNN: Stop Thinking With Your Head" section 6.3
-        https://arxiv.org/abs/1911.11423
+    Has the option for minimum trust LAMB as described in "Single Headed
+    Attention RNN: Stop Thinking With Your Head" section 6.3
+    https://arxiv.org/abs/1911.11423
     """
 
     class Config(Optimizer.Config):

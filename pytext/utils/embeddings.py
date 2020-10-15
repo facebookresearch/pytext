@@ -103,7 +103,7 @@ class PretrainedEmbedding(object):
         def iter_parser(
             skip_header: int = 0, delimiter: str = " ", dtype: type = np.float32
         ):
-            """ Iterator to load numpy 1-d array from multi-row text file,
+            """Iterator to load numpy 1-d array from multi-row text file,
             where format is assumed to be:
                 word_i v0, v1, v2, ...., v_dim
                 word_2 v0, v1, v2, ...., v_dim

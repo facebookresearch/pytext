@@ -40,7 +40,9 @@ class MaskedLanguageModel(BaseModel):
             )
 
         inputs: InputConfig = InputConfig()
-        encoder: TransformerSentenceEncoderBase.Config = TransformerSentenceEncoder.Config()
+        encoder: TransformerSentenceEncoderBase.Config = (
+            TransformerSentenceEncoder.Config()
+        )
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: LMOutputLayer.Config = LMOutputLayer.Config()
         mask_prob: float = 0.15

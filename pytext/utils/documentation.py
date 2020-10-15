@@ -31,16 +31,16 @@ def get_class_members_recursive(obj):
 
 def get_config_fields(obj):
     """
-        Return a dict of config help for this object, where:
-        - key: config name
-        - value: (default, type, options)
+    Return a dict of config help for this object, where:
+    - key: config name
+    - value: (default, type, options)
 
-            - default: default value for this key if not specified
-            - type: type for this config value, as a string
-            - options: possible values for this config, only if type = Union
+        - default: default value for this key if not specified
+        - type: type for this config value, as a string
+        - options: possible values for this config, only if type = Union
 
-        If the type is "Union", the options give the lists of class names that
-        are possible, and the default is one of those class names.
+    If the type is "Union", the options give the lists of class names that
+    are possible, and the default is one of those class names.
     """
     ret = {}
     members = get_class_members_recursive(obj)
@@ -147,8 +147,8 @@ def get_subclasses(
 
 def find_config_class(class_name):
     """
-        Return the set of PyText classes matching that name.
-        Handles fully-qualified `class_name` including module.
+    Return the set of PyText classes matching that name.
+    Handles fully-qualified `class_name` including module.
     """
     module_part = None
     if "." in class_name:
@@ -173,9 +173,9 @@ def find_config_class(class_name):
 
 def replace_components(root, component, base_class):
     """
-        Recursively look at all fields in config to find where `component` would fit.
-        This is used to change configs so that they don't use default values.
-        Return the chain of field names, from child to parent.
+    Recursively look at all fields in config to find where `component` would fit.
+    This is used to change configs so that they don't use default values.
+    Return the chain of field names, from child to parent.
     """
     for k, v in get_config_fields(root).items():
         default, _, options = v

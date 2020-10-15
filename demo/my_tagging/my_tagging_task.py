@@ -11,7 +11,9 @@ from .model import MyTaggingModel
 class MyTaggingTask(NewTask):
     class Config(NewTask.Config):
         model: MyTaggingModel.Config = MyTaggingModel.Config()
-        metric_reporter: MyTaggingMetricReporter.Config = MyTaggingMetricReporter.Config()
+        metric_reporter: MyTaggingMetricReporter.Config = (
+            MyTaggingMetricReporter.Config()
+        )
 
     @classmethod
     def create_metric_reporter(cls, config, tensorizers):

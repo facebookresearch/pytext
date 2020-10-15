@@ -229,8 +229,8 @@ def main(context, config_file, config_json, config_module, include):
 @click.pass_context
 def help_config(context, class_name):
     """
-        Find all the classes matching `class_name`, and
-        pretty-print each matching class field members (non-recursively).
+    Find all the classes matching `class_name`, and
+    pretty-print each matching class field members (non-recursively).
     """
     found_classes = find_config_class(class_name)
     if found_classes:
@@ -247,9 +247,9 @@ def help_config(context, class_name):
 @click.pass_context
 def gen_default_config(context, task_name, options):
     """
-        Generate a config for `task_name` with default values.
-        Optionally, override the defaults by passing your desired
-        components as `options`.
+    Generate a config for `task_name` with default values.
+    Optionally, override the defaults by passing your desired
+    components as `options`.
     """
     try:
         cfg = gen_config_impl(task_name, *options)
@@ -276,7 +276,7 @@ def gen_default_config(context, task_name, options):
 @click.pass_context
 def update_config(context):
     """
-        Load a config file, update to latest version and prints the result.
+    Load a config file, update to latest version and prints the result.
     """
     config = context.obj.load_config()
     config_json = config_to_json(PyTextConfig, config)
@@ -515,8 +515,7 @@ def get_logits(
     use_gzip,
     device_id,
 ):
-    """print logits from  a trained model snapshot to output_path
-    """
+    """print logits from  a trained model snapshot to output_path"""
 
     model_snapshot, use_cuda, _ = _get_model_snapshot(
         context, model_snapshot, use_cuda, False

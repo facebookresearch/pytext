@@ -100,6 +100,5 @@ class IntentSlotModelDecoder(DecoderBase):
         return logit_d, self.word_decoder(x_w)
 
     def get_decoder(self) -> List[nn.Module]:
-        """Returns the document and word decoder modules.
-        """
+        """Returns the document and word decoder modules."""
         return [self.doc_decoder, self.word_decoder]

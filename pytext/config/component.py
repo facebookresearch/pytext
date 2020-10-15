@@ -40,9 +40,9 @@ class RegistryError(Exception):
 
 
 class Registry:
-    _registered_components: Dict[ComponentType, Dict[Type, Type]] = (
-        collections.defaultdict(dict)
-    )
+    _registered_components: Dict[
+        ComponentType, Dict[Type, Type]
+    ] = collections.defaultdict(dict)
 
     @classmethod
     def add(cls, component_type: ComponentType, cls_to_add: Type, config_cls: Type):
@@ -189,8 +189,8 @@ class Component(metaclass=ComponentMeta):
 
 def register_tasks(task_cls: Union[Type, List[Type]]):
     """
-        Task classes are already added to registry during declaration, pass them
-        as parameters here just to make sure they're imported
+    Task classes are already added to registry during declaration, pass them
+    as parameters here just to make sure they're imported
     """
     vars(PyTextConfig)["__annotations__"]["task"].__args__ = Registry.configs(
         ComponentType.TASK
@@ -274,9 +274,9 @@ def create_metric_reporter(module_config, *args, **kwargs):
 
 def get_component_name(obj):
     """
-        Return the human-readable name of the class of `obj`.
-        Document the type of a config field and can be used as a Union value
-        in a json config.
+    Return the human-readable name of the class of `obj`.
+    Document the type of a config field and can be used as a Union value
+    in a json config.
     """
     if obj is type(None):
         return None

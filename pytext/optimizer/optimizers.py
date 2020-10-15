@@ -17,13 +17,12 @@ class Optimizer(Component):
 
     def clip_grad_norm(self, max_norm, model=None):
         if max_norm is None:
-            """incase max_norm is none we don't compute clip_grad_norm.
-            """
+            """incase max_norm is none we don't compute clip_grad_norm."""
             return None
         elif model is None:
             """Some callers are passing max_norm only instead of both the args.
-               For those we treat model as max_norm.
-               eg. optimizer.clip_grad_norm(max_norm)
+            For those we treat model as max_norm.
+            eg. optimizer.clip_grad_norm(max_norm)
             """
             return torch.nn.utils.clip_grad_norm_(self.params, max_norm)
         else:
@@ -91,10 +90,10 @@ class SGD(torch.optim.SGD, Optimizer):
 
 class AdamW(torch.optim.AdamW, Optimizer):
     """Adds PyText support for
-       Decoupled Weight Decay Regularization for Adam as done in the paper:
-       https://arxiv.org/abs/1711.05101
-       for more information read the fast.ai blog on this optimization
-       method here: https://www.fast.ai/2018/07/02/adam-weight-decay/
+    Decoupled Weight Decay Regularization for Adam as done in the paper:
+    https://arxiv.org/abs/1711.05101
+    for more information read the fast.ai blog on this optimization
+    method here: https://www.fast.ai/2018/07/02/adam-weight-decay/
     """
 
     class Config(Optimizer.Config):

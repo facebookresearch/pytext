@@ -46,7 +46,9 @@ class ContextualIntentSlotModel(IntentSlotModel):
 
         inputs: ModelInput = ModelInput()
         seq_embedding: Optional[WordEmbedding.Config] = WordEmbedding.Config()
-        representation: ContextualIntentSlotRepresentation.Config = ContextualIntentSlotRepresentation.Config()
+        representation: ContextualIntentSlotRepresentation.Config = (
+            ContextualIntentSlotRepresentation.Config()
+        )
 
     @classmethod
     def create_embedding(cls, config, tensorizers):

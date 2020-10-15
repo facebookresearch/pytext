@@ -205,8 +205,8 @@ def generate_checkpoint_path(config: PyTextConfig, identifier: str):
 
 class PyTextCheckpointManagerInterface(abc.ABC):
     """
-        CheckpointManager is a class abstraction to manage a training job's
-        checkpoints/snapshots with different IO and storage.
+    CheckpointManager is a class abstraction to manage a training job's
+    checkpoints/snapshots with different IO and storage.
     """
 
     @abc.abstractmethod

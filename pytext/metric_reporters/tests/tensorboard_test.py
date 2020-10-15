@@ -9,8 +9,7 @@ from torch import nn, optim
 
 
 class FCModelWithNanAndInfWts(nn.Module):
-    """ Simple FC model
-    """
+    """Simple FC model"""
 
     def __init__(self):
         super(FCModelWithNanAndInfWts, self).__init__()
@@ -26,8 +25,8 @@ class FCModelWithNanAndInfWts(nn.Module):
 
 class TensorboardTest(TestCase):
     def test_report_metrics_with_nan(self):
-        """ Check that tensorboard channel catches errors when model has
-            Inf or NaN weights
+        """Check that tensorboard channel catches errors when model has
+        Inf or NaN weights
         """
         tensorboard_channel = TensorBoardChannel()
         # create simple model and optimizers
@@ -52,8 +51,8 @@ class TensorboardTest(TestCase):
         )
 
     def test_report_metrics_to_others(self):
-        """ Check that tensorboard channel catches errors when model has
-            Inf or NaN weights
+        """Check that tensorboard channel catches errors when model has
+        Inf or NaN weights
         """
         tensorboard_channel = TensorBoardChannel()
         # create simple model and optimizers

@@ -122,7 +122,7 @@ def select_key_and_batch(
     iter_dict: Dict[str, Iterator],
     iterators: Dict[str, Iterator],
 ):
-    """ Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
+    """Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
     to select a key from iterator_names using iterator_probs and return a batch
     for the selected key using iter_dict and iterators.
     """
@@ -138,7 +138,7 @@ def select_key_and_batch(
 
 
 def extract_iterator_properties(input_iterator_probs: Dict[str, float]):
-    """ Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
+    """Helper function for RandomizedBatchSampler and AlternatingRandomizedBatchSampler
     to generate iterator properties: iterator_names and iterator_probs.
     """
     iterator_names = list(input_iterator_probs)

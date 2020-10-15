@@ -21,8 +21,7 @@ def register_http_url_handler():
 
 
 def chunk_file(file_path, chunks, work_dir):
-    """Splits a large file by line into number of chunks and writes them into work_dir
-    """
+    """Splits a large file by line into number of chunks and writes them into work_dir"""
     with open(file_path) as fin:
         num_lines = sum(1 for line in fin)
 

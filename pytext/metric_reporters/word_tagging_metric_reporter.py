@@ -66,8 +66,7 @@ class WordTaggingMetricReporter(MetricReporter):
         return total_loss / float(n_words)
 
     def process_pred(self, pred: List[int]) -> List[str]:
-        """pred is a list of token label index
-        """
+        """pred is a list of token label index"""
         return [self.label_names[p] for p in pred]
 
     def calculate_metric(self):

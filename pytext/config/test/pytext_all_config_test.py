@@ -36,8 +36,8 @@ EXCLUDE_DIRS = {
 class LoadAllConfigTest(unittest.TestCase):
     def test_load_all_configs(self):
         """
-            Try an load all the json files in pytext to make sure we didn't
-            break the config API.
+        Try an load all the json files in pytext to make sure we didn't
+        break the config API.
         """
         for filename in glob.iglob("pytext/**/*.json", recursive=True):
             if any(f in filename for f in EXCLUDE_JSON):

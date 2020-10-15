@@ -207,8 +207,8 @@ class AUCPRHingeLoss(nn.Module, Loss):
 
     def __init__(self, config, weights=None, *args, **kwargs):
         """Args:
-            config: Config containing `precision_range_lower`, `precision_range_upper`,
-                `num_classes`, `num_anchors`
+        config: Config containing `precision_range_lower`, `precision_range_upper`,
+            `num_classes`, `num_anchors`
         """
         nn.Module.__init__(self)
         Loss.__init__(self, config)

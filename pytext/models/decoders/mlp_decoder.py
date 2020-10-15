@@ -80,6 +80,5 @@ class MLPDecoder(DecoderBase):
         )
 
     def get_decoder(self) -> List[nn.Module]:
-        """Returns the MLP module that is used as a decoder.
-        """
+        """Returns the MLP module that is used as a decoder."""
         return [self.mlp]

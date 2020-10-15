@@ -15,7 +15,7 @@ from .representation_base import RepresentationBase
 
 class PureDocAttention(RepresentationBase):
     """pooling (e.g. max pooling or self attention)
-        followed by optional MLP"""
+    followed by optional MLP"""
 
     class Config(RepresentationBase.Config):
         dropout: float = 0.4
@@ -29,8 +29,7 @@ class PureDocAttention(RepresentationBase):
         mlp_decoder: Optional[MLPDecoder.Config] = None
 
     def __init__(self, config: Config, embed_dim: int) -> None:
-        """embed_dim is the dimension of embedded_tokens
-        """
+        """embed_dim is the dimension of embedded_tokens"""
         super().__init__(config)
 
         self.dropout = nn.Dropout(config.dropout)

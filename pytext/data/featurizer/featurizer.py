@@ -54,8 +54,7 @@ class Featurizer(Component):
     def featurize_batch(
         self, input_record_list: Sequence[InputRecord]
     ) -> Sequence[OutputRecord]:
-        """Featurize a batch of instances/examples.
-        """
+        """Featurize a batch of instances/examples."""
         return [self.featurize(record) for record in input_record_list]
 
     def get_sentence_markers(self, locale=None):

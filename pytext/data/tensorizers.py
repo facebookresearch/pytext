@@ -1519,7 +1519,7 @@ class SlotLabelTensorizer(Tensorizer):
 
 class SlotLabelTensorizerExpansible(SlotLabelTensorizer):
     """Create a base SlotLabelTensorizer to support selecting different
-       types in ModelInput."""
+    types in ModelInput."""
 
     __EXPANSIBLE__ = True
 
@@ -1953,7 +1953,7 @@ class AnnotationNumberizer(Tensorizer):
 
 class MetricTensorizer(Tensorizer):
     """A tensorizer which use other tensorizers' numerized data.
-       Used mostly for metric reporting."""
+    Used mostly for metric reporting."""
 
     class Config(Tensorizer.Config):
         names: List[str]
@@ -1982,8 +1982,8 @@ class MetricTensorizer(Tensorizer):
 
 class NtokensTensorizer(MetricTensorizer):
     """A tensorizer which will reference another tensorizer's numerized data
-       to calculate the num tokens.
-       Used for calculating tokens per second."""
+    to calculate the num tokens.
+    Used for calculating tokens per second."""
 
     def tensorize(self, batch):
         ntokens = 0

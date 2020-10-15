@@ -117,7 +117,9 @@ class DocClassificationConfig:
     transform: TransformConf
     model: RobertaModelConf
     optim: OptimConf
-    metric_reporter: ClassificationMetricReporterConf = ClassificationMetricReporterConf()
+    metric_reporter: ClassificationMetricReporterConf = (
+        ClassificationMetricReporterConf()
+    )
     trainer: TrainerConf = TrainerConf()
     defaults: List[Any] = field(default_factory=lambda: project_defaults)
 

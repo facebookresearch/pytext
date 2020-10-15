@@ -831,8 +831,7 @@ class GeneratorFP16Optimizer(PureFP16Optimizer):
         self.loss_scaler.update_scale()
 
     def _preprocess_step(self):
-        r"""Change the parameter list to a generator.
-        """
+        r"""Change the parameter list to a generator."""
         for i, group in enumerate(self.param_groups):
             self.inner_optimizer.param_groups[i]["params"] = convert_generator(
                 group["params"], self.loss_scaler.scale

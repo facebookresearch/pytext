@@ -292,8 +292,7 @@ def _get_class_type(cls):
 
 
 def _is_dict(obj):
-    """support all dict-like types
-    """
+    """support all dict-like types"""
     return hasattr(obj, "__contains__") and hasattr(obj, "items")
 
 

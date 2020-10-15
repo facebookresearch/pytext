@@ -33,15 +33,19 @@ from . import NewTask, Task_Deprecated, TaskBase, _NewTask
 
 class DisjointMultitask(TaskBase):
     """Modules which have the same shared_module_key and type share parameters.
-       Only the first instance of such module should be configured in tasks list.
+    Only the first instance of such module should be configured in tasks list.
     """
 
     class Config(TaskBase.Config):
         tasks: Dict[str, Task_Deprecated.Config]
         task_weights: Dict[str, float] = {}
         target_task_name: Optional[str] = None  # for selecting best epoch
-        data_handler: DisjointMultitaskDataHandler.Config = DisjointMultitaskDataHandler.Config()
-        metric_reporter: DisjointMultitaskMetricReporter.Config = DisjointMultitaskMetricReporter.Config()
+        data_handler: DisjointMultitaskDataHandler.Config = (
+            DisjointMultitaskDataHandler.Config()
+        )
+        metric_reporter: DisjointMultitaskMetricReporter.Config = (
+            DisjointMultitaskMetricReporter.Config()
+        )
 
     @classmethod
     def from_config(

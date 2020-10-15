@@ -58,8 +58,8 @@ class ModelExporter(Component):
         **kwargs,
     ):
         """
-            Gather all the necessary metadata from configs and global metadata to be
-            used in exporter
+        Gather all the necessary metadata from configs and global metadata to be
+        used in exporter
         """
         input_names, dummy_model_input, vocab_map = cls.get_feature_metadata(
             feature_config, meta.features

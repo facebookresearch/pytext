@@ -152,8 +152,7 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
         group["n_avg"] += 1
 
     def update_swa(self):
-        r"""Updates the SWA running averages of all optimized parameters.
-        """
+        r"""Updates the SWA running averages of all optimized parameters."""
         for group in self.param_groups:
             self.update_swa_group(group)
 

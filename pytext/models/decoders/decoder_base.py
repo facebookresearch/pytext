@@ -29,16 +29,13 @@ class DecoderBase(Module):
         raise NotImplementedError()
 
     def get_decoder(self):
-        """Returns the decoder module.
-        """
+        """Returns the decoder module."""
         raise NotImplementedError()
 
     def get_in_dim(self) -> int:
-        """Returns the dimension of the input Tensor that the decoder accepts.
-        """
+        """Returns the dimension of the input Tensor that the decoder accepts."""
         return self.in_dim
 
     def get_out_dim(self) -> int:
-        """Returns the dimension of the input Tensor that the decoder emits.
-        """
+        """Returns the dimension of the input Tensor that the decoder emits."""
         return self.out_dim
