@@ -52,9 +52,21 @@ class WhitespaceTokenizerTransform(nn.Module):
         return [t.split() for t in text]
 
 
+SPECIAL_TOKEN_REPLACEMENT = {
+    "[UNK]": UNK,
+    "[PAD]": PAD,
+    "[CLS]": BOS,
+    "[MASK]": MASK,
+    "[SEP]": EOS,
+}
+
+
 class VocabTransform(nn.Module):
     def __init__(
-        self, vocab_path: Optional[str] = None, vocab_list: Optional[List[str]] = None
+        self,
+        vocab_path: Optional[str] = None,
+        vocab_list: Optional[List[str]] = None,
+        special_token_replacements=SPECIAL_TOKEN_REPLACEMENT,
     ):
         super().__init__()
         assert vocab_path or vocab_list, "vocab_path or vocab_list is required"
@@ -66,13 +78,6 @@ class VocabTransform(nn.Module):
             self.vocab = ScriptVocabulary(vocab_list)
         else:
             with PathManager.open(vocab_path) as f:
-                special_token_replacements = {
-                    "[UNK]": UNK,
-                    "[PAD]": PAD,
-                    "[CLS]": BOS,
-                    "[MASK]": MASK,
-                    "[SEP]": EOS,
-                }
                 vocab = build_fairseq_vocab(
                     f, special_token_replacements=special_token_replacements
                 )
