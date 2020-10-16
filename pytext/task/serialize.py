@@ -287,7 +287,7 @@ class CheckpointManager(PyTextCheckpointManagerInterface):
 
     def load(self, load_path: str):
         if not (load_path and PathManager.isfile(load_path)):
-            raise ValueError(f"Invalid snapshot path{load_path}")
+            raise ValueError(f"Invalid snapshot path: {load_path}")
         with PathManager.open(load_path, "rb") as checkpoint_f:
             state = torch.load(checkpoint_f, map_location=lambda storage, loc: storage)
         return state
