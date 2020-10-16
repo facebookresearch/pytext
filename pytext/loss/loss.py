@@ -440,11 +440,11 @@ class KLDivergenceCELoss(Loss):
         soft_loss *= self.t ** 2  # See https://arxiv.org/pdf/1503.02531.pdf
         hard_loss = 0.0
         if self.hard_weight > 0.0:
-            hard_loss = F.cross_entropy(
-                logits,
+            hard_loss = F.nll_loss(
+                F.log_softmax(logits, 1, dtype=torch.float32),
                 hard_targets,
-                reduction="mean" if reduce else "none",
                 weight=self.weight,
+                reduction="mean" if reduce else "none",
             )
 
         return (

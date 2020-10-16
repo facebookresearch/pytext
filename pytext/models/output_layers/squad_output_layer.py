@@ -275,7 +275,7 @@ class SquadOutputLayer(OutputLayerBase):
                 combine_loss=False,
             )
             has_answer_loss = self._weighted_loss(
-                has_answer_soft_loss.mean(), has_answer_hard_loss
+                has_answer_soft_loss.mean(), has_answer_hard_loss.mean()
             )
             loss = (
                 self.has_answer_loss_weight * has_answer_loss
