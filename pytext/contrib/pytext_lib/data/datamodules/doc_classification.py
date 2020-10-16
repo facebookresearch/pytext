@@ -70,7 +70,7 @@ class DocClassificationDataModule(pl.LightningDataModule):
                 if torch.distributed.is_initialized()
                 else 0
             )
-            logger.debug(f"setup for rank: {self.rank}, world_size: {self.world_size}")
+            logger.debug(f"setup for rank: {rank}, world_size: {world_size}")
         else:
             world_size = 1
             rank = 0
