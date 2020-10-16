@@ -49,19 +49,18 @@ class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
         return tree.flat_str()
 
     def gen_content(self, metrics, loss, preds, targets, scores, context):
-        target_vocab = self.tensorizers["trg_seq_tokens"].vocab
         batch_size = len(targets)
 
         for i in range(batch_size):
             yield [
                 context[BatchContext.INDEX][i],
                 context[DatasetFieldName.RAW_SEQUENCE][i],
-                self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]),
+                self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]).upper(),
                 self.validated_annotation(
-                    self.tensorizers["trg_seq_tokens"].stringify(preds[i][0])
+                    self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]).upper()
                 ),
                 self.validated_annotation(
-                    self.tensorizers["trg_seq_tokens"].stringify(targets[i])
+                    self.tensorizers["trg_seq_tokens"].stringify(targets[i]).upper()
                 ),
             ]
 
