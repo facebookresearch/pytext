@@ -1,8 +1,8 @@
 click
 fairseq
 future
-fvcore
 hypothesis<4.0
+iopath
 joblib
 numpy
 onnx>=1.6.0
