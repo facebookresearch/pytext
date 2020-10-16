@@ -1,8 +1,8 @@
 click
 fairseq
 future
-fvcore
 hypothesis<4.0
+iopath
 mock
 numpy
 onnx

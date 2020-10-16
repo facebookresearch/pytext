@@ -7,7 +7,8 @@ import os
 # keep PathManager here for more flexibility until PathManager becomes more mature
 # in case we want some hacks in PathManager, we can do it here without updating
 # the import everywhere in PyText
-from fvcore.common.file_io import HTTPURLHandler, PathManagerBase  # noqa
+# TODO: @stevenliu use PathManagerFactory after it's released to PyPI
+from iopath.common.file_io import HTTPURLHandler, PathManager as PathManagerBase
 
 
 PathManager = PathManagerBase()
