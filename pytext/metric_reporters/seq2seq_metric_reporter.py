@@ -82,9 +82,11 @@ class Seq2SeqMetricReporter(MetricReporter):
         total_count = len(self.all_targets)
         trg_vocab = self.tensorizers["trg_seq_tokens"].vocab
         bleu_scorer = bleu.Scorer(
-            trg_vocab.get_pad_index(),
-            trg_vocab.get_eos_index(),
-            trg_vocab.get_unk_index(),
+            bleu.BleuConfig(
+                pad=trg_vocab.get_pad_index(),
+                eos=trg_vocab.get_eos_index(),
+                unk=trg_vocab.get_unk_index(),
+            )
         )
         for beam_pred, target in zip(self.all_preds, self.all_targets):
             pred = beam_pred[0]
