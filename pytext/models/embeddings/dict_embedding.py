@@ -110,7 +110,7 @@ class DictEmbedding(EmbeddingBase):
         )
         # Temporary workaround till https://github.com/pytorch/pytorch/issues/32840
         # is resolved
-        self.pooling_type = str(pooling_type)
+        self.pooling_type = pooling_type.value
         self.mobile = mobile
         log_class_usage(__class__)
 
@@ -180,7 +180,9 @@ class DictEmbedding(EmbeddingBase):
             reduced_embeds = (
                 torch.sum(weighted_embds, dim=2) / lengths.unsqueeze(2).float()
             )
-        else:
+        elif self.pooling_type == "max":
             reduced_embeds, _ = torch.max(weighted_embds, dim=2)
+        else:
+            raise RuntimeError(f"Pooling type {self.pooling_type} is unsupported.")
 
         return reduced_embeds
