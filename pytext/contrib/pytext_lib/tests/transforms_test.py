@@ -50,3 +50,85 @@ class TestTruncateTranform(unittest.TestCase):
         tokens = [["__UNKNOWN__", ",", "."], ["▁que", "▁и", "i", "e"]]
         expected = [[3, 4, 5], [41, 35, 14, 13]]
         self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_bos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), add_bos=True
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"]]
+        expected = [[101, 3, 4, 5], [101, 41, 35, 14, 13]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_eos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), add_eos=True
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"]]
+        expected = [[3, 4, 5, 103], [41, 35, 14, 13, 103]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_bos_and_eos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), add_bos=True, add_eos=True
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"]]
+        expected = [[101, 3, 4, 5, 103], [101, 41, 35, 14, 13, 103]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_truncate(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), max_seq_len=2
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"], ["i"]]
+        expected = [[3, 4], [41, 35], [14]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_truncate_bos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), max_seq_len=2, add_bos=True
+        )
+        # <unk> added by fairseq
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"], ["i"]]
+        expected = [[101, 3], [101, 41], [101, 14]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_truncate_eos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"), max_seq_len=2, add_eos=True
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"], ["i"]]
+        expected = [[3, 103], [41, 103], [14, 103]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_truncate_bos_and_eos(self):
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"),
+            max_seq_len=3,
+            add_bos=True,
+            add_eos=True,
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"], ["i"]]
+        expected = [[101, 3, 103], [101, 41, 103], [101, 14, 103]]
+        self.assertEqual(transform(tokens), expected)
+
+    def test_vocab_transform_truncate_bos_and_eos_replace(self):
+        """
+        Can be easily called as RoBERTa vocab look up test.
+        We need BOS = 0 and EOS = 2 for pretrained models compat.
+        """
+        transform = VocabTransform(
+            os.path.join(self.base_dir, "vocab_dummy"),
+            max_seq_len=3,
+            add_bos=True,
+            add_eos=True,
+            special_token_replacements={
+                "<pad>": SpecialTokens.PAD,
+                "<s>": SpecialTokens.BOS,
+                "</s>": SpecialTokens.EOS,
+                "<unk>": SpecialTokens.UNK,
+                "<mask>": SpecialTokens.MASK,
+            },
+        )
+        tokens = [["<unk>", ",", "."], ["▁que", "▁и", "i", "e"], ["i"]]
+        expected = [[0, 3, 2], [0, 41, 2], [0, 14, 2]]
+        self.assertEqual(transform(tokens), expected)

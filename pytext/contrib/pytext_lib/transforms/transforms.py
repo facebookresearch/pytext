@@ -67,6 +67,9 @@ class VocabTransform(nn.Module):
         vocab_path: Optional[str] = None,
         vocab_list: Optional[List[str]] = None,
         special_token_replacements=SPECIAL_TOKEN_REPLACEMENT,
+        add_bos: bool = False,
+        add_eos: bool = False,
+        max_seq_len: int = 2 ** 30,
     ):
         super().__init__()
         assert vocab_path or vocab_list, "vocab_path or vocab_list is required"
@@ -89,9 +92,21 @@ class VocabTransform(nn.Module):
                     unk_idx=vocab.get_unk_index(-1),
                     unk_token=vocab.unk_token,
                 )
+        # TODO T77728853 We need to combine truncate with BOS/EOS as they impact each other
+        # Need to find a nicer way to do this, as this can't be chained.
+        self.add_bos = add_bos
+        self.add_eos = add_eos
+        # Make room for bos and eos from max_seq_len if true
+        self.truncate_transform = TruncateTransform(max_seq_len - add_bos - add_eos)
 
     def forward(self, tokens: List[List[str]]) -> List[List[int]]:
-        return self.vocab.lookup_indices_2d(tokens)
+        tokens_idx = self.vocab.lookup_indices_2d(tokens)
+        tokens_idx = self.truncate_transform(tokens_idx)
+        if self.add_bos:
+            tokens_idx = [[self.vocab.bos_idx] + row for row in tokens_idx]
+        if self.add_eos:
+            tokens_idx = [row + [self.vocab.eos_idx] for row in tokens_idx]
+        return tokens_idx
 
 
 class LabelTransform(nn.Module):
