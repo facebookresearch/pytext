@@ -8,6 +8,9 @@ from pytext.models.representations.transformer import (
     Transformer,
     TransformerLayer,
 )
+from pytext.models.representations.transformer.representation import (
+    TransformerRepresentation,
+)
 
 
 class SentenceEncoderTest(unittest.TestCase):
@@ -39,3 +42,18 @@ class SentenceEncoderTest(unittest.TestCase):
         assert len(encoder_out) == len(scripted_out)
         for encoder_tensor, scripted_tensor in zip(encoder_out, scripted_out):
             self.assertTrue(torch.equal(encoder_tensor, scripted_tensor))
+
+
+class SentenceRepresentationTest(unittest.TestCase):
+    def test_representation(self):
+        embedded_tokens = torch.rand(1, 3, 10)
+        padding_mask = torch.BoolTensor([[False, False, True]])
+
+        representation = TransformerRepresentation.from_config(
+            TransformerRepresentation.Config(ffnn_embed_dim=10, num_attention_heads=2),
+            embed_dim=10,
+        )
+
+        output = representation(embedded_tokens, padding_mask)
+
+        self.assertEqual(output.shape, (1, 3, 10))

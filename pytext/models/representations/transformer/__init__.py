@@ -18,6 +18,7 @@ the corresponding values in this implementation.
 from .multihead_attention import MultiheadSelfAttention
 from .multihead_linear_attention import MultiheadLinearAttention
 from .positional_embedding import PositionalEmbedding
+from .representation import TransformerRepresentation
 from .residual_mlp import ResidualMLP
 from .sentence_encoder import PostEncoder, SentenceEncoder
 from .transformer import SELFIETransformer, Transformer, TransformerLayer
@@ -33,4 +34,5 @@ __all__ = [
     "SELFIETransformer",
     "Transformer",
     "TransformerLayer",
+    "TransformerRepresentation",
 ]
