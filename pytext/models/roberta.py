@@ -279,10 +279,18 @@ class RoBERTa(NewBertModel):
                 )
 
     def graph_mode_quantize(
-        self, inputs, data_loader, calibration_num_batches=64, qconfig_dict=None
+        self,
+        inputs,
+        data_loader,
+        calibration_num_batches=64,
+        qconfig_dict=None,
+        force_quantize=False,
     ):
         """Quantize the model during export with graph mode quantization."""
-        if isinstance(self.encoder, RoBERTaEncoder):
+        if (
+            isinstance(self.encoder, RoBERTaEncoder)
+            and self.encoder.use_linformer_encoder
+        ) or force_quantize:
             trace = self.trace(inputs)
             if not qconfig_dict:
                 qconfig_dict = {"": get_default_qconfig("fbgemm")}
