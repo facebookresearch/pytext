@@ -438,14 +438,12 @@ class KLDivergenceCELoss(Loss):
             )
 
         soft_loss *= self.t ** 2  # See https://arxiv.org/pdf/1503.02531.pdf
-        hard_loss = 0.0
-        if self.hard_weight > 0.0:
-            hard_loss = F.nll_loss(
-                F.log_softmax(logits, 1, dtype=torch.float32),
-                hard_targets,
-                weight=self.weight,
-                reduction="mean" if reduce else "none",
-            )
+        hard_loss = F.nll_loss(
+            F.log_softmax(logits, 1, dtype=torch.float32),
+            hard_targets,
+            weight=self.weight,
+            reduction="mean" if reduce else "none",
+        )
 
         return (
             (1.0 - self.hard_weight) * soft_loss + self.hard_weight * hard_loss
