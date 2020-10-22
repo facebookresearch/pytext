@@ -25,6 +25,7 @@ class DenseRetrievalDataSource(DataSource):
         eval_filename: Optional[str] = "dev-v2.0.json"
         num_negative_ctxs: int = 1
         use_title: bool = True
+        use_cache: bool = False
 
     @classmethod
     def from_config(cls, config: Config, schema=DEFAULT_SCHEMA):
@@ -35,6 +36,7 @@ class DenseRetrievalDataSource(DataSource):
             eval_filename=config.eval_filename,
             num_negative_ctxs=config.num_negative_ctxs,
             use_title=config.use_title,
+            use_cache=config.use_cache,
         )
 
     def __init__(
@@ -45,6 +47,7 @@ class DenseRetrievalDataSource(DataSource):
         eval_filename=None,
         num_negative_ctxs=1,
         use_title=True,
+        use_cache=False,
     ):
         super().__init__(schema)
         self.train_filename = train_filename
@@ -52,6 +55,8 @@ class DenseRetrievalDataSource(DataSource):
         self.eval_filename = eval_filename
         self.num_negative_ctxs = num_negative_ctxs
         self.use_title = use_title
+        self.use_cache = use_cache
+        self.cache = {}
 
     @generator_property
     def train(self):
@@ -65,6 +70,22 @@ class DenseRetrievalDataSource(DataSource):
     def eval(self):
         return self.process_file(self.eval_filename, is_train=False)
 
+    def read_file(self, fname):
+        if self.use_cache and fname in self.cache:
+            for row in self.cache[fname]:
+                yield row
+        else:
+            with PathManager.open(fname) as infile:
+                # Code pointer: https://fburl.com/yv8osgvo
+                for line in infile:
+                    row = json.loads(line)
+
+                    if self.use_cache:
+                        self.cache[fname] = self.cache.get(fname, [])
+                        self.cache[fname].append(row)
+
+                    yield row
+
     def process_file(self, fname, is_train):
         if not fname:
             print(f"File path is either empty or None. Not unflattening.")
@@ -73,43 +94,42 @@ class DenseRetrievalDataSource(DataSource):
             print(f"{fname} does not exist. Not unflattening.")
             return
 
-        with PathManager.open(fname) as infile:
-            # Code pointer: https://fburl.com/yv8osgvo
-            for line in infile:
-                row = json.loads(line)
-                question = row["question"]
-                positive_ctx = combine_title_text(
-                    row["positive_ctxs"][0], self.use_title
-                )
+        for row in self.read_file(fname):
+            question = row["question"]
+            positive_ctx = combine_title_text(row["positive_ctxs"][0], self.use_title)
 
+            negative_ctxs = [
+                combine_title_text(ctx, self.use_title) for ctx in row["negative_ctxs"]
+            ]
+
+            if not negative_ctxs and row.get("distant_negatives"):
+                # use distant_negatives in case we don't have hard negatives
+                # it's better to have at least one negative for training
                 negative_ctxs = [
                     combine_title_text(ctx, self.use_title)
-                    for ctx in row["negative_ctxs"]
+                    for ctx in row["distant_negatives"]
                 ]
 
-                if not negative_ctxs and row.get("distant_negatives"):
-                    # use distant_negatives in case we don't have hard negatives
-                    # it's better to have at least one negative for training
-                    negative_ctxs = [
-                        combine_title_text(ctx, self.use_title)
-                        for ctx in row["distant_negatives"]
-                    ]
+            if is_train:
+                random.shuffle(negative_ctxs)
+                if isinstance(question, list):
+                    # We can have a list of questions in the training data.
+                    # This is to account for paraphrases. We randomly sample a single paraphrases
+                    # in every epoch. Thus, with enough epochs all questions should be tried.
+                    question = question[random.randint(0, len(question) - 1)]
+            else:
+                # for non training runs, always take the num_negative_ctxs without shuffling
+                # this makes the evaluation and test sets deterministic
+                negative_ctxs = negative_ctxs[: self.num_negative_ctxs]
 
-                if is_train:
-                    random.shuffle(negative_ctxs)
-                else:
-                    # for non training runs, always take the num_negative_ctxs without shuffling
-                    # this makes the evaluation and test sets deterministic
-                    negative_ctxs = negative_ctxs[: self.num_negative_ctxs]
-
-                num_negative_ctx = min(self.num_negative_ctxs, len(negative_ctxs))
-                yield {
-                    "question": question,
-                    "positive_ctx": positive_ctx,
-                    "negative_ctxs": negative_ctxs,
-                    "label": "1",  # Make LabelTensorizer.initialize() happy.
-                    "num_negative_ctx": num_negative_ctx,
-                }
+            num_negative_ctx = min(self.num_negative_ctxs, len(negative_ctxs))
+            yield {
+                "question": question,
+                "positive_ctx": positive_ctx,
+                "negative_ctxs": negative_ctxs,
+                "label": "1",  # Make LabelTensorizer.initialize() happy.
+                "num_negative_ctx": num_negative_ctx,
+            }
 
 
 def combine_title_text(ctx, use_title):
