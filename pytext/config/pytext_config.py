@@ -182,6 +182,8 @@ class TestConfig(ConfigBase):
     use_tensorboard: bool = True
     # Output path where metric reporter writes to.
     test_out_path: str = ""
+    # Enable mixed precision training. WARNING: under develoment
+    use_fp16: bool = False
 
 
 class LogitsConfig(TestConfig):
