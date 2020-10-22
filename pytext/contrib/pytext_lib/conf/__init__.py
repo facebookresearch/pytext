@@ -103,7 +103,13 @@ class OptimConf:
 
 
 @dataclass
-class ClassificationMetricReporterConf:
+class MetricReporterConf:
+    pass
+
+
+@dataclass
+class ClassificationMetricReporterConf(MetricReporterConf):
+    _target_: str = "pytext.contrib.pytext_lib.metrics.metric_reporter.classification_metric_reporter_config_expand"
     recall_at_precision_thresholds: List[float] = field(
         default_factory=lambda: [0.2, 0.4, 0.6, 0.8, 0.9]
     )
@@ -152,7 +158,7 @@ class TaskConf:
     datamodule: DataModuleConf = MISSING
     model: ModelConf = MISSING
     optim: OptimConf = MISSING
-    metric: ClassificationMetricReporterConf = ClassificationMetricReporterConf()
+    metric: MetricReporterConf = ClassificationMetricReporterConf()
 
 
 @dataclass
@@ -208,5 +214,17 @@ cs.store(
     name="doc_classification_dummy",
     node=DocClassificationDataModuleConf,
 )
+
+cs.store(
+    group="schema/task/metric",
+    name="classification_metric_reporter",
+    node=ClassificationMetricReporterConf,
+)
+cs.store(
+    group="task/metric",
+    name="classification_metric_reporter",
+    node=ClassificationMetricReporterConf,
+)
+
 cs.store(name="pytext_config", node=PyTextConf)
 cs.store(name="xlmr_classifier_sst2", node=PyTextConf)
