@@ -38,7 +38,7 @@ def quantize_statically(model, inputs, data_loader, linear_only=False):
                         )
                     ] = qconfig
         trace = model.graph_mode_quantize(
-            inputs, data_loader, qconfig_dict=qconfig_dict
+            inputs, data_loader, qconfig_dict=qconfig_dict, force_quantize=True
         )
     else:
         trace = model.graph_mode_quantize(inputs, data_loader)
