@@ -2,7 +2,12 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from .bpe import ScriptBPE
-from .tokenizer import ScriptBPETokenizer, ScriptDoNothingTokenizer, ScriptTokenizerBase
+from .tokenizer import (
+    ScriptBPETokenizer,
+    ScriptDoNothingTokenizer,
+    ScriptTokenizerBase,
+    ScriptWordTokenizer,
+)
 
 
 __all__ = [
@@ -10,4 +15,5 @@ __all__ = [
     "ScriptBPETokenizer",
     "ScriptDoNothingTokenizer",
     "ScriptTokenizerBase",
+    "ScriptWordTokenizer",
 ]

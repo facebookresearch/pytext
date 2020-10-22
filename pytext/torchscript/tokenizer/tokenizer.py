@@ -41,3 +41,30 @@ class ScriptBPETokenizer(ScriptTokenizerBase):
             tokens.append((bpe_token, -1, -1))
 
         return tokens
+
+
+class ScriptWordTokenizer(ScriptTokenizerBase):
+    def __init__(self, lowercase=True):
+        super().__init__()
+        self.lowercase = lowercase
+
+    @torch.jit.script_method
+    def tokenize(self, raw_token: str) -> List[Tuple[str, int, int]]:
+        """
+        This tokenizers splits a raw_token into its constituent words by splitting
+        the raw_token on space. This function handle multiple spaces between
+        words too.
+        Note:
+        torch scripting doesn't support try-except and since re.finditer uses
+        try in its implemetation regex based tokenization is not supported.
+        """
+        tokenize_input = raw_token.lower() if self.lowercase else raw_token
+        tokens = tokenize_input.split()
+        torchify_tokens = torch.jit.annotate(List[Tuple[str, int, int]], [])
+        start, end = 0, 0
+        for token in tokens:
+            start = tokenize_input.find(token, end, -1)
+            end = start + len(token)
+            torchify_tokens.append((token.strip(), start, end))
+            start = end + 1
+        return torchify_tokens
