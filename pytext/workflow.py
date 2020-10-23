@@ -192,22 +192,23 @@ def save_and_export(
     else:
         tensorizers = task.data.tensorizers
     save(config, task.model, meta, tensorizers=tensorizers)
-    if config.export_caffe2_path:
+    export_config = config.export
+    if export_config.export_caffe2_path:
         task.export(
             task.model,
-            config.export_caffe2_path,
+            export_config.export_caffe2_path,
             metric_channels,
-            config.export_onnx_path,
+            export_config.export_onnx_path,
         )
-    if config.export_torchscript_path:
+    if export_config.export_torchscript_path:
         task.torchscript_export(
             model=task.model,
-            export_path=config.export_torchscript_path,
-            quantize=config.torchscript_quantize,
-            inference_interface=config.inference_interface,
-            accelerate=config.accelerate,
-            seq_padding_control=config.seq_padding_control,
-            batch_padding_control=config.batch_padding_control,
+            export_path=export_config.export_torchscript_path,
+            quantize=export_config.torchscript_quantize,
+            inference_interface=export_config.inference_interface,
+            accelerate=export_config.accelerate,
+            seq_padding_control=export_config.seq_padding_control,
+            batch_padding_control=export_config.batch_padding_control,
         )
 
 

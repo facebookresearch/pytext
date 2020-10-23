@@ -10,7 +10,7 @@ import numpy as np
 import torch.nn.functional as F
 from caffe2.python import workspace
 from pytext.common.constants import Stage
-from pytext.config import LATEST_VERSION, PyTextConfig
+from pytext.config import LATEST_VERSION, ExportConfig, PyTextConfig
 from pytext.data import Data, PoolingBatcher
 from pytext.data.sources import TSVDataSource
 from pytext.data.tensorizers import FloatListTensorizer
@@ -86,7 +86,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
             ),
             use_tensorboard=False,
             use_cuda_if_available=False,
-            export_torchscript_path="/tmp/model_torchscript.pt",
+            export=ExportConfig(export_torchscript_path="/tmp/model_torchscript.pt"),
             version=LATEST_VERSION,
         )
 

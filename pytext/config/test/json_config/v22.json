@@ -1,0 +1,324 @@
+[
+  {
+    "original": {
+      "version": 21,
+      "inference_interface": "texts",
+      "seq_padding_control": [0, 50, 150, 300, 512],
+      "batch_padding_control": [0, 1, 2, 8, 32],
+      "export_torchscript_path": "/tmp/model.pt1",
+      "torchscript_quantize": false,
+      "task": {
+        "DocumentClassificationTask": {
+          "data": {
+            "Data": {
+              "source": {
+                "TSVDataSource": {
+                  "field_names": ["label", "slots", "text"],
+                  "train_filename": "tests/data/train_data_tiny.tsv",
+                  "test_filename": "tests/data/test_data_tiny.tsv",
+                  "eval_filename": "tests/data/test_data_tiny.tsv"
+                }
+            },
+              "batcher": {
+                "Batcher": {
+                  "train_batch_size": 8,
+                  "eval_batch_size": 8,
+                  "test_batch_size": 8
+                }
+              },
+              "sort_key": "tokens",
+              "in_memory": false
+            }
+          },
+          "trainer": {
+            "TaskTrainer": {
+              "epochs": 0,
+              "early_stop_after": 0,
+              "max_clip_norm": null,
+              "report_train_metrics": true,
+              "target_time_limit_seconds": null,
+              "do_eval": true,
+              "load_best_model_after_train": true,
+              "num_samples_to_log_progress": 1000,
+              "num_accumulated_batches": 1,
+              "num_batches_per_epoch": 1000,
+              "optimizer": {
+                "Adam": {
+                  "lr": 0.000005,
+                  "eps": 0.000001,
+                  "weight_decay": 0.01
+                }
+              },
+              "scheduler": {
+                "WarmupScheduler": {
+                  "warmup_steps": 1000,
+                  "inverse_sqrt_decay": false
+                }
+              },
+              "sparsifier": null,
+              "fp16_args": {
+                "FP16OptimizerApex": {
+                  "opt_level": "O2",
+                  "init_loss_scale": null,
+                  "min_loss_scale": null
+                }
+              },
+              "privacy_engine": null
+            }
+          },
+          "use_elastic": null,
+          "model": {
+            "RoBERTa": {
+              "inputs": {
+                "tokens": {
+                  "is_input": true,
+                  "columns": [
+                    "text"
+                  ],
+                  "tokenizer": {
+                    "SentencePieceTokenizer": {
+                      "sp_model_path": "/mnt/vol/nlp_technologies/xlm/models/xlm_r/model"
+                    }
+                  },
+                  "base_tokenizer": null,
+                  "vocab_file": "/mnt/vol/nlp_technologies/xlm/models/xlm_r/vocab",
+                  "max_seq_len": 256
+                },
+                "dense": null,
+                "labels": {
+                  "LabelTensorizer": {
+                    "is_input": false,
+                    "column": "label",
+                    "allow_unknown": false,
+                    "pad_in_vocab": false,
+                    "label_vocab": [
+                      "BENIGN"
+                    ],
+                    "label_vocab_file": null
+                  }
+                }
+              },
+              "encoder": {
+                "RoBERTaEncoder": {
+                  "load_path": "/mnt/vol/gfsfblearner-oregon/scratch/textray_ckpts/xlmr_large/wpie_encoder.pt",
+                  "save_path": "encoder.pt",
+                  "freeze": false,
+                  "shared_module_key": null,
+                  "output_dropout": 0.25,
+                  "embedding_dim": 1024,
+                  "pooling": "cls_token",
+                  "export": false,
+                  "vocab_size": 250002,
+                  "num_encoder_layers": 24,
+                  "num_attention_heads": 16,
+                  "model_path": "",
+                  "is_finetuned": false
+                }
+              },
+              "decoder": {
+                "load_path": null,
+                "save_path": "decoder.pt",
+                "freeze": false,
+                "shared_module_key": null,
+                "hidden_dims": [],
+                "out_dim": null,
+                "layer_norm": false,
+                "dropout": 0,
+                "bias": true,
+               "activation": "relu"
+              },
+              "output_layer": {
+                "load_path": null,
+                "save_path": null,
+                "freeze": false,
+                "shared_module_key": null,
+                "loss": {
+                  "CrossEntropyLoss": {}
+                },
+                "label_weights": null
+              }
+            }
+          },
+          "metric_reporter": {
+            "ClassificationMetricReporter": {
+              "output_path": "/tmp/test_out.txt",
+              "pep_format": false,
+              "student_column_names": [],
+              "model_select_metric": "macro_f1",
+              "target_label": null,
+              "text_column_names": [
+                "text"
+              ],
+              "additional_column_names": [],
+              "recall_at_precision_thresholds": [
+                0.2
+              ],
+              "is_memory_efficient": true
+            }
+          }
+        }
+      }
+    },
+    "adapted": {
+      "version": 22,
+      "export": {
+        "seq_padding_control": [0, 50, 150, 300, 512],
+        "batch_padding_control": [0, 1, 2, 8, 32],
+        "inference_interface": "texts",
+        "export_torchscript_path": "/tmp/model.pt1",
+        "torchscript_quantize": false
+      },
+      "task": {
+        "DocumentClassificationTask": {
+          "data": {
+            "Data": {
+              "source": {
+                "TSVDataSource": {
+                  "field_names": ["label", "slots", "text"],
+                  "train_filename": "tests/data/train_data_tiny.tsv",
+                  "test_filename": "tests/data/test_data_tiny.tsv",
+                  "eval_filename": "tests/data/test_data_tiny.tsv"
+                }
+            },
+              "batcher": {
+                "Batcher": {
+                  "train_batch_size": 8,
+                  "eval_batch_size": 8,
+                  "test_batch_size": 8
+                }
+              },
+              "sort_key": "tokens",
+              "in_memory": false
+            }
+          },
+          "trainer": {
+            "TaskTrainer": {
+              "epochs": 0,
+              "early_stop_after": 0,
+              "max_clip_norm": null,
+              "report_train_metrics": true,
+              "target_time_limit_seconds": null,
+              "do_eval": true,
+              "load_best_model_after_train": true,
+              "num_samples_to_log_progress": 1000,
+              "num_accumulated_batches": 1,
+              "num_batches_per_epoch": 1000,
+              "optimizer": {
+                "Adam": {
+                  "lr": 0.000005,
+                  "eps": 0.000001,
+                  "weight_decay": 0.01
+                }
+              },
+              "scheduler": {
+                "WarmupScheduler": {
+                  "warmup_steps": 1000,
+                  "inverse_sqrt_decay": false
+                }
+              },
+              "sparsifier": null,
+              "fp16_args": {
+                "FP16OptimizerApex": {
+                  "opt_level": "O2",
+                  "init_loss_scale": null,
+                  "min_loss_scale": null
+                }
+              },
+              "privacy_engine": null
+            }
+          },
+          "use_elastic": null,
+          "model": {
+            "RoBERTa": {
+              "inputs": {
+                "tokens": {
+                  "is_input": true,
+                  "columns": [
+                    "text"
+                  ],
+                  "tokenizer": {
+                    "SentencePieceTokenizer": {
+                      "sp_model_path": "/mnt/vol/nlp_technologies/xlm/models/xlm_r/model"
+                    }
+                  },
+                  "base_tokenizer": null,
+                  "vocab_file": "/mnt/vol/nlp_technologies/xlm/models/xlm_r/vocab",
+                  "max_seq_len": 256
+                },
+                "dense": null,
+                "labels": {
+                  "LabelTensorizer": {
+                    "is_input": false,
+                    "column": "label",
+                    "allow_unknown": false,
+                    "pad_in_vocab": false,
+                    "label_vocab": [
+                      "BENIGN"
+                    ],
+                    "label_vocab_file": null
+                  }
+                }
+              },
+              "encoder": {
+                "RoBERTaEncoder": {
+                  "load_path": "/mnt/vol/gfsfblearner-oregon/scratch/textray_ckpts/xlmr_large/wpie_encoder.pt",
+                  "save_path": "encoder.pt",
+                  "freeze": false,
+                  "shared_module_key": null,
+                  "output_dropout": 0.25,
+                  "embedding_dim": 1024,
+                  "pooling": "cls_token",
+                  "export": false,
+                  "vocab_size": 250002,
+                  "num_encoder_layers": 24,
+                  "num_attention_heads": 16,
+                  "model_path": "",
+                  "is_finetuned": false
+                }
+              },
+              "decoder": {
+                "load_path": null,
+                "save_path": "decoder.pt",
+                "freeze": false,
+                "shared_module_key": null,
+                "hidden_dims": [],
+                "out_dim": null,
+                "layer_norm": false,
+                "dropout": 0,
+                "bias": true,
+                "activation": "relu"
+              },
+              "output_layer": {
+                "load_path": null,
+                "save_path": null,
+                "freeze": false,
+                "shared_module_key": null,
+                "loss": {
+                  "CrossEntropyLoss": {}
+                },
+                "label_weights": null
+              }
+            }
+          },
+          "metric_reporter": {
+            "ClassificationMetricReporter": {
+              "output_path": "/tmp/test_out.txt",
+              "pep_format": false,
+              "student_column_names": [],
+              "model_select_metric": "macro_f1",
+              "target_label": null,
+              "text_column_names": [
+                "text"
+              ],
+              "additional_column_names": [],
+              "recall_at_precision_thresholds": [
+                0.2
+              ],
+              "is_memory_efficient": true
+            }
+          }
+        }
+      }
+    }
+  }
+]

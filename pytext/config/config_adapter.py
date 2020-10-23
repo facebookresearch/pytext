@@ -712,6 +712,30 @@ def upgrade_padding(json_config):
     return json_config
 
 
+@register_adapter(from_version=21)
+def upgrade_export_config(json_config):
+    """
+    Upgrade model export related config fields to the new "export" section.
+    """
+    export_config_fields = [
+        "export_caffe2_path",
+        "export_onnx_path",
+        "export_torchscript_path",
+        "torchscript_quantize",
+        "accelerate",
+        "inference_interface",
+        "seq_padding_control",
+        "batch_padding_control",
+    ]
+
+    export_config = {}
+    for f in export_config_fields:
+        if f in json_config:
+            export_config[f] = json_config.pop(f, None)
+    json_config["export"] = export_config
+    return json_config
+
+
 def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)

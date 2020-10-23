@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import logging
 from collections import OrderedDict
 from typing import Any, List, Optional, Union
 
@@ -83,26 +84,7 @@ class PlaceHolder:
     pass
 
 
-class PyTextConfig(ConfigBase):
-    # the actual task union types will be generated in runtime
-    task: Union[PlaceHolder, Any]
-    use_cuda_if_available: bool = True
-    # Enable mixed precision training. WARNING: under develoment
-    use_fp16: bool = False
-    # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
-    distributed_world_size: int = 1
-    # Total number of GPU streams for gradient sync in distributed training
-    gpu_streams_for_distributed_training: int = 1
-    # load either model or checkpoint(model + config + training_state etc)
-    # load model file for inference only, load checkpont file to continue training
-    load_snapshot_path: str = ""
-    # Where to save the trained pytorch model and checkpoints
-    save_snapshot_path: str = "/tmp/model.pt"
-    # True: use the config saved in snapshot. False: use config from current task
-    use_config_from_snapshot: bool = True
-    # if there are existing snapshots in parent directory of save_snapshot_path
-    # resume training from the latest snapshot automatically
-    auto_resume_from_snapshot: bool = False
+class ExportConfig(ConfigBase):
     # Exported caffe model will be stored here
     export_caffe2_path: Optional[str] = None
     # Exported onnx model will be stored here
@@ -136,6 +118,30 @@ class PyTextConfig(ConfigBase):
     # The list of padding boundaries must be sorted in asecending order.
     # The first list element must be 0.  (Will serve as future padding control "version number")
     batch_padding_control: Optional[List[int]] = None
+
+
+class PyTextConfig(ConfigBase):
+    # the actual task union types will be generated in runtime
+    task: Union[PlaceHolder, Any]
+    use_cuda_if_available: bool = True
+    # Enable mixed precision training. WARNING: under develoment
+    use_fp16: bool = False
+    # Total Number of GPUs to run the training on (for CPU jobs this has to be 1)
+    distributed_world_size: int = 1
+    # Total number of GPU streams for gradient sync in distributed training
+    gpu_streams_for_distributed_training: int = 1
+    # load either model or checkpoint(model + config + training_state etc)
+    # load model file for inference only, load checkpont file to continue training
+    load_snapshot_path: str = ""
+    # Where to save the trained pytorch model and checkpoints
+    save_snapshot_path: str = "/tmp/model.pt"
+    # True: use the config saved in snapshot. False: use config from current task
+    use_config_from_snapshot: bool = True
+    # if there are existing snapshots in parent directory of save_snapshot_path
+    # resume training from the latest snapshot automatically
+    auto_resume_from_snapshot: bool = False
+    # Configuration for model export. See ExportConfig for details
+    export: ExportConfig = ExportConfig()
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules if they are best yet
@@ -167,6 +173,88 @@ class PyTextConfig(ConfigBase):
     # RNNG, should be removed once RNNG refactoring is done
     test_out_path: str = "/tmp/test_out.txt"
     debug_path: str = "/tmp/model.debug"
+
+    def __init__(self, **kwargs):
+        if kwargs["version"] < 22 or ("export" not in kwargs):
+            if kwargs["version"] == LATEST_VERSION:
+                logging.warning(
+                    """
+                    This PytextConfig has a wrong version number >= 22 while
+                    misses the "export" section. Please check if the version
+                    number is incorrectly set to LATEST_VERSION and correct it
+                    to the right version.
+                    """
+                )
+            export = ExportConfig()
+            for k in set(kwargs.keys()):
+                if k in export.__annotations__.keys():
+                    export.k = kwargs.pop(k)
+            kwargs["export"] = export
+        super().__init__(**kwargs)
+
+    @property
+    def export_caffe2_path(self):
+        return self.export.export_caffe2_path
+
+    @export_caffe2_path.setter
+    def export_caffe2_path(self, p):
+        self.export.export_caffe2_path = p
+
+    @property
+    def export_onnx_path(self):
+        return self.export.export_onnx_path
+
+    @export_onnx_path.setter
+    def export_onnx_path(self, p):
+        self.export.export_onnx_path = p
+
+    @property
+    def export_torchscript_path(self):
+        return self.export.export_torchscript_path
+
+    @export_torchscript_path.setter
+    def export_torchscript_path(self, p):
+        self.export.export_torchscript_path = p
+
+    @property
+    def torchscript_quantize(self):
+        return self.export.torchscript_quantize
+
+    @torchscript_quantize.setter
+    def torchscript_quantize(self, quantize):
+        self.export.torchscript_quantize = quantize
+
+    @property
+    def accelerate(self):
+        return self.export.accelerate
+
+    @accelerate.setter
+    def accelerate(self, acc):
+        self.export.accelerate = acc
+
+    @property
+    def inference_interface(self):
+        return self.export.inference_interface
+
+    @inference_interface.setter
+    def inference_interface(self, inf_inter):
+        self.export.inference_interface = inf_inter
+
+    @property
+    def seq_padding_control(self):
+        return self.export.seq_padding_control
+
+    @seq_padding_control.setter
+    def seq_padding_control(self, spc):
+        self.export.seq_padding_control = spc
+
+    @property
+    def batch_padding_control(self):
+        return self.export.batch_padding_control
+
+    @batch_padding_control.setter
+    def batch_padding_control(self, bpc):
+        self.export.batch_padding_control = bpc
 
 
 class TestConfig(ConfigBase):
@@ -205,4 +293,4 @@ class LogitsConfig(TestConfig):
     fp16: bool = False
 
 
-LATEST_VERSION = 21
+LATEST_VERSION = 22
