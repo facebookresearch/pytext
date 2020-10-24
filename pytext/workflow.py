@@ -210,6 +210,16 @@ def save_and_export(
             seq_padding_control=export_config.seq_padding_control,
             batch_padding_control=export_config.batch_padding_control,
         )
+    if export_config.export_lite_path:
+        task.lite_export(
+            model=task.model,
+            export_path=export_config.export_lite_path,
+            quantize=export_config.torchscript_quantize,
+            inference_interface=export_config.inference_interface,
+            accelerate=export_config.accelerate,
+            seq_padding_control=export_config.seq_padding_control,
+            batch_padding_control=export_config.batch_padding_control,
+        )
 
 
 def export_saved_model_to_caffe2(

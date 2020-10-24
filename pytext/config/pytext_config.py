@@ -91,6 +91,8 @@ class ExportConfig(ConfigBase):
     export_onnx_path: str = "/tmp/model.onnx"
     # Exported torchscript model will be stored here
     export_torchscript_path: Optional[str] = None
+    # Exported jit lite model will be stored here
+    export_lite_path: Optional[str] = None
     # Export quantized torchscript model
     torchscript_quantize: Optional[bool] = False
     # Accelerator options.
