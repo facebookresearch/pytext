@@ -190,7 +190,7 @@ class PyTextConfig(ConfigBase):
             export = ExportConfig()
             for k in set(kwargs.keys()):
                 if k in export.__annotations__.keys():
-                    export.k = kwargs.pop(k)
+                    export = export._replace(**{k: kwargs.pop(k)})
             kwargs["export"] = export
         super().__init__(**kwargs)
 
