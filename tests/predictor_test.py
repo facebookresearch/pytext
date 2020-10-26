@@ -50,7 +50,7 @@ class PredictorTest(unittest.TestCase):
                         )
                     ),
                 ),
-                version=LATEST_VERSION,
+                version=21,
                 save_snapshot_path=snapshot_file.name,
                 export_caffe2_path=caffe2_model_file.name,
             )

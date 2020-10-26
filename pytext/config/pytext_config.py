@@ -177,21 +177,20 @@ class PyTextConfig(ConfigBase):
     debug_path: str = "/tmp/model.debug"
 
     def __init__(self, **kwargs):
-        if kwargs["version"] < 22 or ("export" not in kwargs):
-            if kwargs["version"] == LATEST_VERSION:
-                logging.warning(
-                    """
-                    This PytextConfig has a wrong version number >= 22 while
-                    misses the "export" section. Please check if the version
-                    number is incorrectly set to LATEST_VERSION and correct it
-                    to the right version.
-                    """
-                )
-            export = ExportConfig()
-            for k in set(kwargs.keys()):
-                if k in export.__annotations__.keys():
-                    export.k = kwargs.pop(k)
-            kwargs["export"] = export
+        version = kwargs["version"]
+        if version < 22:
+            assert "export" not in kwargs, (
+                'Config versions before 22 should not contain an "export" section. Got '
+                f"version={version}."
+            )
+            kwargs["export"] = ExportConfig(
+                **{
+                    k: kwargs.pop(k)
+                    for k in ExportConfig.__annotations__.keys()
+                    if k in kwargs.keys()
+                }
+            )
+            kwargs["version"] = 22
         super().__init__(**kwargs)
 
     @property
