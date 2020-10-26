@@ -6,7 +6,6 @@ import pickle
 import unittest
 
 import torch
-from libfb.py import testutil
 from pytext.torchscript.tokenizer import ScriptBPE, ScriptWordTokenizer
 from pytext.torchscript.utils import make_byte_inputs, utf8_chars
 
@@ -89,28 +88,22 @@ class BPETest(unittest.TestCase):
 
 
 class WordTokenizerTest(unittest.TestCase):
-    @testutil.data_provider(
-        lambda: (
-            (
-                "Order me a coffee",
-                True,
-                [("order", 0, 5), ("me", 6, 8), ("a", 9, 10), ("coffee", 11, 17)],
-            ),
-            (
-                "Order me a coffee",
-                False,
-                [("Order", 0, 5), ("me", 6, 8), ("a", 9, 10), ("coffee", 11, 17)],
-            ),
-            (
-                "Order    me    a     coffee",
-                True,
-                [("order", 0, 5), ("me", 9, 11), ("a", 15, 16), ("coffee", 21, 27)],
-            ),
-            ("Order", True, [("order", 0, 5)]),
-            ("", False, []),
+    def test_tokenizer(self) -> None:
+        lowercase = True
+        tokenizer1 = ScriptWordTokenizer(lowercase)
+        self.assertEqual(
+            tokenizer1.tokenize("Order me a coffee"),
+            [("order", 0, 5), ("me", 6, 8), ("a", 9, 10), ("coffee", 11, 17)],
         )
-    )
-    def test_tokenizer(self, raw_token, lowercase, result) -> None:
-        tokenizer = ScriptWordTokenizer(lowercase)
-        output = tokenizer.tokenize(raw_token)
-        self.assertEqual(output, result)
+        self.assertEqual(
+            tokenizer1.tokenize("Order    me    a     coffee"),
+            [("order", 0, 5), ("me", 9, 11), ("a", 15, 16), ("coffee", 21, 27)],
+        )
+        self.assertEqual(tokenizer1.tokenize("Order"), [("order", 0, 5)])
+        lowercase = False
+        tokenizer2 = ScriptWordTokenizer(lowercase)
+        self.assertEqual(
+            tokenizer2.tokenize("Order me a coffee"),
+            [("Order", 0, 5), ("me", 6, 8), ("a", 9, 10), ("coffee", 11, 17)],
+        )
+        self.assertEqual(tokenizer2.tokenize(""), [])
