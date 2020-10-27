@@ -13,6 +13,7 @@ from pytext.data.tensorizers import (
     Tensorizer,
     TokenTensorizer,
     UidTensorizer,
+    VocabConfig,
 )
 from pytext.data.tokenizers import DoNothingTokenizer
 from pytext.exporters.exporter import ModelExporter
@@ -249,19 +250,7 @@ class DocModel(Model):
         return decoder
 
     @classmethod
-    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
-        labels = tensorizers["labels"].vocab
-        if not labels:
-            raise ValueError("Labels were not created, see preceding errors")
-
-        embedding = cls.create_embedding(config, tensorizers)
-        representation = create_module(
-            config.representation, embed_dim=embedding.embedding_dim
-        )
-        decoder = cls.create_decoder(
-            config, representation.representation_dim, len(labels)
-        )
-
+    def create_output_layer(cls, config: Config, labels: VocabConfig):
         label_weights = (
             get_label_weights(labels.idx, config.output_layer.label_weights)
             if config.output_layer.label_weights
@@ -276,7 +265,23 @@ class DocModel(Model):
         else:
             output_layer_cls = MulticlassOutputLayer
 
-        output_layer = output_layer_cls(list(labels), loss)
+        return output_layer_cls(list(labels), loss)
+
+    @classmethod
+    def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
+        labels = tensorizers["labels"].vocab
+        if not labels:
+            raise ValueError("Labels were not created, see preceding errors")
+
+        embedding = cls.create_embedding(config, tensorizers)
+        representation = create_module(
+            config.representation, embed_dim=embedding.embedding_dim
+        )
+        decoder = cls.create_decoder(
+            config, representation.representation_dim, len(labels)
+        )
+
+        output_layer = cls.create_output_layer(config, labels=labels)
         return cls(embedding, representation, decoder, output_layer)
 
 
