@@ -3,10 +3,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import torch
-from pytext.torchscript.batchutils import (
-    PytextEmbeddingModuleBatchSort,
-    PytextTwoTowerEmbeddingModuleBatchSort,
-)
+from pytext.torchscript.batchutils import max_tokens
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
@@ -361,13 +358,14 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         if argno == -1:
             raise RuntimeError("Argument number not specified during export.")
 
-        # The next lines performs the following function, which is not supported by TorchScript
-        # sorted_mega_batch = sorted(mega_batch,key=lambda element : len(element[argno]))
-        mega_batch_class_list = [
-            PytextEmbeddingModuleBatchSort(x, argno) for x in mega_batch
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], x[2])), n)
+            for (n, x) in enumerate(mega_batch)
         ]
-        sorted_mega_batch_class_list = sorted(mega_batch_class_list)
-        sorted_mega_batch = [x.be() for x in sorted_mega_batch_class_list]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
         max_bs: int = 10
@@ -784,13 +782,14 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         if argno == -1:
             raise RuntimeError("Argument number not specified during export.")
 
-        # The next lines performs the following function, which is not supported by TorchScript
-        # sorted_mega_batch = sorted(mega_batch,key=lambda element : len(element[argno]))
-        mega_batch_class_list = [
-            PytextTwoTowerEmbeddingModuleBatchSort(x, argno) for x in mega_batch
+        # The next lines sort all cross-request batch elements by the token length of right_.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.right_tensorizer.tokenize(x[0], x[2])), n)
+            for (n, x) in enumerate(mega_batch)
         ]
-        sorted_mega_batch_class_list = sorted(mega_batch_class_list)
-        sorted_mega_batch = [x.be() for x in sorted_mega_batch_class_list]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
         max_bs: int = 10
