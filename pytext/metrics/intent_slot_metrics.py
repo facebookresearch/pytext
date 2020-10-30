@@ -17,6 +17,7 @@ from typing import (
 )
 
 from pytext.data.data_structures.node import Node as NodeBase, Span
+from pytext.metrics.calibration_metrics import AllCalibrationMetrics
 
 from . import (
     AllConfusions,
@@ -153,6 +154,7 @@ class AllMetrics(NamedTuple):
             function `compute_intent_slot_metrics()`.
         tree_metrics: Tree metrics for intents and slots. For details, see the function
             `compute_intent_slot_metrics()`.
+        calibration_metrics: Posterior calibration metrics for intents and slots.
         loss: Cross entropy loss.
     """
 
@@ -162,6 +164,7 @@ class AllMetrics(NamedTuple):
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
+    calibration_metrics: Optional[AllCalibrationMetrics]
     loss: Optional[float] = None
 
     def print_metrics(self) -> None:
@@ -175,6 +178,9 @@ class AllMetrics(NamedTuple):
         if self.tree_metrics:
             print("\n\nTree Metrics")
             self.tree_metrics.print_metrics()
+        if self.calibration_metrics:
+            print("\n\nCalibration Metrics")
+            self.calibration_metrics.print_metrics()
 
 
 class IntentSlotConfusions(NamedTuple):
@@ -476,6 +482,7 @@ def compute_all_metrics(
     all_predicted_frames: List[List[Node]] = None,
     calculated_loss: float = None,
     length_metrics: Dict = None,
+    calibration_metrics: Optional[AllCalibrationMetrics] = None,
 ) -> AllMetrics:
     """
     Given a list of predicted and gold intent frames, computes intent-slot related
@@ -534,5 +541,6 @@ def compute_all_metrics(
         accuracies,
         bracket,
         tree,
+        calibration_metrics,
         calculated_loss,
     )
