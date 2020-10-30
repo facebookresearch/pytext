@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import torch
+from fairseq.utils import clip_grad_norm_
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 
@@ -24,9 +25,9 @@ class Optimizer(Component):
             For those we treat model as max_norm.
             eg. optimizer.clip_grad_norm(max_norm)
             """
-            return torch.nn.utils.clip_grad_norm_(self.params, max_norm)
+            return clip_grad_norm_(self.params, max_norm)
         else:
-            return torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            return clip_grad_norm_(model.parameters(), max_norm)
 
     def pre_export(self, model):
         pass
