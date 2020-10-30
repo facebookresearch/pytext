@@ -121,7 +121,7 @@ class RobertaModel(nn.Module):
             in_dim=embedding_dim + dense_dim,
             out_dim=out_dim,
             bias=bias,
-            activation=Activation.GELU,
+            activation=Activation.RELU,
         )
 
     def forward(self, inputs: Dict[str, torch.Tensor]) -> torch.Tensor:
