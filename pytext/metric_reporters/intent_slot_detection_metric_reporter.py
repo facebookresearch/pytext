@@ -4,12 +4,7 @@
 from typing import Dict, List, Optional
 
 from pytext.common.constants import DatasetFieldName, Stage
-from pytext.config.component import create_metric_reporter
 from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
-from pytext.metric_reporters.calibration_metric_reporter import (
-    CalibrationMetricReporter,
-)
-from pytext.metrics.calibration_metrics import AllCalibrationMetrics
 from pytext.metrics.intent_slot_metrics import (
     FramePredictionPair,
     Node,
@@ -79,8 +74,6 @@ class IntentSlotMetricReporter(MetricReporter):
         word_label_names: List[str],
         use_bio_labels: bool,
         channels: List[Channel],
-        intent_calibration_module: CalibrationMetricReporter,
-        slot_calibration_module: CalibrationMetricReporter,
         slot_column_name: str = "slots",
         text_column_name: str = "text",
         token_tensorizer_name: str = "tokens",
@@ -92,16 +85,9 @@ class IntentSlotMetricReporter(MetricReporter):
         self.slot_column_name = slot_column_name
         self.text_column_name = text_column_name
         self.token_tensorizer_name = token_tensorizer_name
-        self.intent_calibration_module = intent_calibration_module
-        self.slot_calibration_module = slot_calibration_module
 
     class Config(MetricReporter.Config):
-        intent_calibration_module: (
-            CalibrationMetricReporter.Config
-        ) = CalibrationMetricReporter.Config()
-        slot_calibration_module: (
-            CalibrationMetricReporter.Config
-        ) = CalibrationMetricReporter.Config()
+        pass
 
     @classmethod
     def from_config(cls, config, tensorizers: Optional[Dict] = None):
@@ -110,36 +96,18 @@ class IntentSlotMetricReporter(MetricReporter):
             if name in tensorizers:
                 token_tensorizer_name = name
                 break
-        token_pad_index = tensorizers[token_tensorizer_name].vocab.get_pad_index()
-        intent_calibration_module = create_metric_reporter(
-            config.intent_calibration_module, pad_index=token_pad_index
-        )
-        slot_calibration_module = create_metric_reporter(
-            config.slot_calibration_module, pad_index=token_pad_index
-        )
         return cls(
             tensorizers["doc_labels"].vocab,
             tensorizers["word_labels"].vocab,
             getattr(tensorizers["word_labels"], "use_bio_labels", False),
             [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
-            intent_calibration_module,
-            slot_calibration_module,
             tensorizers["word_labels"].slot_column,
             tensorizers[token_tensorizer_name].text_column,
             token_tensorizer_name,
         )
 
-    def _reset(self):
-        super()._reset()
-        if hasattr(self, "intent_calibration_module"):
-            self.intent_calibration_module._reset()
-        if hasattr(self, "slot_calibration_module"):
-            self.slot_calibration_module._reset()
-
     def aggregate_preds(self, batch_preds, batch_context):
-        intent_preds, slot_preds = batch_preds
-        self.intent_calibration_module.aggregate_preds(intent_preds, batch_context)
-        self.slot_calibration_module.aggregate_preds(slot_preds, batch_context)
+        intent_preds, word_preds = batch_preds
         self.all_preds.extend(
             [
                 create_frame(
@@ -155,7 +123,7 @@ class IntentSlotMetricReporter(MetricReporter):
                 for text, intent_pred, word_pred, seq_len, token_range in zip(
                     batch_context[self.text_column_name],
                     intent_preds,
-                    slot_preds,
+                    word_preds,
                     batch_context[DatasetFieldName.SEQ_LENS],
                     batch_context[DatasetFieldName.TOKEN_RANGE],
                 )
@@ -163,9 +131,7 @@ class IntentSlotMetricReporter(MetricReporter):
         )
 
     def aggregate_targets(self, batch_targets, batch_context):
-        intent_targets, slot_targets = batch_targets
-        self.intent_calibration_module.aggregate_targets(intent_targets, batch_context)
-        self.slot_calibration_module.aggregate_targets(slot_targets, batch_context)
+        intent_targets = batch_targets[0]
         self.all_targets.extend(
             [
                 create_frame(
@@ -188,8 +154,6 @@ class IntentSlotMetricReporter(MetricReporter):
 
     def aggregate_scores(self, batch_scores):
         intent_scores, slot_scores = batch_scores
-        self.intent_calibration_module.aggregate_scores(intent_scores)
-        self.slot_calibration_module.aggregate_scores(slot_scores)
         self.all_scores.extend(
             (intent_score, slot_score)
             for intent_score, slot_score in zip(
@@ -210,19 +174,12 @@ class IntentSlotMetricReporter(MetricReporter):
         return [frame_to_str(frame) for frame in self.all_targets]
 
     def calculate_metric(self):
-        calibration_metrics = AllCalibrationMetrics(
-            {
-                "intent_calibration": self.intent_calibration_module.calculate_metric(),
-                "slot_calibration": self.slot_calibration_module.calculate_metric(),
-            }
-        )
         return compute_all_metrics(
             [
                 FramePredictionPair(pred_frame, target_frame)
                 for pred_frame, target_frame in zip(self.all_preds, self.all_targets)
             ],
             frame_accuracy=True,
-            calibration_metrics=calibration_metrics,
         )
 
     def batch_context(self, raw_batch, batch):
