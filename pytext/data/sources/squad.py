@@ -3,6 +3,7 @@
 
 import json
 import math
+from random import choice
 from typing import List, Optional
 
 from pytext.data.sources.data_source import (
@@ -196,6 +197,13 @@ class SquadDataSource(DataSource):
         for id, row in enumerate(tsv):
             parts = (row[f] for f in field_names)
             doc, question, answers, answer_starts, has_answer = parts
+            try:
+                # if we have paraphrases for question
+                question = json.loads(question)
+                if isinstance(question, list):
+                    question = choice(question)
+            except ValueError:
+                pass
             answers = json.loads(answers)
             answer_starts = json.loads(answer_starts)
 
@@ -297,6 +305,9 @@ class SquadDataSourceForKD(SquadDataSource):
                 pad_mask,
                 segment_labels,
             ) = (json.loads(s) for s in parts)
+            if isinstance(question, list):
+                # if we have paraphrases for question
+                question = choice(question)
             for piece_dict in _split_document(
                 id,
                 doc,
