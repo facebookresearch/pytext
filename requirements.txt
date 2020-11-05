@@ -16,5 +16,5 @@ requests
 scipy
 sentencepiece
 tensorboard
-torch
+torch==1.6.0
 torchtext
