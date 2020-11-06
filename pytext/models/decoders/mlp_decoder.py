@@ -48,6 +48,7 @@ class MLPDecoder(DecoderBase):
         bias: bool = True
         activation: Activation = Activation.RELU
         temperature: float = 1.0
+        spectral_normalization: bool = False
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -66,6 +67,9 @@ class MLPDecoder(DecoderBase):
         if out_dim > 0:
             layers.append(nn.Linear(in_dim, out_dim, config.bias))
 
+        assert len(layers) > 0
+        if config.spectral_normalization:
+            layers[-1] = torch.nn.utils.spectral_norm(layers[-1])
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
         self.temperature = config.temperature

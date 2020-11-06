@@ -50,6 +50,8 @@ from torch import nn
 from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 from torch.serialization import default_restore_location
 
+from .r3f_models import R3FConfigOptions, R3FPyTextMixin
+
 
 def init_params(module):
     """Initialize the RoBERTa weights for pre-training from scratch."""
@@ -406,3 +408,30 @@ class RoBERTaWordTaggingModel(BaseModel):
         # of the transformer.
         representation = self.encoder(encoder_inputs)[0][-1]
         return self.decoder(representation, *args)
+
+
+class RoBERTaR3F(RoBERTa, R3FPyTextMixin):
+    class Config(RoBERTa.Config):
+        r3f_options: R3FConfigOptions = R3FConfigOptions()
+
+    def get_embedding_module(self, *args, **kwargs):
+        return self.encoder.encoder.transformer.token_embedding
+
+    def original_forward(self, *args, **kwargs):
+        return RoBERTa.forward(self, *args, **kwargs)
+
+    def get_sample_size(self, model_inputs, targets):
+        return targets.size(0)
+
+    def __init__(
+        self, encoder, decoder, output_layer, r3f_options, stage=Stage.TRAIN
+    ) -> None:
+        RoBERTa.__init__(self, encoder, decoder, output_layer, stage=stage)
+        R3FPyTextMixin.__init__(self, r3f_options)
+
+    def forward(self, *args, use_r3f: bool = False, **kwargs):
+        return R3FPyTextMixin.forward(self, *args, use_r3f=use_r3f, **kwargs)
+
+    @classmethod
+    def train_batch(cls, model, batch, state=None):
+        return R3FPyTextMixin.train_batch(model=model, batch=batch, state=state)
