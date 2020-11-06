@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import re
-from typing import Optional, List
+from typing import List, Optional
 
 import torch
 from pytext.utils.usage import log_class_usage
