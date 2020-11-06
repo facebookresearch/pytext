@@ -104,14 +104,13 @@ class PairwiseCosineDistanceOutputLayer(OutputLayerBase):
                 return F.cosine_similarity(logits[0], logits[1], dim=1)
 
         def _transform_targets(targets):
+            if isinstance(self.loss_fn, (BinaryCrossEntropyLoss, NLLLoss)):
+                return targets
+            if isinstance(self.loss_fn, (MAELoss, MSELoss)):
+                return targets.to(dtype=torch.float)
             # Replace label = 0 with -1 because we're using cosine_embedding_loss.
-            return (
-                targets
-                if isinstance(self.loss_fn, (BinaryCrossEntropyLoss, NLLLoss))
-                else targets.masked_fill(mask=(targets == 0), value=-1.0).to(
-                    dtype=torch.float
-                )
-            )
+            targets = targets.masked_fill(mask=(targets == 0), value=-1.0)
+            return targets.to(dtype=torch.float)
 
         logits = _transform_logits(logits)
         targets = _transform_targets(targets)
