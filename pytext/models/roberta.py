@@ -74,7 +74,7 @@ class RoBERTaEncoderBase(TransformerSentenceEncoderBase):
         # NewBertModel expects the output as a tuple and grabs the first element
         tokens, _, _, _ = inputs
         full_representation = (
-            self.encoder(tokens, args[0]) if len(args) > 0 else self.encoder(tokens)
+            self.encoder(tokens, args) if len(args) > 0 else self.encoder(tokens)
         )
         sentence_rep = full_representation[-1][:, 0, :]
         return full_representation, sentence_rep
