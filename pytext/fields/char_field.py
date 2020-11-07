@@ -13,9 +13,9 @@ from .field import VocabUsingField
 
 
 class CharFeatureField(VocabUsingField):
-    dummy_model_input = torch.tensor(
-        [[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long, device="cpu"
-    )
+    dummy_model_input = None  # torch.tensor(
+    #    [[[1, 1, 1]], [[1, 1, 1]]], dtype=torch.long, device="cpu"
+    # )
 
     def __init__(
         self,

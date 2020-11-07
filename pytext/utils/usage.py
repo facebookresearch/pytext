@@ -8,4 +8,4 @@ def log_class_usage(klass):
     identifier = "PyText"
     if klass and hasattr(klass, "__name__"):
         identifier += f".{klass.__name__}"
-    torch._C._log_api_usage_once(identifier)
+    # torch._C._log_api_usage_once(identifier)
