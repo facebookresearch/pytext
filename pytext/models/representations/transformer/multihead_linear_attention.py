@@ -85,6 +85,7 @@ class MultiheadLinearAttention(nn.Module):
         v = v.contiguous().view(-1, batch_heads, self.head_dim).transpose(0, 1)
 
         source_length = k.size(1)  # T_k
+
         attn_weights = torch.bmm(q, k.transpose(1, 2))
 
         assert list(attn_weights.shape) == [batch_heads, target_length, source_length]
@@ -97,7 +98,9 @@ class MultiheadLinearAttention(nn.Module):
         attn = torch.bmm(attn_weights, v)
         assert list(attn.shape) == [batch_heads, target_length, self.head_dim]
         attn = (
-            attn.transpose(0, 1).contiguous().view(target_length, batch_size, embed_dim)
+            attn.transpose(0, 1)
+            .contiguous()
+            .view(target_length, batch_size, self.head_dim * self.num_heads)
         )
         attn = self.output_projection(attn)
 
