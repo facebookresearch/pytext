@@ -132,7 +132,7 @@ class Seq2SeqMetricReporter(MetricReporter):
             ],
         )
 
-    def gen_extra_context(self):
+    def gen_extra_context(self, *args):
         self.all_context[DatasetFieldName.SOURCE_SEQ_FIELD] = self.all_src_tokens
 
     def _compare_target_prediction_tokens(self, prediction, target):

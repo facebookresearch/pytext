@@ -71,7 +71,7 @@ class CompositionalMetricReporter(MetricReporter):
         super()._reset()
         self.pred_target_trees = None
 
-    def gen_extra_context(self):
+    def gen_extra_context(self, *args):
         # check if all_preds contains top K results or only 1 result
         pred_target_trees = []
         all_pred_trees: List[List[Tree]] = []
