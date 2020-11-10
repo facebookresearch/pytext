@@ -209,7 +209,7 @@ class MetricReporter(Component):
         return self.all_targets
 
     # TODO this function can be merged with batch_context once data migration is done
-    def gen_extra_context(self):
+    def gen_extra_context(self, *args):
         """
         Generate any extra intermediate context data for metric calculation
         """
@@ -243,7 +243,7 @@ class MetricReporter(Component):
             reset (bool): if all data should be reset after report, default is True
             print_to_channels (bool): if report data to channels, default is True
         """
-        self.gen_extra_context()
+        self.gen_extra_context(model)
         self.total_loss = self.calculate_loss()
         metrics = self.calculate_metric()
         model_select_metric = self.get_model_select_metric(metrics)
