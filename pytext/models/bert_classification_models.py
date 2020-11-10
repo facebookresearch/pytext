@@ -126,8 +126,12 @@ class NewBertModel(BaseModel):
         else:
             output_layer_cls = MulticlassOutputLayer
 
+        additional_kwargs = {}
+        if hasattr(config, "r3f_options"):
+            additional_kwargs["r3f_options"] = config.r3f_options
+
         output_layer = output_layer_cls(list(labels), loss)
-        return cls(encoder, decoder, output_layer)
+        return cls(encoder, decoder, output_layer, **additional_kwargs)
 
     def __init__(self, encoder, decoder, output_layer, stage=Stage.TRAIN) -> None:
         super().__init__(stage=stage)
