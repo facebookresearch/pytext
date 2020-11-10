@@ -8,7 +8,11 @@ import unittest
 
 from pytext.builtin_task import register_builtin_tasks
 from pytext.config import LATEST_VERSION, pytext_config_from_json
-from pytext.config.config_adapter import ADAPTERS, upgrade_one_version
+from pytext.config.config_adapter import (
+    ADAPTERS,
+    DOWNGRADE_ADAPTERS,
+    upgrade_one_version,
+)
 from pytext.utils.file_io import PathManager
 
 
@@ -50,3 +54,12 @@ class ConfigAdapterTest(unittest.TestCase):
                 for test_case in test_data:
                     # make sure the config can be instantiated, don't need return value
                     pytext_config_from_json(test_case["original"])
+
+    def test_downgrade_adapter(self):
+        """
+        we added downgrade adapater when latest_version = 22, we need to add downgrade
+        adapter for future version
+        """
+        base_version = 23
+        for i, v in enumerate(sorted(DOWNGRADE_ADAPTERS.keys())):
+            self.assertEqual(i + base_version, v, f"Missing adapter for version {v}")

@@ -6,6 +6,7 @@ from .pytext_config import LATEST_VERSION
 
 
 ADAPTERS = {}
+DOWNGRADE_ADAPTERS = {}
 NOT_THERE = (None, None, None)
 
 
@@ -19,6 +20,21 @@ def register_adapter(from_version):
             )
         else:
             ADAPTERS[from_version] = fn
+        return fn
+
+    return decorator
+
+
+def register_down_grade_adapter(from_version):
+    def decorator(fn):
+        if from_version in DOWNGRADE_ADAPTERS:
+            raise Exception(
+                "Duplicated adapter from_version={}: '{}' and '{}'".format(
+                    from_version, fn.__name__, DOWNGRADE_ADAPTERS[from_version].__name__
+                )
+            )
+        else:
+            DOWNGRADE_ADAPTERS[from_version] = fn
         return fn
 
     return decorator
@@ -750,6 +766,20 @@ def upgrade_one_version(json_config):
     return json_config
 
 
+def downgrade_one_version(json_config):
+    current_version = json_config.get("version", 0)
+    downgrade_adapter = DOWNGRADE_ADAPTERS.get(current_version)
+    if not downgrade_adapter:
+        raise Exception(f"no downgrade adapter found for version {current_version}")
+    json_config = downgrade_adapter(json_config)
+    eprint(
+        f"WARNING - Downgrading your current config version={current_version}. "
+        "Please wait for next pytext pkg release to let new config take effect."
+    )
+    json_config["version"] = current_version - 1
+    return json_config
+
+
 def upgrade_to_latest(json_config):
     current_version = json_config.get("version") or 0
     if current_version > LATEST_VERSION:
@@ -758,6 +788,20 @@ def upgrade_to_latest(json_config):
             version {LATEST_VERSION}"
         )
     while current_version != LATEST_VERSION:
+        print(f"Current Version: {current_version}")
+        json_config = upgrade_one_version(json_config)
+        current_version = json_config["version"]
+    return json_config
+
+
+def update_to_version(json_config, expected_version=LATEST_VERSION):
+    current_version = json_config.get("version") or 0
+    if current_version > expected_version:
+        while current_version != expected_version:
+            print(f"Current Version: {current_version}")
+            json_config = downgrade_one_version(json_config)
+            current_version = json_config["version"]
+    while current_version != expected_version:
         print(f"Current Version: {current_version}")
         json_config = upgrade_one_version(json_config)
         current_version = json_config["version"]
