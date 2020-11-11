@@ -10,6 +10,7 @@ def cls_vars(cls):
 
 def set_random_seeds(seed, use_deterministic_cudnn):
     import random
+
     import numpy as np
     import torch
     from pytext.utils import cuda

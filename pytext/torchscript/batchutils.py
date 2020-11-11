@@ -2,9 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from typing import Dict, List, Tuple
-from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 
 import torch
+from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 
 
 def max_tokens(per_sentence_tokens: List[List[Tuple[str, int, int]]]) -> int:
