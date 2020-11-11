@@ -177,9 +177,9 @@ class DictEmbedding(EmbeddingBase):
         # Temporary workaround till https://github.com/pytorch/pytorch/issues/32840
         # is resolved
         if self.pooling_type == "mean":
-            reduced_embeds = (
-                torch.sum(weighted_embds, dim=2) / lengths.unsqueeze(2).float()
-            )
+            reduced_embeds = torch.sum(weighted_embds, dim=2) / lengths.unsqueeze(
+                2
+            ).type_as(weighted_embds)
         elif self.pooling_type == "max":
             reduced_embeds, _ = torch.max(weighted_embds, dim=2)
         else:
