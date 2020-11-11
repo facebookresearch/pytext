@@ -983,7 +983,37 @@ class PyTextEmbeddingModule(ScriptModule):
         goals: Dict[str, str],
     ) -> List[List[Tuple[List[str], int,]]]:  # texts
 
-        return make_batch_texts(self.tensorizer, mega_batch, goals)
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], None)), n)
+            for (n, x) in enumerate(mega_batch)
+        ]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (_, n) in sorted_mega_batch_key_list]
+
+        # TBD: allow model server to specify batch size in goals dictionary
+        max_bs: int = 10
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    List[str],  # texts
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
 
 
 class PyTextModule(ScriptModule):
@@ -1046,7 +1076,37 @@ class PyTextModule(ScriptModule):
         goals: Dict[str, str],
     ) -> List[List[Tuple[List[str], int,]]]:  # texts
 
-        return make_batch_texts(self.tensorizer, mega_batch, goals)
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], None)), n)
+            for (n, x) in enumerate(mega_batch)
+        ]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (_, n) in sorted_mega_batch_key_list]
+
+        # TBD: allow model server to specify batch size in goals dictionary
+        max_bs: int = 10
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    List[str],  # texts
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
 
 
 class PyTextEmbeddingModuleIndex(PyTextEmbeddingModule):
