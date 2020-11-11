@@ -916,16 +916,20 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
 #  * Sequence length and batch size padding for accelerators
 #
 
-############################################
+#############################################################
 # Pytext Classes:
 
 
-class PyTextEmbeddingModule(ScriptModule):
+class PyTextEmbeddingModule(torch.jit.ScriptModule):
     def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
         log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def set_device(self, device: str):
+        self.tensorizer.set_device(device)
 
     @torch.jit.script_method
     def set_padding_control(self, dimension: str, control: Optional[List[int]]):
@@ -1016,17 +1020,18 @@ class PyTextEmbeddingModule(ScriptModule):
         return batch_list
 
 
-class PyTextModule(ScriptModule):
+# PytextLayerModule is a PytextEmbeddingModule with an additional output layer
+
+
+class PyTextLayerModule(PyTextEmbeddingModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
         output_layer: torch.jit.ScriptModule,
         tensorizer: ScriptTensorizer,
     ):
-        super().__init__()
-        self.model = model
+        super().__init__(model, tensorizer)
         self.output_layer = output_layer
-        self.tensorizer = tensorizer
 
     @torch.jit.script_method
     def set_padding_control(self, dimension: str, control: Optional[List[int]]):
@@ -1039,74 +1044,11 @@ class PyTextModule(ScriptModule):
 
     @torch.jit.script_method
     def forward(self, texts: List[str]):
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, None),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        input_tensors = self.tensorizer(inputs)
-        logits = self.model(input_tensors)
+        logits = super().forward(texts)
         return self.output_layer(logits)
 
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                List[str],  # texts
-            ]
-        ],
-    ) -> List[torch.Tensor]:
 
-        flat_result: torch.Tensor = self.forward(
-            texts=make_prediction_texts(batch),
-        )
-
-        return destructure_tensor([len(be[0]) for be in batch], flat_result)
-
-    @torch.jit.script_method
-    def make_batch(
-        self,
-        mega_batch: List[
-            Tuple[
-                List[str],  # texts
-                int,
-            ]
-        ],
-        goals: Dict[str, str],
-    ) -> List[List[Tuple[List[str], int,]]]:  # texts
-
-        # The next lines sort all cross-request batch elements by the token length.
-        # Note that cross-request batch element can in turn be a client batch.
-        mega_batch_key_list = [
-            (max_tokens(self.tensorizer.tokenize(x[0], None)), n)
-            for (n, x) in enumerate(mega_batch)
-        ]
-        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
-        sorted_mega_batch = [mega_batch[n] for (_, n) in sorted_mega_batch_key_list]
-
-        # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
-        len_mb = len(mega_batch)
-        num_batches = (len_mb + max_bs - 1) // max_bs
-
-        batch_list: List[
-            List[
-                Tuple[
-                    List[str],  # texts
-                    int,  # position
-                ]
-            ]
-        ] = []
-
-        start = 0
-
-        for _i in range(num_batches):
-            end = min(start + max_bs, len_mb)
-            batch_list.append(sorted_mega_batch[start:end])
-            start = end
-
-        return batch_list
+# PytextEmbeddingModuleIndex is a PytextEmbeddingModule with an additional Index
 
 
 class PyTextEmbeddingModuleIndex(PyTextEmbeddingModule):
@@ -1124,6 +1066,9 @@ class PyTextEmbeddingModuleIndex(PyTextEmbeddingModule):
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors)[self.index].cpu()
+
+
+# PytextEmbeddingModuleWithDense is a PytextEmbeddingModule with an additional dense_feat
 
 
 class PyTextEmbeddingModuleWithDense(PyTextEmbeddingModule):
@@ -1161,6 +1106,8 @@ class PyTextEmbeddingModuleWithDense(PyTextEmbeddingModule):
         # call model
         dense_feat = self.normalizer.normalize(dense_feat)
         dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
 
         sentence_embedding = self._forward(inputs, dense_tensor)
         if self.concat_dense:
@@ -1202,7 +1149,10 @@ class PyTextEmbeddingModuleWithDense(PyTextEmbeddingModule):
         return make_batch_texts_dense(self.tensorizer, mega_batch, goals)
 
 
-class PyTextModuleWithDense(PyTextModule):
+# PytextLayerModuleWithDense is a PytextEmbeddingModuleWithDense with an additional output layer
+
+
+class PyTextLayerModuleWithDense(PyTextEmbeddingModuleWithDense):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -1210,8 +1160,8 @@ class PyTextModuleWithDense(PyTextModule):
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
     ):
-        super().__init__(model, output_layer, tensorizer)
-        self.normalizer = normalizer
+        super().__init__(model, tensorizer, normalizer)
+        self.output_layer = output_layer
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
@@ -1220,52 +1170,11 @@ class PyTextModuleWithDense(PyTextModule):
         texts: List[str],
         dense_feat: List[List[float]],
     ):
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, None),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        input_tensors = self.tensorizer(inputs)
-        dense_feat = self.normalizer.normalize(dense_feat)
-
-        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        logits = self.model(input_tensors, dense_tensor)
+        logits = super().forward(texts, dense_feat)
         return self.output_layer(logits)
 
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                List[str],  # texts
-                List[List[float]],  # dense
-            ]
-        ],
-    ) -> List[torch.Tensor]:
 
-        flat_result: torch.Tensor = self.forward(
-            texts=make_prediction_texts_wdense(batch),
-            dense_feat=make_prediction_wtexts_dense(batch),
-        )
-
-        return destructure_tensor([len(be[0]) for be in batch], flat_result)
-
-    @torch.jit.script_method
-    def make_batch(
-        self,
-        mega_batch: List[
-            Tuple[
-                List[str],  # texts
-                List[List[float]],  # dense
-                int,
-            ]
-        ],
-        goals: Dict[str, str],
-    ) -> List[List[Tuple[List[str], List[List[float]], int,]]]:  # texts  # dense
-
-        return make_batch_texts_dense(self.tensorizer, mega_batch, goals)
+# PytextEmbeddingModuleWithDenseIndex is a PytextEmbeddingModuleWithDense with an additional Index
 
 
 class PyTextEmbeddingModuleWithDenseIndex(PyTextEmbeddingModuleWithDense):
@@ -1283,10 +1192,7 @@ class PyTextEmbeddingModuleWithDenseIndex(PyTextEmbeddingModuleWithDense):
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
-        input_tensors = self.tensorizer(inputs)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        return self.model(input_tensors, dense_tensor)[self.index].cpu()
+        return super()._forward(inputs, dense_tensor)[self.index].cpu()
 
 
 class PyTextVariableSizeEmbeddingModule(PyTextEmbeddingModule):
@@ -1339,11 +1245,28 @@ class PyTextVariableSizeEmbeddingModule(PyTextEmbeddingModule):
         return destructure_tensor_list([len(be[0]) for be in batch], flat_result)
 
 
-############################################
+#############################################################
 # PytextTwoTower Classes:
+#
+#  mirrors the inheritance order of Pytext modules.
+#  *** please keep order and inheritance structure        ***
+#  *** in sync between these two hierarchies              ***
+#
 
 
-class PyTextTwoTowerBaseModule(torch.jit.ScriptModule):
+class PyTextTwoTowerEmbeddingModule(torch.jit.ScriptModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+    ):
+        super().__init__()
+        self.model = model
+        self.right_tensorizer = right_tensorizer
+        self.left_tensorizer = left_tensorizer
+        log_class_usage(self.__class__)
+
     @torch.jit.script_method
     def set_device(self, device: str):
         self.right_tensorizer.set_device(device)
@@ -1358,6 +1281,31 @@ class PyTextTwoTowerBaseModule(torch.jit.ScriptModule):
         """
         self.right_tensorizer.set_padding_control(dimension, control)
         self.left_tensorizer.set_padding_control(dimension, control)
+
+    @torch.jit.script_method
+    def _forward(self, right_inputs: ScriptBatchInput, left_inputs: ScriptBatchInput):
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        left_input_tensors = self.left_tensorizer(left_inputs)
+
+        return self.model(right_input_tensors, left_input_tensors).cpu()
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_texts: List[str],
+        left_texts: List[str],
+    ) -> torch.Tensor:
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        return self._forward(right_inputs, left_inputs)
 
     @torch.jit.script_method
     def make_prediction(
@@ -1436,46 +1384,7 @@ class PyTextTwoTowerBaseModule(torch.jit.ScriptModule):
         return batch_list
 
 
-class PyTextTwoTowerEmbeddingModule(PyTextTwoTowerBaseModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        right_tensorizer: ScriptTensorizer,
-        left_tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.right_tensorizer = right_tensorizer
-        self.left_tensorizer = left_tensorizer
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, right_inputs: ScriptBatchInput, left_inputs: ScriptBatchInput):
-        right_input_tensors = self.right_tensorizer(right_inputs)
-        left_input_tensors = self.left_tensorizer(left_inputs)
-
-        return self.model(right_input_tensors, left_input_tensors).cpu()
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        right_texts: List[str],
-        left_texts: List[str],
-    ) -> torch.Tensor:
-        right_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(right_texts),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        left_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(left_texts),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        return self._forward(right_inputs, left_inputs)
-
-
-class PyTextTwoTowerModule(PyTextTwoTowerBaseModule):
+class PyTextTwoTowerLayerModule(PyTextTwoTowerEmbeddingModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -1483,11 +1392,8 @@ class PyTextTwoTowerModule(PyTextTwoTowerBaseModule):
         right_tensorizer: ScriptTensorizer,
         left_tensorizer: ScriptTensorizer,
     ):
-        super().__init__()
-        self.model = model
+        super().__init__(model, right_tensorizer, left_tensorizer)
         self.output_layer = output_layer
-        self.right_tensorizer = right_tensorizer
-        self.left_tensorizer = left_tensorizer
 
     @torch.jit.script_method
     def forward(
@@ -1495,19 +1401,7 @@ class PyTextTwoTowerModule(PyTextTwoTowerBaseModule):
         right_texts: List[str],
         left_texts: List[str],
     ):
-        right_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(right_texts),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        right_input_tensors = self.right_tensorizer(right_inputs)
-        left_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(left_texts),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        left_input_tensors = self.left_tensorizer(left_inputs)
-        logits = self.model(right_input_tensors, left_input_tensors)
+        logits = super().forward(right_texts, left_texts)
         return self.output_layer(logits)
 
 
@@ -1579,7 +1473,7 @@ class PyTextTwoTowerEmbeddingModuleWithDense(PyTextTwoTowerEmbeddingModule):
         return sentence_embedding
 
 
-class PyTextTwoTowerModuleWithDense(PyTextTwoTowerModule):
+class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
