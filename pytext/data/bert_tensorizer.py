@@ -336,6 +336,7 @@ class BERTTensorizerScriptImpl(BERTTensorizerBaseScriptImpl):
     ) -> Tuple[List[int], List[int], List[int]]:
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
+        max_seq_len -= 1  # because _wrap_numberized_tokens adds a token
 
         return self.vocab_lookup(
             tokens,
