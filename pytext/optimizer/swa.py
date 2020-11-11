@@ -303,6 +303,10 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
         base_opt = create_optimizer(config.optimizer, model)
         return cls(base_opt, config.start, config.frequency, config.swa_learning_rate)
 
+    def reset_param_groups(self):
+        self.param_groups = []
+        self.optimizer.param_groups = []
+
 
 # BatchNorm utils
 def _check_bn_apply(module, flag):

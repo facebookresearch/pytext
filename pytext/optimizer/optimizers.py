@@ -48,6 +48,9 @@ class Optimizer(Component):
             for p in param_group["params"]:
                 yield p
 
+    def reset_param_groups(self):
+        self.param_groups = []
+
 
 class Adagrad(torch.optim.Adagrad, Optimizer):
     class Config(Optimizer.Config):
