@@ -7,8 +7,7 @@ from pytext.torchscript.batchutils import (
     max_tokens,
     make_prediction_texts,
     make_batch_texts,
-    make_prediction_texts_wdense,
-    make_prediction_wtexts_dense,
+    make_prediction_texts_dense,
     make_batch_texts_dense,
     destructure_tensor,
     destructure_tensor_list,
@@ -915,6 +914,15 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
 #  * Batch optimization support
 #  * Sequence length and batch size padding for accelerators
 #
+#
+# The inputs and outputs for cross-request batching with make_prediction
+# are described in this post:
+#   https://fb.workplace.com/groups/401165540538639/permalink/556111271710731/
+#
+# The inputs and outputs for batch optimization with make_batch
+# are described in this post:
+#   https://fb.workplace.com/groups/401165540538639/permalink/607830233205501/
+#
 
 #############################################################
 # Pytext Classes:
@@ -1126,9 +1134,11 @@ class PyTextEmbeddingModuleWithDense(PyTextEmbeddingModule):
         ],
     ) -> List[torch.Tensor]:
 
+        flat_texts, flat_dense = make_prediction_texts_dense(batch)
+
         flat_result: torch.Tensor = self.forward(
-            texts=make_prediction_texts_wdense(batch),
-            dense_feat=make_prediction_wtexts_dense(batch),
+            texts=flat_texts,
+            dense_feat=flat_dense,
         )
 
         return destructure_tensor([len(be[0]) for be in batch], flat_result)

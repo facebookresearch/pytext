@@ -66,6 +66,12 @@ def destructure_tensor_list(
 # make_batch_* ()
 # utility functions for batch optimizations
 #
+#
+# The inputs and outputs for make_prediction are described in this post:
+#   https://fb.workplace.com/groups/401165540538639/permalink/556111271710731/
+#
+# The inputs and outputs for make_batch are described in this post:
+#   https://fb.workplace.com/groups/401165540538639/permalink/607830233205501/
 
 
 def make_prediction_texts(
@@ -136,23 +142,26 @@ def make_batch_texts(
 #
 
 
-def make_prediction_texts_wdense(
+def make_prediction_texts_dense(
     batch: List[
         Tuple[
             List[str],  # texts
             List[List[float]],  # dense
         ]
     ],
-) -> List[str]:
+) -> Tuple[List[str], List[List[float]]]:
 
     batchsize = len(batch)
     flat_texts: List[str] = []
+    flat_dense: List[List[float]] = []
 
     for i in range(batchsize):
-        batch_element = batch[i][0]
-        flat_texts.extend(batch_element)
+        texts_element = batch[i][0]
+        flat_texts.extend(texts_element)
+        dense_element = batch[i][1]
+        flat_dense.extend(dense_element)
 
-        if len(batch[i][0]) != len(batch[i][1]):
+        if len(texts_element) != len(dense_element):
             raise RuntimeError(
                 "This is not good. texts/dense client batch length mismatch"
             )
@@ -160,34 +169,10 @@ def make_prediction_texts_wdense(
     if len(flat_texts) == 0:
         raise RuntimeError("This is not good. Empty request batch.")
 
-    return flat_texts
-
-
-def make_prediction_wtexts_dense(
-    batch: List[
-        Tuple[
-            List[str],  # texts
-            List[List[float]],  # dense
-        ]
-    ],
-) -> List[List[float]]:
-
-    batchsize = len(batch)
-    flat_dense: List[List[float]] = []
-
-    for i in range(batchsize):
-        batch_element = batch[i][1]
-        flat_dense.extend(batch_element)
-
-        if len(batch[i][0]) != len(batch[i][1]):
-            raise RuntimeError(
-                "This is not good. texts/dense client batch length mismatch"
-            )
-
-    if len(flat_dense) == 0:
-        raise RuntimeError("This is not good. Empty request batch.")
-
-    return flat_dense
+    return (
+        flat_texts,
+        flat_dense,
+    )
 
 
 def make_batch_texts_dense(
