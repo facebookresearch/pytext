@@ -369,7 +369,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
         # reset fp32_optimizer param groups to using master weights
         fp32_param_group = self.fp32_optimizer.param_groups[0]
         fp32_param_group["params"] = [self.fp32_params[torch.cuda.current_device()]]
-        self.fp32_optimizer.param_groups = []
+        self.fp32_optimizer.reset_param_groups()
         self.fp32_optimizer.add_param_group(fp32_param_group)
 
     @classmethod
