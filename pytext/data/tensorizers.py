@@ -1639,7 +1639,7 @@ class GazetteerTensorizer(Tensorizer):
         feats, weights, lengths = zip(*batch)
         lengths_flattened = [l for l_list in lengths for l in l_list]
         seq_lens = [len(l_list) for l_list in lengths]
-        max_ex_len = max(seq_lens)
+        max_ex_len = precision.pad_length(max(seq_lens))
         max_feat_len = max(lengths_flattened)
         all_lengths, all_feats, all_weights = [], [], []
         for i, seq_len in enumerate(seq_lens):
@@ -1671,7 +1671,7 @@ class GazetteerTensorizer(Tensorizer):
             all_lengths.append(ex_lengths)
         return (
             cuda.tensor(all_feats, torch.long),
-            cuda.tensor(all_weights, torch.float),
+            precision.maybe_half(cuda.tensor(all_weights, torch.float)),
             cuda.tensor(all_lengths, torch.long),
         )
 
