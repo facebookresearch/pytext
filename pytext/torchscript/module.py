@@ -3,6 +3,10 @@
 from typing import Dict, List, Optional, Tuple
 
 import torch
+from multiray.textray.textray_details.ttypes import (  # noqa
+    QuantizationSchema,
+    FeatureSchema,
+)
 from pytext.torchscript.batchutils import (
     max_tokens,
     make_prediction_texts,
