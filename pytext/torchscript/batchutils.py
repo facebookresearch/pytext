@@ -221,3 +221,20 @@ def make_batch_texts_dense(
 
 
 #
+
+###########################################
+#
+#  listify(torch.Tensor):
+#     turn tensor into a list
+#
+
+
+def listify(t: torch.Tensor) -> List[torch.Tensor]:
+
+    tlen = t.size()[0]
+    res_list: List[torch.Tensor] = []
+
+    for i in range(tlen):
+        res_list.append(t.narrow(0, i, 1))
+
+    return res_list

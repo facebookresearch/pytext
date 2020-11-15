@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext.torchscript.batchutils import (
+    listify,
     max_tokens,
     make_prediction_texts,
     make_batch_texts,
@@ -12,6 +13,8 @@ from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
 )
+from pytext.torchscript.feature_schema_enum import FEATURE_SCHEMA
+from pytext.torchscript.quantization_schema_enum import QUANTIZATION_SCHEMA
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
@@ -1042,17 +1045,16 @@ class PyTextLayerModule(PyTextEmbeddingModule):
         self.output_layer = output_layer
 
     @torch.jit.script_method
-    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
-        """
-        This functions will be called to set a padding style.
-        None - No padding
-        List: first element 0, round seq length to the smallest list element larger than inputs
-        """
-        self.tensorizer.set_padding_control(dimension, control)
-
-    @torch.jit.script_method
     def forward(self, texts: List[str]):
-        logits = super().forward(texts)
+        # logits = super().forward(texts)
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, None),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        input_tensors = self.tensorizer(inputs)
+        logits = self.model(input_tensors)
+        # </> logits = super().forward(texts)
         return self.output_layer(logits)
 
 
@@ -1089,7 +1091,7 @@ class PyTextEmbeddingModuleWithDense(PyTextEmbeddingModule):
     ):
         super().__init__(model, tensorizer)
         self.normalizer = normalizer
-        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+        self.concat_dense: bool = concat_dense
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
@@ -1180,7 +1182,20 @@ class PyTextLayerModuleWithDense(PyTextEmbeddingModuleWithDense):
         texts: List[str],
         dense_feat: List[List[float]],
     ):
-        logits = super().forward(texts, dense_feat)
+        # logits = super().forward(texts, dense_feat)
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, None),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        input_tensors = self.tensorizer(inputs)
+        dense_feat = self.normalizer.normalize(dense_feat)
+
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        logits = self.model(input_tensors, dense_tensor)
+        # </>logits = super().forward(texts, dense_feat)
         return self.output_layer(logits)
 
 
@@ -1202,7 +1217,12 @@ class PyTextEmbeddingModuleWithDenseIndex(PyTextEmbeddingModuleWithDense):
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
-        return super()._forward(inputs, dense_tensor)[self.index].cpu()
+        # return super()._forward(inputs, dense_tensor)[self.index].cpu()
+        input_tensors = self.tensorizer(inputs)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        return self.model(input_tensors, dense_tensor)[self.index].cpu()
+        # </> return super()._forward(inputs, dense_tensor)[self.index].cpu()
 
 
 class PyTextVariableSizeEmbeddingModule(PyTextEmbeddingModule):
@@ -1634,3 +1654,139 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
             start = end
 
         return batch_list
+
+
+#############################################################################
+#
+# MultiRay computes embeddings that encode a quantiZation scheme in addition to
+# the result.
+#
+# We create two derived class modules:
+#  * MultirayEmbeddingModuleIndex
+#  * MultirayVariableSizeEmbeddingModule
+# from the corresponding Pytext* modules, and add the quantization scheme to
+# the results computed by the Pytext* modules, for both single element and
+# batched inference.
+#
+
+
+class MultirayEmbeddingModuleIndex(PyTextEmbeddingModuleIndex):
+    """
+    Assumes model returns a tuple of representations and sequence lengths, then  slices
+    each example's representation according to length. Returns a list of tensors. The
+    slicing is easier to do outside a traced model.
+    """
+
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+        super().__init__(model, tensorizer)
+        self.QUANTIZATION_SCHEMA = QUANTIZATION_SCHEMA
+        self.FEATURE_SCHEMA = FEATURE_SCHEMA
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def forward(self, texts: List[str]) -> Tuple[List[torch.Tensor], int, int]:
+        # res = super().forward(texts)
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, None),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        res = self._forward(inputs)
+        # </>res = super().forward(texts)
+        return (
+            listify(res),
+            self.FEATURE_SCHEMA["REPRESENTATION_1D"],
+            self.QUANTIZATION_SCHEMA["NONE"],
+        )
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                List[str],
+            ]
+        ],  # texts
+    ) -> List[Tuple[List[torch.Tensor], int, int]]:
+
+        res_list: List[Tuple[List[torch.Tensor], int, int]] = []
+
+        # res: List[torch.Tensor] = super().make_prediction(batch)
+        flat_result: torch.Tensor = self.forward(
+            texts=make_prediction_texts(batch),
+        )
+
+        res = destructure_tensor([len(be[0]) for be in batch], flat_result)
+        # </> res: List[torch.Tensor] = super().make_prediction(batch)
+
+        # add quantization indicator to every result
+        for r in res:
+            res_list.append(
+                (
+                    listify(r),
+                    self.FEATURE_SCHEMA["REPRESENTATION_1D"],
+                    self.QUANTIZATION_SCHEMA["NONE"],
+                )
+            )
+
+        return res_list
+
+
+class MultirayVariableSizeEmbeddingModule(PyTextVariableSizeEmbeddingModule):
+    """
+    Assumes model returns a tuple of representations and sequence lengths, then slices
+    each example's representation according to length. Returns a list of tensors. The
+    slicing is easier to do outside a traced model.
+    """
+
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+        super().__init__(model, tensorizer)
+        self.QUANTIZATION_SCHEMA = QUANTIZATION_SCHEMA
+        self.FEATURE_SCHEMA = FEATURE_SCHEMA
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def forward(self, texts: List[str]) -> Tuple[List[torch.Tensor], int, int]:
+        # res = super().forward(texts)
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, None),
+            tokens=squeeze_2d(None),
+            languages=squeeze_1d(None),
+        )
+        res = self._forward(inputs)
+        # </>res = super().forward(texts)
+        return (
+            res,
+            self.FEATURE_SCHEMA["REPRESENTATION_2D"],
+            self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
+        )
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                List[str],
+            ]
+        ],  # texts
+    ) -> List[Tuple[List[torch.Tensor], int, int]]:
+
+        res_list: List[Tuple[List[torch.Tensor], int, int]] = []
+
+        # res: List[List[torch.Tensor]] = super().make_prediction(batch)
+        flat_result: List[torch.Tensor] = self.forward(
+            texts=make_prediction_texts(batch),
+        )
+
+        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result)
+        # </> res: List[List[torch.Tensor]] = super().make_prediction(batch)
+
+        # add quantization indicator to every result
+        for r in res:
+            res_list.append(
+                r,
+                self.FEATURE_SCHEMA["REPRESENTATION_2D"],
+                self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
+            )
+
+        return res_list
