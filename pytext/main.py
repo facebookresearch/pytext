@@ -14,8 +14,9 @@ import torch
 from pytext import create_predictor
 from pytext.builtin_task import add_include
 from pytext.common.utils import eprint
-from pytext.config import LATEST_VERSION, PyTextConfig
+from pytext.config import LATEST_VERSION, ExportConfig, PyTextConfig
 from pytext.config.component import register_tasks
+from pytext.config.config_adapter import upgrade_to_latest
 from pytext.config.serialize import (
     config_to_json,
     parse_config,
@@ -48,6 +49,30 @@ from torch.multiprocessing.spawn import spawn
 class Attrs:
     def __repr__(self):
         return f"Attrs({', '.join(f'{k}={v}' for k, v in vars(self).items())})"
+
+
+def _validate_export_json_config(export_json_config):
+    """Validate if the input export_json_config (PyTextConfig in JSON object) only has
+    export section config and a version number.
+    """
+    assert export_json_config.keys() == {"export", "version"}, (
+        "The export-json config should only contain fields export and version. Got "
+        f"{export_json_config.keys()}"
+    )
+    for key in export_json_config["export"]:
+        assert (
+            key in ExportConfig.__annotations__.keys()
+        ), f"Field {key} in the export json is not found in the ExportConfig class."
+
+
+def _load_and_validate_export_json_config(export_json):
+    with PathManager.open(export_json) as fp:
+        export_json_config = json.load(fp)
+        if "config" in export_json_config:
+            export_json_config = export_json_config["config"]
+        export_json_config = upgrade_to_latest(export_json_config)
+        _validate_export_json_config(export_json_config)
+        return export_json_config
 
 
 def train_model_distributed(config, metric_channels: Optional[List[Channel]]):
@@ -381,17 +406,31 @@ def train(context):
 
 
 @main.command()
+@click.option("--export-json", help="the path to the export options in JSON format.")
 @click.option("--model", help="the pytext snapshot model file to load")
 @click.option("--output-path", help="where to save the exported caffe2 model")
 @click.option("--output-onnx-path", help="where to save the exported onnx model")
 @click.pass_context
-def export(context, model, output_path, output_onnx_path):
+def export(context, export_json, model, output_path, output_onnx_path):
     """Convert a pytext model snapshot to a caffe2 model."""
-    if not model:
-        config = context.obj.load_config()
-        model = config.save_snapshot_path
-        output_path = config.export_caffe2_path
-        output_onnx_path = config.export_onnx_path
+    # only populate from export_json if no export option is configured from the command line.
+    if export_json:
+        if not output_path and not output_onnx_path:
+            export_json_config = _load_and_validate_export_json_config(export_json)
+            export_section_config = export_json_config["export"]
+            if "export_caffe2_path" in export_section_config:
+                output_path = export_section_config["export_caffe2_path"]
+            if "export_onnx_path" in export_section_config:
+                output_onnx_path = export_section_config["export_onnx_path"]
+        else:
+            print(
+                "the export-json config is ignored because export options are found the command line"
+            )
+    config = context.obj.load_config()
+    model = model or config.save_snapshot_path
+    output_path = output_path or config.export_caffe2_path
+    output_onnx_path = output_onnx_path or config.export_onnx_path
+
     print(
         f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
     )
@@ -399,12 +438,26 @@ def export(context, model, output_path, output_onnx_path):
 
 
 @main.command()
+@click.option("--export-json", help="the path to the export options in JSON format.")
 @click.option("--model", help="the pytext snapshot model file to load")
 @click.option("--output-path", help="where to save the exported torchscript model")
 @click.option("--quantize", help="whether to quantize the model")
 @click.pass_context
-def torchscript_export(context, model, output_path=None, **kwargs):
+def torchscript_export(context, export_json, model, output_path, quantize):
     """Convert a pytext model snapshot to a torchscript model."""
+    kwargs = {}
+    # only populate from export_json if no export option is configured from the command line.
+    if export_json:
+        if not quantize and not output_path:
+            export_json_config = _load_and_validate_export_json_config(export_json)
+            kwargs = export_json_config["export"]
+            if "export_torchscript_path" in export_json_config["export"]:
+                output_path = export_json_config["export"]["export_torchscript_path"]
+        else:
+            print(
+                "the export-json config is ignored because export options are found the command line"
+            )
+            kwargs = {"torchscript_quantize": quantize}
     config = context.obj.load_config()
     model = model or config.save_snapshot_path
     output_path = output_path or f"{config.save_snapshot_path}.torchscript"

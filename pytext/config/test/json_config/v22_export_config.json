@@ -1,0 +1,28 @@
+[
+  {
+    "original": {
+      "version": 21,
+      "inference_interface": "texts",
+      "seq_padding_control": [0, 50, 150, 300, 512],
+      "batch_padding_control": [0, 1, 2, 8, 32],
+      "export_torchscript_path": "/tmp/model.pt1",
+      "export_caffe2_path": "/tmp/model_caffe2.pt1",
+      "export_onnx_path": "/tmp/model_onnx.pt1",
+      "torchscript_quantize": false,
+      "task": {"NewTask": {}}
+    },
+    "adapted": {
+      "version": 22,
+      "export": {
+        "seq_padding_control": [0, 50, 150, 300, 512],
+        "batch_padding_control": [0, 1, 2, 8, 32],
+        "inference_interface": "texts",
+        "export_torchscript_path": "/tmp/model.pt1",
+        "export_caffe2_path": "/tmp/model_caffe2.pt1",
+        "export_onnx_path": "/tmp/model_onnx.pt1",
+        "torchscript_quantize": false
+      },
+      "task": {"NewTask": {}}
+    }
+  }
+]

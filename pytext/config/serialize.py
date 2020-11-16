@@ -201,6 +201,12 @@ def config_from_json(cls, json_obj, ignore_fields=()):
             detected in config json: {unknown_fields}"
         )
     for field, f_cls in cls.__annotations__.items():
+        if field in ignore_fields:
+            eprint(
+                f"Info - field: {field} in class: {cls_name} is skipped in",
+                "config_from_json because it's found in the ignore_fields.",
+            )
+            continue
         value = None
         is_optional = _is_optional(f_cls)
 

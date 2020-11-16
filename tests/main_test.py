@@ -51,3 +51,35 @@ class TestMain(unittest.TestCase):
             input='{"text": "create an alarm for 1:30 pm"}',
         )
         assert "'prediction':" in result.output, result.exception
+
+    def test_docnn_with_export_config(self):
+        # prepare config
+        config_dict = self.find_and_patch_config("docnn_wo_export.json")
+        model_path = config_dict["save_snapshot_path"]
+        config_json = json.dumps(config_dict)
+
+        # train model
+        result = self.runner.invoke(main, args=["--config-json", config_json, "train"])
+        assert not result.exception, result.exception
+
+        # export the trained model
+        result = self.runner.invoke(
+            main,
+            args=[
+                "--config-json",
+                config_json,
+                "export",
+                "--export-json",
+                os.path.join(self.config_base_path, "export_options.json"),
+            ],
+        )
+        print(result.output)
+        assert not result.exception, result.exception
+
+        # predict with PyTorch model
+        result = self.runner.invoke(
+            main,
+            args=["predict-py", "--model-file", model_path],
+            input='{"text": "create an alarm for 1:30 pm"}',
+        )
+        assert "'prediction':" in result.output, result.exception

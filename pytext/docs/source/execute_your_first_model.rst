@@ -76,6 +76,7 @@ Exporting a model is pretty simple:
       Convert a pytext model snapshot to a caffe2 model.
 
     Options:
+      --export-json TEXT  the path to the export options in JSON format
       --model TEXT        the pytext snapshot model file to load
       --output-path TEXT  where to save the exported model
       --help              Show this message and exit.
@@ -85,6 +86,14 @@ You can also pass in a configuration to infer some of these options. In this cas
 .. code-block:: console
 
     (pytext) $ pytext export --output-path exported_model.c2 < demo/configs/docnn.json
+    ...[snip]
+    Saving caffe2 model to: exported_model.c2
+
+Alternatively you can use the export-json to pass in a json config with only version and export fields populated.
+
+.. code-block:: console
+
+    (pytext) $ pytext export --output-path exported_model.c2 --export-json demo/configs/export_options.json < demo/configs/docnn.json
     ...[snip]
     Saving caffe2 model to: exported_model.c2
 
