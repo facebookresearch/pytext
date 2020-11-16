@@ -1712,18 +1712,18 @@ class MultirayEmbeddingModuleIndex(PyTextEmbeddingModuleIndex):
         res_list: List[Tuple[List[torch.Tensor], int, int]] = []
 
         # res: List[torch.Tensor] = super().make_prediction(batch)
-        flat_result: torch.Tensor = self.forward(
+        flat_result: Tuple[List[torch.Tensor], int, int] = self.forward(
             texts=make_prediction_texts(batch),
         )
 
-        res = destructure_tensor([len(be[0]) for be in batch], flat_result)
+        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result[0])
         # </> res: List[torch.Tensor] = super().make_prediction(batch)
 
         # add quantization indicator to every result
         for r in res:
             res_list.append(
                 (
-                    listify(r),
+                    r,
                     self.FEATURE_SCHEMA["REPRESENTATION_1D"],
                     self.QUANTIZATION_SCHEMA["NONE"],
                 )
@@ -1774,19 +1774,21 @@ class MultirayVariableSizeEmbeddingModule(PyTextVariableSizeEmbeddingModule):
         res_list: List[Tuple[List[torch.Tensor], int, int]] = []
 
         # res: List[List[torch.Tensor]] = super().make_prediction(batch)
-        flat_result: List[torch.Tensor] = self.forward(
+        flat_result: Tuple[List[torch.Tensor], int, int] = self.forward(
             texts=make_prediction_texts(batch),
         )
 
-        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result)
+        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result[0])
         # </> res: List[List[torch.Tensor]] = super().make_prediction(batch)
 
         # add quantization indicator to every result
         for r in res:
             res_list.append(
-                r,
-                self.FEATURE_SCHEMA["REPRESENTATION_2D"],
-                self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
+                (
+                    r,
+                    self.FEATURE_SCHEMA["REPRESENTATION_2D"],
+                    self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
+                )
             )
 
         return res_list
