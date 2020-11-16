@@ -1,0 +1,25 @@
+{
+  "version": 8,
+  "task": {
+    "DocumentClassificationTask": {
+      "data": {
+        "source": {
+          "TSVDataSource": {
+            "field_names": ["label", "slots", "text"],
+            "train_filename": "tests/data/train_data_tiny.tsv",
+            "test_filename": "tests/data/test_data_tiny.tsv",
+            "eval_filename": "tests/data/test_data_tiny.tsv"
+          }
+        }
+      },
+      "model": {
+        "DocModel": {
+          "representation": {
+            "DocNNRepresentation": {}
+          }
+        }
+      }
+    }
+  },
+  "save_snapshot_path": "/tmp/model.pt"
+}
