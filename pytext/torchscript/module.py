@@ -7,14 +7,11 @@ from pytext.torchscript.batchutils import (
     listify,
     max_tokens,
     make_prediction_texts,
-    make_batch_texts,
     make_prediction_texts_dense,
     make_batch_texts_dense,
     destructure_tensor,
     destructure_tensor_list,
 )
-from pytext.torchscript.feature_schema_enum import FEATURE_SCHEMA
-from pytext.torchscript.quantization_schema_enum import QUANTIZATION_SCHEMA
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
 from pytext.torchscript.utils import ScriptBatchInput, squeeze_1d, squeeze_2d
@@ -1654,141 +1651,3 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
             start = end
 
         return batch_list
-
-
-#############################################################################
-#
-# MultiRay computes embeddings that encode a quantiZation scheme in addition to
-# the result.
-#
-# We create two derived class modules:
-#  * MultirayEmbeddingModuleIndex
-#  * MultirayVariableSizeEmbeddingModule
-# from the corresponding Pytext* modules, and add the quantization scheme to
-# the results computed by the Pytext* modules, for both single element and
-# batched inference.
-#
-
-
-class MultirayEmbeddingModuleIndex(PyTextEmbeddingModuleIndex):
-    """
-    Assumes model returns a tuple of representations and sequence lengths, then  slices
-    each example's representation according to length. Returns a list of tensors. The
-    slicing is easier to do outside a traced model.
-    """
-
-    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
-        super().__init__(model, tensorizer)
-        self.QUANTIZATION_SCHEMA = QUANTIZATION_SCHEMA
-        self.FEATURE_SCHEMA = FEATURE_SCHEMA
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def forward(self, texts: List[str]) -> Tuple[List[torch.Tensor], int, int]:
-        # res = super().forward(texts)
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, None),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        res = self._forward(inputs)
-        # </>res = super().forward(texts)
-        return (
-            listify(res),
-            self.FEATURE_SCHEMA["REPRESENTATION_1D"],
-            self.QUANTIZATION_SCHEMA["NONE"],
-        )
-
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                List[str],
-            ]
-        ],  # texts
-    ) -> List[Tuple[List[torch.Tensor], int, int]]:
-
-        res_list: List[Tuple[List[torch.Tensor], int, int]] = []
-
-        # res: List[torch.Tensor] = super().make_prediction(batch)
-        flat_result: Tuple[List[torch.Tensor], int, int] = self.forward(
-            texts=make_prediction_texts(batch),
-        )
-
-        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result[0])
-        # </> res: List[torch.Tensor] = super().make_prediction(batch)
-
-        # add quantization indicator to every result
-        for r in res:
-            res_list.append(
-                (
-                    r,
-                    self.FEATURE_SCHEMA["REPRESENTATION_1D"],
-                    self.QUANTIZATION_SCHEMA["NONE"],
-                )
-            )
-
-        return res_list
-
-
-class MultirayVariableSizeEmbeddingModule(PyTextVariableSizeEmbeddingModule):
-    """
-    Assumes model returns a tuple of representations and sequence lengths, then slices
-    each example's representation according to length. Returns a list of tensors. The
-    slicing is easier to do outside a traced model.
-    """
-
-    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
-        super().__init__(model, tensorizer)
-        self.QUANTIZATION_SCHEMA = QUANTIZATION_SCHEMA
-        self.FEATURE_SCHEMA = FEATURE_SCHEMA
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def forward(self, texts: List[str]) -> Tuple[List[torch.Tensor], int, int]:
-        # res = super().forward(texts)
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, None),
-            tokens=squeeze_2d(None),
-            languages=squeeze_1d(None),
-        )
-        res = self._forward(inputs)
-        # </>res = super().forward(texts)
-        return (
-            res,
-            self.FEATURE_SCHEMA["REPRESENTATION_2D"],
-            self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
-        )
-
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                List[str],
-            ]
-        ],  # texts
-    ) -> List[Tuple[List[torch.Tensor], int, int]]:
-
-        res_list: List[Tuple[List[torch.Tensor], int, int]] = []
-
-        # res: List[List[torch.Tensor]] = super().make_prediction(batch)
-        flat_result: Tuple[List[torch.Tensor], int, int] = self.forward(
-            texts=make_prediction_texts(batch),
-        )
-
-        res = destructure_tensor_list([len(be[0]) for be in batch], flat_result[0])
-        # </> res: List[List[torch.Tensor]] = super().make_prediction(batch)
-
-        # add quantization indicator to every result
-        for r in res:
-            res_list.append(
-                (
-                    r,
-                    self.FEATURE_SCHEMA["REPRESENTATION_2D"],
-                    self.QUANTIZATION_SCHEMA["INT1_QUANTIZATION"],
-                )
-            )
-
-        return res_list
