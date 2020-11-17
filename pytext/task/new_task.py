@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+
 from typing import Any, Dict, Optional, Type, Union
 
 import torch
@@ -18,6 +19,10 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch import jit, sort
 
+from .accelerator_lowering import (
+    lower_modules_to_accelerator,
+    swap_modules_for_accelerator,
+)
 from .quantize import quantize_statically
 from .task import TaskBase
 
@@ -297,6 +302,9 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
+        if "nnpi" in accelerate:
+            model = swap_modules_for_accelerator(model)
+
         # Trace needs eval mode, to disable dropout etc
         model.eval()
         model.prepare_for_onnx_export_()
@@ -312,12 +320,14 @@ class _NewTask(TaskBase):
         model(*inputs)
         if "half" in accelerate:
             model.half()
+
         if quantize and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
             quantize_linear_only = "nnpi_quantize" in accelerate
+            module_swap = "nnpi" in accelerate
             trace = quantize_statically(
-                model, inputs, data_loader, quantize_linear_only
+                model, inputs, data_loader, quantize_linear_only, module_swap
             )
         else:
             if quantize:
@@ -348,10 +358,11 @@ class _NewTask(TaskBase):
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(
-                trace._c,
-                preservedAttrs=["make_prediction", "make_batch", "set_padding_control"],
+            print("lowering using to_glow")
+            trace = lower_modules_to_accelerator(
+                model, trace, seq_padding_control, batch_padding_control
             )
+
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
             with PathManager.open(export_path, "wb") as f:
