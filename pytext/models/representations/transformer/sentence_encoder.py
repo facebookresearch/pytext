@@ -46,6 +46,9 @@ class SentenceEncoder(nn.Module):
 
     def extract_features(self, tokens):
         # support passing in a single sentence
+        torch._assert(
+            tokens.dim() == 1 or tokens.dim() == 2, "tokens should be a 1D or 2D tensor"
+        )
         tokens = tokens.view(-1, tokens.shape[-1])
         return self.transformer(tokens)
 

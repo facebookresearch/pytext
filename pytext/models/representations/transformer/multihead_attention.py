@@ -47,10 +47,11 @@ class MultiheadSelfAttention(nn.Module):
         target_length, batch_size, embed_dim = query.size()
         mask_batch_size, source_length = key_padding_mask.size()
 
-        assert embed_dim == self.embed_dim
-        assert (
-            batch_size == mask_batch_size
-        ), "query and key_padding_mask batch sizes differed"
+        torch._assert(embed_dim == self.embed_dim, "query embed dim doesn't match")
+        torch._assert(
+            batch_size == mask_batch_size,
+            "query and key_padding_mask batch sizes differed",
+        )
 
         # input projection
         projection = self.input_projection(query)
@@ -63,11 +64,25 @@ class MultiheadSelfAttention(nn.Module):
         k = k.contiguous().view(-1, batch_heads, self.head_dim).transpose(0, 1)
         v = v.contiguous().view(-1, batch_heads, self.head_dim).transpose(0, 1)
 
-        assert k.size(1) == source_length
+        torch._assert(
+            k.size(1) == source_length, "key size should be equal to source length"
+        )
 
         attn_weights = torch.bmm(q, k.transpose(1, 2))
 
-        assert list(attn_weights.shape) == [batch_heads, target_length, source_length]
+        torch._assert(attn_weights.dim() == 3, "Unexpected attn_weights dim")
+        torch._assert(
+            attn_weights.size(0) == batch_heads,
+            "attn_weights shape didn't match for batch heads",
+        )
+        torch._assert(
+            attn_weights.size(1) == target_length,
+            "attn_weights shape didn't match for target length",
+        )
+        torch._assert(
+            attn_weights.size(2) == source_length,
+            "attn_weights shape didn't match for source length",
+        )
 
         # don't attend to padding symbols
         attn_weights = attn_weights.view(
@@ -84,7 +99,23 @@ class MultiheadSelfAttention(nn.Module):
         attn_weights = self.dropout(attn_weights)
 
         attn = torch.bmm(attn_weights, v)
-        assert list(attn.shape) == [batch_heads, target_length, self.head_dim]
+
+        torch._assert(
+            attn.dim() == 3,
+            "unexpected attn dim size",
+        )
+        torch._assert(
+            attn.size(0) == batch_heads,
+            "attn shape didn't match for batch heads",
+        )
+        torch._assert(
+            attn.size(1) == target_length,
+            "attn shape didn't match for target length",
+        )
+        torch._assert(
+            attn.size(2) == self.head_dim,
+            "attn shape didn't match for head dim",
+        )
         attn = (
             attn.transpose(0, 1).contiguous().view(target_length, batch_size, embed_dim)
         )
