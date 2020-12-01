@@ -4,10 +4,12 @@
 from typing import List
 
 import torch
+from accelerators.pytorch.lib.glow_decorator import accelerator
 from pytext.models.roberta import RoBERTaEncoder
 from torch import nn
 
 
+@accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})])
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
@@ -72,19 +74,17 @@ def lower_modules_to_accelerator(
     import torch_glow
 
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
+        backend = "NNPI"
+        submod_path, compilation_spec_dict = accelerator.get_modules(model, backend)[0]
         embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
         spec = torch_glow.CompilationSpec()
-        spec.get_settings().set_glow_backend("NNPI")
+        spec.get_settings().set_glow_backend(backend)
         compilation_group = torch_glow.CompilationGroup()
         spec.compilation_groups_append(compilation_group)
         compilation_group_settings = compilation_group.get_settings()
         compilation_group_settings.set_convert_to_fp16(True)
-        compilation_group.get_settings().backend_specific_opts_insert(
-            "NNPI_IceCores", "12"
-        )
-        compilation_group.get_settings().backend_specific_opts_insert(
-            "NNPINumParallelChunks", "12"
-        )
+        for k, v in compilation_spec_dict.items():
+            compilation_group.get_settings().backend_specific_opts_insert(k, v)
 
         for seq_len in seq_padding_control:
             if seq_len <= 0:
@@ -101,9 +101,10 @@ def lower_modules_to_accelerator(
 
         trace = torch_glow.to_glow_selective(
             trace,
-            {"model.encoder.encoder.transformer.layers": spec},
+            {f"model.{submod_path}": spec},
             inplace=False,
         )
+
         return trace
     else:
         return trace
