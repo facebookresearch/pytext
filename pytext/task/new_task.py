@@ -318,8 +318,8 @@ class _NewTask(TaskBase):
             _, sorted_indices = sort(inputs[sort_key], descending=True)
             inputs = [i.index_select(0, sorted_indices) for i in inputs]
         model(*inputs)
-        if "half" in accelerate:
-            model.half()
+
+        use_cuda_half = "cuda:half" in accelerate
 
         if quantize and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
@@ -333,6 +333,9 @@ class _NewTask(TaskBase):
             if quantize:
                 model.quantize()
             trace = model.trace(inputs)
+            if use_cuda_half:
+                trace.cuda().half()
+
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         if seq_padding_control is not None:
