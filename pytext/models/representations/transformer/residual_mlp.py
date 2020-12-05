@@ -12,7 +12,7 @@ class GeLU(nn.Module):
     """Component class to wrap F.gelu."""
 
     def forward(self, input):
-        return F.gelu(input.float()).type_as(input)
+        return F.gelu(input)
 
 
 class ResidualMLP(nn.Module):

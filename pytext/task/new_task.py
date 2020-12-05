@@ -321,6 +321,12 @@ class _NewTask(TaskBase):
 
         use_cuda_half = "cuda:half" in accelerate
 
+        if use_cuda_half:
+            # half is currently only supported for the CUDA environment
+            # so send the model there
+            model = model.cuda().half()
+            # model.set_device("cuda")
+
         if quantize and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
@@ -332,9 +338,19 @@ class _NewTask(TaskBase):
         else:
             if quantize:
                 model.quantize()
-            trace = model.trace(inputs)
+
             if use_cuda_half:
-                trace.cuda().half()
+                print(inputs)
+                inputs = (
+                    (
+                        inputs[0][0].cuda(),
+                        inputs[0][1].cuda(),
+                        inputs[0][2].cuda(),
+                        inputs[0][3].cuda().to(dtype=torch.half),
+                    ),
+                )
+
+            trace = model.trace(inputs)
 
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
