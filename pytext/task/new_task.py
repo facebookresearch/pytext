@@ -14,7 +14,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
-from pytext.utils import cuda, onnx
+from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from torch import jit, sort
@@ -321,12 +321,6 @@ class _NewTask(TaskBase):
 
         use_cuda_half = "cuda:half" in accelerate
 
-        if use_cuda_half:
-            # half is currently only supported for the CUDA environment
-            # so send the model there
-            model = model.cuda().half()
-            # model.set_device("cuda")
-
         if quantize and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
@@ -339,18 +333,22 @@ class _NewTask(TaskBase):
             if quantize:
                 model.quantize()
 
-            if use_cuda_half:
-                print(inputs)
-                inputs = (
-                    (
-                        inputs[0][0].cuda(),
-                        inputs[0][1].cuda(),
-                        inputs[0][2].cuda(),
-                        inputs[0][3].cuda().to(dtype=torch.half),
-                    ),
-                )
-
             trace = model.trace(inputs)
+            print("traced!")
+
+            if use_cuda_half:
+                # convert trace to half precision
+                trace.cuda().half()
+
+                #### trace test: demonstrate that it is usable
+                precision.FP16_ENABLED = True
+                cuda.CUDA_ENABLED = True
+                unused_raw_batch, batch = next(
+                    iter(self.data.batches(Stage.TRAIN, load_early=True))
+                )
+                inputs = model.onnx_trace_input(batch)
+                assert(trace(*inputs))
+                #### end of trace test
 
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
