@@ -289,7 +289,7 @@ class _NewTask(TaskBase):
         self, model, export_path=None, sort_input=False, sort_key=1, **kwargs
     ):
         # unpack export kwargs
-        quantize = kwargs.get("torchscript_quantize", False)
+        quantize = kwargs.get("quantize", False)
         accelerate = kwargs.get("accelerate", [])
         seq_padding_control = kwargs.get("seq_padding_control")
         batch_padding_control = kwargs.get("batch_padding_control")

@@ -457,7 +457,7 @@ def torchscript_export(context, export_json, model, output_path, quantize):
             print(
                 "the export-json config is ignored because export options are found the command line"
             )
-            kwargs = {"torchscript_quantize": quantize}
+            kwargs = {"quantize": quantize}
     config = context.obj.load_config()
     model = model or config.save_snapshot_path
     output_path = output_path or f"{config.save_snapshot_path}.torchscript"
