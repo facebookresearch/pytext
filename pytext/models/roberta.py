@@ -127,6 +127,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         # Linformer hyperparameters
         use_linformer_encoder: bool = False
         linformer_compressed_ratio: int = 4
+        linformer_quantize: bool = False
         export_encoder: bool = False
         variable_size_embedding: bool = True
         use_selfie_encoder: bool = False
@@ -159,6 +160,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                     embed_dim=config.embedding_dim,
                     num_heads=config.num_attention_heads,
                     compress_layer=compress_layer,
+                    quantize=config.linformer_quantize,
                 )
                 if config.use_linformer_encoder
                 else MultiheadSelfAttention(
@@ -289,10 +291,7 @@ class RoBERTa(NewBertModel):
         force_quantize=False,
     ):
         """Quantize the model during export with graph mode quantization."""
-        if (
-            isinstance(self.encoder, RoBERTaEncoder)
-            and self.encoder.use_linformer_encoder
-        ) or force_quantize:
+        if force_quantize:
             trace = self.trace(inputs)
             if not qconfig_dict:
                 qconfig_dict = {"": get_default_qconfig("fbgemm")}

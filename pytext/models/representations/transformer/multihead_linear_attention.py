@@ -29,6 +29,7 @@ class MultiheadLinearAttention(nn.Module):
         dropout: float = 0.1,
         compress_layer=None,
         bias: bool = True,
+        quantize: bool = False,
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -42,6 +43,7 @@ class MultiheadLinearAttention(nn.Module):
 
         self.output_projection = nn.Linear(embed_dim, embed_dim)
         self.compress_k = compress_layer
+        self.quantize = quantize
         log_class_usage(__class__)
 
     def forward(self, query, key_padding_mask):
@@ -63,19 +65,28 @@ class MultiheadLinearAttention(nn.Module):
         q *= self.scaling
 
         k_input = query.permute(1, 2, 0).contiguous()  # B * C * T
-        k_input = (
-            F.linear(k_input, self.compress_k.weight[:, 0:target_length])
-            .permute(2, 0, 1)
-            .contiguous()
-        )
-        k = self.kput_projection(k_input)
-
         v_input = query.permute(1, 2, 0).contiguous()  # B * C * T
-        v_input = (
-            F.linear(v_input, self.compress_k.weight[:, 0:target_length])
-            .permute(2, 0, 1)
-            .contiguous()
-        )
+
+        if self.quantize:
+            assert self.compress_k.in_features >= target_length
+            pad = (0, self.compress_k.in_features - target_length)
+            k_input = F.pad(k_input, pad)
+            v_input = F.pad(v_input, pad)
+            k_input = self.compress_k(k_input).permute(2, 0, 1).contiguous()
+            v_input = self.compress_k(v_input).permute(2, 0, 1).contiguous()
+        else:
+            k_input = (
+                F.linear(k_input, self.compress_k.weight[:, 0:target_length])
+                .permute(2, 0, 1)
+                .contiguous()
+            )
+            v_input = (
+                F.linear(v_input, self.compress_k.weight[:, 0:target_length])
+                .permute(2, 0, 1)
+                .contiguous()
+            )
+
+        k = self.kput_projection(k_input)
         v = self.vput_projection(v_input)
 
         batch_heads = batch_size * self.num_heads
