@@ -290,7 +290,7 @@ class _NewTask(TaskBase):
     ):
         # unpack export kwargs
         quantize = kwargs.get("quantize", False)
-        accelerate = kwargs.get("accelerate", [])
+        accelerate = kwargs.get("accelerate", None) or []
         seq_padding_control = kwargs.get("seq_padding_control")
         batch_padding_control = kwargs.get("batch_padding_control")
         inference_interface = kwargs.get("inference_interface")
@@ -347,7 +347,7 @@ class _NewTask(TaskBase):
                     iter(self.data.batches(Stage.TRAIN, load_early=True))
                 )
                 inputs = model.onnx_trace_input(batch)
-                assert(trace(*inputs))
+                assert trace(*inputs)
                 #### end of trace test
 
         if hasattr(model, "torchscriptify"):
