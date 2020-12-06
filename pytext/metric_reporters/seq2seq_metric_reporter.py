@@ -13,7 +13,7 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters.channel import ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics import safe_division
-from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics
+from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics, compute_f1
 
 
 try:
@@ -78,8 +78,10 @@ class Seq2SeqMetricReporter(MetricReporter):
         self.aggregate_src_tokens(src_tokens)
 
     def calculate_metric(self):
-        num_correct = 0
-        total_count = len(self.all_targets)
+        total_exact_match = 0
+        total_f1 = 0.0
+        num_samples = len(self.all_targets)
+
         trg_vocab = self.tensorizers["trg_seq_tokens"].vocab
         bleu_scorer = bleu.Scorer(
             bleu.BleuConfig(
@@ -88,18 +90,22 @@ class Seq2SeqMetricReporter(MetricReporter):
                 unk=trg_vocab.get_unk_index(),
             )
         )
-        for beam_pred, target in zip(self.all_preds, self.all_targets):
-            pred = beam_pred[0]
+
+        for (beam_preds, target) in zip(self.all_preds, self.all_targets):
+            pred = beam_preds[0]
             if self._compare_target_prediction_tokens(pred, target):
-                num_correct = num_correct + 1
+                total_exact_match += 1
+            total_f1 += compute_f1(pred, target)
             # Bleu Metric calculation is always done with tensors on CPU or
             # type checks in fairseq/bleu.py:add() will fail
             bleu_scorer.add(torch.IntTensor(target).cpu(), torch.IntTensor(pred).cpu())
 
-        bleu_score = 0.0 if len(self.all_preds) == 0 else bleu_scorer.score()
-        accuracy = safe_division(num_correct, total_count)
-        cross_entropy_loss = self.calculate_loss()
-        return Seq2SeqMetrics(accuracy, cross_entropy_loss, bleu_score)
+        loss = self.calculate_loss()
+        exact_match = round(safe_division(total_exact_match, num_samples) * 100.0, 2)
+        f1 = round(safe_division(total_f1, num_samples) * 100.0, 2)
+        bleu_score = round(0.0 if len(self.all_preds) == 0 else bleu_scorer.score(), 2)
+
+        return Seq2SeqMetrics(loss, exact_match, f1, bleu_score)
 
     def aggregate_targets(self, new_batch, context=None):
         if new_batch is None:
