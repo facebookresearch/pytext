@@ -21,10 +21,10 @@ def quantize_statically(
         qconfig_dict = {"": None}
         if module_swap:
             layers = model.encoder.encoder.transformer.layers.layers
-            layers_str = "model.encoder.transformer.layers.layers"
+            layers_str = "encoder.encoder.transformer.layers.layers"
         else:
             layers = model.encoder.encoder.transformer.layers
-            layers_str = "model.encoder.transformer.layers"
+            layers_str = "encoder.encoder.transformer.layers"
 
         for layer_idx in range(len(layers)):
             qconfig_dict[
