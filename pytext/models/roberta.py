@@ -39,6 +39,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
     PoolingMethod,
     TransformerSentenceEncoderBase,
 )
+from pytext.models.utils import normalize_embeddings
 from pytext.torchscript.module import (
     ScriptPyTextEmbeddingModuleIndex,
     ScriptPyTextModule,
@@ -232,6 +233,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
         if pooled_output is not None:
             pooled_output = self.output_dropout(pooled_output)
+            if self.normalize_output_rep:
+                pooled_output = normalize_embeddings(pooled_output)
 
         output = []
         if self.output_encoded_layers:

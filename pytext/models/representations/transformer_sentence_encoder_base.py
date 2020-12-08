@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.models.representations.representation_base import RepresentationBase
+from pytext.models.utils import normalize_embeddings
 from pytext.utils.usage import log_class_usage
 
 
@@ -61,6 +62,7 @@ class TransformerSentenceEncoderBase(RepresentationBase):
         pooling: PoolingMethod = PoolingMethod.CLS_TOKEN
         export: bool = False
         projection_dim: int = 0
+        normalize_output_rep: bool = False
 
     @classmethod
     def from_config(cls, config: Config, output_encoded_layers=False, *args, **kwargs):
@@ -91,6 +93,7 @@ class TransformerSentenceEncoderBase(RepresentationBase):
         )
 
         self.representation_dim = config.projection_dim or representation_dim
+        self.normalize_output_rep = config.normalize_output_rep
 
         log_class_usage(__class__)
 
@@ -138,6 +141,8 @@ class TransformerSentenceEncoderBase(RepresentationBase):
 
         if pooled_output is not None:
             pooled_output = self.output_dropout(pooled_output)
+            if self.normalize_output_rep:
+                pooled_output = normalize_embeddings(pooled_output)
 
         output = []
         if self.output_encoded_layers:
