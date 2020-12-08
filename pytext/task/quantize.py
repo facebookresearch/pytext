@@ -26,7 +26,8 @@ def quantize_statically(
             layers = model.encoder.encoder.transformer.layers
             layers_str = "encoder.encoder.transformer.layers"
 
-        for layer_idx in range(len(layers)):
+        # skip first layer
+        for layer_idx in range(1, len(layers)):
             qconfig_dict[
                 layers_str + ".{}.attention.input_projection".format(layer_idx)
             ] = qconfig
@@ -34,7 +35,8 @@ def quantize_statically(
                 layers_str + ".{}.attention.output_projection".format(layer_idx)
             ] = qconfig
             for mlp_idx, m in enumerate(layers[layer_idx].residual_mlp.mlp):
-                if type(m) == torch.nn.Linear:
+                # Only quantize first linear otherwise there are accuarcy issues
+                if type(m) == torch.nn.Linear and mlp_idx < 1:
                     qconfig_dict[
                         layers_str
                         + ".{}.residual_mlp.mlp.{}".format(layer_idx, mlp_idx)
