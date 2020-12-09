@@ -24,6 +24,7 @@ from pytext.torchscript.tensorizer import (
     VectorNormalizer,
     ScriptFloat1DListTensorizer,
     ScriptInteger1DListTensorizer,
+    ScriptFloatListSeqTensorizer,
 )
 from pytext.torchscript.utils import ScriptBatchInput, validate_padding_control
 from pytext.utils import cuda, precision
@@ -2037,6 +2038,8 @@ class FloatTensorizer(Tensorizer):
 class FloatListSeqTensorizer(Tensorizer):
     """Numberize numeric labels."""
 
+    __TENSORIZER_SCRIPT_IMPL__ = ScriptFloatListSeqTensorizer
+
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
         column: str
@@ -2089,6 +2092,10 @@ class FloatListSeqTensorizer(Tensorizer):
             float_lists, pad_token=self.pad_token, dtype=torch.float
         )
         return (padded_and_tensorized_float_lists, pad_and_tensorize(lens))
+
+    @lazy_property
+    def tensorizer_script_impl(self):
+        return ScriptFloatListSeqTensorizer(self.pad_token)
 
 
 def initialize_tensorizers(tensorizers, data_source, from_scratch=True):

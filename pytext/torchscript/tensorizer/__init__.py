@@ -7,6 +7,7 @@ from .roberta import ScriptRoBERTaTensorizer, ScriptRoBERTaTensorizerWithIndices
 from .tensorizer import (
     ScriptTensorizer,
     ScriptFloat1DListTensorizer,
+    ScriptFloatListSeqTensorizer,
     ScriptInteger1DListTensorizer,
 )
 from .xlm import ScriptXLMTensorizer, VocabLookup
@@ -15,6 +16,7 @@ from .xlm import ScriptXLMTensorizer, VocabLookup
 __all__ = [
     "ScriptBERTTensorizer",
     "ScriptFloat1DListTensorizer",
+    "ScriptFloatListSeqTensorizer",
     "ScriptInteger1DListTensorizer",
     "ScriptRoBERTaTensorizer",
     "ScriptRoBERTaTensorizerWithIndices",

@@ -4,7 +4,7 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.utils import pad_2d, pad_2d_float
+from pytext.torchscript.utils import pad_2d, pad_2d_float, pad_3d_float
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -219,6 +219,34 @@ class ScriptFloat1DListTensorizer(torch.jit.ScriptModule):
             dtype=torch.float,
         )
         return floatListTensor
+
+    def torchscriptify(self):
+        return torch.jit.script(self)
+
+
+class ScriptFloatListSeqTensorizer(torch.jit.ScriptModule):
+    """
+    TorchScript implementation of ScriptFloatListSeqTensorizer in pytext/data/tensorizers.py
+    """
+
+    def __init__(self, pad_token):
+        super().__init__()
+        self.pad_val = pad_token
+
+    @torch.jit.script_method
+    def numberize(self, floatList: List[List[float]]) -> Tuple[List[List[float]], int]:
+        return (floatList, len(floatList))
+
+    @torch.jit.script_method
+    def tensorize(
+        self, floatLists: List[List[List[float]]], seq_lens: List[int]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        floatListTensor = torch.tensor(
+            pad_3d_float(floatLists, seq_lens=seq_lens, pad_val=self.pad_val),
+            dtype=torch.float,
+        )
+        seqLensTensor = torch.tensor(seq_lens, dtype=torch.long)
+        return (floatListTensor, seqLensTensor)
 
     def torchscriptify(self):
         return torch.jit.script(self)

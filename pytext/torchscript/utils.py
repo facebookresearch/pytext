@@ -221,6 +221,27 @@ def pad_2d_float(
 
 
 @torch.jit.script
+def pad_3d_float(
+    batch: List[List[List[float]]], seq_lens: List[int], pad_val: float = 0.0
+) -> List[List[List[float]]]:
+    outer_pad_to_length = list_max(seq_lens)
+    inner_pad_to_length = -1
+    for outer_list in batch:
+        for inner_list in outer_list:
+            inner_pad_to_length = max(inner_pad_to_length, len(inner_list))
+
+    for outer_list in batch:
+        for inner_list in outer_list:
+            for _ in range(inner_pad_to_length - len(inner_list)):
+                inner_list.append(pad_val)
+
+        for _ in range(outer_pad_to_length - len(outer_list)):
+            outer_list.append([pad_val] * inner_pad_to_length)
+
+    return batch
+
+
+@torch.jit.script
 def add_special_token_2d(
     values: List[List[int]], special_token: int = 0, use_first_value: bool = False
 ) -> List[List[int]]:

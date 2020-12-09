@@ -1078,6 +1078,63 @@ class TensorizersTest(unittest.TestCase):
             torch.tensor(expected_output, dtype=torch.float)
         )
 
+    def test_float_list_seq_torchscriptify(self):
+        rows = [
+            {"2d_list": [[1.5, 2.5, 3.5], [1.2, 2.2]]},
+            {"2d_list": [[10.2, 20.2], [10.1], [20.1]]},
+        ]
+
+        expected_lists = [
+            [[1.5, 2.5, 3.5], [1.2, 2.2, 1.0], [1.0, 1.0, 1.0]],
+            [
+                [10.2, 20.2, 1.0],
+                [10.1, 1.0, 1.0],
+                [20.1, 1.0, 1.0],
+            ],
+        ]
+        expected_lens = [2, 3]
+        tensorizer = FloatListSeqTensorizer.from_config(
+            FloatListSeqTensorizer.Config(column="2d_list", pad_token=1.0)
+        )
+
+        numberized_rows = (tensorizer.numberize(row) for row in rows)
+
+        for row, numberized in zip(rows, numberized_rows):
+            self.assertEqual(row["2d_list"], numberized[0])
+            self.assertEqual(len(row["2d_list"]), numberized[1])
+
+        tensorized_lists, tensorized_lens = tensorizer.tensorize(
+            [tensorizer.numberize(row) for row in rows]
+        )
+
+        assert tensorized_lists.equal(torch.tensor(expected_lists, dtype=torch.float))
+        assert tensorized_lens.equal(torch.tensor(expected_lens, dtype=torch.long))
+
+        # Check the tensorizer after exporting to TorchScript
+        torchscript_tensorizer = tensorizer.torchscriptify()
+
+        torchscript_numberized = []
+        torchscript_lens = []
+        for row in rows:
+            numberized, length = torchscript_tensorizer.numberize(row["2d_list"])
+            self.assertEqual(numberized, row["2d_list"])
+            self.assertEqual(length, len(row["2d_list"]))
+
+            torchscript_numberized.append(numberized)
+            torchscript_lens.append(length)
+
+        (
+            torchscript_tensorized_lists,
+            torchscript_tensorized_lens,
+        ) = torchscript_tensorizer.tensorize(torchscript_numberized, torchscript_lens)
+
+        assert torchscript_tensorized_lists.equal(
+            torch.tensor(expected_lists, dtype=torch.float)
+        )
+        assert torchscript_tensorized_lens.equal(
+            torch.tensor(expected_lens, dtype=torch.long)
+        )
+
 
 class BERTTensorizerTest(unittest.TestCase):
     def test_bert_tensorizer(self):
