@@ -4,12 +4,18 @@
 from .bert import ScriptBERTTensorizer
 from .normalizer import VectorNormalizer
 from .roberta import ScriptRoBERTaTensorizer, ScriptRoBERTaTensorizerWithIndices
-from .tensorizer import ScriptTensorizer
+from .tensorizer import (
+    ScriptTensorizer,
+    ScriptFloat1DListTensorizer,
+    ScriptInteger1DListTensorizer,
+)
 from .xlm import ScriptXLMTensorizer, VocabLookup
 
 
 __all__ = [
     "ScriptBERTTensorizer",
+    "ScriptFloat1DListTensorizer",
+    "ScriptInteger1DListTensorizer",
     "ScriptRoBERTaTensorizer",
     "ScriptRoBERTaTensorizerWithIndices",
     "ScriptXLMTensorizer",

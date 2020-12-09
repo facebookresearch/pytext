@@ -20,7 +20,11 @@ from pytext.data.data_structures.annotation import (
 )
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
-from pytext.torchscript.tensorizer import VectorNormalizer
+from pytext.torchscript.tensorizer import (
+    VectorNormalizer,
+    ScriptFloat1DListTensorizer,
+    ScriptInteger1DListTensorizer,
+)
 from pytext.torchscript.utils import ScriptBatchInput, validate_padding_control
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
@@ -717,6 +721,8 @@ class Float1DListTensorizer(Tensorizer):
     In future, if 'FloatListTensorizer' accommodates this case, we do not need this separate tensorizer.
     """
 
+    __TENSORIZER_SCRIPT_IMPL__ = ScriptFloat1DListTensorizer
+
     class Config(Tensorizer.Config):
         # inputs
         column: str = "float_list_column"
@@ -746,11 +752,17 @@ class Float1DListTensorizer(Tensorizer):
         values = pad_and_tensorize(batch, pad_token=1.0, dtype=torch.float)
         return values
 
+    @lazy_property
+    def tensorizer_script_impl(self):
+        return ScriptFloat1DListTensorizer()
+
 
 class Integer1DListTensorizer(Tensorizer):
     """
     Tensorizes the 1d list of integers -- List[int]
     """
+
+    __TENSORIZER_SCRIPT_IMPL__ = ScriptInteger1DListTensorizer
 
     SPAN_PAD_IDX = 0
 
@@ -781,6 +793,10 @@ class Integer1DListTensorizer(Tensorizer):
     def tensorize(self, batch):
         values = pad_and_tensorize(batch, pad_token=self.SPAN_PAD_IDX)
         return values
+
+    @lazy_property
+    def tensorizer_script_impl(self):
+        return ScriptInteger1DListTensorizer()
 
 
 class CharacterVocabTokenTensorizer(Tensorizer):

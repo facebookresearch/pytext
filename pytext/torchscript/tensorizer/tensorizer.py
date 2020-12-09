@@ -4,6 +4,7 @@
 from typing import List, Optional, Tuple
 
 import torch
+from pytext.torchscript.utils import pad_2d, pad_2d_float
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
@@ -166,3 +167,58 @@ class VocabLookup(torch.jit.ScriptModule):
             start_idxs.append(-1)
             end_idxs.append(-1)
         return token_ids, start_idxs, end_idxs
+
+
+class ScriptInteger1DListTensorizer(torch.jit.ScriptModule):
+    """
+    TorchScript implementation of Integer1DListTensorizer in pytext/data/tensorizers.py
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.pad_idx = 0
+
+    @torch.jit.script_method
+    def numberize(self, integerList: List[int]) -> Tuple[List[int], int]:
+        return integerList, len(integerList)
+
+    @torch.jit.script_method
+    def tensorize(
+        self, integerList: List[List[int]], seq_lens: List[int]
+    ) -> torch.Tensor:
+        integerListTensor = torch.tensor(
+            pad_2d(integerList, seq_lens=seq_lens, pad_idx=self.pad_idx),
+            dtype=torch.long,
+        )
+        return integerListTensor
+
+    @torch.jit.ignore
+    def torchscriptify(self):
+        return torch.jit.script(self)
+
+
+class ScriptFloat1DListTensorizer(torch.jit.ScriptModule):
+    """
+    TorchScript implementation of Float1DListTensorizer in pytext/data/tensorizers.py
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.pad_val = 1.0
+
+    @torch.jit.script_method
+    def numberize(self, floatList: List[float]) -> Tuple[List[float], int]:
+        return floatList, len(floatList)
+
+    @torch.jit.script_method
+    def tensorize(
+        self, floatLists: List[List[float]], seq_lens: List[int]
+    ) -> torch.Tensor:
+        floatListTensor = torch.tensor(
+            pad_2d_float(floatLists, seq_lens=seq_lens, pad_val=self.pad_val),
+            dtype=torch.float,
+        )
+        return floatListTensor
+
+    def torchscriptify(self):
+        return torch.jit.script(self)
