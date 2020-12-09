@@ -181,7 +181,7 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
                 buf.copy_(tmp)
         return True
 
-    def step(self, closure=None):
+    def step(self, closure=None, **kwargs):
         r"""Performs a single optimization step.
 
         In automatic mode also updates SWA running averages.

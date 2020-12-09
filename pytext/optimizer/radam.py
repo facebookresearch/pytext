@@ -30,7 +30,7 @@ class RAdam(Optimizer, PT_Optimizer):
     def __setstate__(self, state):
         super(RAdam, self).__setstate__(state)
 
-    def step(self, closure=None):
+    def step(self, closure=None, **kwargs):
         loss = None
         if closure is not None:
             loss = closure()

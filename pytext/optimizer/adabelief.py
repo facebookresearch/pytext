@@ -133,7 +133,7 @@ class AdaBelief(Optimizer, PT_Optimizer):
                         p.data, memory_format=torch.preserve_format
                     )
 
-    def step(self, closure=None):
+    def step(self, closure=None, **kwargs):
         """Performs a single optimization step.
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
