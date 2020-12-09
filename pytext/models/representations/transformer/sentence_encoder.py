@@ -168,6 +168,7 @@ def translate_roberta_state_dict(state_dict):
 
     new_state = remove_state_keys(new_state, "^sentence_")
     new_state = remove_state_keys(new_state, "_classification_head.")
+    new_state = remove_state_keys(new_state, r".classification_head[0-9]*.")
     new_state = remove_state_keys(new_state, r"^decoder\.lm_head")
     new_state = remove_state_keys(new_state, r"^encoder\.lm_head")
     new_state = remove_state_keys(new_state, r"segment_embedding")
