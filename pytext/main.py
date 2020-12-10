@@ -451,16 +451,20 @@ def torchscript_export(context, export_json, model, output_path, quantize):
         if not quantize and not output_path:
             export_json_config = _load_and_validate_export_json_config(export_json)
             kwargs = export_json_config["export"]
-            if "export_torchscript_path" in export_json_config["export"]:
-                output_path = export_json_config["export"]["export_torchscript_path"]
         else:
             print(
                 "the export-json config is ignored because export options are found the command line"
             )
             kwargs = {"quantize": quantize}
-    config = context.obj.load_config()
-    model = model or config.save_snapshot_path
-    output_path = output_path or f"{config.save_snapshot_path}.torchscript"
+
+        if "export_torchscript_path" in export_json_config["export"]:
+            output_path = export_json_config["export"]["export_torchscript_path"]
+
+    if not model or not output_path:
+        config = context.obj.load_config()
+        model = model or config.save_snapshot_path
+        output_path = output_path or f"{config.save_snapshot_path}.torchscript"
+
     print(f"Exporting {model} to torchscript file: {output_path}")
     export_saved_model_to_torchscript(model, output_path, **kwargs)
 
