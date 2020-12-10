@@ -61,7 +61,7 @@ class Lamb(Optimizer, PT_Optimizer):
 
         self.min_trust = min_trust
 
-    def step(self, closure=None):
+    def step(self, closure=None, **kwargs):
         """Performs a single optimization step.
 
         Arguments:
