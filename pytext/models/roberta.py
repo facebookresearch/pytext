@@ -352,6 +352,28 @@ class RoBERTaRegression(NewBertRegressionModel):
         )
 
 
+class RoBERTaRegression(NewBertRegressionModel):
+    class Config(NewBertRegressionModel.Config):
+        class RegressionModelInput(ConfigBase):
+            tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
+            labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
+
+        inputs: RegressionModelInput = RegressionModelInput()
+        encoder: RoBERTaEncoderBase.Config = RoBERTaEncoderJit.Config()
+
+    def torchscriptify(self, tensorizers, traced_model):
+        """Using the traced model, create a ScriptModule which has a nicer API that
+        includes generating tensors from simple data types, and returns classified
+        values according to the output layer (eg. as a dict mapping class name to score)
+        """
+        script_tensorizer = tensorizers["tokens"].torchscriptify()
+        return ScriptPyTextModule(
+            model=traced_model,
+            output_layer=self.output_layer.torchscript_predictions(),
+            tensorizer=script_tensorizer,
+        )
+
+
 class RoBERTaWordTaggingModel(BaseModel):
     """
     Single Sentence Token-level Classification Model using XLM.
