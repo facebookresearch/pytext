@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 import torch
 from pytext.config.component import create_loss
-from pytext.loss import MSELoss
+from pytext.loss import MSELoss, MAELoss
 from pytext.utils.usage import log_class_usage
 
 from .output_layer_base import OutputLayerBase
@@ -80,6 +80,61 @@ class RegressionOutputLayer(OutputLayerBase):
 
     def torchscript_predictions(self):
         return RegressionScores(self.squash_to_unit_range)
+
+
+class PairwiseCosineRegressionOutputLayer(OutputLayerBase):
+    """
+    Output layer for pair (two-tower) regression models. Accepts two embedding tensors,
+    and computes cosine similarity. The loss is between regression label and cosine
+    similarity.
+    """
+
+    class Config(OutputLayerBase.Config):
+        loss: Union[MSELoss.Config, MAELoss.Config] = MSELoss.Config()
+
+    @classmethod
+    def from_config(cls, config: Config, **kwargs):
+        return cls(create_loss(config.loss))
+
+    def __init__(self, loss_fn: Union[MSELoss, MAELoss]) -> None:
+        super().__init__()
+        self.loss_fn = loss_fn
+        log_class_usage(__class__)
+
+    def get_loss(
+        self,
+        logits: Tuple[torch.Tensor, torch.Tensor],
+        target: torch.Tensor,
+        context: Optional[Dict[str, Any]] = None,
+        reduce: bool = True,
+    ) -> torch.Tensor:
+        """
+        Args:
+            logits (Tuple[torch.Tensor, torch.Tensor]): Logits returned from pairwise
+                model
+            target (torch.Tensor): Float target to compute loss against
+            context (Optional[Dict[str, Any]]): Context is a dictionary from data
+                handler
+            reduce (bool): Whether to reduce loss over the batch. Defaults to True.
+
+        Returns:
+            torch.Tensor: Model loss.
+        """
+        pred, _ = self.get_pred(logits)
+        return self.loss_fn(pred, target, reduce)
+
+    def get_pred(self, logits, *args, **kwargs):
+        """
+        Args:
+            logits (Tuple[torch.Tensor, torch.Tensor]): Logits returned from pairwise
+                model
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Model prediction and scores.
+        """
+        assert isinstance(logits, tuple)
+        prediction = torch.cosine_similarity(logits[0], logits[1], dim=1)
+        return prediction, prediction
 
 
 class RegressionScores(torch.jit.ScriptModule):

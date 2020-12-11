@@ -30,7 +30,10 @@ from pytext.metric_reporters.seq2seq_compositional import (
     Seq2SeqCompositionalMetricReporter,
 )
 from pytext.models.bert_classification_models import NewBertModel
-from pytext.models.bert_regression_model import NewBertRegressionModel
+from pytext.models.bert_regression_model import (
+    NewBertRegressionModel,
+    BertPairwiseRegressionModel,
+)
 from pytext.models.doc_model import DocModel, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
 from pytext.models.joint_model import IntentSlotModel
@@ -283,6 +286,14 @@ class PairwiseClassificationTask(NewTask):
             with PathManager.open(export_path, "wb") as f:
                 torch.jit.save(trace, f)
         return trace
+
+
+class PairwiseRegressionTask(PairwiseClassificationTask):
+    class Config(PairwiseClassificationTask.Config):
+        model: BasePairwiseModel.Config = BertPairwiseRegressionModel.Config()
+        metric_reporter: RegressionMetricReporter.Config = (
+            RegressionMetricReporter.Config()
+        )
 
 
 class PairwiseClassificationForDenseRetrievalTask(PairwiseClassificationTask):

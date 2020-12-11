@@ -6,7 +6,10 @@ from .distance_output_layer import (
     PairwiseCosineDistanceOutputLayer,
 )
 from .doc_classification_output_layer import ClassificationOutputLayer
-from .doc_regression_output_layer import RegressionOutputLayer
+from .doc_regression_output_layer import (
+    RegressionOutputLayer,
+    PairwiseCosineRegressionOutputLayer,
+)
 from .output_layer_base import OutputLayerBase
 from .pairwise_ranking_output_layer import PairwiseRankingOutputLayer
 from .utils import OutputLayerUtils
@@ -21,6 +24,7 @@ __all__ = [
     "WordTaggingOutputLayer",
     "PairwiseRankingOutputLayer",
     "PairwiseCosineDistanceOutputLayer",
+    "PairwiseCosineRegressionOutputLayer",
     "DenseRetrievalOutputLayer",
     "OutputLayerUtils",
 ]

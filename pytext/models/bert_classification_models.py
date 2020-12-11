@@ -218,7 +218,9 @@ class BertPairwiseModel(BasePairwiseModel):
         encoder1, encoder2 = cls._create_encoder(config, tensorizers)
         decoder = cls._create_decoder(config, [encoder1, encoder2], tensorizers)
         output_layer = create_module(
-            config.output_layer, labels=tensorizers["labels"].vocab
+            config.output_layer,
+            # in subclass of this model, the labels tensorizer does not have a vocab
+            labels=getattr(tensorizers["labels"], "vocab", None),
         )
         return cls(
             encoder1,
