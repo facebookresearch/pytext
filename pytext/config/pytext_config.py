@@ -85,6 +85,9 @@ class PlaceHolder:
 
 
 class ExportConfig(ConfigBase):
+    # Name for Export target
+    # for documentation, and to simplify reference when multiple exports are requested
+    target: Optional[str] = None
     # Exported caffe model will be stored here
     export_caffe2_path: Optional[str] = None
     # Exported onnx model will be stored here
@@ -97,7 +100,7 @@ class ExportConfig(ConfigBase):
     torchscript_quantize: Optional[bool] = False
     # Accelerator options.
     # Options:
-    # "half" - demote model to half precision
+    # "cuda:half" - demote model to half precision (only works for cuda)
     # "nnpi" - freeze model for use with Glow on NNPI accelerator
     accelerate: List[str] = []
     # Inference Interface.
