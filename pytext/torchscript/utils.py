@@ -210,6 +210,28 @@ def pad_2d(
 
 
 @torch.jit.script
+def pad_3d(
+    batch: List[List[List[int]]],
+    tokens_lengths: List[List[int]],
+    pad_idx: int,
+) -> Tuple[List[List[List[int]]], List[List[int]]]:
+    pad_to_1d: int = 0
+    pad_to_2d: int = 0
+    for tokens_length in tokens_lengths:
+        pad_to_1d = max(pad_to_1d, len(tokens_length))
+        pad_to_2d = max(pad_to_2d, list_max(tokens_length))
+    for sentence, sentence_len in zip(batch, tokens_lengths):
+        for _ in range(pad_to_1d - len(sentence)):
+            new_list: List[int] = []
+            sentence.append(new_list)
+            sentence_len.append(0)
+        for token in sentence:
+            for _ in range(pad_to_2d - len(token)):
+                token.append(pad_idx)
+    return batch, tokens_lengths
+
+
+@torch.jit.script
 def pad_2d_float(
     batch: List[List[float]], seq_lens: List[int], pad_val: float = 0.0
 ) -> List[List[float]]:

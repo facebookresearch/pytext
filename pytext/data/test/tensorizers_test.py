@@ -34,6 +34,7 @@ from pytext.data.tensorizers import (
     LabelListTensorizer,
     LabelTensorizer,
     SeqTokenTensorizer,
+    String2DListTensorizer,
     TokenTensorizer,
     VocabConfig,
     VocabFileConfig,
@@ -1517,3 +1518,70 @@ class SquadTensorizerTest(unittest.TestCase):
         self.assertEqual(len(doc_tokens), doc_seq_len)
         self.assertEqual(answer_start_token_idx, [-100])
         self.assertEqual(answer_end_token_idx, [-100])
+
+
+class String2DListTensorizerTest(unittest.TestCase):
+
+    init_rows = [
+        {"text": [["Move", "fast"], ["And", "break", "things", "fast"]]},
+    ]
+
+    test_rows = [
+        {"text": [["Move", "fast"], ["And", "break", "things", "fast"]]},
+        {"text": [["Move", "fast"], ["And", "break", "things", "even", "faster"]]},
+    ]
+
+    expected_numberized = [
+        ([[2, 3], [4, 5, 6, 3]], [2, 4], 2),
+        ([[2, 3], [4, 5, 6, 0, 0]], [2, 5], 2),
+    ]
+
+    expected_tensorized = (
+        torch.tensor(
+            [
+                [
+                    [2, 3, 1, 1, 1],
+                    [4, 5, 6, 3, 1],
+                ],
+                [
+                    [2, 3, 1, 1, 1],
+                    [4, 5, 6, 0, 0],
+                ],
+            ]
+        ),
+    )
+
+    def _initialize_tensorizer(self, tensorizer):
+        init = tensorizer.initialize()
+        init.send(None)
+        for row in self.init_rows:
+            init.send(row)
+        init.close()
+
+    # Test tensorizer in it's original form
+    def test_original(self):
+
+        tensorizer = String2DListTensorizer(column="text")
+        self._initialize_tensorizer(tensorizer)
+
+        numberized_rows = [tensorizer.numberize(row) for row in self.test_rows]
+
+        for expected, actual in zip(self.expected_numberized, numberized_rows):
+            self.assertEqual(expected, actual, msg="Numberized rows didn't match!")
+
+        tensors = tensorizer.tensorize(numberized_rows)
+        for expected, actual in zip(self.expected_tensorized, tensors):
+            print("COMPARE: ", expected, actual)
+            self.assertTrue(expected.equal(actual), msg="Tensors didn't match!")
+
+    # Test torchscript version of the tensorizer
+    def test_torchscriptified(self):
+
+        tensorizer = String2DListTensorizer(column="text")
+        self._initialize_tensorizer(tensorizer)
+        ts_tensorizer = tensorizer.torchscriptify()
+
+        tensors = ts_tensorizer([row["text"] for row in self.test_rows])
+
+        for expected, actual in zip(self.expected_tensorized, tensors):
+            self.assertTrue(expected.equal(actual), msg="Tensors didn't match!")

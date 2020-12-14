@@ -4,7 +4,8 @@
 import contextlib
 import copy
 import sys
-from typing import List, Optional
+from itertools import chain
+from typing import List, Optional, Tuple
 
 import torch
 from pytext.common import Padding, constants
@@ -26,7 +27,8 @@ from pytext.torchscript.tensorizer import (
     ScriptInteger1DListTensorizer,
     ScriptFloatListSeqTensorizer,
 )
-from pytext.torchscript.utils import ScriptBatchInput, validate_padding_control
+from pytext.torchscript.utils import pad_3d, ScriptBatchInput, validate_padding_control
+from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
 from pytext.utils.file_io import PathManager
@@ -2096,6 +2098,163 @@ class FloatListSeqTensorizer(Tensorizer):
     @lazy_property
     def tensorizer_script_impl(self):
         return ScriptFloatListSeqTensorizer(self.pad_token)
+
+
+class String2DListTensorizerScriptImpl(TensorizerScriptImpl):
+    def __init__(
+        self,
+        vocab: Vocabulary,
+    ):
+        super().__init__()
+        self.vocab = ScriptVocabulary(
+            list(vocab),
+            pad_idx=vocab.get_pad_index(),
+        )
+
+    def numberize(
+        self, tokens: List[List[str]]
+    ) -> Tuple[List[List[int]], List[int], int]:
+
+        token_indices: List[List[int]] = self.vocab.lookup_indices_2d(tokens)
+
+        token_lengths: List[int] = []
+        for idx in range(len(token_indices)):
+            token_lengths.append(len(token_indices[idx]))
+
+        return token_indices, token_lengths, len(token_indices)
+
+    def tensorize(
+        self,
+        tokens_3d: List[List[List[int]]],
+        seq_lens_2d: List[List[int]],
+        seq_lens_1d: List[int],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        padded_batch, _ = pad_3d(
+            batch=tokens_3d, tokens_lengths=seq_lens_2d, pad_idx=self.vocab.pad_idx
+        )
+
+        return (
+            torch.tensor(padded_batch, dtype=torch.long),
+            torch.tensor(seq_lens_1d, dtype=torch.long),
+        )
+
+    def forward(
+        self, inputs: List[List[List[str]]]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        tokens_3d: List[List[List[int]]] = []
+        seq_lens_2d: List[List[int]] = []
+        seq_lens_1d: List[int] = []
+
+        for idx in range(len(inputs)):
+            numberized: Tuple[List[List[int]], List[int], int] = self.numberize(
+                inputs[idx]
+            )
+            tokens_3d.append(numberized[0])
+            seq_lens_2d.append(numberized[1])
+            seq_lens_1d.append(numberized[2])
+
+        return self.tensorize(tokens_3d, seq_lens_2d, seq_lens_1d)
+
+
+class String2DListTensorizer(Tensorizer):
+
+    __TENSORIZER_SCRIPT_IMPL__ = String2DListTensorizerScriptImpl
+
+    class Config(Tensorizer.Config):
+        #: The name of the text column to parse from the data source.
+        column: str = "text"
+        vocab: VocabConfig = VocabConfig()
+        vocab_file_delimiter: str = " "
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            column=config.column,
+            vocab_config=config.vocab,
+            vocab_file_delimiter=config.vocab_file_delimiter,
+            is_input=config.is_input,
+        )
+
+    def __init__(
+        self,
+        column,
+        vocab_config=None,
+        vocab=None,
+        vocab_file_delimiter=" ",
+        is_input=Config.is_input,
+    ):
+        self.column = column
+        self.vocab = vocab
+        self.vocab_builder = None
+        self.vocab_config = vocab_config or VocabConfig()
+        self.vocab_file_delimiter = vocab_file_delimiter
+        super().__init__(is_input)
+
+    @lazy_property
+    def tensorizer_script_impl(self):
+        return self.__TENSORIZER_SCRIPT_IMPL__(vocab=self.vocab)
+
+    @property
+    def column_schema(self):
+        return [(self.column, str)]
+
+    def initialize(self, from_scratch=True):
+
+        self.vocab_builder = VocabBuilder(delimiter=self.vocab_file_delimiter)
+
+        if self.vocab_config.build_from_data:
+            try:
+                while True:
+                    row = yield
+                    self.vocab_builder.add_all(chain.from_iterable(row[self.column]))
+            except GeneratorExit:
+                pass
+
+            self.vocab_builder.truncate_to_vocab_size(
+                self.vocab_config.size_from_data, self.vocab_config.min_counts
+            )
+
+        elif self.vocab_config.vocab_files is not None:
+
+            try:
+                # PyText will call this initializer with all the rows, but we don't actually need that
+                while True:
+                    row = yield
+            except GeneratorExit:
+                pass
+
+            # Okay, we finally got to do our thing
+            for vocab_file in self.vocab_config.vocab_files:
+                with PathManager.open(vocab_file.filepath) as f:
+                    self.vocab_builder.add_from_file(
+                        f,
+                        vocab_file.skip_header_line,
+                        vocab_file.lowercase_tokens,
+                        vocab_file.size_limit,
+                    )
+        else:
+            raise ValueError(
+                f"To create token tensorizer for '{self.column}', either "
+                f"`build_from_data` or `vocab_files` must be set."
+            )
+
+        self.vocab = self.vocab_builder.make_vocab()
+
+    def numberize(self, row):
+        return self.tensorizer_script_impl.numberize(row[self.column])
+
+    def tensorize(self, batch):
+        (
+            token_indices_tensor,
+            seq_lens_1d,
+        ) = self.tensorizer_script_impl.tensorize_wrapper(*zip(*batch))
+
+        return (
+            cuda.tensor(token_indices_tensor, dtype=torch.long),
+            cuda.tensor(seq_lens_1d, dtype=torch.long),
+        )
 
 
 def initialize_tensorizers(tensorizers, data_source, from_scratch=True):
