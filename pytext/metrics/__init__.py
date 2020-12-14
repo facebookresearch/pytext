@@ -795,6 +795,64 @@ def compute_multi_label_soft_metrics(
     return soft_metrics
 
 
+def compute_multi_label_soft_full_vector_metrics(
+    predictions: Sequence[LabelListPrediction],
+    label_names: Sequence[str],
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
+) -> Dict[str, SoftClassificationMetrics]:
+    """
+    Computes multi-label soft classification metrics
+
+    Args:
+        predictions: multi-label predictions,
+                     including the confidence score for each label.
+        label_names: Indexed label names. May contain duplicate label names.
+        recall_at_precision_thresholds: precision thresholds at which to calculate
+            recall
+        precision_at_recall_thresholds: recall thresholds at which to calculate
+            precision
+
+
+    Returns:
+        Dict from label strings to their corresponding soft metrics.
+    """
+    soft_metrics = {}
+    y_true = {}
+    y_score = {}
+    for i, label_name in enumerate(label_names):
+
+        if label_name not in y_true:
+            y_true[label_name] = []
+            y_score[label_name] = []
+
+        for label_scores, _, expected in predictions:
+            y_true[label_name].append(expected[i])
+            y_score[label_name].append(label_scores[i])
+
+    for i, label_name in enumerate(label_names):
+        y_true_sorted, y_score_sorted = sort_by_score(
+            y_true[label_name], y_score[label_name]
+        )
+        ap = average_precision_score(y_true_sorted, y_score_sorted)
+        recall_at_precision_dict, decision_thresh_at_precision = recall_at_precision(
+            y_true_sorted, y_score_sorted, recall_at_precision_thresholds
+        )
+        precision_at_recall_dict, decision_thresh_at_recall = precision_at_recall(
+            y_true_sorted, y_score_sorted, precision_at_recall_thresholds
+        )
+        roc_auc = compute_roc_auc(predictions, target_class=i)
+        soft_metrics[label_name] = SoftClassificationMetrics(
+            average_precision=ap,
+            recall_at_precision=recall_at_precision_dict,
+            decision_thresh_at_precision=decision_thresh_at_precision,
+            precision_at_recall=precision_at_recall_dict,
+            decision_thresh_at_recall=decision_thresh_at_recall,
+            roc_auc=roc_auc,
+        )
+    return soft_metrics
+
+
 def compute_multi_label_multi_class_soft_metrics(
     predictions: Sequence[Sequence[LabelPrediction]],
     label_names: Sequence[str],
@@ -1066,6 +1124,90 @@ def compute_multi_label_classification_metrics(
 
     soft_metrics = (
         compute_multi_label_soft_metrics(
+            predictions,
+            label_names,
+            recall_at_precision_thresholds,
+            precision_at_recall_thresholds,
+        )
+        if average_precisions
+        else None
+    )
+
+    if len(label_names) == 2:
+        confusion_dict = per_label_confusions.label_confusions_map
+        # Since MCC is symmetric, it doesn't matter which label is 0 and which is 1
+        TP = confusion_dict[label_names[0]].TP
+        FP = confusion_dict[label_names[0]].FP
+        FN = confusion_dict[label_names[0]].FN
+        TN = confusion_dict[label_names[1]].TP
+        mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
+        roc_auc: Optional[float] = compute_roc_auc(predictions)
+    else:
+        mcc = None
+        roc_auc = None
+
+    return ClassificationMetrics(
+        accuracy=accuracy,
+        macro_prf1_metrics=macro_prf1_metrics,
+        per_label_soft_scores=soft_metrics,
+        mcc=mcc,
+        roc_auc=roc_auc,
+        loss=loss,
+    )
+
+
+def compute_multi_label_full_vector_classification_metrics(
+    predictions: Sequence[LabelListPrediction],
+    label_names: Sequence[str],
+    loss: float,
+    average_precisions: bool = True,
+    recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
+    precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
+) -> ClassificationMetrics:
+    """
+    A general function that computes classification metrics given a list of multi-label
+    predictions.
+
+    Args:
+        predictions: multi-label predictions,
+                     including the confidence score for each label.
+        label_names: Indexed label names.
+        average_precisions: Whether to compute average precisions for labels or not.
+                            Defaults to True.
+        recall_at_precision_thresholds: precision thresholds at which
+                                        to calculate recall
+        precision_at_recall_thresholds: recall thresholds at which
+                                        to calculate precision
+
+
+    Returns:
+        ClassificationMetrics which contains various classification metrics.
+    """
+
+    num_correct = 0
+    num_expected_labels = 0
+    per_label_confusions = PerLabelConfusions()
+    for _, predicted, expected in predictions:
+        for label_idx, label_name in enumerate(label_names):
+            num_expected_labels += 1
+            # "predicted" is in the format of n_hot_encoding
+            if predicted[label_idx] == 1:
+                if expected[label_idx] > 0:  # TP
+                    num_correct += 1
+                    per_label_confusions.update(label_name, "TP", 1)
+                else:  # FP
+                    per_label_confusions.update(label_name, "FP", 1)
+            else:
+                if expected[label_idx] > 0:  # FN
+                    per_label_confusions.update(label_name, "FN", 1)
+                else:  # TN, update correct num
+                    num_correct += 1
+
+    accuracy = safe_division(num_correct, num_expected_labels)
+    macro_prf1_metrics = per_label_confusions.compute_metrics()
+
+    soft_metrics = (
+        compute_multi_label_soft_full_vector_metrics(
             predictions,
             label_names,
             recall_at_precision_thresholds,
