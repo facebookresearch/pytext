@@ -783,7 +783,9 @@ def compute_multi_label_soft_metrics(
         precision_at_recall_dict, decision_thresh_at_recall = precision_at_recall(
             y_true_sorted, y_score_sorted, precision_at_recall_thresholds
         )
-        roc_auc = compute_roc_auc(predictions, target_class=i)
+        roc_auc = compute_roc_auc_given_sorted_positives(y_true_sorted)
+        print(f"label_name {label_name}", flush=True)
+        print(roc_auc, flush=True)
         soft_metrics[label_name] = SoftClassificationMetrics(
             average_precision=ap,
             recall_at_precision=recall_at_precision_dict,
@@ -967,6 +969,27 @@ def compute_matthews_correlation_coefficients(
     return mcc
 
 
+def compute_roc_auc_given_sorted_positives(
+    y_true_sorted: np.ndarray,
+) -> Optional[float]:
+    # Compute auc as probability that a positive example is scored higher than
+    # a negative example.
+    n_false = 0
+    n_correct_pair_order = 0
+
+    for y in reversed(y_true_sorted):  # want low predicted to high predicted
+        if y:
+            n_correct_pair_order += n_false
+        else:
+            n_false += 1
+
+    n_true = len(y_true_sorted) - n_false
+    if n_true == 0 or n_false == 0:
+        return None
+
+    return float(n_correct_pair_order / (n_true * n_false))
+
+
 def compute_roc_auc(
     predictions: Sequence[LabelPrediction], target_class: int = 0
 ) -> Optional[float]:
@@ -980,22 +1003,7 @@ def compute_roc_auc(
     y_score = [label_scores[target_class] for label_scores, _, _ in predictions]
     y_true_sorted, _ = sort_by_score(y_true, y_score)
 
-    # Compute auc as probability that a positive example is scored higher than
-    # a negative example.
-    n_false = 0
-    n_correct_pair_order = 0
-
-    for y in reversed(y_true_sorted):  # want low predicted to high predicted
-        if y:
-            n_correct_pair_order += n_false
-        else:
-            n_false += 1
-
-    n_true = len(y_true) - n_false
-    if n_true == 0 or n_false == 0:
-        return None
-
-    return float(n_correct_pair_order / (n_true * n_false))
+    return compute_roc_auc_given_sorted_positives(y_true_sorted)
 
 
 def compute_classification_metrics(
@@ -1133,6 +1141,7 @@ def compute_multi_label_classification_metrics(
         else None
     )
 
+    roc_auc = compute_macro_avg(soft_metrics, "roc_auc") if average_precisions else None
     if len(label_names) == 2:
         confusion_dict = per_label_confusions.label_confusions_map
         # Since MCC is symmetric, it doesn't matter which label is 0 and which is 1
@@ -1141,10 +1150,8 @@ def compute_multi_label_classification_metrics(
         FN = confusion_dict[label_names[0]].FN
         TN = confusion_dict[label_names[1]].TP
         mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
-        roc_auc: Optional[float] = compute_roc_auc(predictions)
     else:
         mcc = None
-        roc_auc = None
 
     return ClassificationMetrics(
         accuracy=accuracy,
@@ -1237,6 +1244,17 @@ def compute_multi_label_full_vector_classification_metrics(
         roc_auc=roc_auc,
         loss=loss,
     )
+
+
+def compute_macro_avg(soft_metrics: Dict[str, SoftClassificationMetrics], metric: str):
+    avg = 0
+    for metrics in soft_metrics.values():
+        metric_value = getattr(metrics, metric, None)
+        print(f"metirc value {metric_value}")
+        if metric_value is None:
+            return None
+        avg += metric_value
+    return avg / len(soft_metrics)
 
 
 def compute_pairwise_ranking_metrics(
