@@ -3,6 +3,7 @@
 
 import contextlib
 import copy
+import json
 import sys
 from itertools import chain
 from typing import List, Optional, Tuple
@@ -1169,6 +1170,93 @@ class LabelListTensorizer(LabelTensorizer):
     def sort_key(self, row):
         # use list length as sort key
         return row[1]
+
+
+class LabelListRankTensorizer(LabelTensorizer):
+    """LabelListRankTensorizer takes a list of a single array with [[labelA, rankA], [labelB, rankB], ...] as input and generate a tuple
+    of tensors (label_idx, list_length).
+    Example: Input: ["[\"weather\",\"1\"]","[\"business\",\"1\"]"] Output of size len(vocab) {"timer", "weather", "business"} => [0, 1, 1]. This would suggest both labels are of equal rank.
+    """
+
+    class Config(LabelTensorizer.Config):
+        # pad missing label in the list, including None and empty
+        pad_missing: bool = False
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(
+            config.column,
+            config.allow_unknown,
+            config.pad_in_vocab,
+            config.label_vocab,
+            config.label_vocab_file,
+            config.is_input,
+            pad_missing=config.pad_missing,
+        )
+
+    def __init__(self, *args, pad_missing: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pad_missing = pad_missing
+
+    def __setstate__(self, newstate):
+        # for backward compatibility
+        if "pad_missing" not in newstate:
+            newstate["pad_missing"] = True
+        self.__dict__.update(newstate)
+
+    @property
+    def column_schema(self):
+        return [(self.label_column, List[str])]
+
+    def numberize(self, row):
+        label_idx_list = [0] * len(self.vocab)
+        elem_struct_0 = list(map(json.loads, row[self.label_column]))
+
+        for elemRow in elem_struct_0:
+            label = elemRow[0]
+            labelRank = int(elemRow[1])
+
+            # Only None and empty is viewed as missing data, values like "False" is legit
+            if label in [None, ""]:
+                if self.pad_missing:
+                    raise Exception("Invalid state for LabelStructTensorizer")
+                else:
+                    raise Exception(
+                        "Found none or empty value in the list, \
+                        while pad_missing is disabled"
+                    )
+            else:
+                if labelRank == 1:
+                    label_idx_list[self.vocab.lookup_all(label)] = 1
+
+        return label_idx_list, len(label_idx_list)
+
+    def tensorize(self, batch):
+        labels, labels_len = zip(*batch)
+        return super().tensorize(labels), pad_and_tensorize(labels_len)
+
+    def sort_key(self, row):
+        # use list length as sort key
+        return row[1]
+
+    def initialize(self, from_scratch=True):
+        """
+        Look through the dataset for all labels and create a vocab map for them.
+        """
+        if self.vocab and from_scratch:
+            return
+        try:
+            while True:
+                row = yield
+                elem_struct_0 = list(map(json.loads, row[self.label_column]))
+
+                for elemRow in elem_struct_0:
+                    self.vocab_builder.add_all(elemRow[0])
+        except GeneratorExit:
+            if self.add_labels:
+                self.vocab_builder.add_all(self.add_labels)
+            self.vocab, self.pad_idx = self._create_vocab()
+
 
 
 class UidTensorizer(Tensorizer):
