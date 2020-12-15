@@ -122,6 +122,13 @@ class ExportConfig(ConfigBase):
     batch_padding_control: Optional[List[int]] = None
 
 
+class InvalidMethodInvocation(Exception):
+    message: str
+
+    def __init__(self, message):
+        self.message = message
+
+
 class PyTextConfig(ConfigBase):
     # the actual task union types will be generated in runtime
     task: Union[PlaceHolder, Any]
@@ -144,6 +151,8 @@ class PyTextConfig(ConfigBase):
     auto_resume_from_snapshot: bool = False
     # Configuration for model export. See ExportConfig for details
     export: ExportConfig = ExportConfig()
+    # Configuration for a list of model exports. If the list is non-empty, export will be ignored.
+    export_list: List[ExportConfig] = []
     # Base directory where modules are saved
     modules_save_dir: str = ""
     # Whether to save intermediate checkpoints for modules if they are best yet
@@ -190,72 +199,151 @@ class PyTextConfig(ConfigBase):
                     if k in kwargs.keys()
                 }
             )
+            kwargs["export_list"] = [kwargs["export"]]
             kwargs["version"] = 22
         super().__init__(**kwargs)
+        if len(self.export_list) == 0:  # Happens if version >= 22:
+            self.export_list = [self.export]
+
+    def export_check(self, method_name):
+        if len(self.export_list) != 1:
+            if len(self.export_list) == 0:
+                # Is there a proper finalizer that can be called instead??
+                # Need help from a python Guru
+                self.export_list = [self.export]
+            else:
+                raise InvalidMethodInvocation(
+                    "export list length is not 1  use the set/get_%s version of method with key"
+                    % (method_name,)
+                )
 
     @property
     def export_caffe2_path(self):
-        return self.export.export_caffe2_path
+        self.export_check("export_caffe2_path")
+        return self.export_list[0].export_caffe2_path
 
     @export_caffe2_path.setter
     def export_caffe2_path(self, p):
-        self.export.export_caffe2_path = p
+        self.export_check("export_caffe2_path")
+        self.export_list[0].export_caffe2_path = p
+
+    def get_export_caffe2_path(self, index):
+        return self.export_list[index].export_caffe2_path
+
+    def set_export_caffe2_path(self, p, index):
+        self.export_list[index].export_caffe2_path = p
 
     @property
     def export_onnx_path(self):
-        return self.export.export_onnx_path
+        self.export_check("export_onnx_path")
+        return self.export_list[0].export_onnx_path
 
     @export_onnx_path.setter
     def export_onnx_path(self, p):
-        self.export.export_onnx_path = p
+        self.export_check("export_onnx_path")
+        self.export_list[0].export_onnx_path = p
+
+    def get_export_onnx_path(self, index):
+        return self.export_list[index].export_onnx_path
+
+    def set_export_onnx_path(self, p, index):
+        self.export_list[index].export_onnx_path = p
 
     @property
     def export_torchscript_path(self):
-        return self.export.export_torchscript_path
+        self.export_check("export_torchscript_path")
+        return self.export_list[0].export_torchscript_path
 
     @export_torchscript_path.setter
     def export_torchscript_path(self, p):
-        self.export.export_torchscript_path = p
+        self.export_check("export_torchscript_path")
+        self.export_list[0].export_torchscript_path = p
+
+    def get_export_torchscript_path(self, index):
+        return self.export_list[index].export_torchscript_path
+
+    def set_export_torchscript_path(self, p, index):
+        self.export_list[index].export_torchscript_path = p
 
     @property
     def torchscript_quantize(self):
-        return self.export.torchscript_quantize
+        self.export_check("torchscript_quantize")
+        return self.export_list[0].torchscript_quantize
 
     @torchscript_quantize.setter
     def torchscript_quantize(self, quantize):
-        self.export.torchscript_quantize = quantize
+        self.export_check("torchscript_quantize")
+        self.export_list[0].torchscript_quantize = quantize
+
+    def get_export_torchscript_quantize(self, index):
+        return self.export_list[index].torchscript_quantize
+
+    def set_export_torchscript_path(self, quantize, index):
+        self.export_list[index].torchscript_quantize = quantize
 
     @property
     def accelerate(self):
-        return self.export.accelerate
+        self.export_check("accelerate")
+        return self.export_list[0].accelerate
 
     @accelerate.setter
     def accelerate(self, acc):
-        self.export.accelerate = acc
+        self.export_check("accelerate")
+        self.export_list[0].accelerate = acc
+
+    def get_export_accelerate(self, index):
+        return self.export_list[index].accelerate
+
+    def set_export_accelerate(self, acc, index):
+        self.export_list[index].accelerate = acc
 
     @property
     def inference_interface(self):
-        return self.export.inference_interface
+        self.export_check("inference_interface")
+        return self.export_list[0].inference_interface
 
     @inference_interface.setter
     def inference_interface(self, inf_inter):
-        self.export.inference_interface = inf_inter
+        self.export_check("inference_interface")
+        self.export_list[0].inference_interface = inf_inter
+
+    def get_export_inference_interface(self, index):
+        return self.export_list[index].inference_interface
+
+    def set_export_inference_interface(self, inference_interface, index):
+        self.export_list[index].inference_interface = inference_interface
 
     @property
     def seq_padding_control(self):
-        return self.export.seq_padding_control
+        self.export_check("seq_padding_control")
+        return self.export_list[0].seq_padding_control
 
     @seq_padding_control.setter
     def seq_padding_control(self, spc):
-        self.export.seq_padding_control = spc
+        self.export_check("seq_padding_control")
+        self.export_list[0].seq_padding_control = spc
+
+    def get_export_seq_padding_control(self, index):
+        return self.export_list[index].seq_padding_control
+
+    def set_export_inference_interface(self, seq_padding_control, index):
+        self.export_list[index].seq_padding_control = seq_padding_control
 
     @property
     def batch_padding_control(self):
-        return self.export.batch_padding_control
+        self.export_check("batch_padding_control")
+        return self.export_list[0].batch_padding_control
 
     @batch_padding_control.setter
     def batch_padding_control(self, bpc):
-        self.export.batch_padding_control = bpc
+        self.export_check("batch_padding_control")
+        self.export_list[0].batch_padding_control = bpc
+
+    def get_export_batch_padding_control(self, index):
+        return self.export_list[index].batchpadding_control
+
+    def set_export_batch_padding_control(self, batch_padding_control, index):
+        self.export_list[index].batch_padding_control = batch_padding_control
 
 
 class TestConfig(ConfigBase):

@@ -55,7 +55,9 @@ class TaskLoadSaveTest(unittest.TestCase):
 
             save(config, model, meta=None, tensorizers=task.data.tensorizers)
             task2, config2, training_state_none = load(snapshot_file.name)
-
+            self.assertEqual(config.export, config2.export)
+            self.assertEqual(config.export_list, config2.export_list)
+            self.assertEqual(config.task, config2.task)
             self.assertEqual(config, config2)
             self.assertModulesEqual(model, task2.model)
             self.assertIsNone(training_state_none)
