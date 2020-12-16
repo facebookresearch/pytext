@@ -9,7 +9,7 @@ from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
-from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
+from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTokenizer
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from pytorch_pretrained_bert.tokenization import (
@@ -80,7 +80,11 @@ class Tokenizer(Component):
         return len(input[:char_offset].encode("utf8"))
 
     def torchscriptify(self):
-        raise NotImplementedError
+        # torchscriptify only supports space spliting tokenizer
+        if self.split_regex == r"\s+":
+            return ScriptWordTokenizer(self.lowercase)
+        else:
+            NotImplementedError
 
     def decode(self, sentence: str):
         ## To be overridden by subword level tokenizers to convert to string

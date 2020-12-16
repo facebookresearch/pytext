@@ -28,7 +28,12 @@ from pytext.torchscript.tensorizer import (
     ScriptInteger1DListTensorizer,
     ScriptFloatListSeqTensorizer,
 )
-from pytext.torchscript.utils import pad_3d, ScriptBatchInput, validate_padding_control
+from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
+from pytext.torchscript.utils import (
+    ScriptBatchInput,
+    pad_3d,
+    validate_padding_control,
+)
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
@@ -803,6 +808,130 @@ class Integer1DListTensorizer(Tensorizer):
         return ScriptInteger1DListTensorizer()
 
 
+class CharacterVocabTokenTensorizerScriptImpl(TensorizerScriptImpl):
+    def __init__(
+        self,
+        add_bos_token: bool,
+        add_eos_token: bool,
+        use_eos_token_for_bos: bool,
+        max_seq_len: int,
+        vocab: Vocabulary,
+        tokenizer: Optional[Tokenizer],
+    ):
+        super().__init__()
+
+        if tokenizer is not None and hasattr(tokenizer, "torchscriptify"):
+            try:
+                self.tokenizer = tokenizer.torchscriptify()
+            except NotImplementedError:
+                # This is fine as long as the exported tokenizer is only used
+                # in pre-tokenized mode
+                self.tokenizer = None
+        else:
+            self.tokenizer = None
+
+        self.do_nothing_tokenizer = ScriptDoNothingTokenizer()
+
+        self.vocab = ScriptVocabulary(
+            list(vocab),
+            pad_idx=vocab.get_pad_index(),
+            bos_idx=vocab.get_bos_index() if add_bos_token else -1,
+            eos_idx=vocab.get_eos_index() if add_eos_token else -1,
+        )
+
+        self.add_bos_token = add_bos_token
+        self.add_eos_token = add_eos_token
+        self.use_eos_token_for_bos = use_eos_token_for_bos
+        self.max_seq_len = max_seq_len
+
+    def tokenize(
+        self,
+        row_text: Optional[str] = None,
+        row_pre_tokenized: Optional[List[str]] = None,
+    ) -> Tuple[List[List[str]], List[int]]:
+        tokens: List[Tuple[str, int, int]] = []
+        char_tokens: List[List[str]] = []
+        char_tokens_lengths: List[int] = []
+        if row_text is not None:
+            assert self.tokenizer is not None
+            tokens = self.tokenizer.tokenize(row_text)
+        elif row_pre_tokenized is not None:
+            for token in row_pre_tokenized:
+                tokens.extend(self.do_nothing_tokenizer.tokenize(token))
+
+        for token in tokens:
+            chars: List[str] = []
+            for char in token[0]:
+                chars.append(char)
+            char_tokens.append(chars)
+            char_tokens_lengths.append(len(chars))
+
+        return char_tokens, char_tokens_lengths
+
+    def numberize(
+        self, char_tokens: List[List[str]], char_tokens_lengths: List[int]
+    ) -> Tuple[List[List[int]], List[int]]:
+        tokens: List[List[int]] = []
+        tokens = self.vocab.lookup_indices_2d(char_tokens)
+        return tokens, char_tokens_lengths
+
+    def tensorize(
+        self,
+        tokens: List[List[List[int]]],
+        tokens_lengths: List[List[int]],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        tokens_padded: List[List[List[int]]] = []
+        tokens_lengths_padded: List[List[int]] = []
+        tokens_padded, tokens_lengths_padded = pad_3d(
+            tokens, tokens_lengths, self.vocab.get_pad_index()
+        )
+
+        tokens_tensor: torch.Tensor = torch.tensor(tokens_padded, dtype=torch.long)
+        tokens_lengths_tensor: torch.Tensor = torch.tensor(
+            tokens_lengths_padded, dtype=torch.long
+        )
+
+        return (tokens_tensor, tokens_lengths_tensor)
+
+    def get_texts_by_index(
+        self, texts: Optional[List[List[str]]], index: int
+    ) -> Optional[str]:
+        if texts is None or len(texts) == 0:
+            return None
+
+        # CharacterVocabTokenTensorizer only works with a single text per row, stick with that
+        return texts[index][0]
+
+    def get_tokens_by_index(
+        self, tokens: Optional[List[List[List[str]]]], index: int
+    ) -> Optional[List[str]]:
+        if tokens is None or len(tokens) == 0:
+            return None
+
+        # CharacterVocabTokenTensorizer only works with a single text per row, stick with that
+        return tokens[index][0]
+
+    def forward(self, inputs: ScriptBatchInput) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        tokens_3d: List[List[List[int]]] = []
+        seq_lens_2d: List[List[int]] = []
+
+        for idx in range(self.batch_size(inputs)):
+            char_tokens: List[List[int]] = []
+            char_tokens_lengths: List[int] = []
+            char_tokens, char_tokens_lengths = self.tokenize(
+                self.get_texts_by_index(inputs.texts, idx),
+                self.get_tokens_by_index(inputs.tokens, idx),
+            )
+            numberized: Tuple[List[List[int]], List[int]] = self.numberize(
+                char_tokens, char_tokens_lengths
+            )
+            tokens_3d.append(numberized[0])
+            seq_lens_2d.append(numberized[1])
+
+        return self.tensorize(tokens_3d, seq_lens_2d)
+
+
 class CharacterVocabTokenTensorizer(Tensorizer):
     """Turn words into 2-dimensional tensors of ints based on the char vocab.
     Words are padded to the maximum word length (also capped at `max_char_length`).
@@ -812,6 +941,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
     CharacterTokenTensorizer uses the ascii value and does not require to build a vocab.
     Here we tensorize based on the vocab.
     """
+
+    __TENSORIZER_SCRIPT_IMPL__ = CharacterVocabTokenTensorizerScriptImpl
 
     class Config(Tensorizer.Config):
         #: The name of the text column to parse from the data source.
@@ -947,6 +1078,17 @@ class CharacterVocabTokenTensorizer(Tensorizer):
         return (
             pad_and_tensorize(char_tokens, self.vocab.get_pad_index()),
             pad_and_tensorize(char_tokens_lengths),
+        )
+
+    @lazy_property
+    def tensorizer_script_impl(self):
+        return self.__TENSORIZER_SCRIPT_IMPL__(
+            add_bos_token=self.add_bos_token,
+            add_eos_token=self.add_eos_token,
+            use_eos_token_for_bos=self.use_eos_token_for_bos,
+            max_seq_len=self.max_seq_len,
+            vocab=self.vocab,
+            tokenizer=self.tokenizer,
         )
 
 

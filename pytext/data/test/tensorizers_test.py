@@ -26,6 +26,7 @@ from pytext.data.tensorizers import (
     AnnotationNumberizer,
     ByteTensorizer,
     ByteTokenTensorizer,
+    CharacterVocabTokenTensorizer,
     Float1DListTensorizer,
     FloatListSeqTensorizer,
     FloatListTensorizer,
@@ -49,6 +50,9 @@ from pytext.data.tokenizers import (
     WordPieceTokenizer,
 )
 from pytext.data.utils import Vocabulary
+from pytext.torchscript.utils import (
+    ScriptBatchInput,
+)
 from pytext.utils import precision
 from pytext.utils.test import import_tests_module
 
@@ -1585,3 +1589,101 @@ class String2DListTensorizerTest(unittest.TestCase):
 
         for expected, actual in zip(self.expected_tensorized, tensors):
             self.assertTrue(expected.equal(actual), msg="Tensors didn't match!")
+
+
+class CharacterVocabTokenTensorizerTest(unittest.TestCase):
+    def _initialize_tensorizer(self, tensorizer, data):
+        init = tensorizer.initialize()
+        init.send(None)  # kick
+        for row in data:
+            init.send(row)
+        init.close()
+
+    def test_character_vocab_token_tensorizer(self):
+        rows = [{"text": "Move fast"}, {"text": "And break things"}]
+        expected_outputs = [
+            [
+                (
+                    "char_tokens",
+                    [[2, 3, 4, 5], [6, 7, 8, 9]],
+                ),
+                ("char_tokens_lengths", [4, 4]),
+            ],
+            [
+                (
+                    "char_tokens",
+                    [[7, 10, 11], [12, 13, 5, 7, 14], [9, 15, 16, 10, 17, 8]],
+                ),
+                ("char_tokens_lengths", [3, 5, 6]),
+            ],
+        ]
+
+        expected_tensors = (
+            [
+                [
+                    [2, 3, 4, 5, 1, 1],
+                    [6, 7, 8, 9, 1, 1],
+                    [1, 1, 1, 1, 1, 1],
+                ],
+                [
+                    [7, 10, 11, 1, 1, 1],
+                    [12, 13, 5, 7, 14, 1],
+                    [9, 15, 16, 10, 17, 8],
+                ],
+            ],
+            [[4, 4, 0], [3, 5, 6]],
+        )
+
+        tensorizer = CharacterVocabTokenTensorizer(text_column="text")
+        self._initialize_tensorizer(tensorizer, data=rows)
+        numberized_rows = [tensorizer.numberize(row) for row in rows]
+
+        for expected, numberized_row in zip(expected_outputs, numberized_rows):
+            for (field, value), out in zip(expected, numberized_row):
+                self.assertEqual(value, out, msg=f"{field} didn't match!")
+
+        tensor, tensor_lens = tensorizer.tensorize(numberized_rows)
+
+        self.assertIsInstance(tensor, torch.LongTensor)
+        self.assertIsInstance(tensor_lens, torch.LongTensor)
+        self.assertEqual(tensor.tolist(), expected_tensors[0])
+        self.assertEqual(tensor_lens.tolist(), expected_tensors[1])
+
+        # Check the tensorizer after exporting to TorchScript
+        torchscript_tensorizer = tensorizer.torchscriptify()
+
+        torchscript_numberized_rows = [
+            torchscript_tensorizer.numberize(
+                *torchscript_tensorizer.tokenize(row["text"])
+            )
+            for row in rows
+        ]
+
+        for expected, numberized_row in zip(
+            expected_outputs, torchscript_numberized_rows
+        ):
+            for (field, value), out in zip(expected, numberized_row):
+                self.assertEqual(
+                    value,
+                    out,
+                    msg=f"{field} didn't match for torchscriptified tensorizer!",
+                )
+
+        torchscript_tensor, torchscript_tensor_lens = torchscript_tensorizer.tensorize(
+            *zip(*numberized_rows)
+        )
+
+        self.assertIsInstance(torchscript_tensor, torch.LongTensor)
+        self.assertIsInstance(torchscript_tensor_lens, torch.LongTensor)
+        self.assertEqual(torchscript_tensor.tolist(), expected_tensors[0])
+        self.assertEqual(torchscript_tensor_lens.tolist(), expected_tensors[1])
+
+        # test forward
+        torchscript_tensor, torchscript_tensor_lens = torchscript_tensorizer(
+            ScriptBatchInput([[row["text"]] for row in rows], None, None)
+        )
+
+        self.assertIsInstance(torchscript_tensor, torch.LongTensor)
+        self.assertIsInstance(torchscript_tensor_lens, torch.LongTensor)
+        self.assertEqual(torchscript_tensor.tolist(), expected_tensors[0])
+        self.assertEqual(torchscript_tensor_lens.tolist(), expected_tensors[1])
