@@ -25,7 +25,6 @@ class BasicMetricsTest(MetricsTestBase):
 
         roc_auc_dict = {"label1": 1.0, "label2": 0.25, "label3": 0.0}
 
-
         metrics = compute_multi_label_classification_metrics(
             PREDICTIONS, LABEL_NAMES, loss=5.0
         )
