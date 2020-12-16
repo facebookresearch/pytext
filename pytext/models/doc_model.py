@@ -17,7 +17,11 @@ from pytext.data.tensorizers import (
 )
 from pytext.data.tokenizers import DoNothingTokenizer
 from pytext.exporters.exporter import ModelExporter
-from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
+from pytext.loss import (
+    BinaryCrossEntropyLoss,
+    MultiLabelSoftMarginLoss,
+    BinaryCrossEntropyWithLogitsLoss,
+)
 from pytext.models.decoders.mlp_decoder import DecoderBase, MLPDecoder
 from pytext.models.embeddings import (
     CharacterEmbedding,
@@ -261,6 +265,8 @@ class DocModel(Model):
         if isinstance(loss, BinaryCrossEntropyLoss):
             output_layer_cls = BinaryClassificationOutputLayer
         elif isinstance(loss, MultiLabelSoftMarginLoss):
+            output_layer_cls = MultiLabelOutputLayer
+        elif isinstance(loss, BinaryCrossEntropyWithLogitsLoss):
             output_layer_cls = MultiLabelOutputLayer
         else:
             output_layer_cls = MulticlassOutputLayer
