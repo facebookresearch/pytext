@@ -8,7 +8,7 @@ from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_ty
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import PyTextConfig, TestConfig
+from pytext.config import PyTextConfig, TestConfig, ExportConfig
 from pytext.config.component import ComponentType, create_component, create_exporter
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
@@ -192,7 +192,20 @@ def save_and_export(
     else:
         tensorizers = task.data.tensorizers
     save(config, task.model, meta, tensorizers=tensorizers)
-    export_config = config.export
+    if len(config.export_list) == 0:
+        # this branch should be eliminated to avoid sphaghetti code
+        export_config = config.export
+        save_and_export_exportconfig(export_config, task, metric_channels)
+    else:
+        for export_config in config.export_list:
+            save_and_export_exportconfig(export_config, task, metric_channels)
+
+
+def save_and_export_exportconfig(
+    export_config: ExportConfig,
+    task: Task_Deprecated,
+    metric_channels: Optional[List[Channel]] = None,
+) -> None:
     if export_config.export_caffe2_path:
         task.export(
             task.model,

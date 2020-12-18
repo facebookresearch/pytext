@@ -175,7 +175,10 @@ def _try_component_config_from_json(cls, value):
 def pytext_config_from_json(json_obj, ignore_fields=(), auto_upgrade=True):
     if auto_upgrade:
         json_obj = upgrade_to_latest(json_obj)
-    return config_from_json(PyTextConfig, json_obj, ignore_fields)
+    pytext_config = config_from_json(PyTextConfig, json_obj, ignore_fields)
+    if len(pytext_config.export_list) == 0:
+        pytext_config.export_list = [pytext_config.export]
+    return pytext_config
 
 
 def config_from_json(cls, json_obj, ignore_fields=()):
