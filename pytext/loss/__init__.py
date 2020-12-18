@@ -11,6 +11,8 @@ from .loss import (
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLengthLoss,
     LabelSmoothedCrossEntropyLoss,
+    SamplewiseLabelSmoothedCrossEntropyLengthLoss,
+    SamplewiseLabelSmoothedCrossEntropyLoss,
     Loss,
     MAELoss,
     MSELoss,
@@ -37,5 +39,7 @@ __all__ = [
     "PairwiseRankingLoss",
     "LabelSmoothedCrossEntropyLoss",
     "LabelSmoothedCrossEntropyLengthLoss",
+    "SamplewiseLabelSmoothedCrossEntropyLoss",
+    "SamplewiseLabelSmoothedCrossEntropyLengthLoss",
     "SourceType",
 ]
