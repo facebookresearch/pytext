@@ -590,6 +590,162 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
 
 
+class SamplewiseLabelSmoothedCrossEntropyLoss(LabelSmoothedCrossEntropyLoss):
+    class Config(ConfigBase):
+        beta: float = 0.1
+        source: SourceType = SourceType.LOGITS
+        use_entropy: bool = False
+
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        # weight values other than 1.0 gives inconsistent behavior
+        # Refer: https://github.com/pytorch/pytorch/issues/17577
+        if weight is not None:
+            assert torch.sum(torch.abs(weight - 1.0)) < 1e-7
+
+        self.ignore_index = ignore_index
+        self.weight = weight
+        self.beta = config.beta
+        self.source = config.source
+        self.use_entropy = config.use_entropy
+        self.samplewise_cross_entropy_loss = None
+        self.cross_entropy_loss = None
+        self.samplewise_label_smoothing_loss = None
+        self.label_smoothing_loss = None
+        self.samplewise_total_loss = None
+
+    def _reduce_mean(
+        self,
+        logits,
+        targets,
+        batch_size,
+        cross_entropy_loss,
+        label_smoothing_loss,
+        reduce=True,
+    ):
+        """
+        We write a class specific _reduce_mean in order to extract sample wise loss values.
+        Currently, passing in reduce="mean" will average over all examples without having access to sample wise losses.
+        """
+        # determine masked logits
+        non_ignored = targets != self.ignore_index
+        old_cross_entropy_loss = cross_entropy_loss.clone()
+        old_label_smoothing_loss = label_smoothing_loss.clone()
+        if non_ignored.any():
+            # guarantee ignored tokens have 0 contribution to loss
+            cross_entropy_loss[~non_ignored] = 0
+            label_smoothing_loss[~non_ignored] = 0
+            # lengths after masking
+            lengths = torch.sum(non_ignored.reshape(batch_size, -1), dim=1)
+            # sample-wise losses
+            #     (we do not consider masked tokens in this loss)
+            samplewise_cross_entropy_loss = (
+                torch.sum(cross_entropy_loss.reshape(batch_size, -1), dim=1) / lengths
+            )
+            samplewise_label_smoothing_loss = (
+                torch.sum(label_smoothing_loss.reshape(batch_size, -1), dim=1) / lengths
+            )
+            # replace nans with 0 (only happens with 0 length examples edge case)
+            samplewise_cross_entropy_loss[
+                torch.isnan(samplewise_cross_entropy_loss)
+            ] = 0
+            samplewise_label_smoothing_loss[
+                torch.isnan(samplewise_label_smoothing_loss)
+            ] = 0
+            # update original loss to only have the unmasked examples
+            cross_entropy_loss = cross_entropy_loss[non_ignored]
+            label_smoothing_loss = label_smoothing_loss[non_ignored]
+        else:
+            samplewise_cross_entropy_loss = torch.zeros(
+                batch_size, device=logits.device
+            )
+            samplewise_label_smoothing_loss = torch.zeros(
+                batch_size, device=logits.device
+            )
+            cross_entropy_loss = torch.zeros(non_ignored.shape, device=logits.device)
+            label_smoothing_loss = torch.zeros(non_ignored.shape, device=logits.device)
+        if reduce:
+            # mean loss over all tokens
+            cross_entropy_loss = torch.mean(cross_entropy_loss)
+            label_smoothing_loss = torch.mean(label_smoothing_loss)
+        else:
+            # if no reduction, revert values to before any masking happens
+            cross_entropy_loss = old_cross_entropy_loss
+            label_smoothing_loss = old_label_smoothing_loss
+        return (
+            samplewise_cross_entropy_loss,
+            samplewise_label_smoothing_loss,
+            cross_entropy_loss,
+            label_smoothing_loss,
+        )
+
+    def __call__(self, logits, targets, reduce=True, batch_size=None):
+        """
+        If use_entropy is False, returns the cross-entropy loss alongwith the KL divergence of the
+        discrete uniform distribution with the logits. Refer to section 3.2
+        If use_entopy is True, uses the entropy of the output distribution as
+        the smoothing loss (i.e., higher entropy, better). Refer to section 3
+        https://arxiv.org/pdf/1701.06548.pdf
+        """
+
+        # assume batch size is length of logits unless given otherwise
+        if batch_size is None:
+            batch_size = logits.shape[0]
+
+        if self.use_entropy:
+            # loss is negative of entropy
+            probs = F.softmax(logits, dim=1)
+            log_probs = torch.log(probs)
+            label_smoothing_loss = torch.sum(log_probs * probs, dim=1)
+        else:
+            # negative KL-div has an additional log(num_classes) term but ignored
+            # here because it doesn't contribute to optimization
+            if self.source == SourceType.LOGITS:
+                log_probs = F.log_softmax(logits, dim=1)
+            elif self.source == SourceType.PROBS:
+                log_probs = logits.log()
+            else:
+                log_probs = logits
+            label_smoothing_loss = -1 * log_probs.mean(dim=1)
+
+        cross_entropy_loss = F.nll_loss(
+            log_probs,
+            targets,
+            ignore_index=self.ignore_index,
+            reduction="none",
+            weight=self.weight,
+        )
+        (
+            samplewise_cross_entropy_loss,
+            samplewise_label_smoothing_loss,
+            cross_entropy_loss,
+            label_smoothing_loss,
+        ) = self._reduce_mean(
+            logits,
+            targets,
+            batch_size,
+            cross_entropy_loss,
+            label_smoothing_loss,
+            reduce=reduce,
+        )
+        # sample-wise losses
+        self.samplewise_cross_entropy_loss = samplewise_cross_entropy_loss
+        self.samplewise_label_smoothing_loss = samplewise_label_smoothing_loss
+        self.samplewise_total_loss = (
+            (
+                (1.0 - self.beta) * samplewise_cross_entropy_loss
+                + self.beta * samplewise_label_smoothing_loss
+            )
+            if samplewise_cross_entropy_loss is not None
+            and samplewise_label_smoothing_loss is not None
+            else None
+        )
+
+        self.cross_entropy_loss = cross_entropy_loss
+        self.label_smoothing_loss = label_smoothing_loss
+
+        return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
+
+
 class LabelSmoothedCrossEntropyLengthLoss(Loss):
     class Config(LabelSmoothedCrossEntropyLoss.Config):
         lengths_weight: float = 0.25
@@ -644,5 +800,77 @@ class LabelSmoothedCrossEntropyLengthLoss(Loss):
                 "labels_label_smoothing_loss": self.label_smoothing_loss.label_smoothing_loss,
                 "lengths_cross_entropy_loss": self.length_loss.cross_entropy_loss,
                 "lengths_label_smoothing_loss": self.length_loss.label_smoothing_loss,
+            },
+        )
+
+
+class SamplewiseLabelSmoothedCrossEntropyLengthLoss(Loss):
+    class Config(SamplewiseLabelSmoothedCrossEntropyLoss.Config):
+        lengths_weight: float = 0.25
+        beta_2: float = 0.25
+        assert_valid_targets: bool = True
+
+    def __init__(self, config, weight=None, ignore_index=-100):
+        # weight values other than 1.0 gives inconsistent behavior
+        # Refer: https://github.com/pytorch/pytorch/issues/17577
+        if weight is not None:
+            assert torch.sum(torch.abs(weight - 1.0)) < 1e-7
+
+        self.lengths_weight = config.lengths_weight
+        self.assert_valid_targets = config.assert_valid_targets
+        self.label_smoothing_loss = SamplewiseLabelSmoothedCrossEntropyLoss(
+            config, ignore_index=ignore_index, weight=weight
+        )
+
+        self.length_loss = SamplewiseLabelSmoothedCrossEntropyLoss(
+            config=SamplewiseLabelSmoothedCrossEntropyLoss.Config(
+                beta=config.beta_2,
+                use_entropy=config.use_entropy,
+                source=SourceType.LOG_PROBS,
+            )
+        )
+
+    def __call__(self, logits, targets, length_log_probs, length_targets, reduce=True):
+        max_len = int(torch.max(length_targets))
+        batch_size = logits.shape[0] // max_len
+        label_loss = self.label_smoothing_loss(
+            logits, targets, reduce=reduce, batch_size=batch_size
+        )
+
+        max_supported_dim = length_log_probs.size(1)
+        length_targets = length_targets.unsqueeze(-1)
+
+        if self.assert_valid_targets:
+            assert not torch.any(
+                length_targets >= max_supported_dim
+            ), f"max_supported_dim: {max_supported_dim}, Total Violations : {str(length_targets[length_targets >= max_supported_dim].flatten().tolist())}"
+        else:
+            length_targets[length_targets >= max_supported_dim] = max_supported_dim - 1
+
+        length_loss = self.length_loss(
+            logits=length_log_probs, targets=length_targets.view(-1), reduce=reduce
+        )
+
+        total_loss = label_loss + self.lengths_weight * length_loss
+
+        # also log the sample wise losses
+        samplewise_losses = {
+            "samplewise_label_loss": self.label_smoothing_loss.samplewise_total_loss,
+            "samplewise_length_loss": self.length_loss.samplewise_total_loss,
+            "samplewise_labels_cross_entropy_loss": self.label_smoothing_loss.samplewise_cross_entropy_loss,
+            "samplewise_labels_label_smoothing_loss": self.label_smoothing_loss.samplewise_label_smoothing_loss,
+            "samplewise_lengths_cross_entropy_loss": self.length_loss.samplewise_cross_entropy_loss,
+            "samplewise_lengths_label_smoothing_loss": self.length_loss.samplewise_label_smoothing_loss,
+        }
+        return (
+            total_loss,
+            {
+                "label_loss": label_loss,
+                "length_loss": length_loss,
+                "labels_cross_entropy_loss": self.label_smoothing_loss.cross_entropy_loss,
+                "labels_label_smoothing_loss": self.label_smoothing_loss.label_smoothing_loss,
+                "lengths_cross_entropy_loss": self.length_loss.cross_entropy_loss,
+                "lengths_label_smoothing_loss": self.length_loss.label_smoothing_loss,
+                **samplewise_losses,
             },
         )
