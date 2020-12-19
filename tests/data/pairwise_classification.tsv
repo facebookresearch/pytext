@@ -1,0 +1,10 @@
+true	A plane is taking off.	An air plane is taking off.
+true	A man is playing a large flute.	A man is playing a flute.
+true	A man is spreading shreded cheese on a pizza.	A man is spreading shredded cheese on an uncooked pizza.
+true	Three men are playing chess.	Two men are playing chess.
+true	A man is playing the cello.	A man seated is playing the cello.
+true	Some men are fighting.	Two men are fighting.
+false	A man is smoking.	A man is skating.
+false	The man is playing the piano.	The man is playing the guitar.
+false	A man is playing on a guitar and singing.	A woman is playing an acoustic guitar and singing.
+true	A person is throwing a cat on to the ceiling.	A person throws a cat on the ceiling.

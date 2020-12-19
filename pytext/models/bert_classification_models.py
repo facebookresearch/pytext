@@ -32,6 +32,7 @@ from pytext.models.pair_classification_model import BasePairwiseModel
 from pytext.models.representations.huggingface_bert_sentence_encoder import (
     HuggingFaceBertSentenceEncoder,
 )
+from pytext.models.representations.representation_base import RepresentationBase
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )
@@ -44,14 +45,16 @@ from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
 
 
-class NewBertModel(BaseModel):
-    """BERT single sentence classification."""
+class _EncoderBaseModel(BaseModel):
+    """
+    Classification model following the pattern of tensorizer + encoder.
+    """
 
     SUPPORT_FP16_OPTIMIZER = True
 
     class Config(BaseModel.Config):
-        class BertModelInput(BaseModel.Config.ModelInput):
-            tokens: BERTTensorizer.Config = BERTTensorizer.Config(max_seq_len=128)
+        class ModelInput(BaseModel.Config.ModelInput):
+            tokens: Tensorizer.Config = Tensorizer.Config()
             dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
             # for metric reporter
@@ -59,10 +62,8 @@ class NewBertModel(BaseModel):
                 names=["tokens"], indexes=[2]
             )
 
-        inputs: BertModelInput = BertModelInput()
-        encoder: TransformerSentenceEncoderBase.Config = (
-            HuggingFaceBertSentenceEncoder.Config()
-        )
+        inputs: ModelInput
+        encoder: RepresentationBase.Config
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
@@ -144,33 +145,38 @@ class NewBertModel(BaseModel):
         log_class_usage(__class__)
 
 
-class BertPairwiseModel(BasePairwiseModel):
-    """Bert Pairwise classification model
+class NewBertModel(_EncoderBaseModel):
+    """BERT single sentence classification."""
 
-    The model takes two sets of tokens (left and right), calculates their
-    representations separately using shared BERT encoder and passes them to
-    the decoder along with their absolute difference and elementwise product,
-    all concatenated. Used for e.g. natural language inference.
+    class Config(_EncoderBaseModel.Config):
+        class BertModelInput(_EncoderBaseModel.Config.ModelInput):
+            tokens: BERTTensorizer.Config = BERTTensorizer.Config(max_seq_len=128)
+
+        inputs: BertModelInput = BertModelInput()
+        encoder: TransformerSentenceEncoderBase.Config = (
+            HuggingFaceBertSentenceEncoder.Config()
+        )
+
+
+class _EncoderPairwiseModel(BasePairwiseModel):
+    """
+    Pairwise classification model following the pattern of two tensorizers + two
+    (usually shared) encoders. Also supports exporting a single tensorizer + encoder
+    to produce a sentence embedding.
     """
 
     class Config(BasePairwiseModel.Config):
         class ModelInput(ModelInputBase):
-            tokens1: BERTTensorizerBase.Config = BERTTensorizer.Config(
-                columns=["text1"], max_seq_len=128
-            )
-            tokens2: BERTTensorizerBase.Config = BERTTensorizer.Config(
-                columns=["text2"], max_seq_len=128
-            )
+            tokens1: Tensorizer.Config = Tensorizer.Config()
+            tokens2: Tensorizer.Config = Tensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
             # for metric reporter
             num_tokens: NtokensTensorizer.Config = NtokensTensorizer.Config(
                 names=["tokens1", "tokens2"], indexes=[2, 2]
             )
 
-        inputs: ModelInput = ModelInput()
-        encoder: TransformerSentenceEncoderBase.Config = (
-            HuggingFaceBertSentenceEncoder.Config()
-        )
+        inputs: ModelInput
+        encoder: RepresentationBase.Config
         # Decoder is a fully connected layer that expects concatenated encodings.
         # So, if decoder is provided we will concatenate the encodings from the
         # encoders and then pass to the decoder.
@@ -305,3 +311,28 @@ class BertPairwiseModel(BasePairwiseModel):
                 return ScriptPyTextEmbeddingModuleIndex(
                     model=traced_model, tensorizer=script_tensorizer, index=0
                 )
+
+
+class BertPairwiseModel(_EncoderPairwiseModel):
+    """
+    Bert Pairwise classification model
+
+    The model takes two sets of tokens (left and right) and calculates their
+    representations separately using shared BERT encoder. The final prediction can
+    be the cosine similarity of the embeddings, or if encoder_relations is specified the
+    concatenation of the embeddings, their absolute difference, and elementwise product.
+    """
+
+    class Config(_EncoderPairwiseModel.Config):
+        class ModelInput(_EncoderPairwiseModel.Config.ModelInput):
+            tokens1: BERTTensorizerBase.Config = BERTTensorizer.Config(
+                columns=["text1"], max_seq_len=128
+            )
+            tokens2: BERTTensorizerBase.Config = BERTTensorizer.Config(
+                columns=["text2"], max_seq_len=128
+            )
+
+        inputs: ModelInput = ModelInput()
+        encoder: TransformerSentenceEncoderBase.Config = (
+            HuggingFaceBertSentenceEncoder.Config()
+        )
