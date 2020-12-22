@@ -4,18 +4,45 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.utils import pad_2d, pad_2d_float, pad_3d_float
+from pytext.torchscript.utils import (
+    pad_2d,
+    pad_2d_float,
+    pad_3d_float,
+    validate_padding_control,
+)
 from pytext.torchscript.vocab import ScriptVocabulary
 
 
 class ScriptTensorizer(torch.jit.ScriptModule):
+    device: str
+    seq_padding_control: Optional[List[int]]
+    batch_padding_control: Optional[List[int]]
+
     def __init__(self):
         super().__init__()
-        self.device = torch.jit.Attribute("", str)
+        self.device = ""
+        self.seq_padding_control = None
+        self.batch_padding_control = None
 
     @torch.jit.script_method
     def set_device(self, device: str):
         self.device = device
+
+    @torch.jit.export
+    def set_padding_control(self, dimension: str, padding_control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        if not validate_padding_control(padding_control):
+            raise RuntimeError("Malformed padding_control value")
+        if dimension == "sequence_length":
+            self.seq_padding_control = padding_control
+        elif dimension == "batch_length":
+            self.batch_padding_control = padding_control
+        else:
+            raise RuntimeError("Illegal padding dimension specified.")
 
     @torch.jit.script_method
     def tokenize(
