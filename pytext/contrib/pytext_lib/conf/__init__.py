@@ -53,6 +53,16 @@ class XlmrTransformConf(TransformConf):
 
 
 @dataclass
+class PairTransformConf(TransformConf):
+    _target_: str = (
+        "pytext.contrib.pytext_lib.transforms.fb_pair_transform.PairTransform"
+    )
+    transform_left: TransformConf = MISSING
+    # If not specified, uses transform_left
+    transform_right: Optional[TransformConf] = None
+
+
+@dataclass
 class ModelConf:
     pass
 
