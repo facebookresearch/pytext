@@ -60,6 +60,7 @@ class PairTransformConf(TransformConf):
     transform_left: TransformConf = MISSING
     # If not specified, uses transform_left
     transform_right: Optional[TransformConf] = None
+    separater_token: Optional[str] = None
 
 
 @dataclass
