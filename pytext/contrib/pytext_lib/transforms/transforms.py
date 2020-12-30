@@ -113,7 +113,7 @@ class LabelTransform(nn.Module):
     def __init__(self, label_names: List[str]):
         super().__init__()
 
-        self.label_vocab = ScriptVocabulary(label_names)
+        self.label_vocab = ScriptVocabulary(sorted(label_names))
 
     def forward(self, labels: List[str]) -> List[int]:
         return self.label_vocab.lookup_indices_1d(labels)
