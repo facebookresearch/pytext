@@ -1,5 +1,3 @@
 # @package _group_
-label_names:
-- '0'
-- '1'
-vocab_path: manifold://nlp_technologies/tree/xlm/models/xlm_r/vocab
+_target_: pytext.contrib.pytext_lib.transforms.fb_roberta.RobertaTransform
+label_names: null

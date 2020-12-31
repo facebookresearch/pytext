@@ -1,0 +1,15 @@
+use_mock: false
+
+defaults:
+  - task/datamodule: contrastive_learning
+  - task/model: xlmr_dummy
+  - task/transform: xlmr_dummy_transform
+  - task/optim: adamw
+  - trainer: cpu
+
+task:
+  _target_: pytext.contrib.pytext_lib.tasks.cert_task.Cert
+  embedding_dim: 2
+  queue_size: 64
+  temperature: 0.07
+  momentum: 0.999

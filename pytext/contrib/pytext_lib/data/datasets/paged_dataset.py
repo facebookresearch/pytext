@@ -6,7 +6,7 @@ import logging
 from typing import Callable, Iterable, Iterator, List, Optional, Union
 
 import torch.nn as nn
-from pytext.utils.path import get_absolute_path
+from pytext.data.sources.data_source import SafeFileWrapper
 from torch.utils.data import Dataset
 
 
@@ -69,7 +69,7 @@ class PagedDataset(Dataset):
         logger.debug(f"Requested index #{idx} has relative index #{relative_idx}.")
 
         if relative_idx < 0:  # requested item is before the current page
-            logger.info("Re-initializing iterator of PagedDataset")
+            logger.debug("Re-initializing iterator of PagedDataset")
             self._init_iterator()
             self._get_next_page()
             return self[idx]
@@ -116,26 +116,26 @@ class TsvDataset(PagedDataset):
         delimiter: str = "\t",
         **kwargs,
     ):
-        self.path = get_absolute_path(path)
+        self.path = path
         self.column_names = column_names
         self.delimiter = delimiter
         super().__init__(self, **kwargs)
 
     def __iter__(self):
         logger.debug(f"Initializing TSV iterator for {self.path}.")
-        with open(self.path, "rt", newline="") as fin:
-            yield from csv.DictReader(
-                fin, delimiter=self.delimiter, fieldnames=self.column_names
-            )
+        file = SafeFileWrapper(self.path, encoding="utf-8")
+        yield from csv.DictReader(
+            file, delimiter=self.delimiter, fieldnames=self.column_names
+        )
 
 
 class JsonlDataset(PagedDataset):
     def __init__(self, path: str, **kwargs):
-        self.path = get_absolute_path(path)
+        self.path = path
         super().__init__(self, **kwargs)
 
     def __iter__(self):
         logger.debug(f"Initializing JSONL iterator for {self.path}.")
-        with open(self.path, "rt", newline="") as fin:
-            for line in fin:
-                yield json.loads(line)
+        file = SafeFileWrapper(self.path, encoding="utf-8")
+        for line in file:
+            yield json.loads(line)
