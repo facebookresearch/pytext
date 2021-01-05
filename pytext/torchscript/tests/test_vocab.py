@@ -74,3 +74,6 @@ class VocabTest(unittest.TestCase):
             ),
             ["a", "y", "z"],
         )
+
+    def test_len(self):
+        self.assertEqual(len(self.vocab), 5)
