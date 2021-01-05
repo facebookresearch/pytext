@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 from pytext.config.component import create_loss
-from pytext.loss import MSELoss, MAELoss
+from pytext.loss import MAELoss, MSELoss
 from pytext.utils.usage import log_class_usage
 
 from .output_layer_base import OutputLayerBase

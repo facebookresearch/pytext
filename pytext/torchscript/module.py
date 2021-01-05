@@ -4,13 +4,12 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext.torchscript.batchutils import (
-    listify,
-    max_tokens,
-    make_prediction_texts,
-    make_prediction_texts_dense,
-    make_batch_texts_dense,
     destructure_tensor,
     destructure_tensor_list,
+    make_batch_texts_dense,
+    make_prediction_texts,
+    make_prediction_texts_dense,
+    max_tokens,
 )
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
@@ -544,8 +543,6 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
 
         if argno == -1:
             raise RuntimeError("Argument number not specified during export.")
-
-        batchsize = len(batch)
 
         # Argument types and Tuple indices
         TEXTS = 0

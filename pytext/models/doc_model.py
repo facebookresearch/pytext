@@ -19,8 +19,8 @@ from pytext.data.tokenizers import DoNothingTokenizer
 from pytext.exporters.exporter import ModelExporter
 from pytext.loss import (
     BinaryCrossEntropyLoss,
-    MultiLabelSoftMarginLoss,
     BinaryCrossEntropyWithLogitsLoss,
+    MultiLabelSoftMarginLoss,
 )
 from pytext.models.decoders.mlp_decoder import DecoderBase, MLPDecoder
 from pytext.models.embeddings import (
@@ -119,7 +119,7 @@ class DocModel(Model):
         )
         return exporter.export_to_caffe2(self, path, export_onnx_path=export_onnx_path)
 
-    def torchscriptify(self, tensorizers, traced_model):
+    def torchscriptify(self, tensorizers, traced_model):  # noqa
         output_layer = self.output_layer.torchscript_predictions()
 
         input_vocab = tensorizers["tokens"].vocab

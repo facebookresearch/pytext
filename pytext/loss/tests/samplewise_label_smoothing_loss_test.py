@@ -6,8 +6,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from pytext.loss.loss import (
-    SamplewiseLabelSmoothedCrossEntropyLoss,
     LabelSmoothedCrossEntropyLoss,
+    SamplewiseLabelSmoothedCrossEntropyLoss,
     SourceType,
 )
 from scipy.special import logsumexp

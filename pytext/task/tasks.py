@@ -31,8 +31,8 @@ from pytext.metric_reporters.seq2seq_compositional import (
 )
 from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import (
-    NewBertRegressionModel,
     BertPairwiseRegressionModel,
+    NewBertRegressionModel,
 )
 from pytext.models.doc_model import DocModel, DocRegressionModel
 from pytext.models.ensembles import BaggingDocEnsembleModel, EnsembleModel
@@ -221,7 +221,7 @@ class PairwiseClassificationTask(NewTask):
         super().__init__(data, model, metric_reporter, trainer)
         self.trace_both_encoders = trace_both_encoders
 
-    def torchscript_export(self, model, export_path=None, **kwargs):
+    def torchscript_export(self, model, export_path=None, **kwargs):  # noqa
         # unpack export kwargs
         quantize = kwargs.get("quantize", False)
         accelerate = kwargs.get("accelerate", [])

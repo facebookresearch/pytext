@@ -7,8 +7,8 @@ from .distance_output_layer import (
 )
 from .doc_classification_output_layer import ClassificationOutputLayer
 from .doc_regression_output_layer import (
-    RegressionOutputLayer,
     PairwiseCosineRegressionOutputLayer,
+    RegressionOutputLayer,
 )
 from .output_layer_base import OutputLayerBase
 from .pairwise_ranking_output_layer import PairwiseRankingOutputLayer

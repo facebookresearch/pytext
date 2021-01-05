@@ -5,10 +5,10 @@ from .bert import ScriptBERTTensorizer
 from .normalizer import VectorNormalizer
 from .roberta import ScriptRoBERTaTensorizer, ScriptRoBERTaTensorizerWithIndices
 from .tensorizer import (
-    ScriptTensorizer,
     ScriptFloat1DListTensorizer,
     ScriptFloatListSeqTensorizer,
     ScriptInteger1DListTensorizer,
+    ScriptTensorizer,
 )
 from .xlm import ScriptXLMTensorizer, VocabLookup
 

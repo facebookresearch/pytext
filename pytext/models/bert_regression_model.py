@@ -6,13 +6,12 @@ from typing import Dict, Optional
 from pytext.config import ConfigBase
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.tensorizers import NumericLabelTensorizer, Tensorizer
-from pytext.models.bert_classification_models import BertPairwiseModel
-from pytext.models.bert_classification_models import NewBertModel
+from pytext.models.bert_classification_models import BertPairwiseModel, NewBertModel
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.module import create_module
 from pytext.models.output_layers import (
-    RegressionOutputLayer,
     PairwiseCosineRegressionOutputLayer,
+    RegressionOutputLayer,
 )
 from pytext.utils.usage import log_class_usage
 
