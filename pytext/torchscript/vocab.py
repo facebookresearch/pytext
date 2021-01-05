@@ -117,3 +117,6 @@ class ScriptVocabulary(torch.jit.ScriptModule):
                 if possible_unk_token is None
                 else possible_unk_token
             )
+
+    def __len__(self):
+        return len(self.vocab)
