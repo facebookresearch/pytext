@@ -125,6 +125,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         # directly.
         is_finetuned: bool = False
         max_seq_len: int = DEFAULT_MAX_SEQUENCE_LENGTH
+        # Fine-tune bias parameters only (https://nlp.biu.ac.il/~yogo/bitfit.pdf)
+        use_bias_finetuning: bool = False
         # Linformer hyperparameters
         use_linformer_encoder: bool = False
         linformer_compressed_ratio: int = 4
@@ -203,6 +205,13 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 self.encoder.load_roberta_state_dict(roberta_state["model"])
             else:
                 self.load_state_dict(roberta_state)
+
+        if config.use_bias_finetuning:
+            for (n, p) in self.encoder.named_parameters():
+                # "encoder.transformer.layers.0.attention.input_projection.weight" -> false
+                # "encoder.transformer.layers.0.attention.input_projection.bias" -> true
+                if n.split(".")[-1] != "bias":
+                    p.requires_grad_(False)
 
         self.export_encoder = config.export_encoder
         self.variable_size_embedding = config.variable_size_embedding
