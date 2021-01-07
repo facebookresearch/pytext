@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import csv
+import itertools
 import os
 import unittest
 
 from pytext.contrib.pytext_lib.data.datasets import JsonlDataset, TsvDataset
+from pytext.contrib.pytext_lib.data.datasets.pytext_dataset import ChunkIterator
 
 
 class TestDatasets(unittest.TestCase):
@@ -57,3 +59,18 @@ class TestDatasets(unittest.TestCase):
                 self.check_dataset_line_by_line(dataset)
                 # test a second time to ensure the iterator is reinitialized correctly
                 self.check_dataset_line_by_line(dataset)
+
+
+class TestChunkIterator(unittest.TestCase):
+    def test_chunk_iterator_on_cycle_dataset(self):
+        iterator = itertools.cycle([1, 2, 3, 4])
+        chunk_iterator = ChunkIterator(iterator, chunk_size=2, length=7)
+
+        res1 = list(chunk_iterator)
+        expected1 = [[1, 2], [3, 4], [1, 2], [3]]
+        self.assertEqual(res1, expected1)
+
+        # continue instead of start over
+        res2 = list(chunk_iterator)
+        expected2 = [[4, 1], [2, 3], [4, 1], [2]]
+        self.assertEqual(res2, expected2)

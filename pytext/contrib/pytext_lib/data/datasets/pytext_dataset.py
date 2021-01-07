@@ -115,12 +115,14 @@ class ChunkIterator:
     def __iter__(self):
         data = []
         for i, example in enumerate(self.iterator):
-            if self.length and i >= self.length:
-                break
             data.append(example)
             if len(data) == self.chunk_size:
                 yield data
                 data = []
+
+            # stop here because it reaches #length data
+            if self.length and i >= self.length - 1:
+                break
 
         if len(data) > 0:
             yield data
