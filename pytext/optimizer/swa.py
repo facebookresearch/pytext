@@ -306,7 +306,7 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
 
     def reset_param_groups(self):
         self.param_groups = []
-        self.optimizer.param_groups = []
+        self.param_groups = self.optimizer.param_groups
 
 
 # BatchNorm utils
