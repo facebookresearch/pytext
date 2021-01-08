@@ -12,12 +12,12 @@ from pytext.fields import FieldMeta
 from pytext.loss import (
     AUCPRHingeLoss,
     BinaryCrossEntropyLoss,
+    BinaryCrossEntropyWithLogitsLoss,
     CrossEntropyLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLoss,
     MultiLabelSoftMarginLoss,
-    BinaryCrossEntropyWithLogitsLoss,
 )
 from pytext.utils.label import get_label_weights
 from torch import jit

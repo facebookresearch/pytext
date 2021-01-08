@@ -11,14 +11,14 @@ from .loss import (
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLengthLoss,
     LabelSmoothedCrossEntropyLoss,
-    SamplewiseLabelSmoothedCrossEntropyLengthLoss,
-    SamplewiseLabelSmoothedCrossEntropyLoss,
     Loss,
     MAELoss,
     MSELoss,
     MultiLabelSoftMarginLoss,
     NLLLoss,
     PairwiseRankingLoss,
+    SamplewiseLabelSmoothedCrossEntropyLengthLoss,
+    SamplewiseLabelSmoothedCrossEntropyLoss,
     SourceType,
 )
 

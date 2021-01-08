@@ -23,17 +23,13 @@ from pytext.data.data_structures.annotation import (
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
 from pytext.torchscript.tensorizer import (
-    VectorNormalizer,
     ScriptFloat1DListTensorizer,
-    ScriptInteger1DListTensorizer,
     ScriptFloatListSeqTensorizer,
+    ScriptInteger1DListTensorizer,
+    VectorNormalizer,
 )
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
-from pytext.torchscript.utils import (
-    ScriptBatchInput,
-    pad_3d,
-    validate_padding_control,
-)
+from pytext.torchscript.utils import ScriptBatchInput, pad_3d, validate_padding_control
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
@@ -710,7 +706,7 @@ class ByteTokenTensorizer(Tensorizer):
         # matter how long the bytes in the batch are.
         pad_shape = (
             len(batch),
-            precision.pad_length(max(len(l) for l in byte_lengths)),
+            precision.pad_length(max(len(length) for length in byte_lengths)),
             self.max_byte_len,
         )
         return (
@@ -1885,7 +1881,7 @@ class GazetteerTensorizer(Tensorizer):
         # batch_size * max_number_of_words * max_number_of_features
         # unpack the minibatch
         feats, weights, lengths = zip(*batch)
-        lengths_flattened = [l for l_list in lengths for l in l_list]
+        lengths_flattened = [li for l_list in lengths for li in l_list]
         seq_lens = [len(l_list) for l_list in lengths]
         max_ex_len = precision.pad_length(max(seq_lens))
         max_feat_len = max(lengths_flattened)

@@ -50,9 +50,7 @@ from pytext.data.tokenizers import (
     WordPieceTokenizer,
 )
 from pytext.data.utils import Vocabulary
-from pytext.torchscript.utils import (
-    ScriptBatchInput,
-)
+from pytext.torchscript.utils import ScriptBatchInput
 from pytext.utils import precision
 from pytext.utils.test import import_tests_module
 
@@ -809,8 +807,8 @@ class TensorizersTest(unittest.TestCase):
             self.assertEqual(expected, numberized)
 
     def test_create_normalized_float_list_tensor(self):
-        def round_list(l):
-            return [float("%.4f" % n) for n in l]
+        def round_list(seq):
+            return [float("%.4f" % n) for n in seq]
 
         data = TSVDataSource(
             SafeFileWrapper(tests_module.test_file("train_dense_features_tiny.tsv")),
