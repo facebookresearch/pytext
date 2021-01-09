@@ -88,7 +88,7 @@ class DenseRetrievalDataSource(DataSource):
 
     def process_file(self, fname, is_train):
         if not fname:
-            print(f"File path is either empty or None. Not unflattening.")
+            print("File path is either empty or None. Not unflattening.")
             return
         if not PathManager.exists(fname):
             print(f"{fname} does not exist. Not unflattening.")
@@ -96,17 +96,20 @@ class DenseRetrievalDataSource(DataSource):
 
         for row in self.read_file(fname):
             question = row["question"]
-            positive_ctx = combine_title_text(row["positive_ctxs"][0], self.use_title)
+            positive_ctx = combine_title_text_id(
+                row["positive_ctxs"][0], self.use_title
+            )
 
             negative_ctxs = [
-                combine_title_text(ctx, self.use_title) for ctx in row["negative_ctxs"]
+                combine_title_text_id(ctx, self.use_title)
+                for ctx in row["negative_ctxs"]
             ]
 
             if not negative_ctxs and row.get("distant_negatives"):
                 # use distant_negatives in case we don't have hard negatives
                 # it's better to have at least one negative for training
                 negative_ctxs = [
-                    combine_title_text(ctx, self.use_title)
+                    combine_title_text_id(ctx, self.use_title)
                     for ctx in row["distant_negatives"]
                 ]
 
@@ -132,5 +135,9 @@ class DenseRetrievalDataSource(DataSource):
             }
 
 
-def combine_title_text(ctx, use_title):
-    return (ctx["title"], ctx["text"]) if use_title else (ctx["text"],)
+def combine_title_text_id(ctx, use_title):
+    return (
+        (ctx["title"], ctx["text"], ctx.get("id", "NULL"))
+        if use_title
+        else (ctx["text"], ctx.get("id", "NULL"))
+    )

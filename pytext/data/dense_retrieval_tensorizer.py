@@ -22,7 +22,8 @@ class BERTContextTensorizerForDenseRetrieval(BERTTensorizer):
         the specified vocab. It also outputs, for each instance, the vectors
         needed to run the actual model. It works off of one sample.
         """
-        positive_ctx = row["positive_ctx"]
+        # don't include passage id
+        positive_ctx = row["positive_ctx"][:-1]
         positive_ctx_tokens = [
             self.tokenizer.tokenize(content) for content in positive_ctx
         ]
@@ -33,9 +34,12 @@ class BERTContextTensorizerForDenseRetrieval(BERTTensorizer):
             positive_ctx_positions,
         ) = self.tensorizer_script_impl.numberize(positive_ctx_tokens)
 
-        negative_ctxs = row["negative_ctxs"]  # returns List[str]
+        # don't include passage id
+        negative_ctxs = [
+            neg_ctx[:-1] for neg_ctx in row["negative_ctxs"]
+        ]  # returns List[str]
         if negative_ctxs and row["num_negative_ctx"] == 1:
-            # currerntly only num_negative_ctx == 1 is supported
+            # currently only num_negative_ctx == 1 is supported
             negative_ctx_tokens = [
                 self.tokenizer.tokenize(content) for content in negative_ctxs[0]
             ]

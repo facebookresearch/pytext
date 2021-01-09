@@ -23,13 +23,13 @@ def register_http_url_handler():
 
 def chunk_file(file_path, chunks, work_dir):
     """Splits a large file by line into number of chunks and writes them into work_dir"""
-    with open(file_path) as fin:
+    with PathManager.open(file_path) as fin:
         num_lines = sum(1 for line in fin)
 
     chunk_size = math.ceil(num_lines / chunks)
     output_file_paths = []
     with contextlib.ExitStack() as stack:
-        fin = stack.enter_context(open(file_path))
+        fin = stack.enter_context(PathManager.open(file_path))
         for i, line in enumerate(fin):
             if not i % chunk_size:
                 file_split = "{}.chunk_{}".format(
