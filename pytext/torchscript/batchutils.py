@@ -220,6 +220,27 @@ def make_batch_texts_dense(
     return batch_list
 
 
+def make_prediction_tokens(
+    batch: List[
+        Tuple[
+            List[List[str]],  # tokens
+        ]
+    ],
+) -> List[List[str]]:
+
+    batchsize = len(batch)
+    flat_tokens: List[List[str]] = []
+
+    for i in range(batchsize):
+        batch_element = batch[i][0]
+        flat_tokens.extend(batch_element)
+
+    if len(flat_tokens) == 0:
+        raise RuntimeError("This is not good. Empty request batch.")
+
+    return flat_tokens
+
+
 #
 
 ###########################################
