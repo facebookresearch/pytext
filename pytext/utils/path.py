@@ -34,3 +34,10 @@ def get_absolute_path(file_path: str) -> str:
     if PathManager.exists(absolute_path):
         return absolute_path
     return file_path
+
+
+def is_absolute_path(file_path: str) -> bool:
+    if file_path:
+        return file_path.startswith("/") or file_path.startswith("manifold://")
+    else:
+        return False

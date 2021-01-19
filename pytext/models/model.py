@@ -17,6 +17,7 @@ from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
 from pytext.utils.file_io import PathManager
+from pytext.utils.path import is_absolute_path
 from pytext.utils.precision import maybe_float
 from pytext.utils.usage import log_class_usage
 from torch.jit import quantized
@@ -106,7 +107,10 @@ class BaseModel(nn.Module, Component):
         def save(module):
             save_path = getattr(module, "save_path", None)
             if save_path:
-                path = os.path.join(base_path, module.save_path + suffix)
+                if is_absolute_path(save_path):
+                    path = save_path + suffix
+                else:
+                    path = os.path.join(base_path, save_path + suffix)
                 print(f"Saving state of module {type(module).__name__} to {path} ...")
                 with PathManager.open(path, "wb") as save_file:
                     if isinstance(module, torch.jit.ScriptModule):
