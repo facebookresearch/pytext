@@ -4,12 +4,50 @@
 from typing import List
 
 import torch
-from accelerators.pytorch.lib.glow_decorator import accelerator
+from accelerators.pytorch.lib.glow_decorator import accelerator, inputs
+from pytext.config import ExportConfig
 from pytext.models.roberta import RoBERTaEncoder
 from torch import nn
 
 
+def accelerator_transformerLayers_inputs(
+    model: nn.Module, export_options: ExportConfig, dataset_iterable: iter, module_path
+):
+    import torch_glow
+
+    # we use the padding control from the Export Config:
+    if export_options is None:
+        export_options = ExportConfig()
+
+    seq_padding_control = export_options.seq_padding_control
+    batch_padding_control = export_options.batch_padding_control
+
+    embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
+
+    if seq_padding_control is None:
+        raise RuntimeError("seq padding control not specified")
+    if batch_padding_control is None:
+        raise RuntimeError("batch padding control not specified")
+    input_examples = []
+    for seq_len in seq_padding_control:
+        if seq_len <= 0:
+            continue
+        for batch_size in batch_padding_control:
+            if batch_size <= 0:
+                continue
+            # Todo: We directly generate data input instead of using dataset_iterable, enhance later
+            input1 = torch.randn(
+                [seq_len, batch_size, embedding_dim], dtype=torch.float32
+            )
+            input2 = torch.randn([batch_size, seq_len]).bool()
+            input_specs = torch_glow.input_specs_from_tensors([input1, input2])
+            input_examples.append(input_specs)
+
+    return input_examples
+
+
 @accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})])
+@inputs(accelerator_transformerLayers_inputs)
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
@@ -68,15 +106,12 @@ def swap_modules_for_accelerator(model):
         return model
 
 
-def lower_modules_to_accelerator(
-    model, trace, seq_padding_control, batch_padding_control
-):
+def lower_modules_to_accelerator(model: nn.Module, trace, export_options: ExportConfig):
     import torch_glow
 
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         backend = "NNPI"
         submod_path, compilation_spec_dict = accelerator.get_modules(model, backend)[0]
-        embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
         spec = torch_glow.CompilationSpec()
         spec.get_settings().set_glow_backend(backend)
         compilation_group = torch_glow.CompilationGroup()
@@ -86,18 +121,8 @@ def lower_modules_to_accelerator(
         for k, v in compilation_spec_dict.items():
             compilation_group.get_settings().backend_specific_opts_insert(k, v)
 
-        for seq_len in seq_padding_control:
-            if seq_len <= 0:
-                continue
-            for batch_size in batch_padding_control:
-                if batch_size <= 0:
-                    continue
-                input1 = torch.randn(
-                    [seq_len, batch_size, embedding_dim], dtype=torch.float32
-                )
-                input2 = torch.randn([batch_size, seq_len]).bool()
-                input_specs = torch_glow.input_specs_from_tensors([input1, input2])
-                compilation_group.input_sets_append(input_specs)
+        input_sets = inputs.get_inputs(model, export_options, None, submod_path)
+        compilation_group.set_input_sets(input_sets)
 
         trace = torch_glow.to_glow_selective(
             trace,
