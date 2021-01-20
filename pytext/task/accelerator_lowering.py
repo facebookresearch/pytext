@@ -9,7 +9,7 @@ from pytext.models.roberta import RoBERTaEncoder
 from torch import nn
 
 
-@accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})])
+@accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "1"})])
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
