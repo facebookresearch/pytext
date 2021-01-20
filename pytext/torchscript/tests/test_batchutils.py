@@ -4,10 +4,50 @@
 import unittest
 
 import torch
-from pytext.torchscript.batchutils import destructure_tensor_list
+from pytext.torchscript.batchutils import (
+    destructure_tensor_list,
+    make_prediction_tokens,
+)
 
 
-class BatchutilsTest(unittest.TestCase):
+class BatchUtilsTest(unittest.TestCase):
+    def test_make_prediction_tokens(self) -> None:
+        # Negative Case: Empty request batch test in List[] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_tokens([])
+
+        # Negative Case: Empty request batch test in List[Tuple([List[List[str]]])] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_tokens([([[]])])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            make_prediction_tokens(None)
+
+        # Negative Case: Bad batch token format with List[Tuple()]
+        with self.assertRaises(IndexError):
+            make_prediction_tokens([()])
+
+        # Positve Case: Multiple tokens in one request batch
+        multiple_tokens_request_batch = [
+            ([["token_1_1"], ["token_1_2"]]),
+            ([["token_2_1"], ["token_2_2"]]),
+        ]
+        self.assertEqual(
+            make_prediction_tokens(multiple_tokens_request_batch),
+            ["token_1_1", "token_2_1"],
+        )
+
+        # Positve Case: Single token in one request batch
+        single_token_request_batch = [
+            ([["token1"]]),
+            ([["token2"]]),
+        ]
+        self.assertEqual(
+            make_prediction_tokens(single_token_request_batch),
+            ["token1", "token2"],
+        )
+
     def test_destructure_tensor_list_empty(self):
         tensor_list = [torch.tensor([0])]
         result_tensor_list = destructure_tensor_list([], tensor_list)
