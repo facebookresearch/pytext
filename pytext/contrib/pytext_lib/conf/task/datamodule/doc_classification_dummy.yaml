@@ -1,9 +1,0 @@
-# @package _group_
-train_path: manifold://nlp_technologies/tree/pytext/public/datasets/glue_sst2/dev_10.tsv
-val_path: manifold://nlp_technologies/tree/pytext/public/datasets/glue_sst2/dev_10.tsv
-test_path: manifold://nlp_technologies/tree/pytext/public/datasets/glue_sst2/dev_10.tsv
-columns:
-- text
-- label
-batch_size: 4
-is_shuffle: False

@@ -1,8 +1,0 @@
-# @package _group_
-_target_: pytext.contrib.pytext_lib.models.RobertaEncoder
-model_path: manifold://pytext_training/tree/static/models/roberta_base_torch.pt
-embedding_dim: 768
-vocab_size: 50265
-num_attention_heads: 12
-num_encoder_layers: 12
-output_dropout: 0.4

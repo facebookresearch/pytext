@@ -1,4 +1,0 @@
-# @package _group_
-_target_: pytext.contrib.pytext_lib.data.datamodules.ContrastiveLearningDataModule
-train_path: manifold://nlp_technologies/tree/users/jeanm/data/cert/sst2_100.jsonl
-batch_size: 16
