@@ -76,6 +76,7 @@ def lower_modules_to_accelerator(
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         backend = "NNPI"
         submod_path, compilation_spec_dict = accelerator.get_modules(model, backend)[0]
+        submod_path = accelerator.model2trace_path(submod_path)
         embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
         spec = torch_glow.CompilationSpec()
         spec.get_settings().set_glow_backend(backend)
@@ -101,7 +102,7 @@ def lower_modules_to_accelerator(
 
         trace = torch_glow.to_glow_selective(
             trace,
-            {f"model.{submod_path}": spec},
+            {submod_path: spec},
             inplace=False,
         )
 
