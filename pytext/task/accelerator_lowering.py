@@ -73,6 +73,14 @@ def lower_modules_to_accelerator(
 ):
     import torch_glow
 
+    print("===========================================")
+    print("Model:")
+    print(model)
+    print("===========================================")
+    print("Trace:")
+    print(trace)
+    print("===========================================")
+
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         backend = "NNPI"
         submod_path, compilation_spec_dict = accelerator.get_modules(model, backend)[0]
