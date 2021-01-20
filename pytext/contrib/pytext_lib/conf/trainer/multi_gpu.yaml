@@ -1,8 +1,0 @@
-# @package _group_
-gpus: 8
-distributed_backend: ddp
-max_epochs: 1
-num_sanity_val_steps: 0
-log_gpu_memory: min_max
-reload_dataloaders_every_epoch: true
-log_every_n_steps: 10

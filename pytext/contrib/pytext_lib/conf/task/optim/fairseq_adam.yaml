@@ -1,9 +1,0 @@
-# @package _group_
-_target_: "pytext.fb.optimizer.FairSeqAdam"
-lr: 1.0e-05
-betas:
-- 0.9
-- 0.999
-eps: 1.0e-08
-weight_decay: 0
-amsgrad: false
