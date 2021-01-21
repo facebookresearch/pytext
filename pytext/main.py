@@ -469,6 +469,10 @@ def torchscript_export(context, export_json, model, output_path, quantize):
         export_config.export_torchscript_path = export_section_config.get(
             "export_torchscript_path", None
         )
+        # if config has export_torchscript_path, use export_torchscript_path from config, otherwise keep the default from CLI
+        if export_config.export_torchscript_path is not None:
+            output_path = export_config.export_torchscript_path
+
         export_config.export_lite_path = export_section_config.get(
             "export_lite_path", None
         )
