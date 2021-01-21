@@ -8,7 +8,7 @@ from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_ty
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import PyTextConfig, TestConfig
+from pytext.config import PyTextConfig, TestConfig, ExportConfig
 from pytext.config.component import ComponentType, create_component, create_exporter
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
@@ -193,33 +193,26 @@ def save_and_export(
         tensorizers = task.data.tensorizers
     save(config, task.model, meta, tensorizers=tensorizers)
     export_config = config.export
-    if export_config.export_caffe2_path:
-        task.export(
-            task.model,
-            export_config.export_caffe2_path,
-            metric_channels,
-            export_config.export_onnx_path,
-        )
-    if export_config.export_torchscript_path:
-        task.torchscript_export(
-            model=task.model,
-            export_path=export_config.export_torchscript_path,
-            quantize=export_config.torchscript_quantize,
-            inference_interface=export_config.inference_interface,
-            accelerate=export_config.accelerate,
-            seq_padding_control=export_config.seq_padding_control,
-            batch_padding_control=export_config.batch_padding_control,
-        )
-    if export_config.export_lite_path:
-        task.lite_export(
-            model=task.model,
-            export_path=export_config.export_lite_path,
-            quantize=export_config.torchscript_quantize,
-            inference_interface=export_config.inference_interface,
-            accelerate=export_config.accelerate,
-            seq_padding_control=export_config.seq_padding_control,
-            batch_padding_control=export_config.batch_padding_control,
-        )
+    if export_config is not None:
+        if export_config.export_caffe2_path:
+            task.export(
+                task.model,
+                export_config.export_caffe2_path,
+                metric_channels,
+                export_config.export_onnx_path,
+            )
+        if export_config.export_torchscript_path:
+            task.torchscript_export(
+                model=task.model,
+                export_path=export_config.export_torchscript_path,
+                export_config=export_config,
+            )
+        if export_config.export_lite_path:
+            task.lite_export(
+                model=task.model,
+                export_path=export_config.export_lite_path,
+                export_config=export_config,
+            )
 
 
 def export_saved_model_to_caffe2(
@@ -239,10 +232,10 @@ def export_saved_model_to_caffe2(
 
 
 def export_saved_model_to_torchscript(
-    saved_model_path: str, path: str, **kwargs
+    saved_model_path: str, path: str, export_config: ExportConfig
 ) -> None:
     task, train_config, _training_state = load(saved_model_path)
-    task.torchscript_export(task.model, path, **kwargs)
+    task.torchscript_export(task.model, path, export_config)
 
 
 def test_model(

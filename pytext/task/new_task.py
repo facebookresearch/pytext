@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Type, Union
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import ConfigBase, PyTextConfig
+from pytext.config import ConfigBase, PyTextConfig, ExportConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
 from pytext.data.sources.data_source import Schema
@@ -286,14 +286,23 @@ class _NewTask(TaskBase):
         )
 
     def torchscript_export(
-        self, model, export_path=None, sort_input=False, sort_key=1, **kwargs
+        self,
+        model,
+        export_path=None,
+        sort_input=False,
+        sort_key=1,
+        export_config=None,
     ):
-        # unpack export kwargs
-        quantize = kwargs.get("quantize", False)
-        accelerate = kwargs.get("accelerate", None) or []
-        seq_padding_control = kwargs.get("seq_padding_control")
-        batch_padding_control = kwargs.get("batch_padding_control")
-        inference_interface = kwargs.get("inference_interface")
+        # unpack export config
+        if export_config is None:
+            export_config = ExportConfig()
+
+        quantize = export_config.torchscript_quantize
+
+        accelerate = export_config.accelerate
+        seq_padding_control = export_config.seq_padding_control
+        batch_padding_control = export_config.batch_padding_control
+        inference_interface = export_config.inference_interface
 
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
@@ -376,9 +385,7 @@ class _NewTask(TaskBase):
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if "nnpi" in accelerate:
             print("lowering using to_glow")
-            trace = lower_modules_to_accelerator(
-                model, trace, seq_padding_control, batch_padding_control
-            )
+            trace = lower_modules_to_accelerator(model, trace, export_config)
 
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")

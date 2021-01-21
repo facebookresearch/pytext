@@ -4,6 +4,7 @@ from typing import Dict, Union
 
 import torch
 from pytext.common.constants import Stage
+from pytext.config import ExportConfig
 from pytext.config.component import create_trainer
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
@@ -221,13 +222,17 @@ class PairwiseClassificationTask(NewTask):
         super().__init__(data, model, metric_reporter, trainer)
         self.trace_both_encoders = trace_both_encoders
 
-    def torchscript_export(self, model, export_path=None, **kwargs):  # noqa
-        # unpack export kwargs
-        quantize = kwargs.get("quantize", False)
-        accelerate = kwargs.get("accelerate", [])
-        seq_padding_control = kwargs.get("seq_padding_control")
-        batch_padding_control = kwargs.get("batch_padding_control")
-        inference_interface = kwargs.get("inference_interface")
+    def torchscript_export(self, model, export_path=None, export_config=None):  # noqa
+        # unpack export config
+        # unpack export config
+        if export_config is None:
+            export_config = ExportConfig()
+
+        quantize = export_config.torchscript_quantize
+        accelerate = export_config.accelerate
+        seq_padding_control = export_config.seq_padding_control
+        batch_padding_control = export_config.batch_padding_control
+        inference_interface = export_config.inference_interface
 
         cuda.CUDA_ENABLED = False
         model.cpu()
@@ -375,7 +380,7 @@ class SequenceLabelingTask(NewTask):
             Seq2SeqCompositionalMetricReporter.Config()
         )
 
-    def torchscript_export(self, model, export_path=None, **kwargs):
+    def torchscript_export(self, model, export_path=None, export_config=None):
         model.cpu()
         # Trace needs eval mode, to disable dropout etc
         model.eval()

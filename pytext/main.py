@@ -445,20 +445,43 @@ def export(context, export_json, model, output_path, output_onnx_path):
 @click.pass_context
 def torchscript_export(context, export_json, model, output_path, quantize):
     """Convert a pytext model snapshot to a torchscript model."""
-    kwargs = {}
+    export_config = ExportConfig()
     # only populate from export_json if no export option is configured from the command line.
     if export_json:
+        export_json_config = _load_and_validate_export_json_config(export_json)
+        export_section_config = export_json_config["export"]
         if not quantize and not output_path:
-            export_json_config = _load_and_validate_export_json_config(export_json)
-            kwargs = export_json_config["export"]
+            export_config.export_caffe2_path = export_section_config.get(
+                "export_caffe2_path", None
+            )
+            export_config.export_onnx_path = export_section_config.get(
+                "export_onnx_path", "/tmp/model.onnx"
+            )
+            export_config.torchscript_quantize = export_section_config.get(
+                "torchscript_quantize", False
+            )
         else:
             print(
                 "the export-json config is ignored because export options are found the command line"
             )
-            kwargs = {"quantize": quantize}
+            export_config.torchscript_quantize = quantize
 
-        if "export_torchscript_path" in export_json_config["export"]:
-            output_path = export_json_config["export"]["export_torchscript_path"]
+        export_config.export_torchscript_path = export_section_config.get(
+            "export_torchscript_path", None
+        )
+        export_config.export_lite_path = export_section_config.get(
+            "export_lite_path", None
+        )
+        export_config.inference_interface = export_section_config.get(
+            "inference_interface", None
+        )
+        export_config.accelerate = export_section_config.get("accelerate", [])
+        export_config.seq_padding_control = export_section_config.get(
+            "seq_padding_control", None
+        )
+        export_config.batch_padding_control = export_section_config.get(
+            "batch_padding_control", None
+        )
 
     if not model or not output_path:
         config = context.obj.load_config()
@@ -466,7 +489,7 @@ def torchscript_export(context, export_json, model, output_path, quantize):
         output_path = output_path or f"{config.save_snapshot_path}.torchscript"
 
     print(f"Exporting {model} to torchscript file: {output_path}")
-    export_saved_model_to_torchscript(model, output_path, **kwargs)
+    export_saved_model_to_torchscript(model, output_path, export_config)
 
 
 @main.command()
