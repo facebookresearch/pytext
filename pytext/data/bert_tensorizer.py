@@ -201,7 +201,7 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
         pre-processed tokens.
 
         Returns:
-            per_sentence_tokens: tokens per setence level, each token is
+            per_sentence_tokens: tokens per sentence level, each token is
             represented by token(str), start and end indices.
         """
         per_sentence_tokens: List[List[Tuple[str, int, int]]] = []
