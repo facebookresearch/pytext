@@ -235,7 +235,7 @@ def export_saved_model_to_torchscript(
     saved_model_path: str, path: str, export_config: ExportConfig
 ) -> None:
     task, train_config, _training_state = load(saved_model_path)
-    task.torchscript_export(task.model, path, export_config)
+    task.torchscript_export(task.model, path, False, 1, export_config=export_config)
 
 
 def test_model(

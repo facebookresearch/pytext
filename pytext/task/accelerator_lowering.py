@@ -47,7 +47,8 @@ def accelerator_transformerLayers_inputs(
 
 
 @accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})])
-@inputs(accelerator_transformerLayers_inputs)
+# Todo: this decorator dose not return proper module, fixing it later, right now comment out
+# @inputs(accelerator_transformerLayers_inputs)
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
@@ -124,7 +125,11 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
         for k, v in compilation_spec_dict.items():
             compilation_group.get_settings().backend_specific_opts_insert(k, v)
 
-        input_sets = inputs.input_process(model, export_options, None, submod_tracepath)
+        # Todod: @input decorator dose not work properly, fixing it later
+        # input_sets = inputs.input_process(model, export_options, None, submod_tracepath)
+        input_sets = accelerator_transformerLayers_inputs(
+            model, export_options, None, submod_tracepath
+        )
         compilation_group.set_input_sets(input_sets)
 
         trace = torch_glow.to_glow_selective(
