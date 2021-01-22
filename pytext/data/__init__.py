@@ -7,6 +7,7 @@ from .batch_sampler import (
     EvalBatchSampler,
     RandomizedBatchSampler,
     RoundRobinBatchSampler,
+    NaturalBatchSampler,
 )
 from .data import Batcher, Data, PoolingBatcher, generator_iterator
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
@@ -32,5 +33,6 @@ __all__ = [
     "PoolingBatcher",
     "RandomizedBatchSampler",
     "RoundRobinBatchSampler",
+    "NaturalBatchSampler",
     "Tensorizer",
 ]

@@ -274,3 +274,49 @@ class AlternatingRandomizedBatchSampler(RandomizedBatchSampler):
             self.is_secondary_turn = not self.is_secondary_turn
 
             yield selected_key, batch
+
+
+class NaturalBatchSampler(RandomizedBatchSampler):
+    """
+    This sampler iterates over all the datasets, sampling from
+    them weighted by the number of sampels in each dataset
+    """
+
+    class Config(Component.Config):
+        dataset_counts: Dict[str, int] = {}
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(config.dataset_counts)
+
+    def __init__(self, dataset_counts: Dict[str, int]) -> None:
+        self.dataset_counts = dataset_counts
+        # Note: we need to make `iter_dict` an instance attribute so that it persists
+        # across calls to `batchify()`. This way subsequent epochs will continue from
+        # previous states of the iterators (instead of recreating them).
+        self.iter_dict = None
+        self.iterator_names, self.iterator_probs = None, None
+
+    def _dataset_count(self, iterator: Iterator) -> int:
+        """
+        Count number of items in a dataset
+        """
+        return sum(len(raw_batch) for raw_batch, batch in iter(iterator))
+
+    def _initialize_iterate_probs_from_counts(self, iterators: Dict[str, Iterator]):
+        for iterator_name, iterator in iterators.items():
+            if iterator_name not in self.dataset_counts:
+                self.dataset_counts[iterator_name] = self._dataset_count(iterator)
+
+        print(self.dataset_counts)
+        print("Total data points:", sum(self.dataset_counts.values()))
+
+        self.iterator_names, self.iterator_probs = extract_iterator_properties(
+            self.dataset_counts
+        )
+
+    def batchify(self, iterators: Dict[str, Iterator]):
+        if self.iterator_names is None or self.iterator_probs is None:
+            self._initialize_iterate_probs_from_counts(iterators=iterators)
+        for batch in super().batchify(iterators=iterators):
+            yield batch
