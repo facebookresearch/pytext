@@ -16,7 +16,10 @@ the corresponding values in this implementation.
 
 
 from .multihead_attention import MultiheadSelfAttention
-from .multihead_linear_attention import MultiheadLinearAttention
+from .multihead_linear_attention import (
+    MultiheadLinearAttention,
+    QuantizedMultiheadLinearAttention,
+)
 from .positional_embedding import PositionalEmbedding
 from .representation import TransformerRepresentation
 from .residual_mlp import ResidualMLP
@@ -26,6 +29,7 @@ from .transformer import SELFIETransformer, Transformer, TransformerLayer
 
 __all__ = [
     "MultiheadLinearAttention",
+    "QuantizedMultiheadLinearAttention",
     "MultiheadSelfAttention",
     "PositionalEmbedding",
     "ResidualMLP",

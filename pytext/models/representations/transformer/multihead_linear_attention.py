@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing import Tuple
+
 import torch
 from pytext.utils.usage import log_class_usage
 from torch import nn
@@ -29,7 +31,6 @@ class MultiheadLinearAttention(nn.Module):
         dropout: float = 0.1,
         compress_layer=None,
         bias: bool = True,
-        quantize: bool = False,
     ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -43,8 +44,22 @@ class MultiheadLinearAttention(nn.Module):
 
         self.output_projection = nn.Linear(embed_dim, embed_dim)
         self.compress_k = compress_layer
-        self.quantize = quantize
         log_class_usage(__class__)
+
+    def get_compressed_projection(
+        self, k_input: torch.Tensor, v_input: torch.Tensor, target_length: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        k_input = (
+            F.linear(k_input, self.compress_k.weight[:, 0:target_length])
+            .permute(2, 0, 1)
+            .contiguous()
+        )
+        v_input = (
+            F.linear(v_input, self.compress_k.weight[:, 0:target_length])
+            .permute(2, 0, 1)
+            .contiguous()
+        )
+        return k_input, v_input
 
     def forward(self, query, key_padding_mask):
         """Input shape: Time x Batch x Channel
@@ -67,24 +82,9 @@ class MultiheadLinearAttention(nn.Module):
         k_input = query.permute(1, 2, 0).contiguous()  # B * C * T
         v_input = query.permute(1, 2, 0).contiguous()  # B * C * T
 
-        if self.quantize:
-            assert self.compress_k.in_features >= target_length
-            pad = (0, self.compress_k.in_features - target_length)
-            k_input = F.pad(k_input, pad)
-            v_input = F.pad(v_input, pad)
-            k_input = self.compress_k(k_input).permute(2, 0, 1).contiguous()
-            v_input = self.compress_k(v_input).permute(2, 0, 1).contiguous()
-        else:
-            k_input = (
-                F.linear(k_input, self.compress_k.weight[:, 0:target_length])
-                .permute(2, 0, 1)
-                .contiguous()
-            )
-            v_input = (
-                F.linear(v_input, self.compress_k.weight[:, 0:target_length])
-                .permute(2, 0, 1)
-                .contiguous()
-            )
+        k_input, v_input = self.get_compressed_projection(
+            k_input, v_input, target_length
+        )
 
         k = self.kput_projection(k_input)
         v = self.vput_projection(v_input)
@@ -116,3 +116,35 @@ class MultiheadLinearAttention(nn.Module):
         attn = self.output_projection(attn)
 
         return attn
+
+
+class QuantizedMultiheadLinearAttention(MultiheadLinearAttention):
+    def __init__(
+        self,
+        embed_dim: int,
+        num_heads: int,
+        scaling: float = 0.125,
+        dropout: float = 0.1,
+        compress_layer=None,
+        bias: bool = True,
+    ):
+        super().__init__(
+            embed_dim=embed_dim,
+            num_heads=num_heads,
+            scaling=scaling,
+            dropout=dropout,
+            compress_layer=compress_layer,
+            bias=bias,
+        )
+        log_class_usage(__class__)
+
+    def get_compressed_projection(
+        self, k_input: torch.Tensor, v_input: torch.Tensor, target_length: int
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        assert self.compress_k.in_features >= target_length
+        pad = (0, self.compress_k.in_features - target_length)
+        k_input = F.pad(k_input, pad)
+        v_input = F.pad(v_input, pad)
+        k_input = self.compress_k(k_input).permute(2, 0, 1).contiguous()
+        v_input = self.compress_k(v_input).permute(2, 0, 1).contiguous()
+        return k_input, v_input

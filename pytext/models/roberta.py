@@ -25,6 +25,7 @@ from pytext.models.module import Module, create_module
 from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
+    QuantizedMultiheadLinearAttention,
     MultiheadSelfAttention,
     PostEncoder,
     SELFIETransformer,
@@ -156,22 +157,42 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
         self.use_selfie_encoder = config.use_selfie_encoder
 
-        layers = [
-            TransformerLayer(
-                embedding_dim=config.embedding_dim,
-                attention=MultiheadLinearAttention(
-                    embed_dim=config.embedding_dim,
-                    num_heads=config.num_attention_heads,
-                    compress_layer=compress_layer,
-                    quantize=config.linformer_quantize,
+        if config.use_linformer_encoder:
+            if config.linformer_quantize:
+                layers = [
+                    TransformerLayer(
+                        embedding_dim=config.embedding_dim,
+                        attention=QuantizedMultiheadLinearAttention(
+                            embed_dim=config.embedding_dim,
+                            num_heads=config.num_attention_heads,
+                            compress_layer=compress_layer,
+                        ),
+                    )
+                    for _ in range(config.num_encoder_layers)
+                ]
+            else:
+                layers = [
+                    TransformerLayer(
+                        embedding_dim=config.embedding_dim,
+                        attention=MultiheadLinearAttention(
+                            embed_dim=config.embedding_dim,
+                            num_heads=config.num_attention_heads,
+                            compress_layer=compress_layer,
+                        ),
+                    )
+                    for _ in range(config.num_encoder_layers)
+                ]
+        else:
+            layers = [
+                TransformerLayer(
+                    embedding_dim=config.embedding_dim,
+                    attention=MultiheadSelfAttention(
+                        embed_dim=config.embedding_dim,
+                        num_heads=config.num_attention_heads,
+                    ),
                 )
-                if config.use_linformer_encoder
-                else MultiheadSelfAttention(
-                    embed_dim=config.embedding_dim, num_heads=config.num_attention_heads
-                ),
-            )
-            for _ in range(config.num_encoder_layers)
-        ]
+                for _ in range(config.num_encoder_layers)
+            ]
 
         self.encoder = (
             SentenceEncoder(
