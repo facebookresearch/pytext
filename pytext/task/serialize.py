@@ -73,7 +73,7 @@ def load_v2(state):
 
 
 @register_snapshot_loader(3)
-def load_v3(state, overwrite_config=None):
+def load_v3(state, overwrite_config=None, rank=0, world_size=1):
     saved_config = pytext_config_from_json(state[CONFIG_JSON])
     if overwrite_config:
         config = overwrite_config
@@ -97,6 +97,8 @@ def load_v3(state, overwrite_config=None):
         metadata=state[DATA_STATE],
         model_state=model_state,
         tensorizers=tensorizers,
+        rank=rank,
+        world_size=world_size,
     )
 
     # TODO: T53664090 @stevenliu save & load state_dict() of optimizer and scheduler
@@ -128,12 +130,14 @@ def load_v3(state, overwrite_config=None):
     return task, config, training_state
 
 
-def load_checkpoint(state, overwrite_config=None):
+def load_checkpoint(state, overwrite_config=None, rank=0, world_size=1):
     print(f"Loaded checkpoint...")
     if SERIALIZE_VERSION_KEY not in state:
         return load_v1(state)
     else:
-        return LOADER_VERSION_MAP[state[SERIALIZE_VERSION_KEY]](state, overwrite_config)
+        return LOADER_VERSION_MAP[state[SERIALIZE_VERSION_KEY]](
+            state, overwrite_config, rank, world_size
+        )
 
 
 def save_checkpoint(
@@ -376,7 +380,7 @@ def save(
     return saved_path
 
 
-def load(load_path: str, overwrite_config=None):
+def load(load_path: str, overwrite_config=None, rank=0, world_size=1):
     """
     Load task, config and training state from a saved snapshot
     by default, it will construct the task using the saved config then load
@@ -386,4 +390,4 @@ def load(load_path: str, overwrite_config=None):
     overwrite_task then load metadata and model state.
     """
     state = _CHECKPOINT_MANAGER.load(load_path)
-    return load_checkpoint(state, overwrite_config)
+    return load_checkpoint(state, overwrite_config, rank, world_size)
