@@ -57,6 +57,36 @@ def destructure_tensor_list(
     return res_list
 
 
+def destructure_dict_list(
+    client_batch: List[int],
+    result_input_list: List[Dict[str, float]],
+) -> List[List[Dict[str, float]]]:
+    res_list: List[List[Dict[str, float]]] = []
+    start = 0
+
+    for elems in client_batch:
+        end = start + elems
+        res_list.append(result_input_list[start:end])
+        start = end
+
+    return res_list
+
+
+def destructure_dictlist_list(
+    client_batch: List[int],
+    result_input_list: List[List[Dict[str, float]]],
+) -> List[List[List[Dict[str, float]]]]:
+    res_list: List[List[List[Dict[str, float]]]] = []
+    start = 0
+
+    for elems in client_batch:
+        end = start + elems
+        res_list.append(result_input_list[start:end])
+        start = end
+
+    return res_list
+
+
 ############################################################################
 #
 # make_prediction_* ()
