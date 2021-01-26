@@ -7,6 +7,7 @@ import torch
 from pytext.torchscript.batchutils import (
     destructure_tensor_list,
     make_prediction_tokens,
+    make_prediction_texts,
 )
 
 
@@ -16,9 +17,9 @@ class BatchUtilsTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             make_prediction_tokens([])
 
-        # Negative Case: Empty request batch test in List[Tuple([List[List[str]]])] format
+        # Negative Case: Empty request batch test in List[Tuple([List[]])] format
         with self.assertRaises(RuntimeError):
-            make_prediction_tokens([([[]])])
+            make_prediction_tokens([([],)])
 
         # Negative Case: None as input
         with self.assertRaises(TypeError):
@@ -30,22 +31,21 @@ class BatchUtilsTest(unittest.TestCase):
 
         # Positve Case: Multiple tokens in one request batch
         multiple_tokens_request_batch = [
-            ([["token_1_1"], ["token_1_2"]]),
-            ([["token_2_1"], ["token_2_2"]]),
+            (
+                [
+                    ["token_1_1"],
+                    ["token_1_2_1", "token_1_2_2"],
+                ],
+            ),
+            (
+                [
+                    ["token_2_1"],
+                ],
+            ),
         ]
         self.assertEqual(
             make_prediction_tokens(multiple_tokens_request_batch),
-            ["token_1_1", "token_2_1"],
-        )
-
-        # Positve Case: Single token in one request batch
-        single_token_request_batch = [
-            ([["token1"]]),
-            ([["token2"]]),
-        ]
-        self.assertEqual(
-            make_prediction_tokens(single_token_request_batch),
-            ["token1", "token2"],
+            [["token_1_1"], ["token_1_2_1", "token_1_2_2"], ["token_2_1"]],
         )
 
     def test_destructure_tensor_list_empty(self):
@@ -108,3 +108,39 @@ class BatchUtilsTest(unittest.TestCase):
             for tens in sublist:
                 self.assertTrue(torch.equal(tens, torch.tensor([0] * i)))
                 i += 1
+
+    def test_make_prediction_texts(self) -> None:
+        # Negative Case: Empty request batch test in List[] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_texts([])
+
+        # Negative Case: Empty request batch test in List[Tuple([List[str]])] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_texts([([],)])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            make_prediction_texts(None)
+
+        # Negative Case: Bad batch text format with List[Tuple()]
+        with self.assertRaises(IndexError):
+            make_prediction_texts([()])
+
+        # Positve Case
+        multiple_texts_request_batch = [
+            (
+                [
+                    "First Line Text",
+                    "Other Text",
+                ],
+            ),
+            (
+                [
+                    "Second Line Text",
+                ],
+            ),
+        ]
+        self.assertEqual(
+            make_prediction_texts(multiple_texts_request_batch),
+            ["First Line Text", "Other Text", "Second Line Text"],
+        )
