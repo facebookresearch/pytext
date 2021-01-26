@@ -161,11 +161,17 @@ def prepare_task(
     if config.load_snapshot_path:
         assert PathManager.isfile(config.load_snapshot_path)
         if config.use_config_from_snapshot:
-            task, _, training_state = load(config.load_snapshot_path)
+            task, _, training_state = load(
+                config.load_snapshot_path, rank=rank, world_size=world_size
+            )
         else:
             task, _, training_state = load(
-                config.load_snapshot_path, overwrite_config=config
+                config.load_snapshot_path,
+                overwrite_config=config,
+                rank=rank,
+                world_size=world_size,
             )
+
         if training_state:
             training_state.rank = rank
     else:
