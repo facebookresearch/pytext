@@ -62,6 +62,15 @@ class ScriptPyTextModule(ScriptModule):
         logits = self.model(input_tensors)
         return self.output_layer(logits)
 
+    @torch.jit.script_method
+    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        self.tensorizer.set_padding_control(dimension, control)
+
 
 class ScriptPyTextModuleWithDense(ScriptPyTextModule):
     def __init__(
