@@ -481,7 +481,6 @@ def v12_to_v13(json_config):
         "SeqNNTask",
         "ShallowClassificationTask_Deprecated",
         "KDDocClassificationTask_Deprecated",
-        "ElmoFineTunePairwiseClassificationTask_Deprecated",
         "XLMDocumentClassification",
         "XLMPairClassification",
         "NewBertClassificationTask",
