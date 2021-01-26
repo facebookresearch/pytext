@@ -366,14 +366,14 @@ class _NewTask(TaskBase):
                 trace.set_padding_control("sequence_length", seq_padding_control)
             else:
                 print(
-                    "Padding_control not supported by model. Ignoring padding_control"
+                    "Padding_control not supported by model. Ignoring seq_padding_control"
                 )
         if batch_padding_control is not None:
             if hasattr(trace, "set_padding_control"):
                 trace.set_padding_control("batch_length", batch_padding_control)
             else:
                 print(
-                    "Padding_control not supported by model. Ignoring padding_control"
+                    "Padding_control not supported by model. Ignoring batch_padding_control"
                 )
         if inference_interface is not None:
             if hasattr(trace, "inference_interface"):

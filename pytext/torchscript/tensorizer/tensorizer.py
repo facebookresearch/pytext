@@ -21,8 +21,8 @@ class ScriptTensorizer(torch.jit.ScriptModule):
     def __init__(self):
         super().__init__()
         self.device = ""
-        self.seq_padding_control = None
-        self.batch_padding_control = None
+        self.seq_padding_control = torch.jit.Attribute(None, Optional[List[int]])
+        self.batch_padding_control = torch.jit.Attribute(None, Optional[List[int]])
 
     @torch.jit.script_method
     def set_device(self, device: str):
