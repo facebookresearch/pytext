@@ -31,6 +31,18 @@ class ScriptModule(torch.jit.ScriptModule):
     def set_device(self, device: str):
         self.tensorizer.set_device(device)
 
+    @torch.jit.script_method
+    def get_max_seq_len(self) -> int:
+        """
+        This function returns the maximum sequence length for the model,
+        if it is defined, otherwise None.
+        """
+        if hasattr(self.tensorizer, "max_seq_len"):
+            if self.tensorizer.max_seq_len is not None:
+                return self.tensorizer.max_seq_len
+
+        raise RuntimeError("max_seq_len not defined")
+
 
 class ScriptPyTextModule(ScriptModule):
     def __init__(
