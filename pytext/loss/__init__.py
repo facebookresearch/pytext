@@ -17,8 +17,6 @@ from .loss import (
     MultiLabelSoftMarginLoss,
     NLLLoss,
     PairwiseRankingLoss,
-    SamplewiseLabelSmoothedCrossEntropyLengthLoss,
-    SamplewiseLabelSmoothedCrossEntropyLoss,
     SourceType,
 )
 
@@ -39,7 +37,5 @@ __all__ = [
     "PairwiseRankingLoss",
     "LabelSmoothedCrossEntropyLoss",
     "LabelSmoothedCrossEntropyLengthLoss",
-    "SamplewiseLabelSmoothedCrossEntropyLoss",
-    "SamplewiseLabelSmoothedCrossEntropyLengthLoss",
     "SourceType",
 ]
