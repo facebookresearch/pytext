@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from pytext.common.utils import eprint
 
-from .pytext_config import LATEST_VERSION
+from .pytext_config import LATEST_VERSION, PyTextConfig
 
 
 ADAPTERS = {}
@@ -748,6 +748,26 @@ def upgrade_export_config(json_config):
         if f in json_config:
             export_config[f] = json_config.pop(f, None)
     json_config["export"] = export_config
+    return json_config
+
+
+@register_adapter(from_version=22)
+def v22_to_v23(json_config):
+    """
+    Upgrade by adding read_chunk_size option
+    """
+    if "read_chunk_size" not in json_config:
+        json_config["read_chunk_size"] = PyTextConfig.read_chunk_size
+    return json_config
+
+
+@register_down_grade_adapter(from_version=23)
+def v23_to_v22(json_config):
+    """
+    Upgrade by removing read_chunk_size option
+    """
+    if "read_chunk_size" in json_config:
+        del json_config["read_chunk_size"]
     return json_config
 
 
