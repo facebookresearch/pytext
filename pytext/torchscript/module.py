@@ -967,6 +967,18 @@ class PyTextEmbeddingModule(torch.jit.ScriptModule):
         self.tensorizer.set_padding_control(dimension, control)
 
     @torch.jit.script_method
+    def get_max_seq_len(self) -> int:
+        """
+        This function returns the maximum sequence length for the model,
+        if it is defined, otherwise None.
+        """
+        if hasattr(self.tensorizer, "max_seq_len"):
+            if self.tensorizer.max_seq_len is not None:
+                return self.tensorizer.max_seq_len
+
+        raise RuntimeError("max_seq_len not defined")
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors).cpu()
