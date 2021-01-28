@@ -8,6 +8,7 @@ from pytext.torchscript.batchutils import (
     destructure_tensor_list,
     make_prediction_tokens,
     make_prediction_texts,
+    make_prediction_texts_dense,
 )
 
 
@@ -143,4 +144,72 @@ class BatchUtilsTest(unittest.TestCase):
         self.assertEqual(
             make_prediction_texts(multiple_texts_request_batch),
             ["First Line Text", "Other Text", "Second Line Text"],
+        )
+
+    def test_make_prediction_texts_dense(self) -> None:
+        # Negative Case: Empty request batch test in List[] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_texts_dense([])
+
+        # Negative Case: Empty request batch test in List[Tuple([List[], List[]])] format
+        with self.assertRaises(RuntimeError):
+            make_prediction_texts_dense(
+                [
+                    (
+                        [],
+                        [],
+                    )
+                ]
+            )
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            make_prediction_texts_dense(None)
+
+        # Negative Case: Bad format with List[Tuple()]
+        with self.assertRaises(IndexError):
+            make_prediction_texts_dense([()])
+
+        # Negative Case: texts/dense client batch length mismatch
+        mismatch_request_batch = [
+            (
+                [
+                    "First Line Text",
+                    "Other Text",
+                ],
+                [
+                    [1.0],
+                ],
+            ),
+        ]
+        with self.assertRaises(RuntimeError):
+            make_prediction_texts_dense(mismatch_request_batch)
+
+        # Positve Case
+        multiple_text_dense_request_batch = [
+            (
+                [
+                    "First Line Text",
+                    "Other Text",
+                ],
+                [
+                    [1.0],
+                    [0.0],
+                ],
+            ),
+            (
+                [
+                    "Second Line Text",
+                ],
+                [
+                    [1.0],
+                ],
+            ),
+        ]
+        self.assertEqual(
+            make_prediction_texts_dense(multiple_text_dense_request_batch),
+            (
+                ["First Line Text", "Other Text", "Second Line Text"],
+                [[1.0], [0.0], [1.0]],
+            ),
         )
