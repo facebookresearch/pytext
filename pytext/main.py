@@ -55,8 +55,8 @@ def _validate_export_json_config(export_json_config):
     """Validate if the input export_json_config (PyTextConfig in JSON object) only has
     export section config and a version number.
     """
-    assert export_json_config.keys() == {"export", "version"}, (
-        "The export-json config should only contain fields export and version. Got "
+    assert export_json_config.keys() == {"export", "version", "read_chunk_size"}, (
+        "The export-json config should only contain fields export, version and read_chunk_size. Got "
         f"{export_json_config.keys()}"
     )
     for key in export_json_config["export"]:
@@ -448,8 +448,11 @@ def torchscript_export(context, export_json, model, output_path, quantize):
     export_config = ExportConfig()
     # only populate from export_json if no export option is configured from the command line.
     if export_json:
+        read_chunk_size = export_json_config.pop("read_chunk_size", None)
         export_json_config = _load_and_validate_export_json_config(export_json)
         export_section_config = export_json_config["export"]
+        if read_chunk_size is not None:
+            print("Warning: Ignoring read_chunk_size.")
         if not quantize and not output_path:
             export_config.export_caffe2_path = export_section_config.get(
                 "export_caffe2_path", None
