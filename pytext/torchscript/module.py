@@ -26,7 +26,15 @@ def resolve_texts(
     return multi_texts
 
 
-class ScriptModule(torch.jit.ScriptModule):
+class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+
+        super().__init__()
+        self.model = model
+        self.tensorizer = tensorizer
+        self.argno = -1
+        log_class_usage(self.__class__)
+
     @torch.jit.script_method
     def set_device(self, device: str):
         self.tensorizer.set_device(device)
@@ -42,194 +50,6 @@ class ScriptModule(torch.jit.ScriptModule):
                 return self.tensorizer.max_seq_len
 
         raise RuntimeError("max_seq_len not defined")
-
-
-class ScriptPyTextModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.tensorizer = tensorizer
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-    ):
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        input_tensors = self.tensorizer(inputs)
-        logits = self.model(input_tensors)
-        return self.output_layer(logits)
-
-    @torch.jit.script_method
-    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
-        """
-        This functions will be called to set a padding style.
-        None - No padding
-        List: first element 0, round seq length to the smallest list element larger than inputs
-        """
-        self.tensorizer.set_padding_control(dimension, control)
-
-
-class ScriptPyTextModuleWithDense(ScriptPyTextModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        normalizer: VectorNormalizer,
-    ):
-        super().__init__(model, output_layer, tensorizer)
-        self.normalizer = normalizer
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        dense_feat: List[List[float]],
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-    ):
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        input_tensors = self.tensorizer(inputs)
-        dense_feat = self.normalizer.normalize(dense_feat)
-
-        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        logits = self.model(input_tensors, dense_tensor)
-        return self.output_layer(logits)
-
-
-class ScriptTwoTowerModule(torch.jit.ScriptModule):
-    @torch.jit.script_method
-    def set_device(self, device: str):
-        self.right_tensorizer.set_device(device)
-        self.left_tensorizer.set_device(device)
-
-
-class ScriptPyTextTwoTowerModule(ScriptTwoTowerModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        right_tensorizer: ScriptTensorizer,
-        left_tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.right_tensorizer = right_tensorizer
-        self.left_tensorizer = left_tensorizer
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        right_texts: Optional[List[str]] = None,
-        left_texts: Optional[List[str]] = None,
-        right_tokens: Optional[List[List[str]]] = None,
-        left_tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-    ):
-        right_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(right_texts),
-            tokens=squeeze_2d(right_tokens),
-            languages=squeeze_1d(languages),
-        )
-        right_input_tensors = self.right_tensorizer(right_inputs)
-        left_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(left_texts),
-            tokens=squeeze_2d(left_tokens),
-            languages=squeeze_1d(languages),
-        )
-        left_input_tensors = self.left_tensorizer(left_inputs)
-        logits = self.model(right_input_tensors, left_input_tensors)
-        return self.output_layer(logits)
-
-
-class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        right_tensorizer: ScriptTensorizer,
-        left_tensorizer: ScriptTensorizer,
-        right_normalizer: VectorNormalizer,
-        left_normalizer: VectorNormalizer,
-    ):
-        super().__init__(model, output_layer, right_tensorizer, left_tensorizer)
-        self.right_normalizer = right_normalizer
-        self.left_normalizer = left_normalizer
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        right_dense_feat: List[List[float]],
-        left_dense_feat: List[List[float]],
-        right_texts: Optional[List[str]] = None,
-        left_texts: Optional[List[str]] = None,
-        right_tokens: Optional[List[List[str]]] = None,
-        left_tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-    ):
-        right_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(right_texts),
-            tokens=squeeze_2d(right_tokens),
-            languages=squeeze_1d(languages),
-        )
-        right_input_tensors = self.right_tensorizer(right_inputs)
-        left_inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(left_texts),
-            tokens=squeeze_2d(left_tokens),
-            languages=squeeze_1d(languages),
-        )
-        left_input_tensors = self.left_tensorizer(left_inputs)
-
-        right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
-        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
-        right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
-        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
-        if self.right_tensorizer.device != "":
-            right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
-        if self.left_tensorizer.device != "":
-            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
-
-        logits = self.model(
-            right_input_tensors,
-            left_input_tensors,
-            right_dense_tensor,
-            left_dense_tensor,
-        )
-        return self.output_layer(logits)
-
-
-class ScriptPyTextEmbeddingModule(ScriptModule):
-    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
-        super().__init__()
-        self.model = model
-        self.tensorizer = tensorizer
-        self.argno = -1
-        log_class_usage(self.__class__)
 
     @torch.jit.script_method
     def inference_interface(self, argument_type: str):
@@ -270,7 +90,8 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
-        dense_feat: Optional[List[List[float]]] = None,
+        # this should only be present in EmbeddingModuleWithDense
+        # dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -288,7 +109,6 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
                 Optional[List[List[str]]],  # multi_texts
                 Optional[List[List[str]]],  # tokens
                 Optional[List[str]],  # languages
-                Optional[List[List[float]]],  # dense_feat
             ]
         ],
     ) -> List[torch.Tensor]:
@@ -336,6 +156,234 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
                 multi_texts=None,
                 tokens=None,
                 languages=None,
+            )
+
+        else:
+            raise RuntimeError("Parameter type unsupported")
+
+        # destructure flat result tensor combining
+        #   cross-request batches and client side
+        #   batches into a cross-request list of
+        #   client-side batch tensors
+        return destructure_tensor(client_batch, flat_result)
+
+    @torch.jit.script_method
+    def make_batch(
+        self,
+        mega_batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                int,
+            ]
+        ],
+        goals: Dict[str, str],
+    ) -> List[
+        List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                int,
+            ]
+        ]
+    ]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], x[2])), n)
+            for (n, x) in enumerate(mega_batch)
+        ]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
+
+        # TBD: allow model server to specify batch size in goals dictionary
+        max_bs: int = 10
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    Optional[List[str]],  # texts
+                    Optional[List[List[str]]],  # multi_texts
+                    Optional[List[List[str]]],  # tokens
+                    Optional[List[str]],  # language,
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
+
+
+class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        index: int = 0,
+    ):
+        super().__init__(model, tensorizer)
+        self.index: int = index
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors)[self.index].cpu()
+
+
+class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+    ):
+        super().__init__(model, tensorizer)
+        # A PyText Module is an EmbeddingModule with an output layer
+        self.output_layer = output_layer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
+        logits = self.model(input_tensors)
+        return self.output_layer(logits)
+
+
+class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        normalizer: VectorNormalizer,
+        concat_dense: bool = False,
+    ):
+        super().__init__(model, tensorizer)
+        self.normalizer = normalizer
+        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
+        input_tensors = self.tensorizer(inputs)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        return self.model(input_tensors, dense_tensor).cpu()
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> torch.Tensor:
+        if dense_feat is None:
+            raise RuntimeError("Expect dense feature.")
+
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        # call model
+        dense_feat = self.normalizer.normalize(dense_feat)
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+
+        sentence_embedding = self._forward(inputs, dense_tensor)
+        if self.concat_dense:
+            return torch.cat([sentence_embedding, dense_tensor], 1)
+        else:
+            return sentence_embedding
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+            ]
+        ],
+    ) -> List[torch.Tensor]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        batchsize = len(batch)
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        client_batch: List[int] = []
+
+        if argno == TEXTS:
+            flat_texts: List[str] = []
+
+            for i in range(batchsize):
+                batch_element = batch[i][0]
+                if batch_element is not None:
+                    flat_texts.extend(batch_element)
+                    client_batch.append(len(batch_element))
+                else:
+                    # At present, we abort the entire batch if
+                    # any batch element is malformed.
+                    #
+                    # Possible refinement:
+                    # we can skip malformed requests,
+                    # and return a list plus an indiction that one or more
+                    # batch elements (and which ones) were malformed
+                    raise RuntimeError("Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
+
+            flat_result: torch.Tensor = self.forward(
+                texts=flat_texts,
+                multi_texts=None,
+                tokens=None,
+                languages=None,
                 dense_feat=None,
             )
 
@@ -346,13 +394,7 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         #   cross-request batches and client side
         #   batches into a cross-request list of
         #   client-side batch tensors
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result.narrow(0, start, elems))
-            start = end
-
-        return res_list
+        return destructure_tensor(client_batch, flat_result)
 
     @torch.jit.script_method
     def make_batch(
@@ -423,70 +465,43 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         return batch_list
 
 
-class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
+class ScriptPyTextModuleWithDense(ScriptPyTextEmbeddingModuleWithDense):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        index: int = 0,
-    ):
-        super().__init__(model, tensorizer)
-        self.index = torch.jit.Attribute(index, int)
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput):
-        input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors)[self.index].cpu()
-
-
-class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
-        concat_dense: bool = False,
     ):
-        super().__init__(model, tensorizer)
-        self.normalizer = normalizer
-        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+        super().__init__(model, tensorizer, normalizer)
+        self.output_layer = output_layer
         log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
-        input_tensors = self.tensorizer(inputs)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        return self.model(input_tensors, dense_tensor).cpu()
 
     @torch.jit.script_method
     def forward(
         self,
+        # moved dense_feat from non-optional here to optional at bottom
+        # to align with Embedding module
         texts: Optional[List[str]] = None,
         # multi_texts is of shape [batch_size, num_columns]
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
         dense_feat: Optional[List[List[float]]] = None,
-    ) -> torch.Tensor:
-        if dense_feat is None:
-            raise RuntimeError("Expect dense feature.")
-
+    ):
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
             tokens=squeeze_2d(tokens),
             languages=squeeze_1d(languages),
         )
-        # call model
+        input_tensors = self.tensorizer(inputs)
         dense_feat = self.normalizer.normalize(dense_feat)
-        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
 
-        sentence_embedding = self._forward(inputs, dense_tensor)
-        if self.concat_dense:
-            return torch.cat([sentence_embedding, dense_tensor], 1)
-        else:
-            return sentence_embedding
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        logits = self.model(input_tensors, dense_tensor)
+        return self.output_layer(logits)
 
 
 class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithDense):
@@ -611,13 +626,109 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         #   cross-request batches and client side
         #   batches into a cross-request list of
         #   client-side batch result lists
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result[start:end])
-            start = end
+        return destructure_tensor(client_batch, flat_result)
 
-        return res_list
+
+class ScriptTwoTowerModule(torch.jit.ScriptModule):
+    @torch.jit.script_method
+    def set_device(self, device: str):
+        self.right_tensorizer.set_device(device)
+        self.left_tensorizer.set_device(device)
+
+
+class ScriptPyTextTwoTowerModule(ScriptTwoTowerModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+    ):
+        super().__init__()
+        self.model = model
+        self.output_layer = output_layer
+        self.right_tensorizer = right_tensorizer
+        self.left_tensorizer = left_tensorizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_texts: Optional[List[str]] = None,
+        left_texts: Optional[List[str]] = None,
+        right_tokens: Optional[List[List[str]]] = None,
+        left_tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(right_tokens),
+            languages=squeeze_1d(languages),
+        )
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(left_tokens),
+            languages=squeeze_1d(languages),
+        )
+        left_input_tensors = self.left_tensorizer(left_inputs)
+        logits = self.model(right_input_tensors, left_input_tensors)
+        return self.output_layer(logits)
+
+
+class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+        right_normalizer: VectorNormalizer,
+        left_normalizer: VectorNormalizer,
+    ):
+        super().__init__(model, output_layer, right_tensorizer, left_tensorizer)
+        self.right_normalizer = right_normalizer
+        self.left_normalizer = left_normalizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_dense_feat: List[List[float]],
+        left_dense_feat: List[List[float]],
+        right_texts: Optional[List[str]] = None,
+        left_texts: Optional[List[str]] = None,
+        right_tokens: Optional[List[List[str]]] = None,
+        left_tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(right_tokens),
+            languages=squeeze_1d(languages),
+        )
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(left_tokens),
+            languages=squeeze_1d(languages),
+        )
+        left_input_tensors = self.left_tensorizer(left_inputs)
+
+        right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
+        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
+        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        if self.right_tensorizer.device != "":
+            right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
+        if self.left_tensorizer.device != "":
+            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+
+        logits = self.model(
+            right_input_tensors,
+            left_input_tensors,
+            right_dense_tensor,
+            left_dense_tensor,
+        )
+        return self.output_layer(logits)
 
 
 class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
@@ -764,13 +875,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         #   cross-request batches and client side
         #   batches into a cross-request list of
         #   client-side batch tensors
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result.narrow(0, start, elems))
-            start = end
-
-        return res_list
+        return destructure_tensor(client_batch, flat_result)
 
     @torch.jit.script_method
     def make_batch(
