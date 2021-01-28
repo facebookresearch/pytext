@@ -25,6 +25,7 @@ from pytext.config.serialize import (
 from pytext.config.utils import find_param, replace_param
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel, TensorBoardChannel
+from pytext.PreprocessingMap.ttypes import ModelType
 from pytext.task import load
 from pytext.utils.documentation import (
     ROOT_CONFIG,
@@ -55,14 +56,33 @@ def _validate_export_json_config(export_json_config):
     """Validate if the input export_json_config (PyTextConfig in JSON object) only has
     export section config and a version number.
     """
-    assert export_json_config.keys() == {"export", "version"}, (
-        "The export-json config should only contain fields export and version. Got "
+    assert (export_json_config.keys() == {"export", "version"}) or (
+        export_json_config.keys() == {"export_list", "version"}
+    ), (
+        "The export-json config should only contain fields (export or export_list) and version. Got "
         f"{export_json_config.keys()}"
     )
-    for key in export_json_config["export"]:
-        assert (
-            key in ExportConfig.__annotations__.keys()
-        ), f"Field {key} in the export json is not found in the ExportConfig class."
+    if "export" in export_json_config.keys():
+        for key in export_json_config["export"]:
+            assert (
+                key in ExportConfig.__annotations__.keys()
+            ), f"Field {key} in the export json is not found in the ExportConfig class."
+    else:  # export_list instead of export
+        assert "export_list" in export_json_config.keys()
+        found_model_type = None
+        for export_config in export_json_config["export_list"]:
+            for key in export_config:
+                assert (
+                    key in ExportConfig.__annotations__.keys()
+                ), f"Field {key} in the export json is not found in the ExportConfig class."
+            this_model_type = (
+                ModelType.PYTORCH
+                if "export_pytorch_path" in export_config
+                else ModelType.CAFFE2
+            )
+            assert (found_model_type is None) or (found_model_type == this_model_type)
+            if found_model_type is None:
+                found_model_type = this_model_type
 
 
 def _load_and_validate_export_json_config(export_json):
@@ -427,14 +447,23 @@ def export(context, export_json, model, output_path, output_onnx_path):
                 "the export-json config is ignored because export options are found the command line"
             )
     config = context.obj.load_config()
+    export_list = config.export_list
     model = model or config.save_snapshot_path
-    output_path = output_path or config.export_caffe2_path
-    output_onnx_path = output_onnx_path or config.export_onnx_path
-
-    print(
-        f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
-    )
-    export_saved_model_to_caffe2(model, output_path, output_onnx_path)
+    if len(export_list) == 0:
+        output_path = output_path or config.export_caffe2_path
+        output_onnx_path = output_onnx_path or config.export_onnx_path
+        print(
+            f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
+        )
+        export_saved_model_to_caffe2(model, output_path, output_onnx_path)
+    else:
+        for idx in range(0, len(export_list)):
+            output_path = output_path or config.get_export_caffe2_path(idx)
+            output_onnx_path = output_onnx_path or config.get_export_onnx_path(idx)
+            print(
+                f"Exporting {model} to caffe2 file: {output_path} and onnx file: {output_onnx_path}"
+            )
+            export_saved_model_to_caffe2(model, output_path, output_onnx_path)
 
 
 @main.command()
@@ -449,51 +478,56 @@ def torchscript_export(context, export_json, model, output_path, quantize):
     # only populate from export_json if no export option is configured from the command line.
     if export_json:
         export_json_config = _load_and_validate_export_json_config(export_json)
-        export_section_config = export_json_config["export"]
-        if not quantize and not output_path:
-            export_config.export_caffe2_path = export_section_config.get(
-                "export_caffe2_path", None
-            )
-            export_config.export_onnx_path = export_section_config.get(
-                "export_onnx_path", "/tmp/model.onnx"
-            )
-            export_config.torchscript_quantize = export_section_config.get(
-                "torchscript_quantize", False
-            )
+
+        if "export_list" not in export_json_config.keys():
+            export_section_config_list = [export_json_config["export"]]
         else:
-            print(
-                "the export-json config is ignored because export options are found the command line"
+            export_section_config_list = export_json_config["export_list"]
+        for export_section_config in export_section_config_list:
+            if not quantize and not output_path:
+                export_config.export_caffe2_path = export_section_config.get(
+                    "export_caffe2_path", None
+                )
+                export_config.export_onnx_path = export_section_config.get(
+                    "export_onnx_path", "/tmp/model.onnx"
+                )
+                export_config.torchscript_quantize = export_section_config.get(
+                    "torchscript_quantize", False
+                )
+
+            else:
+                print(
+                    "the export-json config is ignored because export options are found the command line"
+                )
+                export_config.torchscript_quantize = quantize
+
+            export_config.export_torchscript_path = export_section_config.get(
+                "export_torchscript_path", None
             )
-            export_config.torchscript_quantize = quantize
+            # if config has export_torchscript_path, use export_torchscript_path from config, otherwise keep the default from CLI
+            if export_config.export_torchscript_path is not None:
+                output_path = export_config.export_torchscript_path
 
-        export_config.export_torchscript_path = export_section_config.get(
-            "export_torchscript_path", None
-        )
-        # if config has export_torchscript_path, use export_torchscript_path from config, otherwise keep the default from CLI
-        if export_config.export_torchscript_path is not None:
-            output_path = export_config.export_torchscript_path
+            export_config.export_lite_path = export_section_config.get(
+                "export_lite_path", None
+            )
+            export_config.inference_interface = export_section_config.get(
+                "inference_interface", None
+            )
+            export_config.accelerate = export_section_config.get("accelerate", [])
+            export_config.seq_padding_control = export_section_config.get(
+                "seq_padding_control", None
+            )
+            export_config.batch_padding_control = export_section_config.get(
+                "batch_padding_control", None
+            )
+            if not model or not output_path:
+                config = context.obj.load_config()
+                model = model or config.save_snapshot_path
+                output_path = output_path or f"{config.save_snapshot_path}.torchscript"
 
-        export_config.export_lite_path = export_section_config.get(
-            "export_lite_path", None
-        )
-        export_config.inference_interface = export_section_config.get(
-            "inference_interface", None
-        )
-        export_config.accelerate = export_section_config.get("accelerate", [])
-        export_config.seq_padding_control = export_section_config.get(
-            "seq_padding_control", None
-        )
-        export_config.batch_padding_control = export_section_config.get(
-            "batch_padding_control", None
-        )
-
-    if not model or not output_path:
-        config = context.obj.load_config()
-        model = model or config.save_snapshot_path
-        output_path = output_path or f"{config.save_snapshot_path}.torchscript"
-
-    print(f"Exporting {model} to torchscript file: {output_path}")
-    export_saved_model_to_torchscript(model, output_path, export_config)
+            print(f"Exporting {model} to torchscript file: {output_path}")
+            export_saved_model_to_torchscript(model, output_path, export_config)
 
 
 @main.command()
