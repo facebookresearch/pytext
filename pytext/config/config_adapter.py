@@ -761,6 +761,14 @@ def v22_to_v23(json_config):
     return json_config
 
 
+@register_adapter(from_version=23)
+def v23_to_v24(json_config):
+    """
+    No-op since export_list is optional
+    """
+    return json_config
+
+
 @register_down_grade_adapter(from_version=23)
 def v23_to_v22(json_config):
     """
@@ -768,6 +776,23 @@ def v23_to_v22(json_config):
     """
     if "read_chunk_size" in json_config:
         del json_config["read_chunk_size"]
+    return json_config
+
+
+@register_down_grade_adapter(from_version=24)
+def v24_to_v23(json_config):
+    """
+    Upgrade by removing export_list option
+    """
+    if "export_list" in json_config:
+        if len(json_config["export_list"]) > 1:
+            raise Exception(
+                "Current version does not support multiple exports in export_list"
+            )
+        elif len(json_config["export_list"]) == 0:
+            raise Exception("Current version does not support empty export_list")
+        json_config["export"] = json_config["export_list"][0]
+        del json_config["export_list"]
     return json_config
 
 
