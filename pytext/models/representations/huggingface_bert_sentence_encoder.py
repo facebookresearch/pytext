@@ -11,7 +11,7 @@ from pytext.models.representations.transformer_sentence_encoder_base import (
 )
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
-from pytorch_pretrained_bert.modeling import BertConfig, BertModel
+from transformers.modeling_bert import BertConfig, BertModel
 
 
 class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
@@ -45,7 +45,15 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
             error_msgs: List[str] = []
             # copy state_dict so _load_from_state_dict can modify it
             metadata = getattr(state_dict, "_metadata", None)
-            state_dict = state_dict.copy()
+            tmp_state_dict = {}
+            for key, value in state_dict.items():
+                if key.endswith("LayerNorm.gamma"):  # compatibility with v0.5 models
+                    key = key.replace("LayerNorm.gamma", "LayerNorm.weight")
+                if key.endswith("LayerNorm.beta"):  # compatibility with v0.5 models
+                    key = key.replace("LayerNorm.beta", "LayerNorm.bias")
+                tmp_state_dict[key] = value
+            state_dict = tmp_state_dict
+
             if metadata is not None:
                 state_dict._metadata = metadata
 
@@ -85,7 +93,12 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
 
     def _encoder(self, input_tuple: Tuple[torch.Tensor, ...]):
         tokens, pad_mask, segment_labels, _ = input_tuple
-        encoded_layers, pooled_output = self.bert(tokens, segment_labels, pad_mask)
+        last_encoded_layers, pooled_output, encoded_layers = self.bert(
+            tokens,
+            attention_mask=pad_mask,
+            token_type_ids=segment_labels,
+            output_hidden_states=True,
+        )
         return encoded_layers, pooled_output
 
     def _embedding(self):

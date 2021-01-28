@@ -167,10 +167,19 @@ class BERTTensorizerBaseScriptImpl(TensorizerScriptImpl):
             batch_padding_control=self.batch_padding_control,
         )
         segment_labels = torch.tensor(
-            pad_2d(segment_labels_2d, seq_lens=seq_lens_1d, pad_idx=0), dtype=torch.long
+            pad_2d(
+                segment_labels_2d,
+                seq_lens=seq_lens_1d,
+                pad_idx=0,
+                max_len=self.max_seq_len,
+            ),
+            dtype=torch.long,
         )
         positions = torch.tensor(
-            pad_2d(positions_2d, seq_lens=seq_lens_1d, pad_idx=0), dtype=torch.long
+            pad_2d(
+                positions_2d, seq_lens=seq_lens_1d, pad_idx=0, max_len=self.max_seq_len
+            ),
+            dtype=torch.long,
         )
         if self.device == "":
             return tokens, pad_mask, segment_labels, positions

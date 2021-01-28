@@ -12,12 +12,12 @@ from pytext.config.component import Component, ComponentType, create_component
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTokenizer
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
-from pytorch_pretrained_bert.tokenization import (
+from sentencepiece import SentencePieceProcessor
+from transformers.tokenization_bert import (
     BasicTokenizer,
     WordpieceTokenizer,
     load_vocab,
 )
-from sentencepiece import SentencePieceProcessor
 
 
 class Token(NamedTuple):
@@ -129,7 +129,16 @@ class BERTInitialTokenizer(Tokenizer):
 
     @classmethod
     def from_config(cls, config: Config):
-        basic_tokenizer = BasicTokenizer(do_lower_case=config.lowercase)
+        basic_tokenizer = BasicTokenizer(
+            do_lower_case=config.lowercase,
+            never_split=(
+                "[UNK]",
+                "[SEP]",
+                "[PAD]",
+                "[CLS]",
+                "[MASK]",
+            ),  # compatibility with HF v0.5
+        )
         return cls(basic_tokenizer)
 
     def __init__(self, basic_tokenizer) -> None:
@@ -173,7 +182,9 @@ class WordPieceTokenizer(Tokenizer):
             ComponentType.TOKENIZER, config.basic_tokenizer
         )
         vocab = load_vocab(config.wordpiece_vocab_path)
-        wordpiece_tokenizer = WordpieceTokenizer(vocab=vocab)
+        wordpiece_tokenizer = WordpieceTokenizer(
+            vocab=vocab, unk_token="[UNK]"
+        )  # UNK is for compatibility with HF v0.5
         return cls(vocab, basic_tokenizer, wordpiece_tokenizer)
 
     def tokenize(self, input_str: str) -> List[Token]:

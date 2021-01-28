@@ -6,10 +6,8 @@ iopath
 joblib
 numpy
 onnx>=1.6.0
-# pytorch-pretrained-bert requires python-dateutil < 2.8.1
-python-dateutil==2.8.0
 pandas
-pytorch-pretrained-bert
+transformers=3.4.0
 opacus
 regex==2019.11.1
 requests

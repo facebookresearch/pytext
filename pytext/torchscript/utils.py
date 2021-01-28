@@ -200,12 +200,19 @@ def make_sequence_lengths(batch: List[List[str]]) -> List[int]:
 
 @torch.jit.script
 def pad_2d(
-    batch: List[List[int]], seq_lens: List[int], pad_idx: int
+    batch: List[List[int]], seq_lens: List[int], pad_idx: int, max_len: int = -1
 ) -> List[List[int]]:
     pad_to_length = list_max(seq_lens)
+    if max_len > 0:
+        pad_to_length = min(pad_to_length, max_len)
     for sentence in batch:
-        for _ in range(pad_to_length - len(sentence)):
-            sentence.append(pad_idx)
+        padding = pad_to_length - len(sentence)
+        if padding >= 0:
+            for _ in range(padding):
+                sentence.append(pad_idx)
+        else:
+            for _ in range(-padding):
+                sentence.pop()
     return batch
 
 
@@ -233,12 +240,22 @@ def pad_3d(
 
 @torch.jit.script
 def pad_2d_float(
-    batch: List[List[float]], seq_lens: List[int], pad_val: float = 0.0
+    batch: List[List[float]],
+    seq_lens: List[int],
+    pad_val: float = 0.0,
+    max_len: int = -1,
 ) -> List[List[float]]:
     pad_to_length = list_max(seq_lens)
+    if max_len > 0:
+        pad_to_length = min(pad_to_length, max_len)
     for sentence in batch:
-        for _ in range(pad_to_length - len(sentence)):
-            sentence.append(pad_val)
+        padding = pad_to_length - len(sentence)
+        if padding >= 0:
+            for _ in range(padding):
+                sentence.append(pad_val)
+        else:
+            for _ in range(-padding):
+                sentence.pop()
     return batch
 
 
