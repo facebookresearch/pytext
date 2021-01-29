@@ -19,6 +19,9 @@ from pytext.models.output_layers.squad_output_layer import SquadOutputLayer
 from pytext.models.representations.huggingface_bert_sentence_encoder import (
     HuggingFaceBertSentenceEncoder,
 )
+from pytext.models.representations.huggingface_electra_sentence_encoder import (  # noqa
+    HuggingFaceElectraSentenceEncoder,
+)
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
 )

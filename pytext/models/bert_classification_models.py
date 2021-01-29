@@ -32,6 +32,9 @@ from pytext.models.pair_classification_model import BasePairwiseModel
 from pytext.models.representations.huggingface_bert_sentence_encoder import (
     HuggingFaceBertSentenceEncoder,
 )
+from pytext.models.representations.huggingface_electra_sentence_encoder import (  # noqa
+    HuggingFaceElectraSentenceEncoder,
+)
 from pytext.models.representations.representation_base import RepresentationBase
 from pytext.models.representations.transformer_sentence_encoder_base import (
     TransformerSentenceEncoderBase,
