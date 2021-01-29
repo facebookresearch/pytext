@@ -198,27 +198,32 @@ def save_and_export(
     else:
         tensorizers = task.data.tensorizers
     save(config, task.model, meta, tensorizers=tensorizers)
-    export_config = config.export
-    if export_config is not None:
-        if export_config.export_caffe2_path:
-            task.export(
-                task.model,
-                export_config.export_caffe2_path,
-                metric_channels,
-                export_config.export_onnx_path,
-            )
-        if export_config.export_torchscript_path:
-            task.torchscript_export(
-                model=task.model,
-                export_path=export_config.export_torchscript_path,
-                export_config=export_config,
-            )
-        if export_config.export_lite_path:
-            task.lite_export(
-                model=task.model,
-                export_path=export_config.export_lite_path,
-                export_config=export_config,
-            )
+    if len(config.export_list) == 0:
+        export_configs = [config.export]
+    else:
+        export_configs = config.export_list
+
+    for export_config in export_configs:
+        if export_config is not None:
+            if export_config.export_caffe2_path:
+                task.export(
+                    task.model,
+                    export_config.export_caffe2_path,
+                    metric_channels,
+                    export_config.export_onnx_path,
+                )
+            if export_config.export_torchscript_path:
+                task.torchscript_export(
+                    model=task.model,
+                    export_path=export_config.export_torchscript_path,
+                    export_config=export_config,
+                )
+            if export_config.export_lite_path:
+                task.lite_export(
+                    model=task.model,
+                    export_path=export_config.export_lite_path,
+                    export_config=export_config,
+                )
 
 
 def export_saved_model_to_caffe2(

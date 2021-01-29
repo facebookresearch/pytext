@@ -90,6 +90,42 @@ class ModelExporterTest(hu.HypothesisTestCase):
             version=LATEST_VERSION,
         )
 
+    def _get_config_with_export_list(
+        self,
+        task_class: Type[NewTask],
+        model_class: Type[Model],
+        test_file_metadata: TestFileMetadata,
+    ) -> PyTextConfig:
+        return PyTextConfig(
+            task=task_class.Config(
+                data=Data.Config(
+                    source=TSVDataSource.Config(
+                        train_filename=test_file_metadata.filename,
+                        eval_filename=test_file_metadata.filename,
+                        test_filename=test_file_metadata.filename,
+                        field_names=test_file_metadata.field_names,
+                    ),
+                    batcher=PoolingBatcher.Config(
+                        train_batch_size=1, test_batch_size=1
+                    ),
+                ),
+                trainer=TaskTrainer.Config(epochs=1),
+                model=model_class.Config(
+                    inputs=type(model_class.Config.inputs)(
+                        dense=FloatListTensorizer.Config(
+                            column=test_file_metadata.dense_col_name,
+                            error_check=True,
+                            dim=test_file_metadata.dense_feat_dim,
+                        )
+                    )
+                ),
+            ),
+            use_tensorboard=False,
+            use_cuda_if_available=False,
+            export=ExportConfig(export_torchscript_path="/tmp/model_torchscript.pt"),
+            version=LATEST_VERSION,
+        )
+
     def _test_task_export_to_caffe2(self, task_class, config):
         task = task_class.from_config(config.task)
         py_model = task.model
@@ -133,6 +169,17 @@ class ModelExporterTest(hu.HypothesisTestCase):
 
         for test_file_name, model_class in test_file_and_models:
             config = self._get_config(
+                task_class=task_class,
+                model_class=model_class,
+                test_file_metadata=get_test_file_metadata(test_file_name),
+            )
+            self._test_task_export_to_caffe2(task_class=task_class, config=config)
+
+    def test_document_export_list_to_caffe2(self):
+        task_class = DocumentClassificationTask
+
+        for test_file_name, model_class in test_file_and_models:
+            config = self._get_config_with_export_list(
                 task_class=task_class,
                 model_class=model_class,
                 test_file_metadata=get_test_file_metadata(test_file_name),
