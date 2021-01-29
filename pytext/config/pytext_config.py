@@ -300,4 +300,5 @@ class LogitsConfig(TestConfig):
     fp16: bool = False
 
 
-LATEST_VERSION = 23
+# update sitevar PYTEXT_CONFIG_LATEST_VERSION when new PytextConfig pushed in pytext config
+LATEST_VERSION = 24
