@@ -21,13 +21,19 @@ def accelerator_transformerLayers_inputs(
 
     seq_padding_control = export_options.seq_padding_control
     batch_padding_control = export_options.batch_padding_control
-
-    embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
-
     if seq_padding_control is None:
         raise RuntimeError("seq padding control not specified")
     if batch_padding_control is None:
         raise RuntimeError("batch padding control not specified")
+
+    max_seq_len = model.get_max_seq_len()
+    seq_padding_control = [
+        pad if pad <= max_seq_len else max_seq_len for pad in seq_padding_control
+    ] + [max_seq_len]
+
+    # this should use a method, or module_path, instead of being hardcoded
+    embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
+
     input_examples = []
     for seq_len in seq_padding_control:
         if seq_len <= 0:
