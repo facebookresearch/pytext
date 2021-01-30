@@ -18,6 +18,7 @@ from pytext.loss import (
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLoss,
     MultiLabelSoftMarginLoss,
+    BinaryCrossEntropyWithLogitsLoss,
 )
 from pytext.utils.label import get_label_weights
 from torch import jit
