@@ -81,20 +81,28 @@ class DisjointMultitaskMetricReporter(MetricReporter):
         optimizer=None,
         privacy_engine=None,
     ):
+        # Initialize `metrics_dict` with the average loss across sub-tasks.
         metrics_dict = {AVRG_LOSS: self.total_loss / self.num_batches}
+
+        # Store computed metrics for each sub-task in `metrics_dict`.
         for name, reporter in self.reporters.items():
             print(f"Reporting on task: {name}")
             metrics_dict[name] = reporter.report_metric(
                 model, stage, epoch, reset, print_to_channels, optimizer=optimizer
             )
+
+        # Reset loss and batch counters.
         if reset:
             self._reset()
 
+        # If the target task is specified, return all target metrics.
         if self.target_reporter:
             return metrics_dict[self.target_task_name]
 
+        # Otherwise, for each task, return its model selection metric.
         for name, reporter in self.reporters.items():
             metrics_dict[name] = reporter.get_model_select_metric(metrics_dict[name])
+
         return metrics_dict
 
     def get_model_select_metric(self, metrics):
