@@ -136,6 +136,25 @@ class BinaryCrossEntropyLoss(Loss):
         return loss.sum(-1).mean() if reduce else loss.sum(-1)
 
 
+class HingeLoss(Loss):
+    class Config(ConfigBase):
+        margin: float = 1.0
+
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.margin = config.margin
+        self.ignore_index = ignore_index
+        self.weight = weight
+
+    def __call__(self, logits, targets, reduce=True):
+        return F.multi_margin_loss(
+            logits,
+            targets,
+            margin=self.margin,
+            weight=self.weight,
+            reduction="mean" if reduce else "none",
+        )
+
+
 class CosineEmbeddingLoss(Loss):
     class Config(ConfigBase):
         margin: float = 0.0
