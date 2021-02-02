@@ -11,7 +11,11 @@ from torch import nn
 
 
 def accelerator_transformerLayers_inputs(
-    model: nn.Module, export_options: ExportConfig, dataset_iterable: iter, module_path
+    model: nn.Module,
+    trace,
+    export_options: ExportConfig,
+    dataset_iterable: iter,
+    module_path,
 ):
     import torch_glow
 
@@ -19,17 +23,20 @@ def accelerator_transformerLayers_inputs(
     if export_options is None:
         export_options = ExportConfig()
 
-    seq_padding_control = export_options.seq_padding_control
-    batch_padding_control = export_options.batch_padding_control
-    if seq_padding_control is None:
+    if export_options.seq_padding_control is None:
         raise RuntimeError("seq padding control not specified")
-    if batch_padding_control is None:
+    if export_options.batch_padding_control is None:
         raise RuntimeError("batch padding control not specified")
 
-    max_seq_len = model.get_max_seq_len()
-    seq_padding_control = [
-        pad if pad <= max_seq_len else max_seq_len for pad in seq_padding_control
-    ] + [max_seq_len]
+    batch_padding_control = export_options.batch_padding_control
+
+    # Restrict seq_padding_control to valid ranges
+    seq_padding_control = []
+    max_seq_len = trace.get_max_seq_len()
+    for pad in export_options.seq_padding_control:
+        if pad < max_seq_len:
+            seq_padding_control.append(pad)
+    seq_padding_control.append(max_seq_len)
 
     # this should use a method, or module_path, instead of being hardcoded
     embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
@@ -134,7 +141,7 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
         # Todod: @input decorator dose not work properly, fixing it later
         # input_sets = inputs.input_process(model, export_options, None, submod_tracepath)
         input_sets = accelerator_transformerLayers_inputs(
-            model, export_options, None, submod_tracepath
+            model, trace, export_options, None, submod_tracepath
         )
         compilation_group.set_input_sets(input_sets)
 
