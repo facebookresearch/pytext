@@ -12,7 +12,7 @@ from torch import nn
 
 def accelerator_transformerLayers_inputs(
     model: nn.Module,
-    trace,
+    trace: torch.jit.ScriptFunction,
     export_options: ExportConfig,
     dataset_iterable: iter,
     module_path,
@@ -39,7 +39,10 @@ def accelerator_transformerLayers_inputs(
     seq_padding_control.append(max_seq_len)
 
     # this should use a method, or module_path, instead of being hardcoded
-    embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
+    # embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
+    embedding_dim = accelerator.get_module_from_path(
+        model, module_path
+    ).token_embedding.embedding_dim
 
     input_examples = []
     for seq_len in seq_padding_control:
@@ -59,9 +62,10 @@ def accelerator_transformerLayers_inputs(
     return input_examples
 
 
-@accelerator([("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})])
-# Todo: this decorator dose not return proper module, fixing it later, right now comment out
-# @inputs(accelerator_transformerLayers_inputs)
+@accelerator(
+    [("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})],
+    inputs_function=accelerator_transformerLayers_inputs,
+)
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
@@ -125,9 +129,11 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
 
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         backend = "NNPI"
-        submod_modelpath, compilation_spec_dict = accelerator.get_modules(
-            model, backend
-        )[0]
+        (
+            submod_modelpath,
+            compilation_spec_dict,
+            inputs_function,
+        ) = accelerator.get_modules(model, backend)[0]
         submod_tracepath = accelerator.model2trace_path(submod_modelpath)
         spec = torch_glow.CompilationSpec()
         spec.get_settings().set_glow_backend(backend)
@@ -138,11 +144,10 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
         for k, v in compilation_spec_dict.items():
             compilation_group.get_settings().backend_specific_opts_insert(k, v)
 
-        # Todod: @input decorator dose not work properly, fixing it later
-        # input_sets = inputs.input_process(model, export_options, None, submod_tracepath)
-        input_sets = accelerator_transformerLayers_inputs(
-            model, trace, export_options, None, submod_tracepath
-        )
+        if inputs_function is not None:
+            input_sets = inputs_function(
+                model, trace, export_options, None, submod_modelpath
+            )
         compilation_group.set_input_sets(input_sets)
 
         trace = torch_glow.to_glow_selective(
