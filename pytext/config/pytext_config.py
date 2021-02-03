@@ -284,7 +284,7 @@ class PyTextConfig(ConfigBase):
     def get_export_torchscript_quantize(self, index):
         return self.export_list[index].torchscript_quantize
 
-    def set_export_torchscript_path(self, quantize, index):
+    def set_export_torchscript_quantize(self, quantize, index):
         self.export_list[index].torchscript_quantize = quantize
 
     @property
