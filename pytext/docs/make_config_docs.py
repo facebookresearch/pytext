@@ -8,7 +8,7 @@ import json
 import os
 import typing
 
-from pytext.config import ConfigBase, PyTextConfig
+from pytext.config import ConfigBase, PyTextConfig, ExportConfig
 from pytext.config.component import Registry
 from pytext.config.serialize import config_to_json
 from pytext.utils.file_io import PathManager
@@ -71,6 +71,7 @@ assert len({config.path for config in CONFIG_WRAPPERS}) == len(
 
 ALL_CONFIGS = {config.path: config for config in CONFIG_WRAPPERS}
 ALL_CONFIGS[canonical_path(PyTextConfig)] = Config.from_config(PyTextConfig)
+ALL_CONFIGS[canonical_path(ExportConfig)] = Config.from_config(ExportConfig)
 
 NO_DEFAULT = object()
 

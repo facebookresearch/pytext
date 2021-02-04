@@ -118,7 +118,13 @@ html_static_path = ["_static"]
 # autodoc_mock_imports = ['scipy', 'tensorboardX']
 
 # Manually mocking out the libraries to prevent requiring these modules
-MOCK_MODULES = ["scipy", "scipy.special", "torch.utils.tensorboard"]
+MOCK_MODULES = [
+    "scipy",
+    "scipy.special",
+    "torch.utils.tensorboard",
+    "accelerators.pytorch.lib.glow_decorator",
+    "pytext.PreprocessingMap.ttypes",
+]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
