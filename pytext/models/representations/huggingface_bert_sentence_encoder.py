@@ -22,7 +22,9 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
     """
 
     class Config(TransformerSentenceEncoderBase.Config, ConfigBase):
-        bert_cpt_dir: str = "/mnt/vol/nlp_technologies/bert/uncased_L-12_H-768_A-12/"
+        bert_cpt_dir: str = (
+            "manifold://nlp_technologies/tree/huggingface-models/bert-base-uncased/"
+        )
         load_weights: bool = True
 
     def __init__(
@@ -30,29 +32,31 @@ class HuggingFaceBertSentenceEncoder(TransformerSentenceEncoderBase):
     ) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
         # Load config
-        config_file = os.path.join(config.bert_cpt_dir, "bert_config.json")
-        bert_config = BertConfig.from_json_file(config_file)
+        config_file = os.path.join(config.bert_cpt_dir, "config.json")
+        local_config_path = PathManager.get_local_path(config_file)
+        bert_config = BertConfig.from_json_file(local_config_path)
         print("Bert model config {}".format(bert_config))
         # Instantiate model.
         model = BertModel(bert_config)
         weights_path = os.path.join(config.bert_cpt_dir, "pytorch_model.bin")
         # load pre-trained weights if weights_path exists
         if config.load_weights and PathManager.isfile(weights_path):
-            state_dict = torch.load(weights_path)
+            with PathManager.open(weights_path, "rb") as fd:
+                state_dict = torch.load(fd)
 
             missing_keys: List[str] = []
             unexpected_keys: List[str] = []
             error_msgs: List[str] = []
             # copy state_dict so _load_from_state_dict can modify it
             metadata = getattr(state_dict, "_metadata", None)
-            tmp_state_dict = {}
-            for key, value in state_dict.items():
+            for key in list(state_dict.keys()):
+                new_key = None
                 if key.endswith("LayerNorm.gamma"):  # compatibility with v0.5 models
-                    key = key.replace("LayerNorm.gamma", "LayerNorm.weight")
+                    new_key = key.replace("LayerNorm.gamma", "LayerNorm.weight")
                 if key.endswith("LayerNorm.beta"):  # compatibility with v0.5 models
-                    key = key.replace("LayerNorm.beta", "LayerNorm.bias")
-                tmp_state_dict[key] = value
-            state_dict = tmp_state_dict
+                    new_key = key.replace("LayerNorm.beta", "LayerNorm.bias")
+                if new_key is not None:
+                    state_dict[new_key] = state_dict.pop(key)
 
             if metadata is not None:
                 state_dict._metadata = metadata
