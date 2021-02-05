@@ -731,6 +731,7 @@ class Float1DListTensorizer(Tensorizer):
     class Config(Tensorizer.Config):
         # inputs
         column: str = "float_list_column"
+        pad_token: float = 1.0
 
     @classmethod
     def from_config(cls, config: Config, **kwargs):
@@ -739,6 +740,7 @@ class Float1DListTensorizer(Tensorizer):
     def __init__(self, config: Config, **kwargs):
         # mention link probability
         self.column = config.column
+        self.pad_token = config.pad_token
 
     @property
     def column_schema(self):
@@ -754,7 +756,7 @@ class Float1DListTensorizer(Tensorizer):
         return row[self.column]
 
     def tensorize(self, batch):
-        values = pad_and_tensorize(batch, pad_token=1.0, dtype=torch.float)
+        values = pad_and_tensorize(batch, pad_token=self.pad_token, dtype=torch.float)
         return values
 
     @lazy_property
