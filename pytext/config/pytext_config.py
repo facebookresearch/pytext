@@ -223,15 +223,21 @@ class PyTextConfig(ConfigBase):
                     % (method_name,)
                 )
 
+    def get_first_config(self):
+        if self.export:
+            return self.export
+        else:
+            return self.export_list[0]
+
     @property
     def export_caffe2_path(self):
         self.export_check("export_caffe2_path")
-        return self.export_list[0].export_caffe2_path
+        return self.get_first_config().export_caffe2_path
 
     @export_caffe2_path.setter
     def export_caffe2_path(self, p):
         self.export_check("export_caffe2_path")
-        self.export_list[0].export_caffe2_path = p
+        self.get_first_config().export_caffe2_path = p
 
     def get_export_caffe2_path(self, index):
         return self.export_list[index].export_caffe2_path
@@ -242,12 +248,12 @@ class PyTextConfig(ConfigBase):
     @property
     def export_onnx_path(self):
         self.export_check("export_onnx_path")
-        return self.export_list[0].export_onnx_path
+        return self.get_first_config().export_onnx_path
 
     @export_onnx_path.setter
     def export_onnx_path(self, p):
         self.export_check("export_onnx_path")
-        self.export_list[0].export_onnx_path = p
+        self.get_first_config().export_onnx_path = p
 
     def get_export_onnx_path(self, index):
         return self.export_list[index].export_onnx_path
@@ -258,12 +264,12 @@ class PyTextConfig(ConfigBase):
     @property
     def export_torchscript_path(self):
         self.export_check("export_torchscript_path")
-        return self.export_list[0].export_torchscript_path
+        return self.get_first_config().export_torchscript_path
 
     @export_torchscript_path.setter
     def export_torchscript_path(self, p):
         self.export_check("export_torchscript_path")
-        self.export_list[0].export_torchscript_path = p
+        self.get_first_config().export_torchscript_path = p
 
     def get_export_torchscript_path(self, index):
         return self.export_list[index].export_torchscript_path
@@ -274,12 +280,12 @@ class PyTextConfig(ConfigBase):
     @property
     def torchscript_quantize(self):
         self.export_check("torchscript_quantize")
-        return self.export_list[0].torchscript_quantize
+        return self.get_first_config().torchscript_quantize
 
     @torchscript_quantize.setter
     def torchscript_quantize(self, quantize):
         self.export_check("torchscript_quantize")
-        self.export_list[0].torchscript_quantize = quantize
+        self.get_first_config().torchscript_quantize = quantize
 
     def get_export_torchscript_quantize(self, index):
         return self.export_list[index].torchscript_quantize
@@ -290,12 +296,12 @@ class PyTextConfig(ConfigBase):
     @property
     def accelerate(self):
         self.export_check("accelerate")
-        return self.export_list[0].accelerate
+        return self.get_first_config().accelerate
 
     @accelerate.setter
     def accelerate(self, acc):
         self.export_check("accelerate")
-        self.export_list[0].accelerate = acc
+        self.get_first_config().accelerate = acc
 
     def get_export_accelerate(self, index):
         return self.export_list[index].accelerate
@@ -306,12 +312,12 @@ class PyTextConfig(ConfigBase):
     @property
     def inference_interface(self):
         self.export_check("inference_interface")
-        return self.export_list[0].inference_interface
+        return self.get_first_config().inference_interface
 
     @inference_interface.setter
     def inference_interface(self, inf_inter):
         self.export_check("inference_interface")
-        self.export_list[0].inference_interface = inf_inter
+        self.get_first_config().inference_interface = inf_inter
 
     def get_export_inference_interface(self, index):
         return self.export_list[index].inference_interface
@@ -322,28 +328,28 @@ class PyTextConfig(ConfigBase):
     @property
     def seq_padding_control(self):
         self.export_check("seq_padding_control")
-        return self.export_list[0].seq_padding_control
+        return self.get_first_config().seq_padding_control
 
     @seq_padding_control.setter
     def seq_padding_control(self, spc):
         self.export_check("seq_padding_control")
-        self.export_list[0].seq_padding_control = spc
+        self.get_first_config().seq_padding_control = spc
 
     def get_export_seq_padding_control(self, index):
         return self.export_list[index].seq_padding_control
 
-    def set_export_inference_interface(self, seq_padding_control, index):
+    def set_export_seq_padding_control(self, seq_padding_control, index):
         self.export_list[index].seq_padding_control = seq_padding_control
 
     @property
     def batch_padding_control(self):
         self.export_check("batch_padding_control")
-        return self.export_list[0].batch_padding_control
+        return self.get_first_config().batch_padding_control
 
     @batch_padding_control.setter
     def batch_padding_control(self, bpc):
         self.export_check("batch_padding_control")
-        self.export_list[0].batch_padding_control = bpc
+        self.get_first_config().batch_padding_control = bpc
 
     def get_export_batch_padding_control(self, index):
         return self.export_list[index].batchpadding_control

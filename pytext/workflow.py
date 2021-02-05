@@ -198,7 +198,7 @@ def save_and_export(
     else:
         tensorizers = task.data.tensorizers
     save(config, task.model, meta, tensorizers=tensorizers)
-    if len(config.export_list) == 0:
+    if config.export:
         export_configs = [config.export]
     else:
         export_configs = config.export_list

@@ -452,9 +452,8 @@ def export(context, export_json, model, output_path, output_onnx_path):
                 "the export-json config is ignored because export options are found the command line"
             )
     config = context.obj.load_config()
-    export_list = config.export_list
     model = model or config.save_snapshot_path
-    if len(export_list) == 0:
+    if config.export:
         output_path = output_path or config.export_caffe2_path
         output_onnx_path = output_onnx_path or config.export_onnx_path
         print(
@@ -462,7 +461,7 @@ def export(context, export_json, model, output_path, output_onnx_path):
         )
         export_saved_model_to_caffe2(model, output_path, output_onnx_path)
     else:
-        for idx in range(0, len(export_list)):
+        for idx in range(0, len(config.export_list)):
             output_path = output_path or config.get_export_caffe2_path(idx)
             output_onnx_path = output_onnx_path or config.get_export_onnx_path(idx)
             print(
@@ -491,7 +490,7 @@ def torchscript_export(context, export_json, model, output_path, quantize):
         if export_json_config.get("read_chunk_size", None) is not None:
             print("Error: Do not know what to do with read_chunk_size.  Ignoring.")
 
-        if "export_list" not in export_json_config.keys():
+        if "export" in export_json_config.keys():
             export_section_config_list = [export_json_config["export"]]
         else:
             export_section_config_list = export_json_config["export_list"]
