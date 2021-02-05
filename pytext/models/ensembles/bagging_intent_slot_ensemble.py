@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import torch
 from pytext.models.joint_model import IntentSlotModel
@@ -99,3 +99,18 @@ class BaggingIntentSlotEnsembleModel(EnsembleModel):
             traced_model,
             merged_output_layer=self.output_layer if self.use_crf else None,
         )
+
+    def load_state_dict(
+        self,
+        state_dict: Dict[str, torch.Tensor],
+        strict: bool = True,
+    ):
+        super().load_state_dict(state_dict=state_dict, strict=strict)
+        for i, m in enumerate(self.models):
+            submodel_state_dict = {}
+            for key, val in state_dict.items():
+                split_key = key.split(".")
+                if split_key[0] == "models" and int(split_key[1]) == i:
+                    submodel_state_dict[".".join(split_key[2:])] = val
+
+            m.load_state_dict(state_dict=submodel_state_dict, strict=strict)
