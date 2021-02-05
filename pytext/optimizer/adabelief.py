@@ -27,6 +27,7 @@ class AdaBelief(Optimizer, PT_Optimizer):
         rectify: bool = False
 
     r"""Implements AdaBelief algorithm. Modified from Adam in PyTorch
+
     Arguments:
         params (iterable): iterable of parameters to optimize or dicts defining
             parameter groups
@@ -135,6 +136,7 @@ class AdaBelief(Optimizer, PT_Optimizer):
 
     def step(self, closure=None, **kwargs):
         """Performs a single optimization step.
+
         Arguments:
             closure (callable, optional): A closure that reevaluates the model
                 and returns the loss.

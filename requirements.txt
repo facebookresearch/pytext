@@ -7,7 +7,7 @@ joblib
 numpy
 onnx>=1.6.0
 pandas
-transformers=3.4.0
+transformers==3.4.0
 opacus
 regex==2019.11.1
 requests

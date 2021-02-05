@@ -12,5 +12,6 @@ sentencepiece
 torchtext
 tensorboard
 torch
+transformers==3.4.0
 pandas
 opacus

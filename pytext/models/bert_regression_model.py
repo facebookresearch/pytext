@@ -55,7 +55,7 @@ class BertPairwiseRegressionModel(BertPairwiseModel):
     """
 
     class Config(BertPairwiseModel.Config):
-        class ModelInput(BertPairwiseModel.Config.ModelInput):
+        class ModelInput(BertPairwiseModel.Config.BertPairwiseModelInput):
             labels: NumericLabelTensorizer.Config = NumericLabelTensorizer.Config()
 
         inputs: ModelInput = ModelInput()
