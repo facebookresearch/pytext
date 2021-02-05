@@ -56,7 +56,7 @@ class _EncoderBaseModel(BaseModel):
     SUPPORT_FP16_OPTIMIZER = True
 
     class Config(BaseModel.Config):
-        class ModelInput(BaseModel.Config.ModelInput):
+        class EncoderModelInput(BaseModel.Config.ModelInput):
             tokens: Tensorizer.Config = Tensorizer.Config()
             dense: Optional[FloatListTensorizer.Config] = None
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
@@ -65,7 +65,7 @@ class _EncoderBaseModel(BaseModel):
                 names=["tokens"], indexes=[2]
             )
 
-        inputs: ModelInput
+        inputs: EncoderModelInput = EncoderModelInput()
         encoder: RepresentationBase.Config
         decoder: MLPDecoder.Config = MLPDecoder.Config()
         output_layer: ClassificationOutputLayer.Config = (
@@ -152,7 +152,7 @@ class NewBertModel(_EncoderBaseModel):
     """BERT single sentence classification."""
 
     class Config(_EncoderBaseModel.Config):
-        class BertModelInput(_EncoderBaseModel.Config.ModelInput):
+        class BertModelInput(_EncoderBaseModel.Config.EncoderModelInput):
             tokens: BERTTensorizer.Config = BERTTensorizer.Config(max_seq_len=128)
 
         inputs: BertModelInput = BertModelInput()
@@ -169,7 +169,7 @@ class _EncoderPairwiseModel(BasePairwiseModel):
     """
 
     class Config(BasePairwiseModel.Config):
-        class ModelInput(ModelInputBase):
+        class EncoderPairwiseModelInput(ModelInputBase):
             tokens1: Tensorizer.Config = Tensorizer.Config()
             tokens2: Tensorizer.Config = Tensorizer.Config()
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
@@ -178,7 +178,7 @@ class _EncoderPairwiseModel(BasePairwiseModel):
                 names=["tokens1", "tokens2"], indexes=[2, 2]
             )
 
-        inputs: ModelInput
+        inputs: EncoderPairwiseModelInput = EncoderPairwiseModelInput()
         encoder: RepresentationBase.Config
         # Decoder is a fully connected layer that expects concatenated encodings.
         # So, if decoder is provided we will concatenate the encodings from the
@@ -327,7 +327,9 @@ class BertPairwiseModel(_EncoderPairwiseModel):
     """
 
     class Config(_EncoderPairwiseModel.Config):
-        class ModelInput(_EncoderPairwiseModel.Config.ModelInput):
+        class BertPairwiseModelInput(
+            _EncoderPairwiseModel.Config.EncoderPairwiseModelInput
+        ):
             tokens1: BERTTensorizerBase.Config = BERTTensorizer.Config(
                 columns=["text1"], max_seq_len=128
             )
@@ -335,7 +337,7 @@ class BertPairwiseModel(_EncoderPairwiseModel):
                 columns=["text2"], max_seq_len=128
             )
 
-        inputs: ModelInput = ModelInput()
+        inputs: BertPairwiseModelInput = BertPairwiseModelInput()
         encoder: TransformerSentenceEncoderBase.Config = (
             HuggingFaceBertSentenceEncoder.Config()
         )
