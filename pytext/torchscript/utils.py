@@ -120,6 +120,11 @@ def pad_2d_mask(
     max_batch_len = len(input)
     max_batch_len = pad_length(max_batch_len, batch_padding_control, -1)
 
+    # print(f"** max_seq_len: {max_seq_len}")
+    # print(f"** max_batch_len: {max_batch_len}")
+    # print(f"** seq_padding_control: {seq_padding_control}")
+    # print(f"** batch_padding_control: {batch_padding_control}")
+
     tensor = long_tensor_2d((max_batch_len, max_seq_len), pad_value)
     for i in range(len(input)):
         for j in range(min(len(input[i]), max_seq_len)):
