@@ -4,7 +4,7 @@
 from typing import List
 
 import torch
-from accelerators.pytorch.lib.glow_decorator import accelerator, inputs
+from accelerators.pytorch.lib.glow_decorator import accelerator
 from pytext.config import ExportConfig
 from pytext.models.roberta import RoBERTaEncoder
 from torch import nn
