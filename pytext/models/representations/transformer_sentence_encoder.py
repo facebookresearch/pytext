@@ -68,6 +68,9 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         # Use of TorchScript and optimizations
         use_torchscript: bool = False
 
+        # Fine-tune bias parameters only (https://nlp.biu.ac.il/~yogo/bitfit.pdf)
+        use_bias_finetuning: bool = False
+
     def __init__(
         self,
         config: Config,
@@ -82,6 +85,7 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         self.multilingual = config.multilingual
         self.offset_positions_by_padding = config.offset_positions_by_padding
         self.use_torchscript = config.use_torchscript
+        self.use_bias_finetuning = config.use_bias_finetuning
         self.traced_encoder = None
 
         self.sentence_encoder = TransformerSentenceEncoderModule(
@@ -108,6 +112,12 @@ class TransformerSentenceEncoder(TransformerSentenceEncoderBase):
         if self.use_torchscript:
             assert hasattr(self.sentence_encoder, "traceable")
             self.sentence_encoder.traceable = self.use_torchscript
+        if self.use_bias_finetuning:
+            for (n, p) in self.sentence_encoder.named_parameters():
+                # "sentence_encoder.layers.0.self_attn.k_proj.weight" -> false
+                # "sentence_encoder.layers.0.self_attn.k_proj.bias" -> true
+                if n.split(".")[-1] != "bias":
+                    p.requires_grad_(False)
 
         log_class_usage(__class__)
 
