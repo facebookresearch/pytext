@@ -3,6 +3,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import torch
+from pytext.config.pytext_config import ExportConfig
 from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
@@ -42,6 +43,32 @@ class ScriptModule(torch.jit.ScriptModule):
                 return self.tensorizer.max_seq_len
 
         raise RuntimeError("max_seq_len not defined")
+
+    def deprecation_warning(self, export_conf: ExportConfig):
+        if (
+            (export_conf.inference_interface is not None)
+            or (export_conf.accelerate is not None)
+            or (export_conf.seq_padding_control is not None)
+            or (export_conf.batch_padding_control is not None)
+        ):
+            print("*** DEPRECATION WARNING ***")
+            print(
+                "Modules concurrently supporting untokenized and tokenized inputs are being deprecated!"
+            )
+            print(
+                "Preferably, use the corresponding Pytext{Type}Module hierarchy (sans 'Script') classes to offer models including tokenization."
+            )
+            print(
+                "To build a model taking tokenized input (only), use the corresponding Pytext TokenModule hierarchy classes."
+            )
+            print("")
+        if (export_conf.accelerate is not None) or (
+            export_conf.batch_padding_control is not None
+        ):
+            print(
+                "To access new features such as cross-request bacthing and NNPI compilation, please use the new Pytext Modules with NNPI accelerators only"
+            )
+            raise RuntimeError("Module type not supported on NNPI")
 
 
 class ScriptPyTextModule(ScriptModule):
@@ -126,6 +153,32 @@ class ScriptTwoTowerModule(torch.jit.ScriptModule):
     def set_device(self, device: str):
         self.right_tensorizer.set_device(device)
         self.left_tensorizer.set_device(device)
+
+    def deprecation_warning(self, export_conf: ExportConfig):
+        if (
+            (export_conf.inference_interface is not None)
+            or (export_conf.accelerate is not None)
+            or (export_conf.seq_padding_control is not None)
+            or (export_conf.batch_padding_control is not None)
+        ):
+            print("*** DEPRECATION WARNING ***")
+            print(
+                "Modules concurrently supporting untokenized and tokenized inputs are being deprecated!"
+            )
+            print(
+                "Preferably, use the corresponding Pytext{Type}Module hierarchy (sans 'Script') classes to offer models including tokenization."
+            )
+            print(
+                "To build a model taking tokenized input (only), use the corresponding Pytext TokenModule hierarchy classes."
+            )
+            print("")
+        if (export_conf.accelerate is not None) or (
+            export_conf.batch_padding_control is not None
+        ):
+            print(
+                "To access new features such as cross-request bacthing and NNPI compilation, please use the new Pytext Modules with NNPI accelerators only"
+            )
+            raise RuntimeError("Module type not supported on NNPI")
 
 
 class ScriptPyTextTwoTowerModule(ScriptTwoTowerModule):
@@ -230,6 +283,33 @@ class ScriptPyTextEmbeddingModule(ScriptModule):
         self.tensorizer = tensorizer
         self.argno = -1
         log_class_usage(self.__class__)
+
+    def deprecation_warning(self, export_conf: ExportConfig):
+        if (
+            (export_conf.inference_interface is not None)
+            or (export_conf.accelerate is not None)
+            or (export_conf.seq_padding_control is not None)
+            or (export_conf.batch_padding_control is not None)
+        ):
+            print("*** DEPRECATION WARNING ***")
+            print(
+                "Modules concurrently supporting untokenized and tokenized inputs are being deprecated!"
+            )
+            print(
+                "Preferably, use the corresponding Pytext{Type}Module hierarchy (sans 'Script') classes to offer models including tokenization."
+            )
+            print(
+                "To build a model taking tokenized input (only), use the corresponding Pytext TokenModule hierarchy classes."
+            )
+            print("")
+        if (export_conf.accelerate is not None) or (
+            export_conf.batch_padding_control is not None
+        ):
+            print(
+                "To access new features such as cross-request bacthing and NNPI compilation, please use the new Pytext Modules with NNPI accelerators."
+            )
+            # minimal compatibility to support legacy embedding models with batching
+            # raise RuntimeError("Module type not supported on NNPI")
 
     @torch.jit.script_method
     def inference_interface(self, argument_type: str):
