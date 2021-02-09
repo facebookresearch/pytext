@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import Iterable, List
 
 import torch
 from accelerators.pytorch.lib.glow_decorator import accelerator
@@ -14,7 +14,7 @@ def accelerator_transformerLayers_inputs(
     model: nn.Module,
     trace: torch.jit.ScriptFunction,
     export_options: ExportConfig,
-    dataset_iterable: iter,
+    dataset_iterable: Iterable,
     module_path,
 ):
     import torch_glow
