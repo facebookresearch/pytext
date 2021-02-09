@@ -625,15 +625,16 @@ class LabelSmoothedCrossEntropyLoss(Loss):
 class MaxMarginLoss(Loss):
     """
     Computes a max-margin loss for structured prediction:
-    max(0, m + cost(Y',Y) + S(Y'|X) - S(Y|X))
+    :math:`max(0, m + cost(Y',Y) + S(Y'|X) - S(Y|X))`
 
-    Here, we require the score of the gold sequence S(Y|X) to be _at least_
-    m + cost(Y',Y) higher than the score of a hypothesis sequence S(Y'|X),
-    where m = margin and cost(Y',Y) = Hamming distance between Y' and Y.
+    Here, we require the score of the gold sequence :math:`S(Y|X)` to be at least
+    :math:`m + cost(Y',Y)` higher than the score of a hypothesis sequence
+    :math:`S(Y'|X)`, where :math:`m =` margin and :math:`cost(Y',Y) =` Hamming distance
+    between :math:`Y'` and :math:`Y`.
 
     To efficiently search for the sequence with the largest margin violation
-    when cost(Y',Y) is included, we greedily decode a sequence with score
-    S(Y'|X) + I[Y'!=Y]. Intuitively, this forces our model to score the
+    when :math:`cost(Y',Y)` is included, we greedily decode a sequence with score
+    :math:`S(Y'|X) + I[Y'!=Y]`. Intuitively, this forces our model to score the
     gold label above other candidate labels.
     """
 
