@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+from typing import List
+
+import numpy as np
 import torch
 from pytext.utils.usage import log_class_usage
 from torch import nn
@@ -36,6 +39,62 @@ class MultiheadSelfAttention(nn.Module):
         self.input_projection = nn.Linear(embed_dim, 3 * embed_dim)
         self.output_projection = nn.Linear(embed_dim, embed_dim)
         log_class_usage(__class__)
+
+    def prune_multi_heads(self, heads: List[int]):
+        mask = torch.ones(self.num_heads * 3, self.head_dim)
+        for head in heads:
+            mask[head] = 0
+            mask[head + self.num_heads] = 0
+            mask[head + self.num_heads * 2] = 0
+        mask = mask.view(-1).contiguous().eq(1)
+        if torch.onnx.is_in_onnx_export():
+            index = np.arange(len(mask), dtype=np.int64)
+            index = torch.from_numpy(index).to(device=mask.device)
+        else:
+            index = torch.arange(len(mask), dtype=torch.long, device=mask.device)
+
+        # Prune linear layers
+        self.input_projection = self._prune_linear_layer(
+            self.input_projection, index[mask], dim=0
+        )
+        self.output_projection = self._prune_linear_layer(
+            self.output_projection,
+            index[0 : self.num_heads * self.head_dim][
+                mask[0 : self.num_heads * self.head_dim]
+            ],
+            dim=1,
+        )
+        # Update hyper params
+        self.num_heads = self.num_heads - len(heads)
+
+    def _prune_linear_layer(
+        self, layer: torch.nn.Linear, index: torch.Tensor, dim: int = 0
+    ):
+        """
+        Prune a linear layer (a model parameters) to keep only entries in index.
+        Return the pruned layer as a new layer with requires_grad=True.
+        Used to remove heads.
+        """
+        index = index.to(layer.weight.device)
+        W = layer.weight.index_select(dim, index).clone().detach()
+        if layer.bias is not None:
+            if dim == 1:
+                b = layer.bias.clone().detach()
+            else:
+                b = layer.bias[index].clone().detach()
+        new_size = list(layer.weight.size())
+        new_size[dim] = len(index)
+        new_layer = torch.nn.Linear(
+            new_size[1], new_size[0], bias=layer.bias is not None
+        ).to(layer.weight.device)
+        new_layer.weight.requires_grad = False
+        new_layer.weight.copy_(W.contiguous())
+        new_layer.weight.requires_grad = True
+        if layer.bias is not None:
+            new_layer.bias.requires_grad = False
+            new_layer.bias.copy_(b.contiguous())
+            new_layer.bias.requires_grad = True
+        return new_layer
 
     def forward(self, query, key_padding_mask):
         """Input shape: Time x Batch x Channel
@@ -117,7 +176,9 @@ class MultiheadSelfAttention(nn.Module):
             "attn shape didn't match for head dim",
         )
         attn = (
-            attn.transpose(0, 1).contiguous().view(target_length, batch_size, embed_dim)
+            attn.transpose(0, 1)
+            .contiguous()
+            .view(target_length, batch_size, self.head_dim * self.num_heads)
         )
         attn = self.output_projection(attn)
 

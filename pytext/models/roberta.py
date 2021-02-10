@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import logging
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -53,6 +54,9 @@ from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 from torch.serialization import default_restore_location
 
 from .r3f_models import R3FConfigOptions, R3FPyTextMixin
+
+
+logger = logging.getLogger(name=__name__)
 
 
 def init_params(module):
@@ -135,6 +139,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         export_encoder: bool = False
         variable_size_embedding: bool = True
         use_selfie_encoder: bool = False
+        transformer_layer_to_keep: Optional[int] = None
+        attention_heads_to_keep_per_layer: Optional[int] = None
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -234,10 +240,45 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 if n.split(".")[-1] != "bias":
                     p.requires_grad_(False)
 
+        self._prune_transformer_layers_and_heads(config)
+
         self.export_encoder = config.export_encoder
         self.variable_size_embedding = config.variable_size_embedding
         self.use_linformer_encoder = config.use_linformer_encoder
         log_class_usage(__class__)
+
+    def _prune_transformer_layers_and_heads(self, config: Config):
+        if config.transformer_layer_to_keep is None:
+            config.transformer_layer_to_keep = config.num_encoder_layers
+
+        if config.transformer_layer_to_keep != config.num_encoder_layers:
+            logger.info(f"prune the layers to {config.transformer_layer_to_keep}")
+            self.encoder.transformer.layers = self.encoder.transformer.layers[
+                0 : config.transformer_layer_to_keep
+            ]
+
+        if config.attention_heads_to_keep_per_layer is not None:
+            logger.info(
+                f"prune the heads to {config.attention_heads_to_keep_per_layer}"
+            )
+            heads_to_prune = {
+                i: list(
+                    range(
+                        config.num_attention_heads
+                        - config.attention_heads_to_keep_per_layer
+                    )
+                )
+                for i in range(config.transformer_layer_to_keep)
+            }
+            for layer_index, heads in heads_to_prune.items():
+                if config.use_linformer_encoder or config.use_selfie_encoder:
+                    self.encoder.transformer.layers[
+                        layer_index
+                    ].attention.prune_multi_linear_heads(heads=heads)
+                else:
+                    self.encoder.transformer.layers[
+                        layer_index
+                    ].attention.prune_multi_heads(heads=heads)
 
     def _embedding(self):
         # used to tie weights in MaskedLM model

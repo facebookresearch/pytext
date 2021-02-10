@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Tuple
+from typing import List, Tuple
 
+import numpy as np
 import torch
 from pytext.utils.usage import log_class_usage
 from torch import nn
@@ -45,6 +46,62 @@ class MultiheadLinearAttention(nn.Module):
         self.output_projection = nn.Linear(embed_dim, embed_dim)
         self.compress_k = compress_layer
         log_class_usage(__class__)
+
+    def prune_multi_linear_heads(self, heads: List[int]):
+        mask = torch.ones(self.num_heads, self.head_dim)
+        for head in heads:
+            mask[head] = 0
+        mask = mask.view(-1).contiguous().eq(1)
+        if torch.onnx.is_in_onnx_export():
+            index = np.arange(len(mask), dtype=np.int64)
+            index = torch.from_numpy(index).to(device=mask.device)
+        else:
+            index = torch.arange(len(mask), dtype=torch.long, device=mask.device)
+
+        # Prune linear layers
+        self.kput_projection = self._prune_linear_layer(
+            self.kput_projection, index[mask], dim=0
+        )
+        self.qput_projection = self._prune_linear_layer(
+            self.qput_projection, index[mask], dim=0
+        )
+        self.vput_projection = self._prune_linear_layer(
+            self.vput_projection, index[mask], dim=0
+        )
+        self.output_projection = self._prune_linear_layer(
+            self.output_projection, index[mask], dim=1
+        )
+        # Update hyper params
+        self.num_heads = self.num_heads - len(heads)
+
+    def _prune_linear_layer(
+        self, layer: torch.nn.Linear, index: torch.Tensor, dim: int = 0
+    ):
+        """
+        Prune a linear layer (a model parameters) to keep only entries in index.
+        Return the pruned layer as a new layer with requires_grad=True.
+        Used to remove heads.
+        """
+        index = index.to(layer.weight.device)
+        W = layer.weight.index_select(dim, index).clone().detach()
+        if layer.bias is not None:
+            if dim == 1:
+                b = layer.bias.clone().detach()
+            else:
+                b = layer.bias[index].clone().detach()
+        new_size = list(layer.weight.size())
+        new_size[dim] = len(index)
+        new_layer = torch.nn.Linear(
+            new_size[1], new_size[0], bias=layer.bias is not None
+        ).to(layer.weight.device)
+        new_layer.weight.requires_grad = False
+        new_layer.weight.copy_(W.contiguous())
+        new_layer.weight.requires_grad = True
+        if layer.bias is not None:
+            new_layer.bias.requires_grad = False
+            new_layer.bias.copy_(b.contiguous())
+            new_layer.bias.requires_grad = True
+        return new_layer
 
     def get_compressed_projection(
         self, k_input: torch.Tensor, v_input: torch.Tensor, target_length: int
