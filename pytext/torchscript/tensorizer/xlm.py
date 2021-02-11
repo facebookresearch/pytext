@@ -4,7 +4,7 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.utils import pad_2d, pad_2d_mask
+from pytext.torchscript.utils import pad_2d_mask
 from pytext.torchscript.vocab import ScriptVocabulary
 
 from .tensorizer import ScriptTensorizer, VocabLookup
@@ -168,12 +168,28 @@ class ScriptXLMTensorizer(ScriptTensorizer):
             seq_len_2d.append(numberized[2])
             positions_2d.append(numberized[3])
 
-        tokens, pad_mask = pad_2d_mask(tokens_2d, pad_value=self.token_vocab.pad_idx)
-        languages = torch.tensor(
-            pad_2d(languages_2d, seq_lens=seq_len_2d, pad_idx=0), dtype=torch.long
+        tokens, pad_mask = pad_2d_mask(
+            tokens_2d,
+            pad_value=self.token_vocab.pad_idx,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
-        positions = torch.tensor(
-            pad_2d(positions_2d, seq_lens=seq_len_2d, pad_idx=0), dtype=torch.long
+
+        languages, _ = pad_2d_mask(
+            languages_2d,
+            pad_value=0,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
+        )
+
+        positions, _ = pad_2d_mask(
+            positions_2d,
+            pad_value=0,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
 
         if self.device == "":
