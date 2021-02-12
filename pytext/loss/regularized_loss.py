@@ -10,12 +10,12 @@ from pytext.config.component import create_loss
 from .loss import (
     Loss,
     NLLLoss,
-    MaxMarginLoss,
     HingeLoss,
     maybe_log_normalize,
     SourceType,
 )
 from .regularizer import UniformRegularizer, EntropyRegularizer, AdaptiveRegularizer
+from .structured_loss import StructuredLoss, StructuredMarginLoss
 
 
 class LabelSmoothingLoss(Loss):
@@ -24,7 +24,7 @@ class LabelSmoothingLoss(Loss):
     class Config(ConfigBase):
         beta: float = 0.1
         label_loss: Union[
-            NLLLoss.Config, MaxMarginLoss.Config, HingeLoss.Config
+            NLLLoss.Config, StructuredMarginLoss.Config, HingeLoss.Config
         ] = NLLLoss.Config()
         smoothing_loss: Union[
             UniformRegularizer.Config,
@@ -48,7 +48,7 @@ class LabelSmoothingLoss(Loss):
         label_loss = self.label_loss_fn(logits, targets, reduce)
 
         # Flatten logits if we're using a structured label loss.
-        if isinstance(self.label_loss_fn, MaxMarginLoss):
+        if isinstance(self.label_loss_fn, StructuredLoss):
             logits = logits.reshape(-1, logits.size(-1))
             targets = targets.view(-1)
 
@@ -189,10 +189,9 @@ class NARSequenceLoss(Loss):
         self.label_type = config.label_type
         self.length_type = config.length_type
 
-        # Enforce loss constraints. Specifically, because `MaxMarginLoss` requires
-        # structured outputs, we can't use this as a length loss.
-        if isinstance(config.length_loss.label_loss, MaxMarginLoss):
-            raise ValueError("MaxMarginLoss can't be used as a length loss")
+        # We can't use a structured loss for optimizing lengths.
+        if isinstance(config.length_loss.label_loss, StructuredLoss):
+            raise ValueError("StructuredLoss can't be used as a length loss")
 
         self.label_loss_fn = create_loss(config.label_loss, ignore_index=ignore_index)
         self.length_loss_fn = create_loss(config.length_loss, ignore_index=ignore_index)

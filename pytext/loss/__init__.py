@@ -18,7 +18,6 @@ from .loss import (
     NLLLoss,
     PairwiseRankingLoss,
     SourceType,
-    MaxMarginLoss,
 )
 from .regularized_loss import (
     LabelSmoothingLoss,
@@ -27,6 +26,7 @@ from .regularized_loss import (
     NARSamplewiseSequenceLoss,
 )
 from .regularizer import UniformRegularizer, EntropyRegularizer, AdaptiveRegularizer
+from .structured_loss import StructuredLoss, StructuredMarginLoss, CostFunctionType
 
 
 __all__ = [
@@ -46,9 +46,11 @@ __all__ = [
     "PairwiseRankingLoss",
     "LabelSmoothedCrossEntropyLoss",
     "SourceType",
+    "CostFunctionType",
+    "StructuredLoss",
+    "StructuredMarginLoss",
     "LabelSmoothingLoss",
     "SamplewiseLabelSmoothingLoss",
-    "MaxMarginLoss",
     "NARSequenceLoss",
     "NARSamplewiseSequenceLoss",
     "UniformRegularizer",
