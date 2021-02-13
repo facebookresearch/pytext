@@ -16,7 +16,7 @@ from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
-from pytext.utils.usage import log_class_usage
+from pytext.utils.usage import log_class_usage, log_accelerator_feature_usage
 from torch import jit, sort
 
 from .accelerator_lowering import (
@@ -340,12 +340,14 @@ class _NewTask(TaskBase):
             )
         else:
             if quantize:
+                log_accelerator_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
 
             trace = model.trace(inputs)
             print("traced!")
 
             if use_cuda_half:
+                log_accelerator_feature_usage("build.CUDA.half")
                 # convert trace to half precision
                 trace.cuda().half()
 
