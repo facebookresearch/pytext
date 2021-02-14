@@ -6,10 +6,6 @@ from typing import Dict, List
 import numpy as np
 from pytext.common.constants import Stage
 from pytext.data.tensorizers import Tensorizer
-from pytext.fb.metrics.masked_joint_metrics import (
-    compute_masked_metrics,
-    compute_nas_masked_metrics,
-)
 from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.compositional_metric_reporter import (
     CompositionalMetricReporter,
@@ -23,6 +19,10 @@ from pytext.metric_reporters.seq2seq_compositional import (  # noqa
 )
 from pytext.metric_reporters.seq2seq_utils import stringify
 from pytext.metrics.intent_slot_metrics import FramePredictionPair
+from pytext.metrics.mask_metrics import (
+    compute_masked_metrics,
+    compute_nas_masked_metrics,
+)
 
 from .compositional_utils import extract_beam_subtrees, filter_invalid_beams
 
