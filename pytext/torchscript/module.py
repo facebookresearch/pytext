@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
+    destructure_any_list,
     make_batch_texts_dense,
     make_prediction_texts,
     make_prediction_texts_dense,
@@ -26,7 +27,15 @@ def resolve_texts(
     return multi_texts
 
 
-class ScriptModule(torch.jit.ScriptModule):
+class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+
+        super().__init__()
+        self.model = model
+        self.tensorizer = tensorizer
+        self.argno = -1
+        log_class_usage(self.__class__)
+
     @torch.jit.script_method
     def set_device(self, device: str):
         self.tensorizer.set_device(device)
@@ -43,36 +52,22 @@ class ScriptModule(torch.jit.ScriptModule):
 
         raise RuntimeError("max_seq_len not defined")
 
-
-class ScriptPyTextModule(ScriptModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        output_layer: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-    ):
-        super().__init__()
-        self.model = model
-        self.output_layer = output_layer
-        self.tensorizer = tensorizer
-
     @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-    ):
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        input_tensors = self.tensorizer(inputs)
-        logits = self.model(input_tensors)
-        return self.output_layer(logits)
+    def inference_interface(self, argument_type: str):
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        if self.argno != -1:
+            raise RuntimeError("Cannot change argument type.")
+        if argument_type == "texts":
+            self.argno = TEXTS
+        else:
+            raise RuntimeError("Unsupported argument type.")
 
     @torch.jit.script_method
     def set_padding_control(self, dimension: str, control: Optional[List[int]]):
@@ -83,8 +78,483 @@ class ScriptPyTextModule(ScriptModule):
         """
         self.tensorizer.set_padding_control(dimension, control)
 
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors).cpu()
 
-class ScriptPyTextModuleWithDense(ScriptPyTextModule):
+    @torch.jit.script_method
+    def forward_impl(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        # this should only be present in EmbeddingModuleWithDense
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> torch.Tensor:
+        if dense_feat is not None:
+            raise RuntimeError("dense feature not allowed.")
+
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        return self._forward(inputs)
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        # this should only be present in EmbeddingModuleWithDense
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> torch.Tensor:
+        return self.forward_impl(
+            texts,
+            multi_texts,
+            tokens,
+            languages,
+            dense_feat,
+        )
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat must be None
+            ]
+        ],
+    ):  # List[torch.Tensor] or List[List[Any]]
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        batchsize = len(batch)
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        client_batch: List[int] = []
+
+        if argno == TEXTS:
+            flat_texts: List[str] = []
+
+            for i in range(batchsize):
+                batch_element = batch[i][0]
+                if batch_element is not None:
+                    flat_texts.extend(batch_element)
+                    client_batch.append(len(batch_element))
+                else:
+                    # At present, we abort the entire batch if
+                    # any batch element is malformed.
+                    #
+                    # Possible refinement:
+                    # we can skip malformed requests,
+                    # and return a list plus an indiction that one or more
+                    # batch elements (and which ones) were malformed
+                    raise RuntimeError("Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
+
+            flat_result = self.forward_impl(
+                texts=flat_texts,
+                multi_texts=None,
+                tokens=None,
+                languages=None,
+                dense_feat=None,
+            )
+
+        else:
+            raise RuntimeError("Parameter type unsupported")
+
+        if torch.jit.isinstance(flat_result, torch.Tensor):
+            # destructure flat result tensor combining
+            #   cross-request batches and client side
+            #   batches into a cross-request list of
+            #   client-side batch tensors
+            return destructure_tensor(client_batch, flat_result)
+        else:
+            # destructure result list of any result type combining
+            #   cross-request batches and client side
+            #   batches into a cross-request list of
+            #   client-side result lists
+            result_texts_any_list: List[Any] = torch.jit.annotate(List[Any], [])
+            for v in flat_result:
+                result_texts_any_list.append(v)
+
+            return destructure_any_list(client_batch, result_texts_any_list)
+
+    @torch.jit.script_method
+    def make_batch(
+        self,
+        mega_batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat must be None
+                int,
+            ]
+        ],
+        goals: Dict[str, str],
+    ) -> List[
+        List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat must be None
+                int,
+            ]
+        ]
+    ]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], x[2])), n)
+            for (n, x) in enumerate(mega_batch)
+        ]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
+
+        # TBD: allow model server to specify batch size in goals dictionary
+        max_bs: int = 10
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    Optional[List[str]],  # texts
+                    Optional[List[List[str]]],  # multi_texts
+                    Optional[List[List[str]]],  # tokens
+                    Optional[List[str]],  # language,
+                    Optional[List[List[float]]],  # dense_feat must be None
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
+
+
+class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        index: int = 0,
+    ):
+        super().__init__(model, tensorizer)
+        self.index: int = index
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        return self.model(input_tensors)[self.index].cpu()
+
+
+class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+    ):
+        super().__init__(model, tensorizer)
+        # A PyText Module is an EmbeddingModule with an output layer
+        self.output_layer = output_layer
+
+    @torch.jit.script_method
+    def forward_impl(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,  # dense_feat must be None
+    ):
+        if dense_feat is not None:
+            raise RuntimeError("dense feature not allowed.")
+
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        input_tensors = self.tensorizer(inputs)
+        logits = self.model(input_tensors)
+        return self.output_layer(logits)
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,  # dense_feat must be None
+    ):
+        return self.forward_impl(
+            texts,
+            multi_texts,
+            tokens,
+            languages,
+            dense_feat,
+        )
+
+
+class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        normalizer: VectorNormalizer,
+        concat_dense: bool = False,
+    ):
+        super().__init__(model, tensorizer)
+        self.normalizer = normalizer
+        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
+        input_tensors = self.tensorizer(inputs)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        return self.model(input_tensors, dense_tensor).cpu()
+
+    @torch.jit.script_method
+    def forward_impl(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> torch.Tensor:
+        if dense_feat is None:
+            raise RuntimeError("Expect dense feature.")
+
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        # call model
+        dense_feat = self.normalizer.normalize(dense_feat)
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+
+        sentence_embedding = self._forward(inputs, dense_tensor)
+        if self.concat_dense:
+            return torch.cat([sentence_embedding, dense_tensor], 1)
+        else:
+            return sentence_embedding
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ):
+        return self.forward_impl(
+            texts,
+            multi_texts,
+            tokens,
+            languages,
+            dense_feat,
+        )
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+            ]
+        ],
+    ):  # -> List[torch.Tensor], or List[List[Any]]
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        batchsize = len(batch)
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        client_batch: List[int] = []
+
+        if argno == TEXTS:
+            flat_texts: List[str] = []
+
+            for i in range(batchsize):
+                batch_element = batch[i][0]
+                if batch_element is not None:
+                    flat_texts.extend(batch_element)
+                    client_batch.append(len(batch_element))
+                else:
+                    # At present, we abort the entire batch if
+                    # any batch element is malformed.
+                    #
+                    # Possible refinement:
+                    # we can skip malformed requests,
+                    # and return a list plus an indiction that one or more
+                    # batch elements (and which ones) were malformed
+                    raise RuntimeError("Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
+
+            flat_result = self.forward_impl(
+                texts=flat_texts,
+                multi_texts=None,
+                tokens=None,
+                languages=None,
+                dense_feat=None,
+            )
+
+        else:
+            raise RuntimeError("Parameter type unsupported")
+
+        if torch.jit.isinstance(flat_result, torch.Tensor):
+            # destructure flat result tensor combining
+            #   cross-request batches and client side
+            #   batches into a cross-request list of
+            #   client-side batch tensors
+            return destructure_tensor(client_batch, flat_result)
+        else:
+            # destructure result list of any result type combining
+            #   cross-request batches and client side
+            #   batches into a cross-request list of
+            #   client-side result lists
+            result_texts_any_list: List[Any] = torch.jit.annotate(List[Any], [])
+            for v in flat_result:
+                result_texts_any_list.append(v)
+
+            return destructure_any_list(client_batch, result_texts_any_list)
+
+    @torch.jit.script_method
+    def make_batch(
+        self,
+        mega_batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+                int,
+            ]
+        ],
+        goals: Dict[str, str],
+    ) -> List[
+        List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+                int,
+            ]
+        ]
+    ]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        # The next lines sort all cross-request batch elements by the token length.
+        # Note that cross-request batch element can in turn be a client batch.
+        mega_batch_key_list = [
+            (max_tokens(self.tensorizer.tokenize(x[0], x[2])), n)
+            for (n, x) in enumerate(mega_batch)
+        ]
+        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
+        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
+
+        # TBD: allow model server to specify batch size in goals dictionary
+        max_bs: int = 10
+        len_mb = len(mega_batch)
+        num_batches = (len_mb + max_bs - 1) // max_bs
+
+        batch_list: List[
+            List[
+                Tuple[
+                    Optional[List[str]],  # texts
+                    Optional[List[List[str]]],  # multi_texts
+                    Optional[List[List[str]]],  # tokens
+                    Optional[List[str]],  # language,
+                    Optional[List[List[float]]],  # dense_feat
+                    int,  # position
+                ]
+            ]
+        ] = []
+
+        start = 0
+
+        for _i in range(num_batches):
+            end = min(start + max_bs, len_mb)
+            batch_list.append(sorted_mega_batch[start:end])
+            start = end
+
+        return batch_list
+
+
+class ScriptPyTextModuleWithDense(ScriptPyTextEmbeddingModuleWithDense):
     def __init__(
         self,
         model: torch.jit.ScriptModule,
@@ -92,19 +562,21 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
         tensorizer: ScriptTensorizer,
         normalizer: VectorNormalizer,
     ):
-        super().__init__(model, output_layer, tensorizer)
-        self.normalizer = normalizer
+        super().__init__(model, tensorizer, normalizer)
+        self.output_layer = output_layer
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
-    def forward(
+    def forward_impl(
         self,
-        dense_feat: List[List[float]],
+        # moved dense_feat from non-optional here to optional at bottom
+        # to align with Embedding module
         texts: Optional[List[str]] = None,
         # multi_texts is of shape [batch_size, num_columns]
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -112,15 +584,186 @@ class ScriptPyTextModuleWithDense(ScriptPyTextModule):
             languages=squeeze_1d(languages),
         )
         input_tensors = self.tensorizer(inputs)
-        dense_feat = self.normalizer.normalize(dense_feat)
 
-        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if dense_feat is not None:
+            dense_feat = self.normalizer.normalize(dense_feat)
+            dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        else:
+            raise RuntimeError("dense feature cannot be None.")
+
         if self.tensorizer.device != "":
             dense_tensor = dense_tensor.to(self.tensorizer.device)
         logits = self.model(input_tensors, dense_tensor)
         return self.output_layer(logits)
 
+    @torch.jit.script_method
+    def forward(
+        self,
+        # moved dense_feat from non-optional here to optional at bottom
+        # to align with Embedding module
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ):
+        return self.forward_impl(
+            texts,
+            multi_texts,
+            tokens,
+            languages,
+            dense_feat,
+        )
 
+
+class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithDense):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        tensorizer: ScriptTensorizer,
+        normalizer: VectorNormalizer,
+        index: int = 0,
+        concat_dense: bool = True,
+    ):
+        super().__init__(model, tensorizer, normalizer, concat_dense)
+        self.index = torch.jit.Attribute(index, int)
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
+        input_tensors = self.tensorizer(inputs)
+        if self.tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.tensorizer.device)
+        return self.model(input_tensors, dense_tensor)[self.index].cpu()
+
+
+class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
+    """
+    Assumes model returns a tuple of representations and sequence lengths, then slices
+    each example's representation according to length. Returns a list of tensors. The
+    slicing is easier to do outside a traced model.
+    """
+
+    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
+        super().__init__(model, tensorizer)
+        log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def _forward(self, inputs: ScriptBatchInput):
+        input_tensors = self.tensorizer(inputs)
+        reps, seq_lens = self.model(input_tensors)
+        reps = reps.cpu()
+        seq_lens = seq_lens.cpu()
+        return [reps[i, : seq_lens[i]] for i in range(len(seq_lens))]
+
+    @torch.jit.script_method
+    def forward_impl(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> List[torch.Tensor]:
+        if dense_feat is not None:
+            raise RuntimeError("dense feature not allowed.")
+
+        inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(texts, multi_texts),
+            tokens=squeeze_2d(tokens),
+            languages=squeeze_1d(languages),
+        )
+        return self._forward(inputs)
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        texts: Optional[List[str]] = None,
+        # multi_texts is of shape [batch_size, num_columns]
+        multi_texts: Optional[List[List[str]]] = None,
+        tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+        dense_feat: Optional[List[List[float]]] = None,
+    ) -> List[torch.Tensor]:
+        return self.forward_impl(
+            texts,
+            multi_texts,
+            tokens,
+            languages,
+            dense_feat,
+        )
+
+    @torch.jit.script_method
+    def make_prediction(
+        self,
+        batch: List[
+            Tuple[
+                Optional[List[str]],  # texts
+                Optional[List[List[str]]],  # multi_texts
+                Optional[List[List[str]]],  # tokens
+                Optional[List[str]],  # languages
+                Optional[List[List[float]]],  # dense_feat
+            ]
+        ],
+    ) -> List[List[torch.Tensor]]:
+
+        argno = self.argno
+
+        if argno == -1:
+            raise RuntimeError("Argument number not specified during export.")
+
+        # Argument types and Tuple indices
+        TEXTS = 0
+        # MULTI_TEXTS = 1
+        # TOKENS = 2
+        # LANGUAGES = 3
+        # DENSE_FEAT = 4
+
+        client_batch: List[int] = []
+        res_list: List[List[torch.Tensor]] = []
+
+        if argno == TEXTS:
+            flat_texts: List[str] = []
+
+            for be in batch:
+                batch_element = be[0]
+                if batch_element is not None:
+                    flat_texts.extend(batch_element)
+                    client_batch.append(len(batch_element))
+                else:
+                    # At present, we abort the entire batch if
+                    # any batch element is malformed.
+                    #
+                    # Possible refinement:
+                    # we can skip malformed requests,
+                    # and return a list plus an indiction that one or more
+                    # batch elements (and which ones) were malformed
+                    raise RuntimeError("(VE) Malformed request.")
+
+            if len(flat_texts) == 0:
+                raise RuntimeError("This is not good. Empty request batch.")
+
+            flat_result: List[torch.Tensor] = self.forward_impl(
+                texts=flat_texts,
+                multi_texts=None,
+                tokens=None,
+                languages=None,
+                dense_feat=None,
+            )
+
+        else:
+            raise RuntimeError("Parameter type unsupported")
+
+        # destructure flat result list combining
+        #   cross-request batches and client side
+        #   batches into a cross-request list of
+        #   client-side batch result lists
+        return destructure_tensor(client_batch, flat_result)
+
+
+######################## Two Tower ################################
 class ScriptTwoTowerModule(torch.jit.ScriptModule):
     @torch.jit.script_method
     def set_device(self, device: str):
@@ -221,403 +864,6 @@ class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
             left_dense_tensor,
         )
         return self.output_layer(logits)
-
-
-class ScriptPyTextEmbeddingModule(ScriptModule):
-    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
-        super().__init__()
-        self.model = model
-        self.tensorizer = tensorizer
-        self.argno = -1
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def inference_interface(self, argument_type: str):
-
-        # Argument types and Tuple indices
-        TEXTS = 0
-        # MULTI_TEXTS = 1
-        # TOKENS = 2
-        # LANGUAGES = 3
-        # DENSE_FEAT = 4
-
-        if self.argno != -1:
-            raise RuntimeError("Cannot change argument type.")
-        if argument_type == "texts":
-            self.argno = TEXTS
-        else:
-            raise RuntimeError("Unsupported argument type.")
-
-    @torch.jit.script_method
-    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
-        """
-        This functions will be called to set a padding style.
-        None - No padding
-        List: first element 0, round seq length to the smallest list element larger than inputs
-        """
-        self.tensorizer.set_padding_control(dimension, control)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput):
-        input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors).cpu()
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-        dense_feat: Optional[List[List[float]]] = None,
-    ) -> torch.Tensor:
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        return self._forward(inputs)
-
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                Optional[List[str]],  # texts
-                Optional[List[List[str]]],  # multi_texts
-                Optional[List[List[str]]],  # tokens
-                Optional[List[str]],  # languages
-                Optional[List[List[float]]],  # dense_feat
-            ]
-        ],
-    ) -> List[torch.Tensor]:
-
-        argno = self.argno
-
-        if argno == -1:
-            raise RuntimeError("Argument number not specified during export.")
-
-        batchsize = len(batch)
-
-        # Argument types and Tuple indices
-        TEXTS = 0
-        # MULTI_TEXTS = 1
-        # TOKENS = 2
-        # LANGUAGES = 3
-        # DENSE_FEAT = 4
-
-        client_batch: List[int] = []
-        res_list: List[torch.Tensor] = []
-
-        if argno == TEXTS:
-            flat_texts: List[str] = []
-
-            for i in range(batchsize):
-                batch_element = batch[i][0]
-                if batch_element is not None:
-                    flat_texts.extend(batch_element)
-                    client_batch.append(len(batch_element))
-                else:
-                    # At present, we abort the entire batch if
-                    # any batch element is malformed.
-                    #
-                    # Possible refinement:
-                    # we can skip malformed requests,
-                    # and return a list plus an indiction that one or more
-                    # batch elements (and which ones) were malformed
-                    raise RuntimeError("Malformed request.")
-
-            if len(flat_texts) == 0:
-                raise RuntimeError("This is not good. Empty request batch.")
-
-            flat_result: torch.Tensor = self.forward(
-                texts=flat_texts,
-                multi_texts=None,
-                tokens=None,
-                languages=None,
-                dense_feat=None,
-            )
-
-        else:
-            raise RuntimeError("Parameter type unsupported")
-
-        # destructure flat result tensor combining
-        #   cross-request batches and client side
-        #   batches into a cross-request list of
-        #   client-side batch tensors
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result.narrow(0, start, elems))
-            start = end
-
-        return res_list
-
-    @torch.jit.script_method
-    def make_batch(
-        self,
-        mega_batch: List[
-            Tuple[
-                Optional[List[str]],  # texts
-                Optional[List[List[str]]],  # multi_texts
-                Optional[List[List[str]]],  # tokens
-                Optional[List[str]],  # languages
-                Optional[List[List[float]]],  # dense_feat
-                int,
-            ]
-        ],
-        goals: Dict[str, str],
-    ) -> List[
-        List[
-            Tuple[
-                Optional[List[str]],  # texts
-                Optional[List[List[str]]],  # multi_texts
-                Optional[List[List[str]]],  # tokens
-                Optional[List[str]],  # languages
-                Optional[List[List[float]]],  # dense_feat
-                int,
-            ]
-        ]
-    ]:
-
-        argno = self.argno
-
-        if argno == -1:
-            raise RuntimeError("Argument number not specified during export.")
-
-        # The next lines sort all cross-request batch elements by the token length.
-        # Note that cross-request batch element can in turn be a client batch.
-        mega_batch_key_list = [
-            (max_tokens(self.tensorizer.tokenize(x[0], x[2])), n)
-            for (n, x) in enumerate(mega_batch)
-        ]
-        sorted_mega_batch_key_list = sorted(mega_batch_key_list)
-        sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
-
-        # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
-        len_mb = len(mega_batch)
-        num_batches = (len_mb + max_bs - 1) // max_bs
-
-        batch_list: List[
-            List[
-                Tuple[
-                    Optional[List[str]],  # texts
-                    Optional[List[List[str]]],  # multi_texts
-                    Optional[List[List[str]]],  # tokens
-                    Optional[List[str]],  # language,
-                    Optional[List[List[float]]],  # dense_feat
-                    int,  # position
-                ]
-            ]
-        ] = []
-
-        start = 0
-
-        for _i in range(num_batches):
-            end = min(start + max_bs, len_mb)
-            batch_list.append(sorted_mega_batch[start:end])
-            start = end
-
-        return batch_list
-
-
-class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        index: int = 0,
-    ):
-        super().__init__(model, tensorizer)
-        self.index = torch.jit.Attribute(index, int)
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput):
-        input_tensors = self.tensorizer(inputs)
-        return self.model(input_tensors)[self.index].cpu()
-
-
-class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        normalizer: VectorNormalizer,
-        concat_dense: bool = False,
-    ):
-        super().__init__(model, tensorizer)
-        self.normalizer = normalizer
-        self.concat_dense = torch.jit.Attribute(concat_dense, bool)
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
-        input_tensors = self.tensorizer(inputs)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        return self.model(input_tensors, dense_tensor).cpu()
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-        dense_feat: Optional[List[List[float]]] = None,
-    ) -> torch.Tensor:
-        if dense_feat is None:
-            raise RuntimeError("Expect dense feature.")
-
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        # call model
-        dense_feat = self.normalizer.normalize(dense_feat)
-        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
-
-        sentence_embedding = self._forward(inputs, dense_tensor)
-        if self.concat_dense:
-            return torch.cat([sentence_embedding, dense_tensor], 1)
-        else:
-            return sentence_embedding
-
-
-class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithDense):
-    def __init__(
-        self,
-        model: torch.jit.ScriptModule,
-        tensorizer: ScriptTensorizer,
-        normalizer: VectorNormalizer,
-        index: int = 0,
-        concat_dense: bool = True,
-    ):
-        super().__init__(model, tensorizer, normalizer, concat_dense)
-        self.index = torch.jit.Attribute(index, int)
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
-        input_tensors = self.tensorizer(inputs)
-        if self.tensorizer.device != "":
-            dense_tensor = dense_tensor.to(self.tensorizer.device)
-        return self.model(input_tensors, dense_tensor)[self.index].cpu()
-
-
-class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
-    """
-    Assumes model returns a tuple of representations and sequence lengths, then slices
-    each example's representation according to length. Returns a list of tensors. The
-    slicing is easier to do outside a traced model.
-    """
-
-    def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
-        super().__init__(model, tensorizer)
-        log_class_usage(self.__class__)
-
-    @torch.jit.script_method
-    def _forward(self, inputs: ScriptBatchInput):
-        input_tensors = self.tensorizer(inputs)
-        reps, seq_lens = self.model(input_tensors)
-        reps = reps.cpu()
-        seq_lens = seq_lens.cpu()
-        return [reps[i, : seq_lens[i]] for i in range(len(seq_lens))]
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-        dense_feat: Optional[List[List[float]]] = None,
-    ) -> List[torch.Tensor]:
-        inputs: ScriptBatchInput = ScriptBatchInput(
-            texts=resolve_texts(texts, multi_texts),
-            tokens=squeeze_2d(tokens),
-            languages=squeeze_1d(languages),
-        )
-        return self._forward(inputs)
-
-    @torch.jit.script_method
-    def make_prediction(
-        self,
-        batch: List[
-            Tuple[
-                Optional[List[str]],  # texts
-                Optional[List[List[str]]],  # multi_texts
-                Optional[List[List[str]]],  # tokens
-                Optional[List[str]],  # languages
-                Optional[List[List[float]]],  # dense_feat
-            ]
-        ],
-    ) -> List[List[torch.Tensor]]:
-
-        argno = self.argno
-
-        if argno == -1:
-            raise RuntimeError("Argument number not specified during export.")
-
-        # Argument types and Tuple indices
-        TEXTS = 0
-        # MULTI_TEXTS = 1
-        # TOKENS = 2
-        # LANGUAGES = 3
-        # DENSE_FEAT = 4
-
-        client_batch: List[int] = []
-        res_list: List[List[torch.Tensor]] = []
-
-        if argno == TEXTS:
-            flat_texts: List[str] = []
-
-            for be in batch:
-                batch_element = be[0]
-                if batch_element is not None:
-                    flat_texts.extend(batch_element)
-                    client_batch.append(len(batch_element))
-                else:
-                    # At present, we abort the entire batch if
-                    # any batch element is malformed.
-                    #
-                    # Possible refinement:
-                    # we can skip malformed requests,
-                    # and return a list plus an indiction that one or more
-                    # batch elements (and which ones) were malformed
-                    raise RuntimeError("(VE) Malformed request.")
-
-            if len(flat_texts) == 0:
-                raise RuntimeError("This is not good. Empty request batch.")
-
-            flat_result: List[torch.Tensor] = self.forward(
-                texts=flat_texts,
-                multi_texts=None,
-                tokens=None,
-                languages=None,
-                dense_feat=None,
-            )
-
-        else:
-            raise RuntimeError("Parameter type unsupported")
-
-        # destructure flat result list combining
-        #   cross-request batches and client side
-        #   batches into a cross-request list of
-        #   client-side batch result lists
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result[start:end])
-            start = end
-
-        return res_list
 
 
 class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
@@ -764,13 +1010,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         #   cross-request batches and client side
         #   batches into a cross-request list of
         #   client-side batch tensors
-        start = 0
-        for elems in client_batch:
-            end = start + elems
-            res_list.append(flat_result.narrow(0, start, elems))
-            start = end
-
-        return res_list
+        return destructure_tensor(client_batch, flat_result)
 
     @torch.jit.script_method
     def make_batch(
