@@ -83,3 +83,52 @@ class TestMain(unittest.TestCase):
             input='{"text": "create an alarm for 1:30 pm"}',
         )
         assert "'prediction':" in result.output, result.exception
+
+    def test_docnn_with_torchscript_export(self):
+        # prepare config
+        config_dict = self.find_and_patch_config("docnn_wo_export.json")
+        model_path = config_dict["save_snapshot_path"]
+        config_json = json.dumps(config_dict)
+
+        # train model
+        result = self.runner.invoke(main, args=["--config-json", config_json, "train"])
+        assert not result.exception, result.exception
+
+        # export the trained model
+        result = self.runner.invoke(
+            main,
+            args=[
+                "--config-json",
+                config_json,
+                "torchscript-export",
+                "--export-json",
+                os.path.join(self.config_base_path, "export_options.json"),
+            ],
+        )
+        expected = """ExportConfig:\n    accelerate: []\n    batch_padding_control: None\n    export_caffe2_path: /tmp/model.caffe2.predictor\n    export_lite_path: None\n    export_onnx_path: /tmp/model.onnx\n    export_torchscript_path: /tmp/new_docnn.pt1\n    inference_interface: None\n    seq_padding_control: None\n    torchscript_quantize: False"""
+        assert not result.exception, result.exception
+        assert expected in result.output
+
+        # export the trained model with output path
+        result = self.runner.invoke(
+            main,
+            args=[
+                "--config-json",
+                config_json,
+                "torchscript-export",
+                "--export-json",
+                os.path.join(self.config_base_path, "export_options.json"),
+                "--output-path",
+                "test-path",
+            ],
+        )
+        expected = """ExportConfig:\n    accelerate: []\n    batch_padding_control: None\n    export_caffe2_path: None\n    export_lite_path: None\n    export_onnx_path: /tmp/model.onnx\n    export_torchscript_path: /tmp/new_docnn.pt1\n    inference_interface: None\n    seq_padding_control: None\n    torchscript_quantize: None"""
+        assert not result.exception, result.exception
+        assert expected in result.output
+
+        result = self.runner.invoke(
+            main,
+            args=["predict-py", "--model-file", model_path],
+            input='{"text": "create an alarm for 1:30 pm"}',
+        )
+        assert "'prediction':" in result.output, result.exception
