@@ -3,7 +3,7 @@
 
 from typing import List, Optional
 
-import opacus
+# import opacus
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType
 
