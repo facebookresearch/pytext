@@ -509,6 +509,9 @@ def torchscript_export(context, export_json, model, output_path, quantize):
                     ("export_caffe2_path", "export_onnx_path"),
                 )
                 export_config.torchscript_quantize = quantize
+            # if config has export_torchscript_path, use export_torchscript_path from config, otherwise keep the default from CLI
+            if export_config.export_torchscript_path is not None:
+                output_path = export_config.export_torchscript_path
             if not model or not output_path:
                 config = context.obj.load_config()
                 model = model or config.save_snapshot_path
