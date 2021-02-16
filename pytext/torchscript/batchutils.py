@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import torch
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
@@ -37,6 +37,21 @@ def destructure_tensor(
     for elems in client_batch:
         end = start + elems
         res_list.append(result_tensor.narrow(0, start, elems))
+        start = end
+
+    return res_list
+
+
+def destructure_any_list(
+    client_batch: List[int], result_any_list: List[Any]
+):  # -> List[List[Any]]:
+    res_list: List[List[Any]] = []  # torch.jit.annotate(List[List[Any]], [])
+
+    start = 0
+
+    for elems in client_batch:
+        end = start + elems
+        res_list.append(result_any_list[start:end])
         start = end
 
     return res_list
