@@ -65,13 +65,26 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
     def get_max_seq_len(self) -> int:
         """
         This function returns the maximum sequence length for the model,
-        if it is defined, otherwise None.
+        if it is defined, otherwise raises a Runtime Error.
         """
         if hasattr(self.tensorizer, "max_seq_len"):
             if self.tensorizer.max_seq_len is not None:
                 return self.tensorizer.max_seq_len
 
         raise RuntimeError("max_seq_len not defined")
+
+    @torch.jit.script_method
+    def get_max_batch_len(self) -> int:
+        """
+        This function returns the maximum batch length for the model,
+        if it is defined, otherwise -1.
+        """
+        if hasattr(self.tensorizer, "batch_padding_control"):
+            batch_padding_control = self.tensorizer.batch_padding_control
+            if batch_padding_control is not None:
+                return batch_padding_control[-1]
+
+        return -1
 
     @torch.jit.script_method
     def inference_interface(self, argument_type: str):
@@ -1240,6 +1253,19 @@ class PyTextEmbeddingModule(torch.jit.ScriptModule):
                 return self.tensorizer.max_seq_len
 
         raise RuntimeError("max_seq_len not defined")
+
+    @torch.jit.script_method
+    def get_max_batch_len(self) -> int:
+        """
+        This function returns the maximum batch length for the model,
+        if it is defined, otherwise -1.
+        """
+        if hasattr(self.tensorizer, "batch_padding_control"):
+            batch_padding_control = self.tensorizer.batch_padding_control
+            if batch_padding_control is not None:
+                return batch_padding_control[-1]
+
+        return -1
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
