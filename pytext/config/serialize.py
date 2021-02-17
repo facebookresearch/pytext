@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from pytext.common.utils import eprint
 
@@ -162,14 +162,20 @@ def _is_type_specifier(value):
 
 def _try_component_config_from_json(cls, value):
     if _is_type_specifier(value):
-        options = Registry.subconfigs(cls)
         type_name = list(value)[0]
-        for option in options:
-            if type_name.lower() == _canonical_typename(option).lower():
-                return _value_from_json(option, value[type_name])
-        else:
-            raise Exception(f"could not find specified component class {type_name}")
+        component_config_type = component_config_type_from_type_name(cls, type_name)
+        return _value_from_json(component_config_type, value[type_name])
+
     return None
+
+
+def component_config_type_from_type_name(cls, type_name: str) -> Type:
+    options = Registry.subconfigs(cls)
+    for option in options:
+        if type_name.lower() == _canonical_typename(option).lower():
+            return option
+    else:
+        raise Exception(f"could not find specified component class {type_name}")
 
 
 def pytext_config_from_json(json_obj, ignore_fields=(), auto_upgrade=True):

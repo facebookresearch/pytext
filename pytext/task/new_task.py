@@ -27,6 +27,13 @@ from .quantize import quantize_statically
 from .task import TaskBase
 
 
+ADDITIONAL_COLUMN_NAMES_ATTRIBUTES = (
+    "text_column_names",
+    "additional_column_names",
+    "student_column_names",
+)
+
+
 def create_schema(
     tensorizers: Dict[str, Tensorizer], extra_schema: Optional[Dict[str, Type]] = None
 ) -> Schema:
@@ -139,9 +146,9 @@ class _NewTask(TaskBase):
         # Pull extra columns from the metric reporter config to pass into
         # the data source schema.
         extra_columns = (
-            getattr(config.metric_reporter, "text_column_names", [])
-            + getattr(config.metric_reporter, "additional_column_names", [])
-            + getattr(config.metric_reporter, "student_column_names", [])
+            column
+            for attr in ADDITIONAL_COLUMN_NAMES_ATTRIBUTES
+            for column in getattr(config.metric_reporter, attr, [])
         )
         extra_schema = {column: Any for column in extra_columns}
 
