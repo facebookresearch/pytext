@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
+from pytext.config import ExportConfig
 from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
@@ -35,6 +36,26 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         self.tensorizer = tensorizer
         self.argno = -1
         log_class_usage(self.__class__)
+
+    def validate(self, export_conf: ExportConfig):
+        if (
+            (export_conf.inference_interface is not None)
+            or (export_conf.accelerate is not None)
+            or (export_conf.seq_padding_control is not None)
+            or (export_conf.batch_padding_control is not None)
+        ):
+            msg = [
+                "***********  DEPRECATION WARNING  **********",
+                "Modules concurrently supporting untokenized",
+                "and tokenized inputs are being deprecated!",
+                "",
+                "Preferably, use the corresponding Pytext{Type}Module",
+                "hierarchy (sans 'Script') classes to offer models",
+                "including tokenization.",
+                "*********************************************",
+            ]
+            for line in msg:
+                print(line)
 
     @torch.jit.script_method
     def set_device(self, device: str):
