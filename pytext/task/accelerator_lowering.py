@@ -7,6 +7,7 @@ import torch
 from accelerators.pytorch.lib.glow_decorator import accelerator
 from pytext.config import ExportConfig
 from pytext.models.roberta import RoBERTaEncoder
+from pytext.utils.usage import log_accelerator_feature_usage
 from torch import nn
 
 
@@ -125,6 +126,7 @@ def swap_modules_for_accelerator(model):
 def lower_modules_to_accelerator(model: nn.Module, trace, export_options: ExportConfig):
     import torch_glow
 
+    log_accelerator_feature_usage("build.NNPI")
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         backend = "NNPI"
         (
