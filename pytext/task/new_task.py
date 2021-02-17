@@ -361,6 +361,8 @@ class _NewTask(TaskBase):
 
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
+        if hasattr(trace, "validate"):
+            trace.validate(export_config)
         if seq_padding_control is not None:
             if hasattr(trace, "set_padding_control"):
                 trace.set_padding_control("sequence_length", seq_padding_control)
