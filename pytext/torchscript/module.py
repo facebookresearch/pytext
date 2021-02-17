@@ -3,6 +3,10 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
+from multiray.textray.textray_details.ttypes import (  # noqa
+    QuantizationSchema,
+    FeatureSchema,
+)
 from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
