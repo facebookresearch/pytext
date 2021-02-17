@@ -10,7 +10,7 @@ import torch
 from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
 from pytext.utils.data import is_number, unkify
-from torchtext.data import Dataset
+from torchtext.legacy.data import Dataset
 
 
 class TextFeatureFieldWithSpecialUnk(TextFeatureField):
@@ -21,9 +21,9 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
 
     def build_vocab(self, *args, min_freq=1, **kwargs):
         """
-        Code is exactly same as as torchtext.data.Field.build_vocab() before the
+        Code is exactly same as as torchtext.legacy.data.Field.build_vocab() before the
         UNKification logic. The reason super().build_vocab() cannot be called is
-        because the Counter object computed in torchtext.data.Field.build_vocab()
+        because the Counter object computed in torchtext.legacy.data.Field.build_vocab()
         is required for UNKification and, that object cannot be recovered after
         super().build_vocab() call is made.
         """
@@ -81,7 +81,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
         device: Optional[Union[str, torch.device]] = None,
     ):
         """
-        Code is exactly same as torchtext.data.Field.numericalize() except the
+        Code is exactly same as torchtext.legacy.data.Field.numericalize() except the
         call to self._get_idx(x) instead of self.vocab.stoi[x] for getting the
         index of an item from vocab.
         This is needed because torchtext doesn't allow custom UNKification.

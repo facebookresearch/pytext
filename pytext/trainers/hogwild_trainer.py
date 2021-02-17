@@ -10,7 +10,7 @@ from pytext.config.pytext_config import ConfigBase
 from pytext.metric_reporters import MetricReporter
 from pytext.trainers.trainer import TaskTrainer, Trainer, TrainingState
 from pytext.utils import cuda
-from torchtext.data import Iterator
+from torchtext.legacy.data import Iterator
 
 
 class HogwildTrainer_Deprecated(Trainer):

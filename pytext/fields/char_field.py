@@ -7,7 +7,8 @@ from typing import List
 import torch
 from pytext.common.constants import VocabMeta
 from pytext.utils.data import no_tokenize
-from torchtext import data as textdata, vocab
+from torchtext import vocab
+from torchtext.legacy import data as textdata
 
 from .field import VocabUsingField
 
