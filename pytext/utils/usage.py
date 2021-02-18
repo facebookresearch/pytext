@@ -3,16 +3,17 @@
 
 import torch
 
+subsystem_name = "PyText"
 
 def log_class_usage(klass):
-    identifier = "PyText"
+    identifier = subsystem_name
     if klass and hasattr(klass, "__name__"):
         identifier += f".{klass.__name__}"
     torch._C._log_api_usage_once(identifier)
 
 
 def log_feature_usage(feature):
-    identifier = "PyText." + feature
+    identifier = subsystem_name + "." + feature
     torch._C._log_api_usage_once(identifier)
 
 
