@@ -19,6 +19,8 @@ from pytext.loss import (
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLoss,
+    StructuredLoss,
+    StructuredMarginLoss,
 )
 from pytext.models.crf import CRF
 from pytext.utils.label import get_label_weights
@@ -81,6 +83,7 @@ class WordTaggingOutputLayer(OutputLayerBase):
             KLDivergenceBCELoss.Config,
             KLDivergenceCELoss.Config,
             LabelSmoothedCrossEntropyLoss.Config,
+            StructuredMarginLoss.Config,
         ] = CrossEntropyLoss.Config()
         label_weights: Dict[str, float] = {}
         ignore_pad_in_loss: Optional[bool] = True
@@ -126,19 +129,25 @@ class WordTaggingOutputLayer(OutputLayerBase):
             torch.Tensor: Word tagging loss for all words in the sentence.
 
         """
-        # flatten the logit from [batch_size, seq_lens, dim] to
-        # [batch_size * seq_lens, dim]
-        flattened_logit = logit.view(-1, logit.size()[-1])
+
+        orig_target = target.clone()
+
+        # Structured losses require access to sequences in each batch, so don't
+        # flatten logits and targets for these.
+        if not isinstance(self.loss_fn, StructuredLoss):
+            logit = logit.view(-1, logit.size(-1))  # B x T x V -> (B x T) x V
+            target = target.view(-1)  # B x T -> (B x T)
+
         if isinstance(target, tuple):
             hard_target, _, soft_target = target
             target = (
                 hard_target.view(-1),
                 None,
-                soft_target.view(-1, soft_target.size()[-1]),
+                soft_target.view(-1, soft_target.size(-1)),
             )
-            return self.loss_fn(flattened_logit, target, reduce)
+            return self.loss_fn(logit, orig_target, reduce)
 
-        return self.loss_fn(flattened_logit, target.view(-1), reduce)
+        return self.loss_fn(logit, target, reduce)
 
     def get_pred(
         self, logit: torch.Tensor, *args, **kwargs
