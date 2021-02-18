@@ -246,12 +246,15 @@ class _EncoderPairwiseModel(BasePairwiseModel):
     def arrange_targets(self, tensor_dict):
         return tensor_dict["labels"]
 
+    def _encoder_forwards(self, input_tuple1, input_tuple2):
+        return self.encoder1(input_tuple1)[0], self.encoder2(input_tuple2)[0]
+
     def forward(
         self,
         input_tuple1: Tuple[torch.Tensor, ...],
         input_tuple2: Tuple[torch.Tensor, ...],
     ) -> torch.Tensor:
-        encodings = (self.encoder1(input_tuple1)[0], self.encoder2(input_tuple2)[0])
+        encodings = self._encoder_forwards(input_tuple1, input_tuple2)
         if self.encode_relations:
             encodings = self._encode_relations(encodings)
         return self.decoder(torch.cat(encodings, -1)) if self.decoder else encodings
