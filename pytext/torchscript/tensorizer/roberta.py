@@ -84,17 +84,38 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
             end_indices_2d.append(numberized[3])
             positions_2d.append(numberized[4])
 
-        tokens, pad_mask = pad_2d_mask(tokens_2d, pad_value=self.vocab.pad_idx)
+        tokens, pad_mask = pad_2d_mask(
+            tokens_2d,
+            pad_value=self.vocab.pad_idx,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
+        )
         start_indices = torch.tensor(
-            pad_2d(start_indices_2d, seq_lens=seq_len_2d, pad_idx=self.vocab.pad_idx),
+            pad_2d(
+                start_indices_2d,
+                seq_lens=seq_len_2d,
+                pad_idx=self.vocab.pad_idx,
+                max_len=self.max_seq_len,
+            ),
             dtype=torch.long,
         )
         end_indices = torch.tensor(
-            pad_2d(end_indices_2d, seq_lens=seq_len_2d, pad_idx=self.vocab.pad_idx),
+            pad_2d(
+                end_indices_2d,
+                seq_lens=seq_len_2d,
+                pad_idx=self.vocab.pad_idx,
+                max_len=self.max_seq_len,
+            ),
             dtype=torch.long,
         )
         positions = torch.tensor(
-            pad_2d(positions_2d, seq_lens=seq_len_2d, pad_idx=self.vocab.pad_idx),
+            pad_2d(
+                positions_2d,
+                seq_lens=seq_len_2d,
+                pad_idx=self.vocab.pad_idx,
+                max_len=self.max_seq_len,
+            ),
             dtype=torch.long,
         )
 
