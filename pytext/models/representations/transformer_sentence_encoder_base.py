@@ -120,9 +120,9 @@ class TransformerSentenceEncoderBase(RepresentationBase):
         else:
             raise Exception("{} pooling is not supported".format(self.pooling))
 
-        pad_mask = pad_mask.unsqueeze(2)
-        sent_out = sent_out * pad_mask.float()
-        pooled_output = torch.sum(sent_out, 1) / torch.sum(pad_mask, 1).float()
+        pad_mask = pad_mask.unsqueeze(2).type_as(encoded_layers[0])
+        sent_out = sent_out * pad_mask
+        pooled_output = torch.sum(sent_out, 1) / torch.sum(pad_mask, 1)
         return pooled_output
 
     def forward(
