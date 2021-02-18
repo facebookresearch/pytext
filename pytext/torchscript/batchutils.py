@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
@@ -100,6 +100,79 @@ def destructure_dictlist_list(
         start = end
 
     return res_list
+
+
+def zip_batch_tensor_list(
+    zip_batch_list: List[int],
+    result_list_1: List[torch.Tensor],
+    result_list_2: List[torch.Tensor],
+) -> List[torch.Tensor]:
+    res_list: List[torch.Tensor] = torch.jit.annotate(List[torch.Tensor], [])
+
+    elem1 = 0
+    elem2 = 0
+
+    for zipper in zip_batch_list:
+        if zipper > 0:
+            res_list.append(result_list_1[elem1])
+            elem1 = elem1 + 1
+        else:
+            res_list.append(result_list_1[elem2])
+            elem2 = elem2 + 1
+
+    return res_list
+
+
+def zip_batch_any_list_list(
+    zip_batch_list: List[int],
+    result_list_1: List[List[Any]],
+    result_list_2: List[List[Any]],
+) -> List[List[Any]]:
+    res_list: List[List[Any]] = torch.jit.annotate(List[List[Any]], [])
+
+    elem1 = 0
+    elem2 = 0
+
+    for zipper in zip_batch_list:
+        if zipper > 0:
+            res_list.append(result_list_1[elem1])
+            elem1 = elem1 + 1
+        else:
+            res_list.append(result_list_1[elem2])
+            elem2 = elem2 + 1
+
+    return res_list
+
+
+def validate_batch_element(
+    e: Tuple[
+        Optional[List[str]],  # texts
+        Optional[List[List[str]]],  # multi_texts
+        Optional[List[List[str]]],  # tokens
+        Optional[List[str]],  # languages
+        Optional[List[List[float]]],  # dense_feat must be None
+    ]
+):
+
+    bad = False
+
+    if len(e[0]) > 0:
+        if (len(e[1]) > 0) or (len(e[2]) > 0):
+            bad = True
+        if (e[4] is not None) and (len(e[4]) != len(e[0])):
+            bad = True
+
+    if len(e[1]) > 0:
+        raise RuntimeError("multi_texts not supported for batching")
+
+    if len(e[2]) > 0:
+        if (len(e[0]) > 0) or (len(e[1]) > 0):
+            bad = True
+        if (e[4] is not None) and (len(e[4]) != len(e[2])):
+            bad = True
+
+    if bad:
+        raise RuntimeError("Malformed request")
 
 
 ############################################################################

@@ -8,6 +8,8 @@ from pytext.torchscript.batchutils import (
     destructure_tensor,
     destructure_tensor_list,
     destructure_any_list,
+    zip_batch_any_list_list,
+    zip_batch_tensor_list,
     make_batch_texts_dense,
     make_prediction_texts,
     make_prediction_texts_dense,
@@ -175,71 +177,106 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         ],
     ):  # List[torch.Tensor] or List[List[Any]]
 
-        argno = self.argno
-
-        if argno == -1:
-            raise RuntimeError("Argument number not specified during export.")
-
         batchsize = len(batch)
 
-        # Argument types and Tuple indices
-        TEXTS = 0
-        # MULTI_TEXTS = 1
-        # TOKENS = 2
-        # LANGUAGES = 3
-        # DENSE_FEAT = 4
+        client_batch_texts: List[int] = []
+        client_batch_tokens: List[int] = []
+        zip_batch_list: List[int] = []
 
-        client_batch: List[int] = []
+        flat_texts: List[str] = []
+        flat_tokens: List[List[str]] = []
 
-        if argno == TEXTS:
-            flat_texts: List[str] = []
+        for i in range(batchsize):
+            batch_element_texts = batch[i][0]
+            batch_element_tokens = batch[i][2]
 
-            for i in range(batchsize):
-                batch_element = batch[i][0]
-                if batch_element is not None:
-                    flat_texts.extend(batch_element)
-                    client_batch.append(len(batch_element))
-                else:
-                    # At present, we abort the entire batch if
-                    # any batch element is malformed.
-                    #
-                    # Possible refinement:
-                    # we can skip malformed requests,
-                    # and return a list plus an indiction that one or more
-                    # batch elements (and which ones) were malformed
-                    raise RuntimeError("Malformed request.")
+            if batch_element_texts is not None:
+                flat_texts.extend(batch_element_texts)
+                client_batch_texts.append(len(batch_element_texts))
+                zip_batch_list.append(1)
+            elif batch_element_tokens is not None:
+                flat_tokens.extend(batch_element_tokens)
+                client_batch_tokens.append(len(batch_element_tokens))
+                zip_batch_list.append(-1)
+            else:
+                # At present, we abort the entire batch if
+                # any batch element is malformed.
+                #
+                # Possible refinement:
+                # we can skip malformed requests,
+                # and return a list plus an indiction that one or more
+                # batch elements (and which ones) were malformed
+                raise RuntimeError("Malformed request.")
 
-            if len(flat_texts) == 0:
-                raise RuntimeError("This is not good. Empty request batch.")
+        if len(flat_texts) == 0 and len(flat_tokens) == 0:
+            raise RuntimeError("This is not good. Empty request batch.")
 
-            flat_result = self.forward_impl(
+        if len(flat_texts) > 0 and len(flat_tokens) > 0:
+            raise RuntimeError("Mixing tokens and texts not supported in this service.")
+            # flat_result_texts = self.forward_impl(
+            #     texts=flat_texts,
+            #     multi_texts=None,
+            #     tokens=None,
+            #     languages=None,
+            #     dense_feat=None,
+            # )
+            # flat_result_tokens = self.forward_impl(
+            #     texts=None,
+            #     multi_texts=None,
+            #     tokens=flat_tokens,
+            #     languages=None,
+            #     dense_feat=None,
+            # )
+        elif len(flat_texts) > 0:
+            flat_result_texts = self.forward_impl(
                 texts=flat_texts,
                 multi_texts=None,
                 tokens=None,
                 languages=None,
                 dense_feat=None,
             )
+            # ignored in logic, this makes type system happy
+            flat_result_tokens = flat_result_texts
+        else:  #  len(flat_tokens) > 0:
+            flat_result_tokens = self.forward_impl(
+                texts=None,
+                multi_texts=None,
+                tokens=flat_tokens,
+                languages=None,
+                dense_feat=None,
+            )
+            # ignored in logic, this makes type system happy
+            flat_result_texts = flat_result_tokens
 
-        else:
-            raise RuntimeError("Parameter type unsupported")
-
-        # if torch.jit.isinstance(flat_result, torch.Tensor):
-        if isinstance(flat_result, torch.Tensor):
+        # if torch.jit.isinstance(flat_result_tokens, torch.Tensor):
+        if isinstance(flat_result_tokens, torch.Tensor):
             # destructure flat result tensor combining
             #   cross-request batches and client side
             #   batches into a cross-request list of
             #   client-side batch tensors
-            return destructure_tensor(client_batch, flat_result)
+            return zip_batch_tensor_list(
+                zip_batch_list,
+                destructure_tensor(client_batch_texts, flat_result_texts),
+                destructure_tensor(client_batch_tokens, flat_result_tokens),
+            )
         else:
             # destructure result list of any result type combining
             #   cross-request batches and client side
             #   batches into a cross-request list of
             #   client-side result lists
             result_texts_any_list: List[Any] = torch.jit.annotate(List[Any], [])
-            for v in flat_result:
+            for v in flat_result_texts:
                 result_texts_any_list.append(v)
 
-            return destructure_any_list(client_batch, result_texts_any_list)
+            result_tokens_any_list: List[Any] = torch.jit.annotate(List[Any], [])
+            for v in flat_result_tokens:
+                result_tokens_any_list.append(v)
+
+            return zip_batch_any_list_list(
+                zip_batch_list,
+                destructure_any_list(client_batch_texts, result_texts_any_list),
+                destructure_any_list(client_batch_tokens, result_tokens_any_list),
+            )
 
     @torch.jit.script_method
     def make_batch(
