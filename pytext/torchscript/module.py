@@ -28,6 +28,27 @@ def resolve_texts(
     return multi_texts
 
 
+def deprecation_warning(export_conf: ExportConfig):
+    if (
+        (export_conf.inference_interface is not None)
+        or (export_conf.accelerate is not None)
+        or (export_conf.seq_padding_control is not None)
+        or (export_conf.batch_padding_control is not None)
+    ):
+        msg = [
+            "***********  DEPRECATION WARNING  **********",
+            "Modules concurrently supporting untokenized",
+            "and tokenized inputs are being deprecated!",
+            "",
+            "Preferably, use the corresponding Pytext{Type}Module",
+            "hierarchy (sans 'Script') classes to offer models",
+            "including tokenization.",
+            "*********************************************",
+        ]
+        for line in msg:
+            print(line)
+
+
 class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
     def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
 
@@ -38,24 +59,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         log_class_usage(self.__class__)
 
     def validate(self, export_conf: ExportConfig):
-        if (
-            (export_conf.inference_interface is not None)
-            or (export_conf.accelerate is not None)
-            or (export_conf.seq_padding_control is not None)
-            or (export_conf.batch_padding_control is not None)
-        ):
-            msg = [
-                "***********  DEPRECATION WARNING  **********",
-                "Modules concurrently supporting untokenized",
-                "and tokenized inputs are being deprecated!",
-                "",
-                "Preferably, use the corresponding Pytext{Type}Module",
-                "hierarchy (sans 'Script') classes to offer models",
-                "including tokenization.",
-                "*********************************************",
-            ]
-            for line in msg:
-                print(line)
+        deprecation_warning(export_conf)
 
     @torch.jit.script_method
     def set_device(self, device: str):
@@ -806,6 +810,19 @@ class ScriptTwoTowerModule(torch.jit.ScriptModule):
         self.right_tensorizer.set_device(device)
         self.left_tensorizer.set_device(device)
 
+    @torch.jit.script_method
+    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        self.right_tensorizer.set_padding_control(dimension, control)
+        self.left_tensorizer.set_padding_control(dimension, control)
+
+    def validate(self, export_conf: ExportConfig):
+        deprecation_warning(export_conf)
+
 
 class ScriptPyTextTwoTowerModule(ScriptTwoTowerModule):
     def __init__(
@@ -932,16 +949,6 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
             self.argno = TEXTS
         else:
             raise RuntimeError("Unsupported argument type.")
-
-    @torch.jit.script_method
-    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
-        """
-        This functions will be called to set a padding style.
-        None - No padding
-        List: first element 0, round seq length to the smallest list element larger than inputs
-        """
-        self.right_tensorizer.set_padding_control(dimension, control)
-        self.left_tensorizer.set_padding_control(dimension, control)
 
     @torch.jit.script_method
     def _forward(self, right_inputs: ScriptBatchInput, left_inputs: ScriptBatchInput):
