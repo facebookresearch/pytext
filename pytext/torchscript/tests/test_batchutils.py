@@ -5,6 +5,7 @@ import unittest
 
 import torch
 from pytext.torchscript.batchutils import (
+    destructure_dict_list,
     destructure_tensor_list,
     make_prediction_tokens,
     make_prediction_texts,
@@ -108,6 +109,67 @@ class BatchUtilsTest(unittest.TestCase):
         for sublist in result_tensor_list:
             for tens in sublist:
                 self.assertTrue(torch.equal(tens, torch.tensor([0] * i)))
+                i += 1
+
+    def test_destructure_dict_list_empty(self):
+        dict_list = [{"a": 0}]
+        result_dict_list = destructure_dict_list([], dict_list)
+        self.assertEqual(len(result_dict_list), 0)
+
+    def test_destructure_dict_list_short_complete(self):
+        dict_list = [{"a": 0}, {"b": 1, "c": 2}]
+        result_dict_list = destructure_dict_list([1, 1], dict_list)
+        self.assertEqual(len(result_dict_list), 2)
+        self.assertEqual(len(result_dict_list[0]), 1)
+        self.assertEqual(len(result_dict_list[1]), 1)
+        self.assertEqual(result_dict_list[0][0], {"a": 0})
+        self.assertEqual(result_dict_list[1][0], {"b": 1, "c": 2})
+
+    def test_destructure_dict_list_short_incomplete(self):
+        dict_list = [{"a": 0}, {"b": 1, "c": 2, "d": 3}, {"e": 4, "f": 5}]
+        result_dict_list = destructure_dict_list([1, 1, 0], dict_list)
+        self.assertEqual(len(result_dict_list), 3)
+        self.assertEqual(len(result_dict_list[0]), 1)
+        self.assertEqual(len(result_dict_list[1]), 1)
+        self.assertEqual(len(result_dict_list[2]), 0)
+        self.assertEqual(result_dict_list[0][0], {"a": 0})
+        self.assertEqual(result_dict_list[1][0], {"b": 1, "c": 2, "d": 3})
+
+    def test_destructure_dict_list_long1(self):
+        dict_list = [{"a": 0} for i in range(1000)]
+        result_dict_list = destructure_dict_list([100, 200, 300, 400], dict_list)
+        self.assertEqual(len(result_dict_list), 4)
+        self.assertEqual(len(result_dict_list[0]), 100)
+        self.assertEqual(len(result_dict_list[1]), 200)
+        self.assertEqual(len(result_dict_list[2]), 300)
+        self.assertEqual(len(result_dict_list[3]), 400)
+        for sublist in result_dict_list:
+            for tens in sublist:
+                self.assertEqual(tens, {"a": 0})
+
+    def test_destructure_dict_list_long2(self):
+        dict_list = [{"a": 0} for i in range(2000)]
+        length_list = [1, 2, 3, 4] * 100
+        result_dict_list = destructure_dict_list(length_list, dict_list)
+        self.assertEqual(len(result_dict_list), len(length_list))
+        for i in range(len(length_list)):
+            self.assertEqual(len(result_dict_list[i]), length_list[i])
+        for sublist in result_dict_list:
+            for tens in sublist:
+                self.assertEqual(tens, {"a": 0})
+
+    def test_destructure_dict_list_long3(self):
+        dict_list = [{"a": i} for i in range(100)]
+        length_list = [1, 2, 3, 4] * 10
+
+        result_dict_list = destructure_dict_list(length_list, dict_list)
+        self.assertEqual(len(result_dict_list), len(length_list))
+        for i in range(len(length_list)):
+            self.assertEqual(len(result_dict_list[i]), length_list[i])
+        i = 0
+        for sublist in result_dict_list:
+            for tens in sublist:
+                self.assertEqual(tens, {"a": i})
                 i += 1
 
     def test_make_prediction_texts(self) -> None:
