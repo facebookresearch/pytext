@@ -5,6 +5,7 @@ import torch
 
 subsystem_name = "PyText"
 
+
 def log_class_usage(klass):
     identifier = subsystem_name
     if klass and hasattr(klass, "__name__"):
