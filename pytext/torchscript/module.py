@@ -253,9 +253,9 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         if len(flat_texts) == 0 and len(flat_tokens) == 0:
             raise RuntimeError("This is not good. Empty request batch.")
 
-        max_batch = self.get_max_batch_len()
-        if max_batch < 0:
-            max_batch = max(len(flat_texts), len(flat_tokens))
+        # max_batch = self.get_max_batch_len()
+        # if max_batch < 0:
+        #    max_batch = max(len(flat_texts), len(flat_tokens))
 
         if len(flat_texts) > 0 and len(flat_tokens) > 0:
             raise RuntimeError("Mixing tokens and texts not supported in this service.")
@@ -286,59 +286,23 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
             # )
             # etc etc
         elif len(flat_texts) > 0:
-            flat_result_texts = self.forward_impl(
-                texts=flat_texts[:max_batch],
+            flat_result_texts = self.forward(
+                texts=flat_texts,
                 multi_texts=None,
                 tokens=None,
                 languages=None,
                 dense_feat=None,
             )
-            flat_texts = flat_texts[max_batch:]
-            while len(flat_texts) > 0:
-                flat_result_texts_extension = self.forward_impl(
-                    texts=flat_texts[:max_batch],
-                    multi_texts=None,
-                    tokens=None,
-                    languages=None,
-                    dense_feat=None,
-                )
-                # the result of forward is either a torch.Tensor or a List[Any]
-                if isinstance(flat_result_texts, torch.Tensor):
-                    flat_result_texts = torch.cat(
-                        [flat_result_texts, flat_result_texts_extension], dim=0
-                    )
-                else:
-                    flat_result_texts.extend(flat_result_texts_extension)
-
-                flat_texts = flat_texts[max_batch:]
             # ignored in logic, this makes type system happy
             flat_result_tokens = flat_result_texts
         else:  #  len(flat_tokens) > 0:
-            flat_result_tokens = self.forward_impl(
+            flat_result_tokens = self.forward(
                 texts=None,
                 multi_texts=None,
-                tokens=flat_tokens[:max_batch],
+                tokens=flat_tokens,
                 languages=None,
                 dense_feat=None,
             )
-            flat_tokens = flat_tokens[max_batch:]
-            while len(flat_tokens) > 0:
-                flat_result_tokens_extension = self.forward_impl(
-                    texts=None,
-                    multi_texts=None,
-                    tokens=flat_tokens[:max_batch],
-                    languages=None,
-                    dense_feat=None,
-                )
-                # the result of forward is either a torch.Tensor or a List[Any]
-                if isinstance(flat_result_tokens, torch.Tensor):
-                    flat_result_tokens = torch.cat(
-                        [flat_result_tokens, flat_result_tokens_extension], dim=0
-                    )
-                else:
-                    flat_result_tokens.extend(flat_result_tokens_extension)
-
-                flat_tokens = flat_tokens[max_batch:]
             # ignored in logic, this makes type system happy
             flat_result_texts = flat_result_tokens
 
