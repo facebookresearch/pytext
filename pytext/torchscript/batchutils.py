@@ -18,6 +18,82 @@ def max_tokens(per_sentence_tokens: List[List[Tuple[str, int, int]]]) -> int:
     return max(sentence_lengths)
 
 
+def input_size(
+    texts: Optional[List[str]] = None,
+    multi_texts: Optional[List[List[str]]] = None,
+    tokens: Optional[List[List[str]]] = None,
+) -> int:
+
+    texts_: List[str] = []
+    multi_texts_: List[List[str]] = []
+    tokens_: List[List[str]] = []
+
+    if texts is not None:
+        texts_ = texts
+    if multi_texts is not None:
+        multi_texts_ = multi_texts
+    if tokens is not None:
+        tokens_ = tokens
+
+    # print(f"e0 {texts_[0]} e1 {texts_[1]}")
+    input_len = max([len(texts_), len(multi_texts_), len(tokens_)])
+    print(
+        f"input_len {input_len} texts {texts} multi_texts {multi_texts} tokens {tokens}"
+    )
+    return input_len
+
+
+########################################################################
+#
+# utility functions to limit a list to a sepcified batch size and
+#   clip a list by removing a batch size worth of work
+#
+
+
+def limit_list(input: Optional[List[str]], max_batch: int) -> Optional[List[str]]:
+    if input is not None:
+        return input[:max_batch]
+    return None
+
+
+def clip_list(input: Optional[List[str]], max_batch: int) -> Optional[List[str]]:
+    if input is not None:
+        return input[max_batch:]
+    return None
+
+
+def limit_listlist(
+    input: Optional[List[List[str]]], max_batch: int
+) -> Optional[List[List[str]]]:
+    if input is not None:
+        return input[:max_batch]
+    return None
+
+
+def clip_listlist(
+    input: Optional[List[List[str]]], max_batch: int
+) -> Optional[List[List[str]]]:
+    if input is not None:
+        return input[max_batch:]
+    return None
+
+
+def limit_listlist_float(
+    input: Optional[List[List[float]]], max_batch: int
+) -> Optional[List[List[float]]]:
+    if input is not None:
+        return input[:max_batch]
+    return None
+
+
+def clip_listlist_float(
+    input: Optional[List[List[float]]], max_batch: int
+) -> Optional[List[List[float]]]:
+    if input is not None:
+        return input[max_batch:]
+    return None
+
+
 ########################################################################
 #
 # utility functions to destructure flat result tensor combining
