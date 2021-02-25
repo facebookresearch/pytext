@@ -94,6 +94,35 @@ def clip_listlist_float(
     return None
 
 
+def validate_dense_feat(
+    batch_element_dense_feat: Optional[List[List[float]]],
+    length: int,
+    uses_dense_feat: bool,
+) -> List[List[float]]:
+    if batch_element_dense_feat is not None:
+        if not uses_dense_feat:
+            raise RuntimeError(
+                "Dense feature (dense_feat) not allowed for this model type"
+            )
+        if len(batch_element_dense_feat) != length:
+            raise RuntimeError(
+                "Malformed request.  Length of client-batch dense_feat argument does not match length of text argument."
+            )
+        return batch_element_dense_feat
+    elif uses_dense_feat:
+        raise RuntimeError(
+            "Dense feature (dense_feat) is required for this model type, but not present (received dense_feat=None) in this request."
+        )
+    else:
+        return []
+
+
+def nonify_listlist_float(input: List[List[float]]) -> Optional[List[List[float]]]:
+    if len(input) == 0:
+        return None
+    return input
+
+
 ########################################################################
 #
 # utility functions to destructure flat result tensor combining

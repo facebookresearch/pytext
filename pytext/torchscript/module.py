@@ -21,6 +21,8 @@ from pytext.torchscript.batchutils import (
     make_prediction_texts,
     make_prediction_texts_dense,
     max_tokens,
+    nonify_listlist_float,
+    validate_dense_feat,
 )
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
@@ -109,6 +111,10 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         self.tensorizer.set_padding_control(dimension, control)
 
     @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return False
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors).cpu()
@@ -145,6 +151,11 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         # this should only be present in EmbeddingModuleWithDense
         dense_feat: Optional[List[List[float]]] = None,
     ):  # returns torch.Tensor or List[Any]
+
+        if self.uses_dense_feat() and dense_feat is None:
+            raise RuntimeError("dense feature required.")
+        if (not self.uses_dense_feat()) and dense_feat is not None:
+            raise RuntimeError("dense feature not allowed.")
 
         print(f"texts {texts} multi_texts {multi_texts} tokens {tokens}")
         input_len = input_size(texts, multi_texts, tokens)
@@ -227,18 +238,35 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
 
         flat_texts: List[str] = []
         flat_tokens: List[List[str]] = []
+        flat_dense_feat_texts: List[List[float]] = []
+        flat_dense_feat_tokens: List[List[float]] = []
 
         for i in range(batchsize):
             batch_element_texts = batch[i][0]
             batch_element_tokens = batch[i][2]
+            batch_element_dense_feat = batch[i][4]
 
             if batch_element_texts is not None:
                 flat_texts.extend(batch_element_texts)
                 client_batch_texts.append(len(batch_element_texts))
+                flat_dense_feat_texts.extend(
+                    validate_dense_feat(
+                        batch_element_dense_feat,
+                        len(batch_element_texts),
+                        self.uses_dense_feat(),
+                    )
+                )
                 zip_batch_list.append(1)
             elif batch_element_tokens is not None:
                 flat_tokens.extend(batch_element_tokens)
                 client_batch_tokens.append(len(batch_element_tokens))
+                flat_dense_feat_tokens.extend(
+                    validate_dense_feat(
+                        batch_element_dense_feat,
+                        len(batch_element_tokens),
+                        self.uses_dense_feat(),
+                    )
+                )
                 zip_batch_list.append(-1)
             else:
                 # At present, we abort the entire batch if
@@ -291,7 +319,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
                 multi_texts=None,
                 tokens=None,
                 languages=None,
-                dense_feat=None,
+                dense_feat=nonify_listlist_float(flat_dense_feat_texts),
             )
             # ignored in logic, this makes type system happy
             flat_result_tokens = flat_result_texts
@@ -301,7 +329,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
                 multi_texts=None,
                 tokens=flat_tokens,
                 languages=None,
-                dense_feat=None,
+                dense_feat=nonify_listlist_float(flat_dense_feat_tokens),
             )
             # ignored in logic, this makes type system happy
             flat_result_texts = flat_result_tokens
@@ -411,6 +439,10 @@ class ScriptPyTextEmbeddingModuleIndex(ScriptPyTextEmbeddingModule):
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return False
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors)[self.index].cpu()
@@ -426,6 +458,10 @@ class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
         super().__init__(model, tensorizer)
         # A PyText Module is an EmbeddingModule with an output layer
         self.output_layer = output_layer
+
+    @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return False
 
     @torch.jit.script_method
     def forward_impl(
@@ -482,6 +518,10 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return True
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
         input_tensors = self.tensorizer(inputs)
         if self.tensorizer.device != "":
@@ -530,6 +570,10 @@ class ScriptPyTextModuleWithDense(ScriptPyTextEmbeddingModuleWithDense):
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return True
+
+    @torch.jit.script_method
     def forward_impl(
         self,
         # moved dense_feat from non-optional here to optional at bottom
@@ -574,6 +618,10 @@ class ScriptPyTextEmbeddingModuleWithDenseIndex(ScriptPyTextEmbeddingModuleWithD
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return True
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput, dense_tensor: torch.Tensor):
         input_tensors = self.tensorizer(inputs)
         if self.tensorizer.device != "":
@@ -591,6 +639,10 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
     def __init__(self, model: torch.jit.ScriptModule, tensorizer: ScriptTensorizer):
         super().__init__(model, tensorizer)
         log_class_usage(self.__class__)
+
+    @torch.jit.script_method
+    def uses_dense_feat(self) -> bool:
+        return False
 
     @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
