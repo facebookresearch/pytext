@@ -26,8 +26,14 @@ class TraceableTransformerWrapper(nn.Module):
         tokens: torch.Tensor,
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
+        token_embeddings: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.eager_encoder(tokens, segment_labels, positions=positions)
+        return self.eager_encoder(
+            tokens,
+            segment_labels,
+            positions=positions,
+            token_embeddings=token_embeddings,
+        )
 
 
 class TracedTransformerEncoder(nn.Module):
@@ -37,10 +43,13 @@ class TracedTransformerEncoder(nn.Module):
         tokens: torch.Tensor,
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
+        token_embeddings: torch.Tensor = None,
     ) -> None:
         super().__init__()
         traceable_encoder = TraceableTransformerWrapper(eager_encoder)
-        traced_encoder_inputs = self._prepare_inputs(tokens, segment_labels, positions)
+        traced_encoder_inputs = self._prepare_inputs(
+            tokens, segment_labels, positions, token_embeddings
+        )
         self.has_segment_labels = segment_labels is not None
         self.has_positions = positions is not None
 
@@ -70,11 +79,14 @@ class TracedTransformerEncoder(nn.Module):
         tokens: torch.Tensor,
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
+        token_embeddings: torch.Tensor = None,
     ):
         assert self.has_segment_labels == (segment_labels is not None)
         assert self.has_positions == (positions is not None)
 
-        traced_encoder_inputs = self._prepare_inputs(tokens, segment_labels, positions)
+        traced_encoder_inputs = self._prepare_inputs(
+            tokens, segment_labels, positions, token_embeddings
+        )
         self.iter_ += 1
         if self.iter_ % 100 == 0:
             print("Iter: ", self.iter_)
@@ -98,10 +110,13 @@ class TracedTransformerEncoder(nn.Module):
         tokens: torch.Tensor,
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
+        token_embeddings: torch.Tensor = None,
     ):
         inputs = [tokens]
         if segment_labels is not None:
             inputs += [segment_labels]
         if positions is not None:
             inputs += [positions]
+        if token_embeddings is not None:
+            inputs += [token_embeddings]
         return inputs
