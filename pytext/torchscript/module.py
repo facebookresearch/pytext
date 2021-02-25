@@ -115,6 +115,26 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         return False
 
     @torch.jit.script_method
+    def forward_validate_dense_feat(
+        self,
+        dense_feat: Optional[List[List[float]]],
+    ) -> List[List[float]]:
+        if self.uses_dense_feat():
+            if dense_feat is None:
+                raise RuntimeError(
+                    "Dense feature (dense_feat) is required for this model type, but not present."
+                )
+            else:
+                return dense_feat
+        else:
+            if dense_feat is not None:
+                raise RuntimeError(
+                    "Dense feature (dense_feat) not allowed for this model type"
+                )
+            else:
+                return []
+
+    @torch.jit.script_method
     def _forward(self, inputs: ScriptBatchInput):
         input_tensors = self.tensorizer(inputs)
         return self.model(input_tensors).cpu()
@@ -130,8 +150,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
-        if dense_feat is not None:
-            raise RuntimeError("dense feature not allowed.")
+        self.forward_validate_dense_feat(dense_feat)
 
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -152,10 +171,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         dense_feat: Optional[List[List[float]]] = None,
     ):  # returns torch.Tensor or List[Any]
 
-        if self.uses_dense_feat() and dense_feat is None:
-            raise RuntimeError("dense feature required.")
-        if (not self.uses_dense_feat()) and dense_feat is not None:
-            raise RuntimeError("dense feature not allowed.")
+        self.forward_validate_dense_feat(dense_feat)
 
         input_len = input_size(texts, multi_texts, tokens)
         max_batch = self.get_max_batch_len()
@@ -453,8 +469,7 @@ class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
         # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ):
-        if dense_feat is not None:
-            raise RuntimeError("dense feature not allowed.")
+        self.forward_validate_dense_feat(dense_feat)
 
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -464,25 +479,6 @@ class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
         input_tensors = self.tensorizer(inputs)
         logits = self.model(input_tensors)
         return self.output_layer(logits)
-
-    @torch.jit.script_method
-    def forward(
-        self,
-        texts: Optional[List[str]] = None,
-        # multi_texts is of shape [batch_size, num_columns]
-        multi_texts: Optional[List[List[str]]] = None,
-        tokens: Optional[List[List[str]]] = None,
-        languages: Optional[List[str]] = None,
-        # self.uses_dense_feat() indicates use: False
-        dense_feat: Optional[List[List[float]]] = None,  # dense_feat must be None
-    ):
-        return self.forward_impl(
-            texts,
-            multi_texts,
-            tokens,
-            languages,
-            dense_feat,
-        )
 
 
 class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
@@ -520,8 +516,7 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         # self.uses_dense_feat() indicates use: True
         dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
-        if dense_feat is None:
-            raise RuntimeError("Expect dense feature.")
+        dense_feat = self.forward_validate_dense_feat(dense_feat)
 
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
@@ -644,8 +639,7 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ) -> List[torch.Tensor]:
-        if dense_feat is not None:
-            raise RuntimeError("dense feature not allowed.")
+        self.forward_validate_dense_feat(dense_feat)
 
         inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(texts, multi_texts),
