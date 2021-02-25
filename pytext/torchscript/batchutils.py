@@ -35,11 +35,7 @@ def input_size(
     if tokens is not None:
         tokens_ = tokens
 
-    # print(f"e0 {texts_[0]} e1 {texts_[1]}")
     input_len = max([len(texts_), len(multi_texts_), len(tokens_)])
-    print(
-        f"input_len {input_len} texts {texts} multi_texts {multi_texts} tokens {tokens}"
-    )
     return input_len
 
 
@@ -92,7 +88,6 @@ def clip_listlist_float(
     if input is not None:
         return input[max_batch:]
     return None
-
 
 def validate_dense_feat(
     batch_element_dense_feat: Optional[List[List[float]]],

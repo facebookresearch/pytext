@@ -127,7 +127,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
-        # this should only be present in EmbeddingModuleWithDense
+        # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
         if dense_feat is not None:
@@ -148,7 +148,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
-        # this should only be present in EmbeddingModuleWithDense
+        # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ):  # returns torch.Tensor or List[Any]
 
@@ -157,7 +157,6 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         if (not self.uses_dense_feat()) and dense_feat is not None:
             raise RuntimeError("dense feature not allowed.")
 
-        print(f"texts {texts} multi_texts {multi_texts} tokens {tokens}")
         input_len = input_size(texts, multi_texts, tokens)
         max_batch = self.get_max_batch_len()
         if max_batch <= 0:
@@ -170,8 +169,6 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
             limit_list(languages, max_batch),
             limit_listlist_float(dense_feat, max_batch),
         )
-
-        print(f"max_batch {max_batch} input_len {input_len}result {result}")
 
         if input_len > max_batch:
             texts = clip_list(texts, max_batch)
@@ -189,13 +186,11 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
                     limit_listlist_float(dense_feat, max_batch),
                 )
 
-                print(f"merging {result} and {result_extension}")
                 # the result of forward is either a torch.Tensor or a List[Any]
                 if isinstance(result, torch.Tensor):
                     result = torch.cat([result, result_extension], dim=0)
                 else:
                     result.extend(result_extension)
-                print(f"merger result is {result}")
 
                 # prepare next iteration
                 texts = clip_list(texts, max_batch)
@@ -281,38 +276,22 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         if len(flat_texts) == 0 and len(flat_tokens) == 0:
             raise RuntimeError("This is not good. Empty request batch.")
 
-        # max_batch = self.get_max_batch_len()
-        # if max_batch < 0:
-        #    max_batch = max(len(flat_texts), len(flat_tokens))
-
         if len(flat_texts) > 0 and len(flat_tokens) > 0:
             raise RuntimeError("Mixing tokens and texts not supported in this service.")
-            # flat_result_texts = self.forward_impl(
+            # flat_result_texts = self.forward(
             #     texts=flat_texts[:max_batch],
             #     multi_texts=None,
             #     tokens=None,
             #     languages=None,
-            #     dense_feat=None,
+            #     dense_feat=nonify_listlist_float(flat_dense_feat_texts),
             # )
-            # flat_texts = flat_texts[max_batch:]
-            # while len(flat_texts) > 0:
-            #     flat_result_texts_extension = self.forward_impl(
-            #         texts=flat_texts[:max_batch],
-            #         multi_texts=None,
-            #         tokens=None,
-            #         languages=None,
-            #         dense_feat=None,
-            #      )
-            #      flat_result_texts.extend(flat_result_texts_extension)
-            #      flat_texts = flat_texts[max_batch:]
-            # flat_result_tokens = self.forward_impl(
+            # flat_result_tokens = self.forward(
             #     texts=None,
             #     multi_texts=None,
             #     tokens=flat_tokens[:max_batch],
             #     languages=None,
-            #     dense_feat=None,
+            #     dense_feat=nonify_listlist_float(flat_dense_feat_tokens),
             # )
-            # etc etc
         elif len(flat_texts) > 0:
             flat_result_texts = self.forward(
                 texts=flat_texts,
@@ -471,7 +450,8 @@ class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
-        dense_feat: Optional[List[List[float]]] = None,  # dense_feat must be None
+        # self.uses_dense_feat() indicates use: False
+        dense_feat: Optional[List[List[float]]] = None,
     ):
         if dense_feat is not None:
             raise RuntimeError("dense feature not allowed.")
@@ -493,6 +473,7 @@ class ScriptPyTextModule(ScriptPyTextEmbeddingModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,  # dense_feat must be None
     ):
         return self.forward_impl(
@@ -536,6 +517,7 @@ class ScriptPyTextEmbeddingModuleWithDense(ScriptPyTextEmbeddingModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        # self.uses_dense_feat() indicates use: True
         dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
         if dense_feat is None:
@@ -576,13 +558,12 @@ class ScriptPyTextModuleWithDense(ScriptPyTextEmbeddingModuleWithDense):
     @torch.jit.script_method
     def forward_impl(
         self,
-        # moved dense_feat from non-optional here to optional at bottom
-        # to align with Embedding module
         texts: Optional[List[str]] = None,
         # multi_texts is of shape [batch_size, num_columns]
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        # self.uses_dense_feat() indicates use: True
         dense_feat: Optional[List[List[float]]] = None,
     ):
         inputs: ScriptBatchInput = ScriptBatchInput(
@@ -660,6 +641,7 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
         multi_texts: Optional[List[List[str]]] = None,
         tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
+        # self.uses_dense_feat() indicates use: False
         dense_feat: Optional[List[List[float]]] = None,
     ) -> List[torch.Tensor]:
         if dense_feat is not None:
