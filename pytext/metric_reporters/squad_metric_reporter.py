@@ -137,14 +137,49 @@ class SquadMetricReporter(MetricReporter):
     def _add_decoded_answer_batch_stats(self, m_input, preds, **contexts):
         # For BERT, doc_tokens = concatenated tokens from question and document.
         doc_tokens = m_input[0]
-        starts, ends, has_answers = preds
-        pred_answers = [
-            self._unnumberize(tokens[start : end + 1].tolist(), doc_str)
-            for tokens, start, end, doc_str in zip(
-                doc_tokens, starts, ends, contexts[self.DOC_COLUMN]
+        starts, ends, _ = preds
+        pred_answers, pred_starts, pred_ends = list(
+            zip(
+                *[
+                    self._unnumberize(tokens[start : end + 1].tolist(), doc_str)
+                    for tokens, start, end, doc_str in zip(
+                        doc_tokens, starts, ends, contexts[self.DOC_COLUMN]
+                    )
+                ]
             )
-        ]
-        self.aggregate_data(self.all_pred_answers, pred_answers)
+        )
+        self.aggregate_data(self.all_start_pos_preds, list(pred_starts))
+        self.aggregate_data(self.all_end_pos_preds, list(pred_ends))
+        self.aggregate_data(self.all_pred_answers, list(pred_answers))
+
+    def _add_target_answer_batch_stats(self, m_input, targets, **contexts):
+        # For BERT, doc_tokens = concatenated tokens from question and document.
+        doc_tokens = m_input[0]
+        batch_starts, batch_ends, _ = targets
+        target_starts = []
+        target_ends = []
+
+        for tokens, starts, ends, doc_str in zip(
+            doc_tokens,
+            batch_starts,
+            batch_ends,
+            contexts[self.DOC_COLUMN],
+        ):
+            # for each batch
+            start_idxs = []
+            end_idxs = []
+            for start, end in zip(starts[starts > -1], ends[ends > -1]):
+                # for each answer
+                _, start_idx, end_idx = self._unnumberize(
+                    tokens[start : end + 1].tolist(), doc_str
+                )
+                start_idxs.append(start_idx)
+                end_idxs.append(end_idx)
+            target_starts.append(start_idxs)
+            target_ends.append(end_idxs)
+
+        self.aggregate_data(self.all_start_pos_targets, target_starts)
+        self.aggregate_data(self.all_end_pos_targets, target_ends)
 
     def add_batch_stats(
         self, n_batches, preds, targets, scores, loss, m_input, **contexts
@@ -152,16 +187,17 @@ class SquadMetricReporter(MetricReporter):
         super().add_batch_stats(
             n_batches, preds, targets, scores, loss, m_input, **contexts
         )
+
+        # for preds
         self._add_decoded_answer_batch_stats(m_input, preds, **contexts)
 
+        # for targets
+        self._add_target_answer_batch_stats(m_input, targets, **contexts)
+
     def aggregate_preds(self, new_batch, context=None):
-        self.aggregate_data(self.all_start_pos_preds, new_batch[0])
-        self.aggregate_data(self.all_end_pos_preds, new_batch[1])
         self.aggregate_data(self.all_has_answer_preds, new_batch[2])
 
     def aggregate_targets(self, new_batch, context=None):
-        self.aggregate_data(self.all_start_pos_targets, new_batch[0])
-        self.aggregate_data(self.all_end_pos_targets, new_batch[1])
         self.aggregate_data(self.all_has_answer_targets, new_batch[2])
 
     def aggregate_scores(self, new_batch):
@@ -332,6 +368,8 @@ class SquadMetricReporter(MetricReporter):
         doc_tokens, start_idx, end_idx = self.tensorizer._lookup_tokens(doc_str)
         doc_tokens = list(doc_tokens)
         num_ans_tokens = len(ans_tokens)
+        start_char_idx = 0
+        end_char_idx = 0
         answer_str = ""
         for doc_token_idx in range(len(doc_tokens) - num_ans_tokens):
             if doc_tokens[doc_token_idx : doc_token_idx + num_ans_tokens] == ans_tokens:
@@ -339,7 +377,7 @@ class SquadMetricReporter(MetricReporter):
                 end_char_idx = end_idx[doc_token_idx + num_ans_tokens - 1]
                 answer_str = doc_str[start_char_idx:end_char_idx]
                 break
-        return answer_str
+        return answer_str, start_char_idx, end_char_idx
 
     # The following three functions are copied from Squad's evaluation script.
     # https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/
