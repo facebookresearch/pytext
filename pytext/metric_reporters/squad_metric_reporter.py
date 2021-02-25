@@ -141,7 +141,7 @@ class SquadMetricReporter(MetricReporter):
         pred_answers, pred_starts, pred_ends = list(
             zip(
                 *[
-                    self._unnumberize(tokens[start : end + 1].tolist(), doc_str)
+                    self._unnumberize(start, end, tokens.tolist(), doc_str)
                     for tokens, start, end, doc_str in zip(
                         doc_tokens, starts, ends, contexts[self.DOC_COLUMN]
                     )
@@ -171,7 +171,7 @@ class SquadMetricReporter(MetricReporter):
             for start, end in zip(starts[starts > -1], ends[ends > -1]):
                 # for each answer
                 _, start_idx, end_idx = self._unnumberize(
-                    tokens[start : end + 1].tolist(), doc_str
+                    start, end, tokens.tolist(), doc_str
                 )
                 start_idxs.append(start_idx)
                 end_idxs.append(end_idx)
@@ -355,29 +355,37 @@ class SquadMetricReporter(MetricReporter):
             )
         return 100.0 * f1_scores_sum / len(pred_answer_list)
 
-    def _unnumberize(self, ans_tokens, doc_str):
+    def _unnumberize(self, ans_token_start, ans_token_end, tokens, doc_str):
         """
-        Tokens is the span of token ids that the model predicted. We re-tokenize
-        and re-numberize the raw context (doc_str) here to get doc_tokens to get
-        access to start_idx and end_idx mappings.  At this point, ans_tokens is
-        a sub-list of doc_tokens (hopefully, if the model predicted a span in
-        the context). Then we find tokens inside doc_tokens, and return the
-        corresponding span in the raw text using the idx mapping.
+        We re-tokenize and re-numberize the raw context (doc_str) here to get doc_tokens to get
+        access to start_idx and end_idx mappings.  At this point, ans_token_start is the start index
+        of the answer within tokens and ans_token_end is the end index. We calculate the offset of doc_tokens
+        within tokens.
+        Then we find the start_idx and end_idx
+        as well as the corresponding span in the raw text using the answer token indices.
         """
         # start_idx and end_idx are lists of char start and end positions in doc_str.
-        doc_tokens, start_idx, end_idx = self.tensorizer._lookup_tokens(doc_str)
-        doc_tokens = list(doc_tokens)
-        num_ans_tokens = len(ans_tokens)
+        doc_tokens, start_idxs, end_idxs = self.tensorizer._lookup_tokens(doc_str)
+        # find the offset of doc_tokens in tokens
+        offset = list(
+            map(
+                lambda x: tokens[x : x + len(doc_tokens)] == doc_tokens,
+                range(len(tokens) - len(doc_tokens) + 1),
+            )
+        ).index(True)
+        assert offset > -1
+
+        # find the answer char idxs
         start_char_idx = 0
-        end_char_idx = 0
-        answer_str = ""
-        for doc_token_idx in range(len(doc_tokens) - num_ans_tokens):
-            if doc_tokens[doc_token_idx : doc_token_idx + num_ans_tokens] == ans_tokens:
-                start_char_idx = start_idx[doc_token_idx]
-                end_char_idx = end_idx[doc_token_idx + num_ans_tokens - 1]
-                answer_str = doc_str[start_char_idx:end_char_idx]
-                break
-        return answer_str, start_char_idx, end_char_idx
+        end_char_idx = end_idxs[-1]
+        try:
+            start_char_idx = start_idxs[ans_token_start - offset]
+            end_char_idx = end_idxs[ans_token_end - offset]
+        except IndexError:
+            # if token indices fall outside the bounds due to a model misprediction.
+            pass
+        ans_str = doc_str[start_char_idx:end_char_idx]
+        return ans_str, start_char_idx, end_char_idx
 
     # The following three functions are copied from Squad's evaluation script.
     # https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/
