@@ -2,14 +2,18 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import re
-from typing import Any, Dict, Mapping, Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import data as data_utils, precision
-from pytext.utils.label import get_label_weights
-from torchtext.legacy import data as textdata
+
+try:
+    from torchtext.legacy import data as textdata
+except ImportError:
+    from torchtext import data as textdata
+
 from torchtext.vocab import Vocab
 
 

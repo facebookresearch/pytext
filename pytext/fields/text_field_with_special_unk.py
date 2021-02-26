@@ -10,7 +10,11 @@ import torch
 from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
 from pytext.utils.data import is_number, unkify
-from torchtext.legacy.data import Dataset
+
+try:
+    from torchtext.legacy.data import Dataset
+except ImportError:
+    from torchtext.data import Dataset
 
 
 class TextFeatureFieldWithSpecialUnk(TextFeatureField):
