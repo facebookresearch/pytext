@@ -10,6 +10,8 @@ from pytext.torchscript.batchutils import (
     make_prediction_tokens,
     make_prediction_texts,
     make_prediction_texts_dense,
+    zip_batch_tensor_list,
+    zip_batch_any_list_list,
 )
 
 
@@ -275,3 +277,42 @@ class BatchUtilsTest(unittest.TestCase):
                 [[1.0], [0.0], [1.0]],
             ),
         )
+
+    def test_zip_batch_tensor_list(self):
+        result_list1 = [torch.tensor([0])]
+        result_list2 = [torch.tensor([1])]
+
+        # Negative Case : missing 2 required positional arguments: 'result_list_1' and 'result_list_2'
+        with self.assertRaises(TypeError):
+            zip_batch_tensor_list([])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            zip_batch_tensor_list(None, result_list1, result_list2)
+
+    def test_zip_batch_tensor_list_empty(self):
+        tensor_list = [torch.tensor([0]) for i in range(200)]
+
+        result_tensor_list = zip_batch_tensor_list(
+            [100, 200, 300, 400], tensor_list, tensor_list
+        )
+
+        self.assertEqual(len(result_tensor_list), 4)
+        self.assertEqual(len(result_tensor_list[0]), 1)
+        self.assertEqual(len(tensor_list), 200)
+
+    def test_zip_batch_any_list(self):
+
+        # Negative Case : missing 2 required positional arguments: 'result_list_1' and 'result_list_2'
+        with self.assertRaises(TypeError):
+            zip_batch_any_list_list([])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            zip_batch_any_list_list(None, [[]], [[]])
+
+        with self.assertRaises(IndexError):
+            zip_batch_any_list_list([1, 2, 3], [], [])
+
+        with self.assertRaises(IndexError):
+            zip_batch_any_list_list([100, 200, 300, 400], [["a", "b", "c"]], [[]])
