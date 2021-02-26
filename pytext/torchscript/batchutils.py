@@ -89,6 +89,7 @@ def clip_listlist_float(
         return input[max_batch:]
     return None
 
+
 def validate_dense_feat(
     batch_element_dense_feat: Optional[List[List[float]]],
     length: int,
