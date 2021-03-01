@@ -839,7 +839,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         # DENSE_FEAT = 4
 
         client_batch: List[int] = []
-        res_list: List[torch.Tensor] = []
+        # res_list: List[torch.Tensor] = []
 
         if argno == TEXTS:
             flat_right_texts: List[str] = []
