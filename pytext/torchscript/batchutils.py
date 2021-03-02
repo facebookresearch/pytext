@@ -175,6 +175,7 @@ def destructure_any_list(
     start = 0
 
     for elems in client_batch:
+        torch._assert(elems > 0, "zero or negative range error")
         end = start + elems
         res_list.append(result_any_list[start:end])
         start = end

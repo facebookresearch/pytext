@@ -5,6 +5,7 @@ import unittest
 
 import torch
 from pytext.torchscript.batchutils import (
+    destructure_any_list,
     destructure_dict_list,
     destructure_tensor_list,
     make_prediction_tokens,
@@ -49,6 +50,58 @@ class BatchUtilsTest(unittest.TestCase):
             make_prediction_tokens(multiple_tokens_request_batch),
             [["token_1_1"], ["token_1_2_1", "token_1_2_2"], ["token_2_1"]],
         )
+
+    def test_destructure_any_list_empty(self):
+        # -1- two empty lists
+        res_list = destructure_any_list([], [])
+        self.assertEqual(len(res_list), 0)
+
+        # -2- wrong types passed to the function
+        client_batch = 0
+        result_any_list = 0
+        with self.assertRaises(TypeError):
+            res_list = destructure_any_list(client_batch, result_any_list)
+
+        # -3- 1st list is empty, 2nd list is not
+        client_batch = []
+        result_any_list = [1, 1, 1]
+        res_list = destructure_any_list(client_batch, result_any_list)
+        self.assertEqual(len(res_list), 0)
+
+        # -4- 1st list is not empty, 2nd list is empty
+        client_batch = [1, 1, 1]
+        result_any_list = []
+        print("***********case 4")
+        res_list = destructure_any_list(client_batch, result_any_list)
+        self.assertEqual(len(res_list), 3)
+
+        # -5- both lists are not empty. 1st list contains range that exceeds the 2nd
+        client_batch = [1, 3, 5]
+        result_any_list = [0, 1, 2]
+        print("***********case 5")
+        res_list = destructure_any_list(client_batch, result_any_list)
+        self.assertEqual(len(res_list), 3)
+        self.assertEqual([0], res_list[0])
+        self.assertEqual([1, 2], res_list[1])
+        self.assertEqual([], res_list[2])
+
+        # -6- both lists are not empty. 1st lists contains range does not exceed the 2nd.
+        client_batch = [5, 3]
+        result_any_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        res_list = destructure_any_list(client_batch, result_any_list)
+        self.assertEqual(len(res_list), 2)
+        self.assertEqual([0, 1, 2, 3, 4], res_list[0])
+        self.assertEqual([5, 6, 7], res_list[1])
+
+        # -7- client_batch ranges are 0 or negative. should raise runtime error
+        client_batch = [4, 3, -1]
+        result_any_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        with self.assertRaises(AssertionError):
+            res_list = destructure_any_list(client_batch, result_any_list)
+
+        client_batch = [3, 0, 5]
+        with self.assertRaises(AssertionError):
+            res_list = destructure_any_list(client_batch, result_any_list)
 
     def test_destructure_tensor_list_empty(self):
         tensor_list = [torch.tensor([0])]
