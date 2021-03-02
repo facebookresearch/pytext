@@ -568,11 +568,10 @@ class ScriptPyTextModuleWithDense(ScriptPyTextEmbeddingModuleWithDense):
         )
         input_tensors = self.tensorizer(inputs)
 
-        if dense_feat is not None:
-            dense_feat = self.normalizer.normalize(dense_feat)
-            dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
-        else:
-            raise RuntimeError("dense feature cannot be None.")
+        dense_feat = self.normalizer.normalize(
+            self.forward_validate_dense_feat(dense_feat)
+        )
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
 
         if self.tensorizer.device != "":
             dense_tensor = dense_tensor.to(self.tensorizer.device)
