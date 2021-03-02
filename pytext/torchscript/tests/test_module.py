@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import random
+import string
 import unittest
 from typing import List, Tuple, Optional
 
@@ -192,6 +194,7 @@ class PytextembeddingmoduleTest(unittest.TestCase):
         return MockModel()
 
     def setUp(self) -> None:
+        self.batch_size = 10
         self.NONE_INPUT = None
         self.EMPTYLIST = []
         self.EMPTY_TUPLE = [()]
@@ -352,3 +355,106 @@ class PytextembeddingmoduleTest(unittest.TestCase):
                 [[0, -1], [0, -1]],
             ],
         )
+
+    def test_make_batch_invalid_input_list(self) -> None:
+        # case: raises a runtime error when input list is invalid
+        with self.assertRaises(RuntimeError):
+            self.module.make_batch(None, {})
+
+    def test_make_batch_empty_input_list(self) -> None:
+        # case: raises a runtime error when input list is empty
+        with self.assertRaises(torch.jit.Error):
+            self.module.make_batch([], {})
+
+    def test_make_batch_empty_input_tuple(self) -> None:
+        # case: raises a runtime error when input tuple is invalid
+        with self.assertRaises(RuntimeError):
+            self.module.make_batch([()], {})
+
+    def test_make_batch_input_tuple_with_no_position(self) -> None:
+        # case: raises a runtime error when input tuple has no position field
+        with self.assertRaises(RuntimeError):
+            self.module.make_batch([(["1 2"])], {})
+
+    def test_make_batch_with_valid_and_invalid_input_tuples(self) -> None:
+        # case: raises a runtime error when input has both valid and invalid tuples
+        mega_batch_1 = [(["1 2"], 1), (["3 4"])]  # second tuple has no position
+        with self.assertRaises(RuntimeError):
+            self.module.make_batch(mega_batch_1, {})
+
+    def test_make_batch_input_tuple_with_empty_list(self) -> None:
+        # case: a mega-batch with exactly one tuple (w/ no text) returns one batch
+        mega_batch = [([], 1)]
+        batches = self.module.make_batch(mega_batch, {})
+        self.assertEqual(batches, [mega_batch])
+
+    def test_make_batch_with_one_valid_input_tuple(self) -> None:
+        # case: a mega-batch with exactly one tuple returns one batch
+        mega_batch = [(["1 2"], 1)]
+        batches = self.module.make_batch(mega_batch, {})
+        self.assertEqual(batches, [mega_batch])
+
+    def test_make_batch_with_one_valid_input_tuple_with_multi_text(self) -> None:
+        # case: a mega-batch with exactly one tuple (w/ multi_text) returns one batch
+        mega_batch = [(["1 2 3", "4 5 6"], 1)]
+        batches = self.module.make_batch(mega_batch, {})
+        self.assertEqual(batches, [mega_batch])
+
+    def test_make_batch_returns_one_batch_for_input_mega_batch(self) -> None:
+        # case: a mega-batch with at most 'batch_size' input tuples returns one batch
+        mega_batch = []
+        for _i in range(self.batch_size):
+            mega_batch.append((["1 2 3", "4 5 6"], _i))
+        batches = self.module.make_batch(mega_batch, {})
+        self.assertEqual(batches, [mega_batch])
+
+    def test_make_batch_returns_multiple_batches_for_input_mega_batch(self) -> None:
+        # case: multiple batches are returned for a large input mega-batch
+        mega_batch = []
+        for _i in range(self.batch_size * 3 + self.batch_size - 1):
+            mega_batch.append((["1 2 3", "4 5 6"], _i))
+        batches = self.module.make_batch(mega_batch, {})
+        start = 0
+        while start < min(start + self.batch_size, len(mega_batch)):
+            end = min(start + self.batch_size, len(mega_batch))
+            self.assertEqual(batches[start // self.batch_size], mega_batch[start:end])
+            start = end
+
+    def test_make_batch_returns_one_batch_with_input_tuples_sorted(self) -> None:
+        # case: input tuples are returned in a sorted order
+        mega_batch = []
+        for _i in range(self.batch_size):
+            text = self.get_random_string_with_n_tokens(self.batch_size - _i)
+            mega_batch.append(([text], _i))
+        sorted_mega_batch = sorted(mega_batch, key=lambda x: x[1], reverse=True)
+        batches = self.module.make_batch(mega_batch, {})
+        self.assertEqual(batches, [sorted_mega_batch])
+
+    def test_make_batch_returns_multiple_batches_with_input_tuples_sorted(self) -> None:
+        # case: multiple batches are returned (w/ tuples sorted) for a large input mega-batch
+        mega_batch = []
+        mega_batch_len = (self.batch_size * 3) + self.batch_size - 1
+        # make a large mega-batch so that multiuple batches are returned
+        for _i in range(mega_batch_len):
+            # each input has multiple text fields of varying lengths
+            multi_text = []
+            # first add a few short strings
+            for short_text_len in range(5):
+                multi_text.append(self.get_random_string_with_n_tokens(short_text_len))
+            # add a string with many tokens (to verify sorted order)
+            multi_text.append(
+                self.get_random_string_with_n_tokens(mega_batch_len * 2 - _i)
+            )
+            mega_batch.append((multi_text, _i))
+        sorted_mega_batch = sorted(mega_batch, key=lambda x: x[1], reverse=True)
+        batches = self.module.make_batch(mega_batch, {})
+        start = 0
+        while start < min(start + self.batch_size, len(mega_batch)):
+            end = min(start + self.batch_size, len(mega_batch))
+            self.assertEqual(
+                batches[start // self.batch_size], sorted_mega_batch[start:end]
+            )
+            start = end
+
+    def get_random_string_with_n_tokens(self, n) -> None:
+        return " ".join(random.choice(string.ascii_uppercase) for _ in range(n))

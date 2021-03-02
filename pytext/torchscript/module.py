@@ -1181,6 +1181,10 @@ class PyTextEmbeddingModule(torch.jit.ScriptModule):
         ],
         goals: Dict[str, str],
     ) -> List[List[Tuple[List[str], int,]]]:  # texts
+        batchsize = len(mega_batch)
+
+        if batchsize == 0:
+            raise RuntimeError("Input batch must have at least 1 batch element")
 
         # The next lines sort all cross-request batch elements by the token length.
         # Note that cross-request batch element can in turn be a client batch.
