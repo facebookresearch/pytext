@@ -327,6 +327,10 @@ def make_prediction_texts(
 ) -> List[str]:
 
     batchsize = len(batch)
+
+    if batchsize == 0:
+        raise RuntimeError("Input batch must have at least 1 batch element")
+
     flat_texts: List[str] = []
 
     for i in range(batchsize):
@@ -349,6 +353,11 @@ def make_batch_texts(
     ],
     goals: Dict[str, str],
 ) -> List[List[Tuple[List[str], int,]]]:  # texts
+
+    batchsize = len(mega_batch)
+
+    if batchsize == 0:
+        raise RuntimeError("Input batch must have at least 1 batch element")
 
     # The next lines sort all cross-request batch elements by the token length.
     # Note that cross-request batch element can in turn be a client batch.
@@ -396,6 +405,10 @@ def make_prediction_texts_dense(
 ) -> Tuple[List[str], List[List[float]]]:
 
     batchsize = len(batch)
+
+    if batchsize == 0:
+        raise RuntimeError("Input batch must have at least 1 batch element")
+
     flat_texts: List[str] = []
     flat_dense: List[List[float]] = []
 
@@ -430,6 +443,11 @@ def make_batch_texts_dense(
     ],
     goals: Dict[str, str],
 ) -> List[List[Tuple[List[str], List[List[float]], int]]]:  # texts, dense, ??
+
+    batchsize = len(mega_batch)
+
+    if batchsize == 0:
+        raise RuntimeError("Input batch must have at least 1 batch element")
 
     # The next lines sort all cross-request batch elements by the token length.
     # Note that cross-request batch element can in turn be a client batch.
@@ -473,6 +491,10 @@ def make_prediction_tokens(
 ) -> List[List[str]]:
 
     batchsize = len(batch)
+
+    if batchsize == 0:
+        raise RuntimeError("Input batch must have at least 1 batch element")
+
     flat_tokens: List[List[str]] = []
 
     for i in range(batchsize):
