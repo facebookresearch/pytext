@@ -4,12 +4,14 @@
 import re
 import string
 from collections import Counter
+from itertools import zip_longest
 from typing import Dict, List
 
 import numpy as np
 from pytext.common.constants import Stage
 from pytext.metric_reporters.channel import Channel, ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
+from pytext.metrics import compute_classification_metrics, LabelPrediction
 from pytext.metrics.squad_metrics import SquadMetrics
 
 
@@ -262,7 +264,7 @@ class SquadMetricReporter(MetricReporter):
             self.all_has_answer_scores,
         ) = zip(*all_rows)
 
-        exact_matches, count = self._compute_exact_matches(
+        exact_matches = self._compute_exact_matches(
             self.all_pred_answers,
             self.all_context[self.ANSWERS_COLUMN],
             self.all_has_answer_preds,
@@ -274,6 +276,7 @@ class SquadMetricReporter(MetricReporter):
             self.all_has_answer_preds,
             self.all_has_answer_targets,
         )
+        count = len(self.all_has_answer_preds)
         self.all_preds = (
             self.all_pred_answers,
             self.all_start_pos_preds,
@@ -291,10 +294,29 @@ class SquadMetricReporter(MetricReporter):
             self.all_end_pos_scores,
             self.all_has_answer_scores,
         )
+        label_predictions = None
+        if not self.ignore_impossible:
+            label_predictions = [
+                LabelPrediction(scores, pred, expect)
+                for scores, pred, expect in zip_longest(
+                    self.all_has_answer_scores,
+                    self.all_has_answer_preds,
+                    self.all_has_answer_targets,
+                    fillvalue=[],
+                )
+            ]
+
         metrics = SquadMetrics(
             exact_matches=100.0 * exact_matches / count,
-            f1_score=f1_score,
+            f1_score=100.0 * f1_score / count,
             num_examples=count,
+            classification_metrics=compute_classification_metrics(
+                label_predictions,
+                self.has_answer_labels,
+                self.calculate_loss(),
+            )
+            if label_predictions
+            else None,
         )
         return metrics
 
@@ -327,7 +349,7 @@ class SquadMetricReporter(MetricReporter):
                 if pred == true:
                     exact_matches += 1
                     break
-        return exact_matches, len(pred_answer_list)
+        return exact_matches
 
     def _compute_f1_score(
         self,
@@ -353,7 +375,7 @@ class SquadMetricReporter(MetricReporter):
                 self._compute_f1_per_answer(answer, pred_answer)
                 for answer in target_answers
             )
-        return 100.0 * f1_scores_sum / len(pred_answer_list)
+        return f1_scores_sum
 
     def _unnumberize(self, ans_token_start, ans_token_end, tokens, doc_str):
         """
