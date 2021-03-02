@@ -119,6 +119,30 @@ def nonify_listlist_float(input: List[List[float]]) -> Optional[List[List[float]
     return input
 
 
+def validate_make_prediction_batch_element(
+    be: Tuple[
+        Optional[List[str]],  # texts
+        Optional[List[List[str]]],  # multi_texts
+        Optional[List[List[str]]],  # tokens
+        Optional[List[str]],  # languages
+        Optional[List[List[float]]],  # dense_feat must be None
+    ]
+):
+    if be[0] is not None:
+        if (be[1] is not None) or (be[2] is not None):
+            raise RuntimeError(
+                "only one of texts, multi_texts, tokens can be not None."
+            )
+    elif be[1] is not None:
+        if be[2] is not None:
+            raise RuntimeError(
+                "only one of texts, multi_texts, tokens can be not None."
+            )
+
+    if be[3] is not None:
+        raise RuntimeError("currently, languages != None is not supported.")
+
+
 ########################################################################
 #
 # utility functions to destructure flat result tensor combining

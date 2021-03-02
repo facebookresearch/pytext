@@ -23,6 +23,7 @@ from pytext.torchscript.batchutils import (
     max_tokens,
     nonify_listlist_float,
     validate_dense_feat,
+    validate_make_prediction_batch_element,
 )
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer
@@ -253,6 +254,7 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         flat_dense_feat_tokens: List[List[float]] = []
 
         for i in range(batchsize):
+            validate_make_prediction_batch_element(batch[i])
             batch_element_texts = batch[i][0]
             batch_element_tokens = batch[i][2]
             batch_element_dense_feat = batch[i][4]
