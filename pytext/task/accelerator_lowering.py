@@ -62,7 +62,16 @@ def accelerator_transformerLayers_inputs(
 
 
 @accelerator(
-    [("NNPI", {"NNPI_IceCores": "12", "NNPINumParallelChunks": "12"})],
+    [
+        (
+            "NNPI",
+            {
+                "NNPI_IceCores": "12",
+                "NNPINumParallelChunks": "12",
+                "NNPILowerAllGelu": "true",
+            },
+        )
+    ],
     inputs_function=accelerator_transformerLayers_inputs,
 )
 class AcceleratorTransformerLayers(nn.Module):
