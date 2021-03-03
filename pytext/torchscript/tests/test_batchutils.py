@@ -11,6 +11,8 @@ from pytext.torchscript.batchutils import (
     make_prediction_tokens,
     make_prediction_texts,
     make_prediction_texts_dense,
+    zip_batch_tensor_list,
+    zip_batch_any_list_list,
 )
 
 
@@ -328,3 +330,51 @@ class BatchUtilsTest(unittest.TestCase):
                 [[1.0], [0.0], [1.0]],
             ),
         )
+
+    def test_zip_batch_tensor_list(self):
+        result_list1 = [torch.tensor([0])]
+        result_list2 = [torch.tensor([1])]
+
+        # Negative Case : missing 2 required positional arguments: 'result_list_1' and 'result_list_2'
+        with self.assertRaises(TypeError):
+            zip_batch_tensor_list([])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            zip_batch_tensor_list(None, result_list1, result_list2)
+
+    def test_zip_batch_tensor_list_item_verification(self):
+        tensor_list_1 = [torch.tensor([0]) for i in range(2000)]
+        tensor_list_2 = [torch.tensor([0]) for i in range(2000)]
+
+        result_tensor_list = zip_batch_tensor_list(
+            [100, 200, -1, 1, -5], tensor_list_1, tensor_list_2
+        )
+        self.assertEqual(len(result_tensor_list), 5)
+        self.assertEqual(result_tensor_list[0], tensor_list_1[0])
+        self.assertEqual(result_tensor_list[1], tensor_list_1[1])
+        self.assertEqual(result_tensor_list[2], tensor_list_1[0])
+        self.assertEqual(result_tensor_list[3], tensor_list_1[2])
+        self.assertEqual(result_tensor_list[4], tensor_list_1[1])
+
+    def test_zip_batch_any_list(self):
+
+        # Negative Case : missing 2 required positional arguments: 'result_list_1' and 'result_list_2'
+        with self.assertRaises(TypeError):
+            zip_batch_any_list_list([])
+
+        # Negative Case: None as input
+        with self.assertRaises(TypeError):
+            zip_batch_any_list_list(None, [[]], [[]])
+
+        with self.assertRaises(IndexError):
+            zip_batch_any_list_list([1, -2, -3, 3, 0], [], [])
+
+        tensor_list_1 = [torch.tensor([0]) for i in range(2000)]
+        tensor_list_2 = [torch.tensor([0]) for i in range(2000)]
+
+        result_tensor_list = zip_batch_tensor_list(
+            [100, 200, -1, 1, 0], tensor_list_1, tensor_list_2
+        )
+
+        self.assertNotEqual(len(result_tensor_list), len(tensor_list_1))
