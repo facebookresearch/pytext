@@ -3,19 +3,20 @@
 
 import torch
 from pytext.models.roberta import RoBERTaEncoder
-from pytext.utils.usage import log_accelerator_feature_usage
+from pytext.utils.usage import log_accelerator_feature_usage, log_feature_usage
 from torch.quantization import HistogramObserver, QConfig, default_weight_observer
 
 
 def quantize_statically(
     model, inputs, data_loader, linear_only=False, module_swap=False
 ):
-    log_accelerator_feature_usage("quantize.statically")
+    log_feature_usage("export.quantize.statically")
     if (
         hasattr(model, "encoder")
         and isinstance(model.encoder, RoBERTaEncoder)
         and linear_only
     ):
+        log_accelerator_feature_usage("quantize.statically")
         qconfig = QConfig(
             activation=HistogramObserver.with_args(reduce_range=False),
             weight=default_weight_observer,
