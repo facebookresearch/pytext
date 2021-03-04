@@ -16,7 +16,11 @@ from pytext.models.model import BaseModel
 from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
-from pytext.utils.usage import log_class_usage, log_accelerator_feature_usage
+from pytext.utils.usage import (
+    log_class_usage,
+    log_feature_usage,
+    log_accelerator_feature_usage,
+)
 from torch import jit, sort
 
 from .accelerator_lowering import (
@@ -311,6 +315,11 @@ class _NewTask(TaskBase):
         batch_padding_control = export_config.batch_padding_control
         inference_interface = export_config.inference_interface
 
+        # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
+        use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
+        use_cuda_half = "cuda:half" in accelerate
+        use_nnpi_quantize = "nnpi:quantize" in accelerate
+
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
@@ -318,7 +327,7 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
-        if "nnpi" in accelerate:
+        if use_nnpi:
             model = swap_modules_for_accelerator(model)
 
         # Trace needs eval mode, to disable dropout etc
@@ -335,19 +344,18 @@ class _NewTask(TaskBase):
             inputs = [i.index_select(0, sorted_indices) for i in inputs]
         model(*inputs)
 
-        use_cuda_half = "cuda:half" in accelerate
-
-        if quantize and hasattr(model, "graph_mode_quantize"):
+        if (quantize or use_nnpi_quantize) and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
-            quantize_linear_only = "nnpi_quantize" in accelerate
-            module_swap = "nnpi" in accelerate
+            # recognize legazy nnpi_q or $platform:$option syntax
+            quantize_linear_only = use_nnpi_quantize or ("nnpi_quantize" in accelerate)
+            module_swap = use_nnpi
             trace = quantize_statically(
                 model, inputs, data_loader, quantize_linear_only, module_swap
             )
         else:
             if quantize:
-                log_accelerator_feature_usage("quantize.dynamically.CPU")
+                log_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
 
             trace = model.trace(inputs)
