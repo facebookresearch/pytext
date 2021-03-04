@@ -193,10 +193,12 @@ class CompositionalMetricReporter(MetricReporter):
         """
         res_children: Set[Node] = set()
         idx = start
+        node_text_tokens: List[str] = []
         if node.children:
             for child in node.children:
                 if type(child) == Token:
                     idx += len(child.label) + 1
+                    node_text_tokens.append(child.label)
                 elif type(child) == Intent or type(child) == Slot:
                     res_child = CompositionalMetricReporter.node_to_metrics_node(
                         child, idx
@@ -205,5 +207,12 @@ class CompositionalMetricReporter(MetricReporter):
                     idx = res_child.span.end + 1
                 else:
                     raise ValueError("Child must be Token, Intent or Slot!")
-        node = Node(label=node.label, span=Span(start, idx - 1), children=res_children)
+        node_text = " ".join(node_text_tokens)
+        print(node_text)
+        node = Node(
+            label=node.label,
+            span=Span(start, idx - 1),
+            children=res_children,
+            text=node_text,
+        )
         return node

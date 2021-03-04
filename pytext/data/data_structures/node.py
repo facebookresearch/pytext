@@ -50,6 +50,7 @@ class Node:
             self.label == other.label  # noqa
             and self.span == other.span  # noqa
             and self.children == other.children  # noqa
+            and self.text == other.text  # noqa
         )
 
     def get_depth(self) -> int:
