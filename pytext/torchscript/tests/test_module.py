@@ -4,10 +4,14 @@
 import random
 import string
 import unittest
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.module import PyTextEmbeddingModule
+from pytext.data.tensorizers import TensorizerScriptImpl
+from pytext.torchscript.module import (
+    PyTextEmbeddingModule,
+    ScriptPyTextEmbeddingModule,
+)
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer, VocabLookup
 from pytext.torchscript.utils import (
     pad_2d,
@@ -15,7 +19,6 @@ from pytext.torchscript.utils import (
     ScriptBatchInput,
 )
 from pytext.torchscript.vocab import ScriptVocabulary
-from torch import Tensor
 
 
 class MyTensorizer(ScriptTensorizer):
@@ -187,7 +190,8 @@ class PytextembeddingmoduleTest(unittest.TestCase):
         # simple model, return inputs
         class MockModel(torch.jit.ScriptModule):
             def forward(
-                self, inputs: Tuple[Tensor, Tensor, Tensor, Tensor]
+                self,
+                inputs: Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
             ) -> torch.Tensor:
                 return inputs[0]
 
@@ -458,3 +462,119 @@ class PytextembeddingmoduleTest(unittest.TestCase):
 
     def get_random_string_with_n_tokens(self, n) -> None:
         return " ".join(random.choice(string.ascii_uppercase) for _ in range(n))
+
+
+class EmbeddingModuleTest(unittest.TestCase):
+    def _mock_model(self):
+        class MockModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, inp: torch.Tensor) -> torch.Tensor:
+                return inp
+
+        model = MockModel()
+        return torch.jit.script(model)
+
+    def _mock_tensoriser(self):
+        class MockTensoriser(TensorizerScriptImpl):
+            def __init__(self):
+                super().__init__()
+
+            def tokenize(
+                self,
+                row: Optional[List[str]],
+                row_pre_tokenized: Optional[List[List[str]]],
+            ) -> List[List[Tuple[str, int, int]]]:
+                tokens: List[List[Tuple[str, int, int]]] = []
+                if row is not None:
+                    for text in row:
+                        res: List[Tuple[str, int, int]] = []
+                        prev: int = 0
+                        for i, w in enumerate(text.split()):
+                            res.append((w, i + prev, i + prev + len(w) - 1))
+                            prev += len(w)
+                        tokens.append(res)
+                return tokens
+
+            def numberize(self, inp: List[List[Tuple[str, int, int]]]) -> List[int]:
+                res: List[int] = []
+                for row in inp:
+                    res.extend([int(x) for x, _, _ in row])
+                return res
+
+            def tensorize(self, n: List[int]) -> torch.Tensor:
+                return torch.tensor(n, dtype=torch.int)
+
+            def forward(self, inputs: ScriptBatchInput) -> torch.Tensor:
+                res: List[int] = []
+                for idx in range(self.batch_size(inputs)):
+                    res.extend(
+                        self.numberize(
+                            self.tokenize(
+                                self.get_texts_by_index(inputs.texts, idx), None
+                            )
+                        )
+                    )
+                return self.tensorize(res)
+
+        return MockTensoriser()
+
+    def test_make_prediction_1(self):
+        """Testing make_prediction() with texts argument that is invalid.
+        Should raise RuntimeError.
+        """
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        with self.assertRaises(RuntimeError):
+            model.make_prediction([(["1", "foo"], None, None, None, None)])
+
+    def test_make_prediction_2(self):
+        """Testing make_prediction() with texts argument."""
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        res = model.make_prediction([(["123", "12"], None, None, None, None)])
+        self.assertEqual(res[0][0], 123)
+        self.assertEqual(res[0][1], 12)
+
+    def test_make_prediction_3(self):
+        """Testing make_prediction() with texts argument(one string)."""
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        res = model.make_prediction([(["1"], None, None, None, None)])
+        self.assertEqual(res[0][0], 1)
+
+    def test_make_prediction_4(self):
+        """Testing make_prediction() with texts argument set to [None].
+        Should raise RuntimeError.
+        """
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        with self.assertRaises(RuntimeError):
+            model.make_prediction([([None], None, None, None, None)])
+
+    def test_make_prediction_5(self):
+        """Testing make_prediction() with texts and tokens arguments set to a list of None.
+        Should raise RuntimeError.
+        """
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        with self.assertRaises(RuntimeError):
+            model.make_prediction([([None, None], None, [None, None], None, None)])
+
+    def test_make_prediction_6(self):
+        """Testing make_prediction() with texts argument for batch input."""
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        res = model.make_prediction(
+            [
+                (["12345", "129"], None, None, None, None),
+                (["95", "12"], None, None, None, None),
+            ]
+        )
+        self.assertEqual(res[0][0], 12345)
+        self.assertEqual(res[0][1], 129)
+        self.assertEqual(res[1][0], 95)
+        self.assertEqual(res[1][1], 12)
+
+    def test_make_prediction_7(self):
+        """Testing make_prediction() with texts argument passing text that is invalid for MockTensoriser.
+        Should raise RuntimeError.
+        """
+        model = ScriptPyTextEmbeddingModule(self._mock_model(), self._mock_tensoriser())
+        with self.assertRaises(RuntimeError):
+            model.make_prediction([(["foo", "bar"], None, None, None, None)])
