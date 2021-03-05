@@ -27,12 +27,14 @@ class TraceableTransformerWrapper(nn.Module):
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
         token_embeddings: torch.Tensor = None,
+        attn_mask: torch.Tensor = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.eager_encoder(
             tokens,
             segment_labels,
             positions=positions,
             token_embeddings=token_embeddings,
+            attn_mask=attn_mask,
         )
 
 
@@ -44,11 +46,12 @@ class TracedTransformerEncoder(nn.Module):
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
         token_embeddings: torch.Tensor = None,
+        attn_mask: torch.Tensor = None,
     ) -> None:
         super().__init__()
         traceable_encoder = TraceableTransformerWrapper(eager_encoder)
         traced_encoder_inputs = self._prepare_inputs(
-            tokens, segment_labels, positions, token_embeddings
+            tokens, segment_labels, positions, token_embeddings, attn_mask
         )
         self.has_segment_labels = segment_labels is not None
         self.has_positions = positions is not None
@@ -80,12 +83,13 @@ class TracedTransformerEncoder(nn.Module):
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
         token_embeddings: torch.Tensor = None,
+        attn_mask: torch.Tensor = None,
     ):
         assert self.has_segment_labels == (segment_labels is not None)
         assert self.has_positions == (positions is not None)
 
         traced_encoder_inputs = self._prepare_inputs(
-            tokens, segment_labels, positions, token_embeddings
+            tokens, segment_labels, positions, token_embeddings, attn_mask
         )
         self.iter_ += 1
         if self.iter_ % 100 == 0:
@@ -111,6 +115,7 @@ class TracedTransformerEncoder(nn.Module):
         segment_labels: torch.Tensor = None,
         positions: torch.Tensor = None,
         token_embeddings: torch.Tensor = None,
+        attn_mask: torch.Tensor = None,
     ):
         inputs = [tokens]
         if segment_labels is not None:
@@ -119,4 +124,6 @@ class TracedTransformerEncoder(nn.Module):
             inputs += [positions]
         if token_embeddings is not None:
             inputs += [token_embeddings]
+        if attn_mask is not None:
+            inputs += [attn_mask]
         return inputs
