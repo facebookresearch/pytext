@@ -2,7 +2,6 @@
   {
     "original": {
       "version": 21,
-      "inference_interface": "texts",
       "seq_padding_control": [0, 50, 150, 300, 512],
       "batch_padding_control": [0, 1, 2, 8, 32],
       "export_torchscript_path": "/tmp/model.pt1",
@@ -164,7 +163,6 @@
       "export": {
         "seq_padding_control": [0, 50, 150, 300, 512],
         "batch_padding_control": [0, 1, 2, 8, 32],
-        "inference_interface": "texts",
         "export_torchscript_path": "/tmp/model.pt1",
         "torchscript_quantize": false
       },
