@@ -402,7 +402,7 @@ class _NewTask(TaskBase):
                     "inference_interface not supported by model. Ignoring inference_interface"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
-        if "nnpi" in accelerate:
+        if use_nnpi:
             print("lowering using to_glow")
             trace = lower_modules_to_accelerator(model, trace, export_config)
 
