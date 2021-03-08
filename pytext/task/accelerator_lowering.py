@@ -4,7 +4,17 @@
 from typing import Iterable, List
 
 import torch
-from accelerators.pytorch.lib.glow_decorator import accelerator
+
+accelerator_lowering_supported = True
+try:
+    from accelerators.pytorch.lib.glow_decorator import accelerator
+except ImportError:
+    accelerator_lowering_supported = False
+
+    from .nop_decorator import accelerator
+
+    print("Accelerator Lowering not supported!")
+
 from pytext.config import ExportConfig
 from pytext.models.roberta import RoBERTaEncoder
 from pytext.utils.usage import log_accelerator_feature_usage
@@ -61,6 +71,7 @@ def accelerator_transformerLayers_inputs(
     return input_examples
 
 
+# accelerator imported from .nop_decorator to avoid ImportError when glow_decorator is not available
 @accelerator(
     [
         (
@@ -133,6 +144,10 @@ def swap_modules_for_accelerator(model):
 
 
 def lower_modules_to_accelerator(model: nn.Module, trace, export_options: ExportConfig):
+    # Raise error if accelerator could not be imported
+    if not accelerator_lowering_supported:
+        raise RuntimeError("Accelerator Lowering not supported!")
+
     import torch_glow
 
     log_accelerator_feature_usage("build.NNPI")
