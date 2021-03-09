@@ -141,20 +141,3 @@ class SentencePieceTokenizerTest(unittest.TestCase):
         )
         tokens = sp_tokenizer.tokenize(sentence)
         self.assertEqual(tokens, expected)
-
-    def test_input_text_truncation(self):
-        sentence = "Testing out sentencepiece"
-        expected = [
-            Token(value="▁T", start=0, end=1),
-            Token(value="est", start=1, end=4),
-            Token(value="ing", start=4, end=7),
-            Token(value="▁out", start=8, end=11),
-        ]
-        sp_tokenizer = SentencePieceTokenizer.from_config(
-            SentencePieceTokenizer.Config(
-                sp_model_path="pytext/data/test/data/sentencepiece.model",
-                max_input_text_length=11,
-            )
-        )
-        tokens = sp_tokenizer.tokenize(sentence)
-        self.assertEqual(tokens, expected)

@@ -4,7 +4,7 @@ import copy
 import json
 import re
 from collections import OrderedDict
-from typing import List, NamedTuple, Union, Optional
+from typing import List, NamedTuple, Union
 
 from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
@@ -320,23 +320,17 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
 
     class Config(ConfigBase):
         sp_model_path: str = ""
-        max_input_text_length: Optional[int] = None
 
-    def __init__(
-        self, sp_model_path: str = "", max_input_text_length: Optional[int] = None
-    ):
+    def __init__(self, sp_model_path: str = ""):
         self.sp_model_path = sp_model_path
-        self.max_input_text_length = max_input_text_length
         self._load_processor()
         log_class_usage(__class__)
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.sp_model_path, config.max_input_text_length)
+        return cls(config.sp_model_path)
 
     def tokenize(self, input_str: str) -> List[Token]:
-        if self.max_input_text_length is not None:
-            input_str = input_str[: self.max_input_text_length]
         pieces = self.processor.EncodeAsPieces(input_str)
         tokens = []
         # calculate start and end indices of each piece.
