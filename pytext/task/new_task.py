@@ -21,7 +21,7 @@ from pytext.utils.usage import (
     log_feature_usage,
     log_accelerator_feature_usage,
 )
-from torch import jit, sort
+from torch import sort
 
 from .accelerator_lowering import (
     lower_modules_to_accelerator,
