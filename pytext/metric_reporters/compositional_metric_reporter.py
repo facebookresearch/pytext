@@ -208,7 +208,6 @@ class CompositionalMetricReporter(MetricReporter):
                 else:
                     raise ValueError("Child must be Token, Intent or Slot!")
         node_text = " ".join(node_text_tokens)
-        print(node_text)
         node = Node(
             label=node.label,
             span=Span(start, idx - 1),
