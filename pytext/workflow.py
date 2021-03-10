@@ -216,11 +216,18 @@ def save_and_export(
                 export_config.export_onnx_path,
             )
         elif export_config.export_torchscript_path:
-            task.torchscript_export(
-                model=task.model,
-                export_path=export_config.export_torchscript_path,
-                export_config=export_config,
-            )
+            try:
+                task.torchscript_export(
+                    model=task.model,
+                    export_path=export_config.export_torchscript_path,
+                    export_config=export_config,
+                )
+            except (RuntimeError, TypeError) as e:
+                print("Ran into error: {}".format(", ".join(e.args)))
+                print(
+                    f"The torchscript model at {export_config.export_torchscript_path} could not be saved, skipping for now."
+                )
+
         elif export_config.export_lite_path:
             task.lite_export(
                 model=task.model,
