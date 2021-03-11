@@ -769,6 +769,17 @@ def v23_to_v24(json_config):
     return json_config
 
 
+@register_adapter(from_version=24)
+def v24_to_v25(json_config):
+    """
+    Upgrade by adding max_input_text_length option and default to None
+    """
+    for v in get_json_config_iterator(json_config, "SentencePieceTokenizer"):
+        if "max_input_text_length" not in v:
+            v["max_input_text_length"] = None
+    return json_config
+
+
 @register_down_grade_adapter(from_version=23)
 def v23_to_v22(json_config):
     """
@@ -794,6 +805,26 @@ def v24_to_v23(json_config):
         json_config["export"] = json_config["export_list"][0]
         del json_config["export_list"]
     return json_config
+
+
+@register_down_grade_adapter(from_version=25)
+def v25_to_v24(json_config):
+    """
+    Downgrade by removing max_input_text_length option for SentencePieceTokenizer
+    """
+    for v in get_json_config_iterator(json_config, "SentencePieceTokenizer"):
+        if "max_input_text_length" in v:
+            del v["max_input_text_length"]
+    return json_config
+
+
+def get_json_config_iterator(json_config, lookup_key):
+    for key, value in json_config.items():
+        if key == lookup_key:
+            yield value
+        elif isinstance(value, dict):
+            for v in get_json_config_iterator(value, lookup_key):
+                yield v
 
 
 def upgrade_one_version(json_config):

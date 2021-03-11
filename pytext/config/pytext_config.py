@@ -394,4 +394,4 @@ class LogitsConfig(TestConfig):
 
 
 # update sitevar PYTEXT_CONFIG_LATEST_VERSION when new PytextConfig pushed in pytext config
-LATEST_VERSION = 24
+LATEST_VERSION = 25
