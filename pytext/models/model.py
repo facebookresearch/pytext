@@ -75,7 +75,11 @@ class BaseModel(nn.Module, Component):
         self.stage = stage
         self.module_list: List[nn.Module] = []
         self.find_unused_parameters = True
-        log_class_usage(__class__)
+        if self.__class__ != __class__:
+            # Only log usage for derived classes
+            # This suppresses logs when BaseModel is only used as default value
+            log_class_usage(__class__)
+            log_class_usage(self.__class__)
 
     def train(self, mode=True):
         """Override to explicitly maintain the stage (train, eval, test)."""
