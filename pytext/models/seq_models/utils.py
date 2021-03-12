@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Optional
+from typing import Optional, List, Dict
 
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import nn, Tensor
 
 
 def prepare_full_key(instance_id: str, key: str, secondary_key: Optional[str] = None):
@@ -42,3 +42,17 @@ def Linear(in_features, out_features, bias=True):
     if bias:
         nn.init.constant_(m.bias, 0.0)
     return m
+
+
+def verify_encoder_out(encoder_out: Dict[str, Tensor], keys: List[str]):
+    for key in keys:
+        assert key in encoder_out, f"Needed {key} to be in {keys}"
+
+
+def extract_ontology_vocab(target_dictionary):
+    fixed_generation_vocab = []
+    for i, symbol in enumerate(target_dictionary._vocab):
+        lower_symbol = symbol.lower()
+        if lower_symbol[0] == "[" or lower_symbol == "]":
+            fixed_generation_vocab.append(i)
+    return fixed_generation_vocab
