@@ -21,3 +21,8 @@ def log_feature_usage(feature):
 def log_accelerator_feature_usage(feature):
     feature = "Accelerator." + feature
     log_feature_usage(feature)
+
+
+def log_flow_usage(flow_name):
+    identifier = subsystem_name + ".flow." + flow_name
+    torch._C._log_api_usage_once(identifier)
