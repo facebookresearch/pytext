@@ -79,7 +79,7 @@ def accelerator_transformerLayers_inputs(
             {
                 "NNPI_IceCores": "12",
                 "NNPINumParallelChunks": "12",
-                "NNPILowerAllGelu": "true",
+                "NNPIUseGeluLUT": "true",
             },
         )
     ],
