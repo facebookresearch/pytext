@@ -2,6 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 from typing import Dict, Optional, Tuple
 
+from pytext.config.module_config import ModuleConfig
 from pytext.models.module import Module
 from pytext.utils.usage import log_class_usage
 from torch import Tensor, nn
@@ -52,6 +53,9 @@ class PyTextIncrementalDecoderComponent(PyTextSeq2SeqModule):
 
 
 class PlaceholderIdentity(nn.Module):
+    class Config(ModuleConfig):
+        pass
+
     def forward(self, x, incremental_state: Optional[Dict[str, Tensor]] = None):
         return x
 
