@@ -9,6 +9,7 @@ import torch
 from pytext.torchscript.tensorizer import (
     ScriptBERTTensorizer,
     ScriptRoBERTaTensorizer,
+    ScriptRoBERTaTensorizerWithIndices,
     ScriptXLMTensorizer,
 )
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
@@ -81,20 +82,270 @@ class TensorizerTest(unittest.TestCase):
         for token_id, token in zip(token_ids[1:-1], rand_tokens):
             self.assertEqual(token_id, int(token[0]) - 100)
 
-    def test_xlm_token_tensorizer(self):
-        vocab = self._mock_vocab()
+    def validate_padding(
+        self,
+        output_tensor: torch.Tensor,
+        pad_val: int,
+        significant_idxs: List[int],
+        expected_batch_size: int,
+        expected_token_padding: List[int],
+    ):
+        output_list = output_tensor.tolist()
+        self.assertEqual(len(output_list), expected_batch_size)
+        for i in range(expected_batch_size):
+            # indices that store significant values
+            actual_idxs = significant_idxs[i]
+            # create a list of size(expected_padding) filled with the value of pad_idx
+            expected_padding_list = [pad_val] * expected_token_padding[i]
+            # slice the given output_list from the last substantive index
+            actual_padding_list = output_list[i][actual_idxs:]
+            self.assertEqual(expected_padding_list, actual_padding_list)
 
-        xlm = ScriptXLMTensorizer(
+    def get_rand_tokens(self, sizes: List[int]):
+        """
+        Returns a List[List[int]] of values within range of the vocab
+        """
+        rand_tokens = []
+        for val in sizes:
+            rand_tokens.append([str(random.randint(100, 200)) for i in range(val)])
+        return rand_tokens
+
+    def _mock_roberta_tensorizer(self, max_seq_len=100):
+        return ScriptRoBERTaTensorizerWithIndices(
             tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
+            vocab=self._mock_vocab(),
+            max_seq_len=max_seq_len,
+        )
+
+    def _mock_xlm_tensorizer(self, max_seq_len=256):
+        return ScriptXLMTensorizer(
+            tokenizer=ScriptDoNothingTokenizer(),
+            token_vocab=self._mock_vocab(),
             language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
             max_seq_len=256,
             default_language="en",
         )
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
+
+    def test_roberta_tensorizer_default_padding(self):
+        roberta = self._mock_roberta_tensorizer()
+        rand_tokens = self.get_rand_tokens([20, 5, 15])
+
+        start_placeholder = 1
+        end_placeholder = 1
+        # num idxs that store significant values for elem in rand_token, i.e. [22, 7, 17]
+        sig_idxs = [start_placeholder + len(t) + end_placeholder for t in rand_tokens]
+        # pad every token to bottleneck value, i.e. [0, 15, 5]
+        expected_token_padding = [max(sig_idxs) - num for num in sig_idxs]
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=len(rand_tokens),
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_roberta_tensorizer_sequence_padding(self):
+        roberta = self._mock_roberta_tensorizer()
+        seq_padding_control = [0, 32, 256]
+        roberta.set_padding_control("sequence_length", seq_padding_control)
+        rand_tokens = self.get_rand_tokens([20, 5, 15])
+
+        start_placeholder = 1
+        end_placeholder = 1
+        # num idxs that store significant values for elem in rand_token, i.e. [22, 7, 17]
+        sig_idxs = [start_placeholder + len(t) + end_placeholder for t in rand_tokens]
+
+        expected_token_size = 32
+        # pad every token to bottleneck value, i.e. [0, 15, 5]
+        expected_token_padding = [expected_token_size - num for num in sig_idxs]
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=len(rand_tokens),
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_roberta_tensorizer_batch_padding(self):
+        roberta = self._mock_roberta_tensorizer()
+        batch_padding_control = [0, 3, 6]
+        roberta.set_padding_control("batch_length", batch_padding_control)
+
+        rand_tokens = self.get_rand_tokens([25, 15, 5, 30])
+        expected_batch_size = 6
+        expected_token_size = 32
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        # [27, 17, 7, 32, 0, 0]
+        sig_idxs = [1 + len(t) + 1 for t in rand_tokens] + [0, 0]
+        # [5, 15, 25, 0, 32, 32]
+        expected_token_padding = [expected_token_size - num for num in sig_idxs] + [
+            32,
+            32,
         ]
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_roberta_tensorizer_sequence_batch_padding(self):
+        roberta = self._mock_roberta_tensorizer()
+        seq_padding_control = [0, 48, 256]
+        batch_padding_control = [0, 3, 6]
+        roberta.set_padding_control("batch_length", batch_padding_control)
+        roberta.set_padding_control("sequence_length", seq_padding_control)
+
+        rand_tokens = self.get_rand_tokens([25, 15, 5, 30])
+        expected_batch_size = 6
+        expected_token_size = 48
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        sig_idxs = [1 + len(t) + 1 for t in rand_tokens] + [0, 0]
+        expected_token_padding = [expected_token_size - num for num in sig_idxs] + [
+            48,
+            48,
+        ]
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_roberta_tensorizer_input_exceeds_max_seq_len(self):
+        roberta = self._mock_roberta_tensorizer(max_seq_len=28)
+
+        rand_tokens = self.get_rand_tokens([25, 15, 5, 30])
+        expected_batch_size = 4
+        expected_token_size = 28
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        sig_idxs = [1 + len(t) + 1 for t in rand_tokens]
+        expected_token_padding = [expected_token_size - num for num in sig_idxs]
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_roberta_tensorizer_seq_padding_size_exceeds_max_seq_len(self):
+        roberta = self._mock_roberta_tensorizer(max_seq_len=20)
+        seq_padding_control = [0, 32, 256]
+        roberta.set_padding_control("sequence_length", seq_padding_control)
+
+        rand_tokens = self.get_rand_tokens([30, 20, 10])
+
+        tokens, pad_mask, start_indices, end_indices, positions = roberta.tensorize(
+            tokens=squeeze_2d(rand_tokens)
+        )
+
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
+        expected_batch_size = 3
+        expected_token_size = min(
+            max(max(sig_idxs), seq_padding_control[1]), roberta.max_seq_len
+        )
+        expected_token_padding = [max(0, expected_token_size - cnt) for cnt in sig_idxs]
+        sig_idxs = [expected_token_size - cnt for cnt in expected_token_padding]
+
+        padding_key = {
+            tokens: 200,
+            pad_mask: 0,
+            start_indices: 0,
+            end_indices: 0,
+            positions: 0,
+        }
+
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
+            )
+
+    def test_xlm_token_tensorizer(self):
+        xlm = self._mock_xlm_tensorizer()
+        rand_tokens = self.get_rand_tokens([20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens)
@@ -118,27 +369,16 @@ class TensorizerTest(unittest.TestCase):
         self.assertEqual(languages[1][:12], [2] * 12)
 
     def test_xlm_tensorizer_default_padding(self):
-        vocab = self._mock_vocab()
-
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=256,
-            default_language="en",
-        )
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        xlm = self._mock_xlm_tensorizer()
+        rand_tokens = self.get_rand_tokens([20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens)
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
-        expected_token_size = max(token_count)
-        expected_padding_count = [expected_token_size - cnt for cnt in token_count]
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
+        expected_token_size = max(sig_idxs)
+        expected_token_padding = [expected_token_size - cnt for cnt in sig_idxs]
         expected_batch_size = len(rand_tokens)
 
         # verify tensorized tokens padding
@@ -151,16 +391,16 @@ class TensorizerTest(unittest.TestCase):
         )
         for i in range(expected_batch_size):
             self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
+                tokens[i][sig_idxs[i] :], [200] * expected_token_padding[i]
             )
 
         # verify tensorized languages
         languages = languages.tolist()
         self.assertEqual(len(languages), expected_batch_size)
         for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
+            self.assertEqual(languages[i][: sig_idxs[i]], [2] * sig_idxs[i])
             self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
+                languages[i][sig_idxs[i] :], [0] * expected_token_padding[i]
             )
 
         # verify tensorized postions
@@ -168,367 +408,191 @@ class TensorizerTest(unittest.TestCase):
         self.assertEqual(len(positions), expected_batch_size)
         for i in range(expected_batch_size):
             self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
+                positions[i][sig_idxs[i] :], [0] * expected_token_padding[i]
             )
 
         # verify pad_masks
         pad_masks = pad_masks.tolist()
         self.assertEqual(len(pad_masks), expected_batch_size)
         for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
+            self.assertEqual(pad_masks[i][: sig_idxs[i]], [1] * sig_idxs[i])
             self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+                pad_masks[i][sig_idxs[i] :], [0] * expected_token_padding[i]
             )
 
     def test_xlm_tensorizer_sequence_padding(self):
-        vocab = self._mock_vocab()
-
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=256,
-            default_language="en",
-        )
+        xlm = self._mock_xlm_tensorizer()
 
         padding_control = [0, 32, 256]
         xlm.set_padding_control("sequence_length", padding_control)
 
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        rand_tokens = self.get_rand_tokens([20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens),
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
         expected_token_size = min(
-            max(padding_control[1], max(token_count)), xlm.max_seq_len
+            max(padding_control[1], max(sig_idxs)), xlm.max_seq_len
         )
-        expected_padding_count = [expected_token_size - cnt for cnt in token_count]
-        expected_batch_size = len(rand_tokens)
+        expected_token_padding = [expected_token_size - cnt for cnt in sig_idxs]
 
-        # verify tensorized tokens padding
-        tokens = tokens.tolist()
-        self.assertEqual(len(tokens), expected_batch_size)
-        self.assertEqual(
-            max(len(t) for t in tokens),
-            min(len(t) for t in tokens),
-            expected_token_size,
-        )
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
-            )
+        padding_key = {
+            tokens: 200,
+            pad_masks: 0,
+            languages: 0,
+            positions: 0,
+        }
 
-        # verify tensorized languages
-        languages = languages.tolist()
-        self.assertEqual(len(languages), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
-            self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify tensorized postions
-        positions = positions.tolist()
-        self.assertEqual(len(positions), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify pad_masks
-        pad_masks = pad_masks.tolist()
-        self.assertEqual(len(pad_masks), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
-            self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=len(rand_tokens),
+                expected_token_padding=expected_token_padding,
             )
 
     def test_xlm_tensorizer_batch_padding(self):
-        vocab = self._mock_vocab()
+        xlm = self._mock_xlm_tensorizer()
 
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=256,
-            default_language="en",
-        )
+        batch_padding_control = [0, 3, 6]
+        xlm.set_padding_control("batch_length", batch_padding_control)
 
-        padding_control = [0, 3, 6]
-        xlm.set_padding_control("batch_length", padding_control)
-
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        rand_tokens = self.get_rand_tokens([20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens),
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
+        sig_idxs = [len(t) + 2 for t in rand_tokens] + [0]
+        expected_token_size = max(sig_idxs)
         expected_batch_size = min(
-            max(len(rand_tokens), padding_control[1]), xlm.max_seq_len
+            max(len(rand_tokens), batch_padding_control[1]), xlm.max_seq_len
         )
-        token_count += [0] * (expected_batch_size - len(token_count))
-        expected_token_size = max(token_count)
-        expected_padding_count = [expected_token_size - cnt for cnt in token_count]
+        expected_token_padding = [expected_token_size - cnt for cnt in sig_idxs]
 
-        # verify tensorized tokens padding
-        tokens = tokens.tolist()
-        self.assertEqual(len(tokens), expected_batch_size)
-        self.assertEqual(
-            max(len(t) for t in tokens),
-            min(len(t) for t in tokens),
-            expected_token_size,
-        )
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
-            )
+        padding_key = {
+            tokens: 200,
+            pad_masks: 0,
+            languages: 0,
+            positions: 0,
+        }
 
-        # verify tensorized languages
-        languages = languages.tolist()
-        self.assertEqual(len(languages), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
-            self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify tensorized postions
-        positions = positions.tolist()
-        self.assertEqual(len(positions), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify pad_masks
-        pad_masks = pad_masks.tolist()
-        self.assertEqual(len(pad_masks), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
-            self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
             )
 
     def test_xlm_tensorizer_sequence_and_batch_padding(self):
-        vocab = self._mock_vocab()
-
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=256,
-            default_language="en",
-        )
+        xlm = self._mock_xlm_tensorizer()
 
         seq_padding_control = [0, 32, 256]
         xlm.set_padding_control("sequence_length", seq_padding_control)
         batch_padding_control = [0, 3, 6]
         xlm.set_padding_control("batch_length", batch_padding_control)
 
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        rand_tokens = self.get_rand_tokens([20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens),
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
         expected_batch_size = min(
             max(len(rand_tokens), batch_padding_control[1]), xlm.max_seq_len
         )
-        token_count += [0] * (expected_batch_size - len(token_count))
+        sig_idxs += [0] * (expected_batch_size - len(sig_idxs))
         expected_token_size = min(
-            max(seq_padding_control[1], max(token_count)), xlm.max_seq_len
+            max(seq_padding_control[1], max(sig_idxs)), xlm.max_seq_len
         )
-        expected_padding_count = [expected_token_size - cnt for cnt in token_count]
+        expected_token_padding = [expected_token_size - cnt for cnt in sig_idxs]
 
-        # verify tensorized tokens padding
-        tokens = tokens.tolist()
-        self.assertEqual(len(tokens), expected_batch_size)
-        self.assertEqual(
-            max(len(t) for t in tokens),
-            min(len(t) for t in tokens),
-            expected_token_size,
-        )
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
-            )
+        padding_key = {
+            tokens: 200,
+            pad_masks: 0,
+            languages: 0,
+            positions: 0,
+        }
 
-        # verify tensorized languages
-        languages = languages.tolist()
-        self.assertEqual(len(languages), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
-            self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify tensorized postions
-        positions = positions.tolist()
-        self.assertEqual(len(positions), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify pad_masks
-        pad_masks = pad_masks.tolist()
-        self.assertEqual(len(pad_masks), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
-            self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=expected_batch_size,
+                expected_token_padding=expected_token_padding,
             )
 
     def test_xlm_tensorizer_input_sequence_exceeds_max_seq_len(self):
-        vocab = self._mock_vocab()
-
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=20,
-            default_language="en",
-        )
-
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(30)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        xlm = self._mock_xlm_tensorizer(max_seq_len=20)
+        rand_tokens = self.get_rand_tokens([30, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens),
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
-        expected_token_size = min(max(token_count), xlm.max_seq_len)
-        expected_padding_count = [
-            max(0, expected_token_size - cnt) for cnt in token_count
-        ]
-        token_count = [expected_token_size - cnt for cnt in expected_padding_count]
-        expected_batch_size = len(rand_tokens)
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
+        expected_token_size = min(max(sig_idxs), xlm.max_seq_len)
+        expected_token_padding = [max(0, expected_token_size - cnt) for cnt in sig_idxs]
+        sig_idxs = [expected_token_size - cnt for cnt in expected_token_padding]
 
-        # verify tensorized tokens padding
-        tokens = tokens.tolist()
-        self.assertEqual(len(tokens), expected_batch_size)
-        self.assertEqual(
-            max(len(t) for t in tokens),
-            min(len(t) for t in tokens),
-            expected_token_size,
-        )
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
-            )
+        padding_key = {
+            tokens: 200,
+            pad_masks: 0,
+            languages: 0,
+            positions: 0,
+        }
 
-        # verify tensorized languages
-        languages = languages.tolist()
-        self.assertEqual(len(languages), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
-            self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify tensorized postions
-        positions = positions.tolist()
-        self.assertEqual(len(positions), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify pad_masks
-        pad_masks = pad_masks.tolist()
-        self.assertEqual(len(pad_masks), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
-            self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=len(rand_tokens),
+                expected_token_padding=expected_token_padding,
             )
 
     def test_xlm_tensorizer_seq_padding_size_exceeds_max_seq_len(self):
-        vocab = self._mock_vocab()
-
-        xlm = ScriptXLMTensorizer(
-            tokenizer=ScriptDoNothingTokenizer(),
-            token_vocab=vocab,
-            language_vocab=ScriptVocabulary(["ar", "cn", "en"]),
-            max_seq_len=20,
-            default_language="en",
-        )
-
+        xlm = self._mock_xlm_tensorizer(max_seq_len=20)
         seq_padding_control = [0, 32, 256]
         xlm.set_padding_control("sequence_length", seq_padding_control)
 
-        rand_tokens = [
-            [str(random.randint(100, 200)) for i in range(30)],
-            [str(random.randint(100, 200)) for i in range(20)],
-            [str(random.randint(100, 200)) for i in range(10)],
-        ]
+        rand_tokens = self.get_rand_tokens([30, 20, 10])
 
         tokens, pad_masks, languages, positions = xlm.tensorize(
             tokens=squeeze_2d(rand_tokens),
         )
 
-        token_count = [len(t) + 2 for t in rand_tokens]
-        expected_batch_size = len(rand_tokens)
+        sig_idxs = [len(t) + 2 for t in rand_tokens]
         expected_token_size = min(
-            max(max(token_count), seq_padding_control[1]), xlm.max_seq_len
+            max(max(sig_idxs), seq_padding_control[1]), xlm.max_seq_len
         )
-        expected_padding_count = [
-            max(0, expected_token_size - cnt) for cnt in token_count
-        ]
-        token_count = [expected_token_size - cnt for cnt in expected_padding_count]
+        expected_token_padding = [max(0, expected_token_size - cnt) for cnt in sig_idxs]
+        sig_idxs = [expected_token_size - cnt for cnt in expected_token_padding]
 
-        # verify tensorized tokens padding
-        tokens = tokens.tolist()
-        self.assertEqual(len(tokens), expected_batch_size)
-        self.assertEqual(
-            max(len(t) for t in tokens),
-            min(len(t) for t in tokens),
-            expected_token_size,
-        )
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                tokens[i][token_count[i] :], [200] * expected_padding_count[i]
-            )
+        padding_key = {
+            tokens: 200,
+            pad_masks: 0,
+            languages: 0,
+            positions: 0,
+        }
 
-        # verify tensorized languages
-        languages = languages.tolist()
-        self.assertEqual(len(languages), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(languages[i][: token_count[i]], [2] * token_count[i])
-            self.assertEqual(
-                languages[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify tensorized postions
-        positions = positions.tolist()
-        self.assertEqual(len(positions), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(
-                positions[i][token_count[i] :], [0] * expected_padding_count[i]
-            )
-
-        # verify pad_masks
-        pad_masks = pad_masks.tolist()
-        self.assertEqual(len(pad_masks), expected_batch_size)
-        for i in range(expected_batch_size):
-            self.assertEqual(pad_masks[i][: token_count[i]], [1] * token_count[i])
-            self.assertEqual(
-                pad_masks[i][token_count[i] :], [0] * expected_padding_count[i]
+        # verify padding
+        for output_tensor, pad_val in padding_key.items():
+            self.validate_padding(
+                output_tensor,
+                pad_val,
+                significant_idxs=sig_idxs,
+                expected_batch_size=len(rand_tokens),
+                expected_token_padding=expected_token_padding,
             )

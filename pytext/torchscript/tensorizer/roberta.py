@@ -37,9 +37,8 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
     @torch.jit.script_method
     def numberize(
         self, text_row: Optional[List[str]], token_row: Optional[List[List[str]]]
-    ) -> Tuple[List[int], int, List[int], List[int], List[int]]:
+    ) -> Tuple[List[int], List[int], List[int], List[int]]:
         token_ids: List[int] = []
-        seq_len: int = 0
         start_indices: List[int] = []
         end_indices: List[int] = []
         positions: List[int] = []
@@ -55,9 +54,9 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
             end_indices.extend(end_ids)
 
         seq_len = len(token_ids)
-        positions = [i for i in range(seq_len)]
+        positions = list(range(seq_len))
 
-        return token_ids, seq_len, start_indices, end_indices, positions
+        return token_ids, start_indices, end_indices, positions
 
     @torch.jit.script_method
     def tensorize(
@@ -66,23 +65,21 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
         tokens: Optional[List[List[List[str]]]] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         tokens_2d: List[List[int]] = []
-        seq_len_2d: List[int] = []
         start_indices_2d: List[List[int]] = []
         end_indices_2d: List[List[int]] = []
         positions_2d: List[List[int]] = []
 
         for idx in range(self.batch_size(texts, tokens)):
             numberized: Tuple[
-                List[int], int, List[int], List[int], List[int]
+                List[int], List[int], List[int], List[int]
             ] = self.numberize(
                 self.get_texts_by_index(texts, idx),
                 self.get_tokens_by_index(tokens, idx),
             )
             tokens_2d.append(numberized[0])
-            seq_len_2d.append(numberized[1])
-            start_indices_2d.append(numberized[2])
-            end_indices_2d.append(numberized[3])
-            positions_2d.append(numberized[4])
+            start_indices_2d.append(numberized[1])
+            end_indices_2d.append(numberized[2])
+            positions_2d.append(numberized[3])
 
         tokens, pad_mask = pad_2d_mask(
             tokens_2d,
@@ -91,32 +88,29 @@ class ScriptRoBERTaTensorizerWithIndices(ScriptBERTTensorizerBase):
             max_seq_pad_len=self.max_seq_len,
             batch_padding_control=self.batch_padding_control,
         )
-        start_indices = torch.tensor(
-            pad_2d(
-                start_indices_2d,
-                seq_lens=seq_len_2d,
-                pad_idx=self.vocab.pad_idx,
-                max_len=self.max_seq_len,
-            ),
-            dtype=torch.long,
+
+        start_indices, _ = pad_2d_mask(
+            start_indices_2d,
+            pad_value=0,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
-        end_indices = torch.tensor(
-            pad_2d(
-                end_indices_2d,
-                seq_lens=seq_len_2d,
-                pad_idx=self.vocab.pad_idx,
-                max_len=self.max_seq_len,
-            ),
-            dtype=torch.long,
+
+        end_indices, _ = pad_2d_mask(
+            end_indices_2d,
+            pad_value=0,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
-        positions = torch.tensor(
-            pad_2d(
-                positions_2d,
-                seq_lens=seq_len_2d,
-                pad_idx=self.vocab.pad_idx,
-                max_len=self.max_seq_len,
-            ),
-            dtype=torch.long,
+
+        positions, _ = pad_2d_mask(
+            positions_2d,
+            pad_value=0,
+            seq_padding_control=self.seq_padding_control,
+            max_seq_pad_len=self.max_seq_len,
+            batch_padding_control=self.batch_padding_control,
         )
 
         if self.device == "":
