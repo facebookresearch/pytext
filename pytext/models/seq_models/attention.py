@@ -271,3 +271,91 @@ class MultiheadAttention(PyTextIncrementalDecoderComponent):
         self, incremental_state: Dict[str, Tensor], key: str, value: Tensor
     ):
         self.set_incremental_state(incremental_state, key, value)
+
+
+class DecoupledMultiheadAttention(nn.Module):
+    """
+    Multiheaded Scaled Dot Product Attention. This function
+    has the same exact signature as the one used in pytorch_translate
+    with the added benefit of supporting torchscript
+    """
+
+    def __init__(
+        self,
+        embed_dim: int,
+        context_dim: int,
+        num_heads: int,
+        dropout: float,
+        unseen_mask=False,
+        src_length_mask=True,
+    ):
+        super().__init__()
+        assert embed_dim == context_dim
+        d_model = embed_dim
+        assert d_model % num_heads == 0
+
+        if unseen_mask:
+            raise NotImplementedError(
+                "Unseen mask not supported with sequential decoding"
+            )
+        self._attn = MultiheadAttention(d_model, num_heads, dropout)
+        self.use_src_length_mask = src_length_mask
+
+    def forward(
+        self,
+        decoder_state: Tensor,
+        source_hids: Tensor,
+        src_len_mask: Optional[Tensor],
+        squeeze: bool = True,
+    ) -> Tuple[Tensor, Tensor]:
+        """
+        Computes MultiheadAttention with respect to either a vector
+        or a tensor
+
+        Inputs:
+            decoder_state: (bsz x decoder_hidden_state_dim) or
+                (bsz x T x decoder_hidden_state_dim)
+            source_hids: srclen x bsz x context_dim
+            src_lengths: bsz x 1, actual sequence lengths
+            squeeze: Whether or not to squeeze on the time dimension.
+                Even if decoder_state.dim() is 2 dimensional an
+                explicit time step dimension will be unsqueezed.
+        Outputs:
+          [batch_size, max_src_len] if decoder_state.dim() == 2 & squeeze
+            or
+          [batch_size, 1, max_src_len] if decoder_state.dim() == 2 & !squeeze
+            or
+          [batch_size, T, max_src_len] if decoder_state.dim() == 3 & !squeeze
+            or
+          [batch_size, T, max_src_len] if decoder_state.dim() == 3 & squeeze & T != 1
+            or
+          [batch_size, max_src_len] if decoder_state.dim() == 3 & squeeze & T == 1
+        """
+        if decoder_state.dim() == 3:
+            query = decoder_state
+        elif decoder_state.dim() == 2:
+            query = decoder_state.unsqueeze(1)
+        else:
+            raise ValueError("decoder state must be either 2 or 3 dimensional")
+        query = query.transpose(0, 1)
+        value = key = source_hids
+
+        attn, attn_weights = self._attn.forward(
+            query, key, value, key_padding_mask=src_len_mask, need_weights=True
+        )
+        # Need to satify torchscript here
+        if attn_weights is None:
+            raise NotImplementedError("")
+        # attn.shape = T X bsz X embed_dim
+        # attn_weights.shape = bsz X T X src_len
+
+        attn_weights = attn_weights.transpose(0, 2)
+        # attn_weights.shape = src_len X T X bsz
+
+        if squeeze:
+            attn = attn.squeeze(0)
+            # attn.shape = squeeze(T) X bsz X embed_dim
+            attn_weights = attn_weights.squeeze(1)
+            # attn_weights.shape = src_len X squeeze(T) X bsz
+            return attn, attn_weights
+        return attn, attn_weights
