@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 import torch
 
@@ -16,6 +16,7 @@ except ImportError:
     print("Accelerator Lowering not supported!")
 
 from pytext.config import ExportConfig
+from pytext.models.representations.bilstm import BiLSTM
 from pytext.models.roberta import RoBERTaEncoder
 from pytext.utils.usage import log_accelerator_feature_usage
 from torch import nn
@@ -144,11 +145,113 @@ class AcceleratorTransformer(nn.Module):
         return states
 
 
+def accelerator_lstm_inputs(
+    model: nn.Module,
+    trace: torch.jit.ScriptFunction,
+    export_options: ExportConfig,
+    dataset_iterable: Iterable,
+    module_path,
+):
+    import torch_glow
+
+    # we use the padding control from the Export Config:
+    if export_options is None:
+        export_options = ExportConfig()
+
+    if export_options.seq_padding_control is None:
+        raise RuntimeError("seq padding control not specified")
+    if export_options.batch_padding_control is None:
+        raise RuntimeError("batch padding control not specified")
+
+    batch_padding_control = export_options.batch_padding_control
+    seq_padding_control = export_options.seq_padding_control
+    embedding_dim = trace.embedding.word_embedding.embedding_dim * 2
+    lstm_num_layers = trace.lstm_num_layers
+    lstm_dim = trace.lstm_dim
+
+    input_examples = []
+    for seq_len in seq_padding_control:
+        if seq_len <= 0:
+            continue
+        for batch_size in batch_padding_control:
+            if batch_size <= 0:
+                continue
+            # Todo: We directly generate data input instead of using dataset_iterable, enhance later
+            input_embedding = torch.randn(
+                [batch_size, seq_len, embedding_dim], dtype=torch.float32
+            )
+            input_hidden = torch.randn(
+                [batch_size, lstm_num_layers, lstm_dim], dtype=torch.float32
+            )
+            input_cell = torch.randn(
+                [batch_size, lstm_num_layers, lstm_dim], dtype=torch.float32
+            )
+            input_specs = torch_glow.input_specs_from_tensors(
+                [input_embedding, input_hidden, input_cell]
+            )
+            input_examples.append(input_specs)
+
+    return input_examples
+
+
+@accelerator(
+    [("NNPI", {"NNPI_IceCores": "1", "NNPINumParallelChunks": "12"})],
+    inputs_function=accelerator_lstm_inputs,
+)
+class AcceleratorLSTMLayers(nn.Module):
+    def __init__(self, lstm):
+        super().__init__()
+        self.lstm = lstm
+        self.num_layers = lstm.num_layers
+        self.hidden_size = lstm.hidden_size
+        self.lstm.batch_first = False  # NNPI only support batch_first = false
+
+    def forward(
+        self, lstm_input: torch.Tensor, hidden: torch.Tensor, cell: torch.Tensor
+    ):
+        lstm_input = lstm_input.transpose(0, 1)
+        hidden = hidden.transpose(0, 1)
+        cell = cell.transpose(0, 1)
+        rep, new_state = self.lstm(lstm_input, (hidden, cell))
+        return rep, new_state[0], new_state[1]
+
+
+class AcceleratorBiLSTM(nn.Module):
+    def __init__(self, biLSTM):
+        super().__init__()
+        self.dropout = biLSTM.dropout
+        self.pack_sequence = biLSTM.pack_sequence
+        self.disable_sort_in_jit = biLSTM.disable_sort_in_jit
+        self.lstm = AcceleratorLSTMLayers(biLSTM.lstm)
+        self.representation_dim = biLSTM.representation_dim
+        self.padding_value = biLSTM.padding_value
+
+    def forward(
+        self,
+        embedded_tokens: torch.Tensor,
+        seq_lengths: torch.Tensor,
+        states: Tuple[torch.Tensor, torch.Tensor],
+    ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        rep, new_hidden, new_cell = self.lstm(embedded_tokens, states[0], states[1])
+        new_hidden = new_hidden.reshape(
+            self.lstm.num_layers, rep.size(1), self.lstm.hidden_size
+        ).transpose(0, 1)
+        new_cell = new_cell.reshape(
+            self.lstm.num_layers, rep.size(1), self.lstm.hidden_size
+        ).transpose(0, 1)
+        rep = rep.transpose(0, 1)
+        return rep, (new_hidden, new_cell)
+
+
 # Swap a transformer for only RoBERTaEncoder encoders
 def swap_modules_for_accelerator(model):
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
         old_transformer = model.encoder.encoder.transformer
         model.encoder.encoder.transformer = AcceleratorTransformer(old_transformer)
+        return model
+    elif hasattr(model, "representation") and isinstance(model.representation, BiLSTM):
+        old_biLSTM = model.representation
+        model.representation = AcceleratorBiLSTM(old_biLSTM)
         return model
     else:
         return model
@@ -162,7 +265,10 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
     import torch_glow
 
     log_accelerator_feature_usage("build.NNPI")
-    if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
+    if (hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder)) or (
+        hasattr(model, "representation")
+        and isinstance(model.representation, AcceleratorBiLSTM)
+    ):
         backend = "NNPI"
         (
             submod_modelpath,
@@ -182,6 +288,10 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
         if inputs_function is not None:
             input_sets = inputs_function(
                 model, trace, export_options, None, submod_modelpath
+            )
+        else:
+            raise RuntimeError(
+                "inputs_function needs to be specified in accelerator decorator"
             )
         compilation_group.set_input_sets(input_sets)
 
