@@ -71,6 +71,23 @@ def accelerator_transformerLayers_inputs(
     return input_examples
 
 
+class AcceleratorTransformerLayersInternal(nn.Module):
+    def __init__(self, layers):
+        super().__init__()
+        self.layers = layers
+
+    def forward(
+        self, encoded: torch.Tensor, padding_mask: torch.Tensor
+    ) -> List[torch.Tensor]:
+        states = [encoded]
+
+        for layer in self.layers:
+            encoded = layer(encoded, padding_mask)
+            states.append(encoded)
+
+        return states
+
+
 # accelerator imported from .nop_decorator to avoid ImportError when glow_decorator is not available
 @accelerator(
     [
@@ -88,18 +105,12 @@ def accelerator_transformerLayers_inputs(
 class AcceleratorTransformerLayers(nn.Module):
     def __init__(self, layers):
         super().__init__()
-        self.layers = layers
+        self.layers = AcceleratorTransformerLayersInternal(layers)
 
     def forward(
         self, encoded: torch.Tensor, padding_mask: torch.Tensor
     ) -> List[torch.Tensor]:
-        states = [encoded]
-
-        for layer in self.layers:
-            encoded = layer(encoded, padding_mask)
-            states.append(encoded)
-
-        return states
+        return self.layers(encoded, padding_mask)
 
 
 # Special reimplementation of transformer which separates the
