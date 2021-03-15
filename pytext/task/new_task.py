@@ -27,7 +27,10 @@ from .accelerator_lowering import (
     lower_modules_to_accelerator,
     swap_modules_for_accelerator,
 )
-from .quantize import quantize_statically
+from .quantize import (
+    quantize_statically,
+    quantize_fx,
+)
 from .task import TaskBase
 
 
@@ -319,6 +322,16 @@ class _NewTask(TaskBase):
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
         use_cuda_half = "cuda:half" in accelerate
         use_nnpi_quantize = "nnpi:quantize" in accelerate
+        use_nnpi_fx_static_quantize = "nnpi:fx_static_quantize" in accelerate
+        use_nnpi_fx_dynamic_quantize = "nnpi:fx_dynamic_quantize" in accelerate
+        use_cpu_fx_static_quantize = "cpu:fx_static_quantize" in accelerate
+        use_cpu_fx_dynamic_quantize = "cpu:fx_dynamic_quantize" in accelerate
+        use_fx_quantize = (
+            use_nnpi_fx_static_quantize
+            or use_nnpi_fx_dynamic_quantize
+            or use_cpu_fx_static_quantize
+            or use_cpu_fx_dynamic_quantize
+        )
 
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
@@ -327,7 +340,7 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
-        if use_nnpi:
+        if use_nnpi or use_fx_quantize:
             model = swap_modules_for_accelerator(model)
 
         # Trace needs eval mode, to disable dropout etc
@@ -344,7 +357,16 @@ class _NewTask(TaskBase):
             inputs = [i.index_select(0, sorted_indices) for i in inputs]
         model(*inputs)
 
-        if (quantize or use_nnpi_quantize) and hasattr(model, "graph_mode_quantize"):
+        # Default to dynamic
+        if use_fx_quantize:
+            data_loader = self.data.batches(Stage.TRAIN, load_early=False)
+            trace = quantize_fx(
+                model,
+                inputs,
+                data_loader,
+                use_nnpi_fx_dynamic_quantize or use_cpu_fx_dynamic_quantize,
+            )
+        elif (quantize or use_nnpi_quantize) and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
             # recognize legazy nnpi_q or $platform:$option syntax
