@@ -559,7 +559,6 @@ class Trainer(TrainerBase):
                     optimizer=getattr(
                         state, "optimizer", None
                     ),  # optimizer is not present during test
-                    privacy_engine=getattr(state, "privacy_engine", None),
                 )
         else:
             metric_reporter._reset()
