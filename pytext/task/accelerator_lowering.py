@@ -257,7 +257,9 @@ def swap_modules_for_accelerator(model):
         return model
 
 
-def lower_modules_to_accelerator(model: nn.Module, trace, export_options: ExportConfig):
+def lower_modules_to_accelerator(
+    model: nn.Module, trace, export_options: ExportConfig, throughput_optimize=False
+):
     # Raise error if accelerator could not be imported
     if not accelerator_lowering_supported:
         raise RuntimeError("Accelerator Lowering not supported!")
@@ -282,6 +284,13 @@ def lower_modules_to_accelerator(model: nn.Module, trace, export_options: Export
         spec.compilation_groups_append(compilation_group)
         compilation_group_settings = compilation_group.get_settings()
         compilation_group_settings.set_convert_to_fp16(True)
+
+        # Override the options for throughput-optimized case
+        if throughput_optimize:
+            compilation_spec_dict["NNPI_IceCores"] = "4"
+            compilation_spec_dict["NNPINumParallelChunks"] = "4"
+            compilation_group_settings.set_replication_count(3)
+
         for k, v in compilation_spec_dict.items():
             compilation_group.get_settings().backend_specific_opts_insert(k, v)
 

@@ -319,6 +319,7 @@ class _NewTask(TaskBase):
 
         # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
+        use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
         use_cuda_half = "cuda:half" in accelerate
         use_nnpi_quantize = "nnpi:quantize" in accelerate
         use_nnpi_fx_static_quantize = "nnpi:fx_static_quantize" in accelerate
@@ -418,7 +419,9 @@ class _NewTask(TaskBase):
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if use_nnpi:
             print("lowering using to_glow")
-            trace = lower_modules_to_accelerator(model, trace, export_config)
+            trace = lower_modules_to_accelerator(
+                model, trace, export_config, use_nnpi_throughput_optimized
+            )
 
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
