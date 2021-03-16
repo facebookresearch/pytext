@@ -232,7 +232,11 @@ class PairwiseClassificationTask(NewTask):
         accelerate = export_config.accelerate
         seq_padding_control = export_config.seq_padding_control
         batch_padding_control = export_config.batch_padding_control
-        inference_interface = export_config.inference_interface
+
+        if (accelerate is not None) and (accelerate != []):
+            raise RuntimeError(
+                "old-style task.py does not support export for NNPI accelerators"
+            )
 
         cuda.CUDA_ENABLED = False
         model.cpu()
@@ -249,8 +253,6 @@ class PairwiseClassificationTask(NewTask):
         model(*inputs)
         if quantize:
             model.quantize()
-        if accelerate is not None and "half" in accelerate:
-            model.half()
         if self.trace_both_encoders:
             trace = jit.trace(model, inputs)
         else:
@@ -273,19 +275,7 @@ class PairwiseClassificationTask(NewTask):
                 print(
                     "Padding_control not supported by model. Ignoring padding_control"
                 )
-        if inference_interface is not None:
-            if hasattr(trace, "inference_interface"):
-                trace.inference_interface(inference_interface)
-            else:
-                print(
-                    "inference_interface not supported by model. Ignoring inference_interface"
-                )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
-        if accelerate is not None and "nnpi" in accelerate:
-            trace._c = torch._C._freeze_module(
-                trace._c,
-                preservedAttrs=["make_prediction", "make_batch", "set_padding_control"],
-            )
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
             with PathManager.open(export_path, "wb") as f:

@@ -100,10 +100,7 @@ class ExportConfig(ConfigBase):
     # "nnpi" - freeze model for use with Glow on NNPI accelerator
     accelerate: List[str] = []
     # Inference Interface.
-    # Specifies which of the 3 optional list parameters a model takes,
-    # when the model implements the inference_ionterface() method.:
-    # Possible values: texts, multi_texts, tokens (and/or others as
-    # supported by inference_interface method).
+    # *** DEPRECATED *** DO NOT USE ***
     inference_interface: Optional[str] = None
     # Padding boundaries for padded tensor sequence length dimension.
     # Specified as a list of boundaries to be rounded up to.

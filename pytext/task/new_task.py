@@ -316,7 +316,6 @@ class _NewTask(TaskBase):
         accelerate = export_config.accelerate
         seq_padding_control = export_config.seq_padding_control
         batch_padding_control = export_config.batch_padding_control
-        inference_interface = export_config.inference_interface
 
         # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
@@ -415,13 +414,6 @@ class _NewTask(TaskBase):
             else:
                 print(
                     "Padding_control not supported by model. Ignoring batch_padding_control"
-                )
-        if inference_interface is not None:
-            if hasattr(trace, "inference_interface"):
-                trace.inference_interface(inference_interface)
-            else:
-                print(
-                    "inference_interface not supported by model. Ignoring inference_interface"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
         if use_nnpi:

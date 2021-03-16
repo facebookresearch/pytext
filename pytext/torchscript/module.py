@@ -41,9 +41,15 @@ def resolve_texts(
 
 
 def deprecation_warning(export_conf: ExportConfig):
-    if (
-        (export_conf.inference_interface is not None)
-        or (export_conf.accelerate is not None)
+    if export_conf.inference_interface is not None:
+        print(
+            "***************  DEPRECATION ERROR  **************"
+            "inference_interface config option is not available"
+            "**************************************************"
+        )
+        raise RuntimeError("export configuration not supported")
+    elif (
+        (export_conf.accelerate is not None)
         or (export_conf.seq_padding_control is not None)
         or (export_conf.batch_padding_control is not None)
     ):
@@ -67,7 +73,6 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
-        self.argno = -1
         log_class_usage(self.__class__)
 
     def validate(self, export_conf: ExportConfig):
@@ -777,8 +782,6 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         self.model = model
         self.right_tensorizer = right_tensorizer
         self.left_tensorizer = left_tensorizer
-        # We only support texts input for TwoTower until further updates
-        self.argno = 0
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
@@ -825,7 +828,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         ],
     ) -> List[torch.Tensor]:
 
-        argno = self.argno
+        argno = -1
 
         if argno == -1:
             raise RuntimeError("Argument number not specified during export.")
@@ -917,7 +920,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         ]
     ]:
 
-        argno = self.argno
+        argno = -1
 
         if argno == -1:
             raise RuntimeError("Argument number not specified during export.")
