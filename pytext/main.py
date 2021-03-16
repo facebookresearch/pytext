@@ -63,10 +63,6 @@ def _validate_export_json_config(export_json_config):
         "The export-json config should only contain fields (export or export_list),  version and read_chunk_size. Got "
         f"{export_json_config.keys()}"
     )
-    assert {"export", "version"} <= export_json_config.keys(), (
-        "The export-json must contain fields export and version. Got "
-        f"{export_json_config.keys()}"
-    )
 
     if "export" in export_json_config.keys():
         for key in export_json_config["export"]:
@@ -76,7 +72,16 @@ def _validate_export_json_config(export_json_config):
     else:  # export_list instead of export
         assert "export_list" in export_json_config.keys()
         found_model_type = None
-        for export_config in export_json_config["export_list"]:
+        export_cfgs = export_json_config["export_list"]
+        target_vals = [
+            cfg["target"]
+            for cfg in export_cfgs
+            if (hasattr(cfg, "target") and cfg["target"] is not None)
+        ]
+        assert len(target_vals) == len(
+            set(target_vals)
+        ), "Target values should be unique if they exist."
+        for export_config in export_cfgs:
             for key in export_config:
                 assert (
                     key in ExportConfig.__annotations__.keys()
@@ -476,10 +481,11 @@ def export(context, export_json, model, output_path, output_onnx_path):
 @click.option("--model", help="the pytext snapshot model file to load")
 @click.option("--output-path", help="where to save the exported torchscript model")
 @click.option("--quantize", help="whether to quantize the model")
+@click.option("--target", help="specify the name of a single model to export")
 @click.pass_context
-def torchscript_export(context, export_json, model, output_path, quantize):
+def torchscript_export(context, export_json, model, output_path, quantize, target):
     """Convert a pytext model snapshot to a torchscript model."""
-    export_config = ExportConfig()
+    export_cfg = ExportConfig()
     # only populate from export_json if no export option is configured from the command line.
     if export_json:
         export_json_config = _load_and_validate_export_json_config(export_json)
@@ -492,34 +498,44 @@ def torchscript_export(context, export_json, model, output_path, quantize):
             print("Error: Do not know what to do with read_chunk_size.  Ignoring.")
 
         if "export" in export_json_config.keys():
-            export_section_config_list = [export_json_config["export"]]
+            export_cfgs = [export_json_config["export"]]
         else:
-            export_section_config_list = export_json_config["export_list"]
+            export_cfgs = export_json_config["export_list"]
 
-        for export_section_config in export_section_config_list:
+        if target:
+            print(
+                "A single export was specified in the command line. Filtering out all other export options"
+            )
+            export_cfgs = [cfg for cfg in export_cfgs if cfg["target"] == target]
+            if export_cfgs == []:
+                print(
+                    "No ExportConfig matches the target name specified in the command line."
+                )
+
+        for partial_export_cfg in export_cfgs:
             if not quantize and not output_path:
-                export_config = config_from_json(ExportConfig, export_section_config)
+                export_cfg = config_from_json(ExportConfig, partial_export_cfg)
             else:
                 print(
                     "the export-json config is ignored because export options are found the command line"
                 )
-                export_config = config_from_json(
+                export_cfg = config_from_json(
                     ExportConfig,
-                    export_section_config,
+                    partial_export_cfg,
                     ("export_caffe2_path", "export_onnx_path"),
                 )
-                export_config.torchscript_quantize = quantize
+                export_cfg.torchscript_quantize = quantize
             # if config has export_torchscript_path, use export_torchscript_path from config, otherwise keep the default from CLI
-            if export_config.export_torchscript_path is not None:
-                output_path = export_config.export_torchscript_path
+            if export_cfg.export_torchscript_path is not None:
+                output_path = export_cfg.export_torchscript_path
             if not model or not output_path:
                 config = context.obj.load_config()
                 model = model or config.save_snapshot_path
                 output_path = output_path or f"{config.save_snapshot_path}.torchscript"
 
             print(f"Exporting {model} to torchscript file: {output_path}")
-            print(export_config)
-            export_saved_model_to_torchscript(model, output_path, export_config)
+            print(export_cfg)
+            export_saved_model_to_torchscript(model, output_path, export_cfg)
 
 
 @main.command()
