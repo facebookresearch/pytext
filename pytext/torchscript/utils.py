@@ -128,6 +128,21 @@ def pad_2d_mask(
     return tensor, mask
 
 
+@torch.jit.script
+def pad_float_tensor(
+    input_tensor: torch.Tensor,
+    batch_padding_control: Optional[List[int]] = None,
+) -> torch.Tensor:
+    """Pad a tensor to with zeros given batch_padding_control, first dimention is batch size."""
+    shape = input_tensor.shape
+    bs = shape[0]
+    max_batch_len = pad_length(bs, batch_padding_control, -1)
+    shape[0] = max_batch_len - bs
+    pad_tensor = torch.zeros(shape, dtype=torch.float)
+    new_tensor = torch.cat([input_tensor, pad_tensor], 0)
+    return new_tensor
+
+
 # ========= end section
 
 
