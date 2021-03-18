@@ -8,6 +8,7 @@ from pytext.optimizer.fp16_optimizer import (  # noqa
     FP16OptimizerFairseq,
 )
 from pytext.optimizer.lamb import Lamb  # noqa
+from pytext.optimizer.madgrad import MADGRAD  # noqa
 from pytext.optimizer.optimizers import (  # noqa
     SGD,
     Adagrad,

@@ -8,6 +8,7 @@ from typing import Optional, Union
 import torch
 from pytext.config.component import create_optimizer
 from pytext.optimizer.lamb import Lamb
+from pytext.optimizer.madgrad import MADGRAD
 from pytext.optimizer.optimizers import SGD, Adagrad, Adam, AdamW, Optimizer
 from pytext.optimizer.radam import RAdam
 from torch.optim import Optimizer as PT_Optimizer
@@ -22,6 +23,7 @@ class StochasticWeightAveraging(Optimizer, PT_Optimizer):
             Adagrad.Config,
             RAdam.Config,
             Lamb.Config,
+            MADGRAD.Config,
         ] = SGD.Config()
         start: int = 10
         frequency: int = 5
