@@ -105,9 +105,20 @@ class TestMain(unittest.TestCase):
                 os.path.join(self.config_base_path, "export_options.json"),
             ],
         )
-        expected = """ExportConfig:\n    accelerate: []\n    batch_padding_control: None\n    export_caffe2_path: /tmp/model.caffe2.predictor\n    export_lite_path: None\n    export_onnx_path: /tmp/model.onnx\n    export_torchscript_path: /tmp/new_docnn.pt1\n    inference_interface: None\n    seq_padding_control: None\n    torchscript_quantize: False"""
+        expected = [
+            "accelerate: []",
+            "batch_padding_control: None",
+            "export_caffe2_path: /tmp/model.caffe2.predictor",
+            "export_lite_path: None",
+            "export_onnx_path: /tmp/model.onnx",
+            "export_torchscript_path: /tmp/new_docnn.pt1",
+            "seq_padding_control: None",
+            "target: unknown",
+            "torchscript_quantize: False",
+        ]
         assert not result.exception, result.exception
-        assert expected in result.output
+        for item in expected:
+            assert item in result.output
 
         # export the trained model with output path
         result = self.runner.invoke(
@@ -122,9 +133,20 @@ class TestMain(unittest.TestCase):
                 "test-path",
             ],
         )
-        expected = """ExportConfig:\n    accelerate: []\n    batch_padding_control: None\n    export_caffe2_path: None\n    export_lite_path: None\n    export_onnx_path: /tmp/model.onnx\n    export_torchscript_path: /tmp/new_docnn.pt1\n    inference_interface: None\n    seq_padding_control: None\n    torchscript_quantize: None"""
+        expected = [
+            "accelerate: []",
+            "batch_padding_control: None",
+            "export_caffe2_path: None",
+            "export_lite_path: None",
+            "export_onnx_path: /tmp/model.onnx",
+            "export_torchscript_path: /tmp/new_docnn.pt1",
+            "seq_padding_control: None",
+            "target: unknown",
+            "torchscript_quantize: None",
+        ]
         assert not result.exception, result.exception
-        assert expected in result.output
+        for item in expected:
+            assert item in result.output
 
         result = self.runner.invoke(
             main,

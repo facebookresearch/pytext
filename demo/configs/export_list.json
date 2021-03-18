@@ -1,0 +1,46 @@
+{
+    "export_list": [
+        {
+            "accelerate": [
+                "nnpi"
+            ],
+            "seq_padding_control": [
+                0,
+                16,
+                40,
+                512
+            ],
+            "batch_padding_control": [
+                0,
+                1,
+                2
+            ],
+            "export_torchscript_path": "/tmp/intentslot-nnpi.pt1",
+            "torchscript_quantize": false,
+            "target": "nnpi"
+        },
+        {
+            "export_torchscript_path": "/tmp/intentslot-cpu.pt1",
+            "torchscript_quantize": false,
+            "target": "cpu"
+        },
+        {
+            "torchscript_quantize": false,
+            "export_torchscript_path": "/tmp/intentslot-cuda-fp32.pt1",
+            "target": "gpu-fp32"
+        },
+        {
+            "export_caffe2_path": null,
+            "export_torchscript_path": "/tmp/intentslot-cuda-fp16.pt1",
+            "export_lite_path": null,
+            "torchscript_quantize": false,
+            "accelerate": [
+                "cuda:half"
+            ],
+            "inference_interface": null,
+            "seq_padding_control": null,
+            "batch_padding_control": null,
+            "target": "gpu-fp16"
+        }
+    ]
+}

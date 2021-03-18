@@ -116,6 +116,8 @@ class ExportConfig(ConfigBase):
     # The list of padding boundaries must be sorted in asecending order.
     # The first list element must be 0.  (Will serve as future padding control "version number")
     batch_padding_control: Optional[List[int]] = None
+    # The name of the target to export, i.e. "nnpi"
+    target: str = ""
 
 
 class InvalidMethodInvocation(Exception):
@@ -348,10 +350,26 @@ class PyTextConfig(ConfigBase):
         self.get_first_config().batch_padding_control = bpc
 
     def get_export_batch_padding_control(self, index):
-        return self.export_list[index].batchpadding_control
+        return self.export_list[index].batch_padding_control
 
     def set_export_batch_padding_control(self, batch_padding_control, index):
         self.export_list[index].batch_padding_control = batch_padding_control
+
+    @property
+    def target(self):
+        self.export_check("target")
+        return self.get_first_config().target
+
+    @target.setter
+    def target(self, tgt):
+        self.export_check("target")
+        self.get_first_config().target = tgt
+
+    def get_export_target(self, index):
+        return self.export_list[index].target
+
+    def set_export_target(self, tgt, index):
+        self.export_list[index].target = tgt
 
 
 class TestConfig(ConfigBase):
@@ -391,4 +409,4 @@ class LogitsConfig(TestConfig):
 
 
 # update sitevar PYTEXT_CONFIG_LATEST_VERSION when new PytextConfig pushed in pytext config
-LATEST_VERSION = 25
+LATEST_VERSION = 26

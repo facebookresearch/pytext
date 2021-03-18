@@ -4,7 +4,6 @@ from pytext.common.utils import eprint
 
 from .pytext_config import LATEST_VERSION, PyTextConfig
 
-
 ADAPTERS = {}
 DOWNGRADE_ADAPTERS = {}
 NOT_THERE = (None, None, None)
@@ -741,6 +740,7 @@ def upgrade_export_config(json_config):
         "inference_interface",
         "seq_padding_control",
         "batch_padding_control",
+        "target",
     ]
 
     export_config = {}
@@ -825,6 +825,66 @@ def get_json_config_iterator(json_config, lookup_key):
         elif isinstance(value, dict):
             for v in get_json_config_iterator(value, lookup_key):
                 yield v
+
+
+@register_down_grade_adapter(from_version=26)
+def v26_to_v25(json_config):
+    """
+    Downgrade by removing target option from all
+    exports in export_list
+    """
+    if "export" in json_config:
+        if "target" in json_config["export"]:
+            json_config["export"].pop("target")
+    if "export_list" in json_config:
+        export_list = json_config["export_list"]
+        for export_cfg in export_list:
+            if "target" in export_cfg:
+                export_cfg.pop("target")
+        json_config["export_list"] = export_list
+    return json_config
+
+
+@register_adapter(from_version=25)
+def v25_to_v26(json_config):
+    if "export" in json_config:
+        export_cfg = json_config["export"]
+        export_cfg["target"] = get_name_from_options(export_cfg)
+        if "inference_interface" in export_cfg:
+            export_cfg.pop("inference_interface")
+        json_config["export"] = export_cfg
+    if "export_list" in json_config:
+        export_list = json_config["export_list"]
+        for export_cfg in export_list:
+            export_cfg["target"] = get_name_from_options(export_cfg)
+            if "inference_interface" in export_cfg:
+                export_cfg.pop("inference_interface")
+        json_config["export_list"] = export_list
+    return json_config
+
+
+def get_name_from_options(export_config):
+    """
+    Reverse engineer which model is which based on recognized
+    export configurations. If the export configurations don't adhere
+    to the set of recognized backends, then set target name to unknown
+    """
+    if "accelerate" in export_config and len(export_config["accelerate"]) != 0:
+        if export_config["accelerate"][0] == "cuda:half":
+            tgt = "gpu-fp16"
+        elif (
+            export_config["accelerate"][0] == "nnpi"
+            and "seq_padding_control" in export_config
+            and "batch_padding_control" in export_config
+        ):
+            tgt = "nnpi"
+        else:
+            pass
+    elif "seq_padding_control" and "batch_padding_control" in export_config:
+        tgt = "nnpi"
+    else:
+        tgt = "unknown"
+    return tgt
 
 
 def upgrade_one_version(json_config):
