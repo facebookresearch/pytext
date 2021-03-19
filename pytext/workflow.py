@@ -4,6 +4,8 @@
 import gzip
 import json
 import os
+import sys
+import traceback
 from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_type_hints
 
 import torch
@@ -185,6 +187,25 @@ def prepare_task(
     return task, training_state
 
 
+def reload_model_for_multi_export(
+    config: PyTextConfig,
+):
+    latest_snapshot_path = config.save_snapshot_path
+    print(f"Latest snapshot saved at {latest_snapshot_path}")
+    if latest_snapshot_path:
+        print("Reloading fresh model from snapshot path for multiple export")
+        assert PathManager.isfile(latest_snapshot_path)
+        if config.use_config_from_snapshot:
+            task, _, _ = load(latest_snapshot_path)
+        else:
+            task, _, _ = load(latest_snapshot_path, overwrite_config=config)
+        print(f"Loaded task from {latest_snapshot_path}!")
+        return task.model
+    else:
+        print("Couldn't get latest snapshot path.")
+        return None
+
+
 def save_and_export(
     config: PyTextConfig,
     task: Task_Deprecated,
@@ -208,22 +229,32 @@ def save_and_export(
         print("No export options.")
 
     for export_config in export_configs:
+        model = reload_model_for_multi_export(config)
+        if model is None:
+            model = task.model
         if export_config.export_caffe2_path:
             task.export(
-                task.model,
+                model,
                 export_config.export_caffe2_path,
                 metric_channels,
                 export_config.export_onnx_path,
             )
         elif export_config.export_torchscript_path:
-            task.torchscript_export(
-                model=task.model,
-                export_path=export_config.export_torchscript_path,
-                export_config=export_config,
-            )
+            try:
+                task.torchscript_export(
+                    model=model,
+                    export_path=export_config.export_torchscript_path,
+                    export_config=export_config,
+                )
+            except (RuntimeError, TypeError) as e:
+                print("Ran into error: {}".format(", ".join(e.args)))
+                traceback.print_exception(*sys.exc_info())
+                print(
+                    f"The torchscript model at {export_config.export_torchscript_path} could not be saved, skipping for now."
+                )
         elif export_config.export_lite_path:
             task.lite_export(
-                model=task.model,
+                model=model,
                 export_path=export_config.export_lite_path,
                 export_config=export_config,
             )
