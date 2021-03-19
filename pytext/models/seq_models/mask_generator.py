@@ -296,48 +296,44 @@ class MaskedSequenceGenerator(Module):
             src_lengths=src_lengths,
             src_index_tokens=src_index_tokens,
         )
+        encoder_mask: Optional[Tensor] = None
+        if "encoder_mask" in encoder_out:
+            encoder_mask = encoder_out["encoder_mask"]
+        predicted_tgt_length, _ = self.length_prediction_model(
+            encoder_out["encoder_out"], encoder_mask
+        )
+        if beam_size is not None and beam_size != self.length_beam_size:
+            self.length_beam_size = beam_size
+        if self.clip_target_length:
+            beam_vals, beam = predicted_tgt_length.topk(self.length_beam_size, dim=1)
+            len_clips = self.get_clip_length(src_lengths)
+            len_clips = len_clips.reshape(-1, 1).repeat(1, self.length_beam_size)
+            acceptable_lens_mask = torch.le(beam, len_clips)
+
+            beam = beam * acceptable_lens_mask + torch.logical_not(
+                acceptable_lens_mask
+            ) * torch.ones_like(beam, dtype=beam.dtype, device=beam.device)
+
+            beam_vals = beam_vals * acceptable_lens_mask + torch.logical_not(
+                acceptable_lens_mask
+            ) * torch.full(
+                beam_vals.size(),
+                float("-inf"),
+                dtype=beam_vals.dtype,
+                device=beam_vals.device,
+            )
+        else:
+            beam_vals, beam = predicted_tgt_length.topk(self.length_beam_size, dim=1)
+
+        # make sure no beams are 0 (integration test)
+        beam[beam == 0] += 1
+        length_prob = torch.gather(predicted_tgt_length, 1, beam)
+
         if self.use_gold_length:
             assert target_lengths is not None
             beam = target_lengths.reshape(-1, 1)
             self.length_beam_size = 1
             length_prob = torch.ones(beam.size(), device=target_lengths.device)
-        else:
-            encoder_mask: Optional[Tensor] = None
-            if "encoder_mask" in encoder_out:
-                encoder_mask = encoder_out["encoder_mask"]
-            predicted_tgt_length, _ = self.length_prediction_model(
-                encoder_out["encoder_out"], encoder_mask
-            )
-            if beam_size is not None and beam_size != self.length_beam_size:
-                self.length_beam_size = beam_size
-            if self.clip_target_length:
-                beam_vals, beam = predicted_tgt_length.topk(
-                    self.length_beam_size, dim=1
-                )
-                len_clips = self.get_clip_length(src_lengths)
-                len_clips = len_clips.reshape(-1, 1).repeat(1, self.length_beam_size)
-                acceptable_lens_mask = torch.le(beam, len_clips)
-
-                beam = beam * acceptable_lens_mask + torch.logical_not(
-                    acceptable_lens_mask
-                ) * torch.ones_like(beam, dtype=beam.dtype, device=beam.device)
-
-                beam_vals = beam_vals * acceptable_lens_mask + torch.logical_not(
-                    acceptable_lens_mask
-                ) * torch.full(
-                    beam_vals.size(),
-                    float("-inf"),
-                    dtype=beam_vals.dtype,
-                    device=beam_vals.device,
-                )
-            else:
-                beam_vals, beam = predicted_tgt_length.topk(
-                    self.length_beam_size, dim=1
-                )
-
-            # make sure no beams are 0 (integration test)
-            beam[beam == 0] += 1
-            length_prob = torch.gather(predicted_tgt_length, 1, beam)
 
         tgt_tokens, length_mask = prepare_masked_target_for_lengths(
             beam,
