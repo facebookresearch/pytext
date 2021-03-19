@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import os
 from datetime import timedelta
 
 import pytext.utils.cuda as cuda
@@ -30,6 +31,9 @@ def dist_init(
     if init_method and world_size > 1 and torch.cuda.is_available():
         # providing a large process group timeout to prevent errors during
         # initialization.
+
+        os.environ["NCCL_NSOCKS_PERTHREAD"] = "4"
+        os.environ["NCCL_SOCKET_NTHREADS"] = "2"
         dist_c10d.init_process_group(
             backend=backend,
             init_method=init_method,
