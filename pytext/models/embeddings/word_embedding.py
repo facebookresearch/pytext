@@ -9,6 +9,7 @@ from pytext.config.field_config import WordFeatConfig
 from pytext.data.tensorizers import Tensorizer
 from pytext.fields import FieldMeta
 from pytext.models.embeddings.embedding_base import EmbeddingBase
+from pytext.utils.cuda import CPUOnlyParameter
 from pytext.utils.embeddings import PretrainedEmbedding
 from pytext.utils.usage import log_class_usage
 from torch import nn
@@ -103,6 +104,7 @@ class WordEmbedding(EmbeddingBase):
             mlp_layer_dims=config.mlp_layer_dims,
             padding_idx=config.padding_idx or vocab_pad_idx,
             vocab=vocab,
+            cpu_only=config.cpu_only,
         )
 
     def __init__(
@@ -116,6 +118,7 @@ class WordEmbedding(EmbeddingBase):
         mlp_layer_dims: List[int] = (),
         padding_idx: Optional[int] = None,
         vocab: Optional[List[str]] = None,
+        cpu_only: bool = False,
     ) -> None:
         output_embedding_dim = mlp_layer_dims[-1] if mlp_layer_dims else embedding_dim
         EmbeddingBase.__init__(self, embedding_dim=output_embedding_dim)
@@ -127,6 +130,8 @@ class WordEmbedding(EmbeddingBase):
             _weight=embeddings_weight,
             padding_idx=padding_idx,
         )
+        if cpu_only:
+            self.word_embedding.weight = CPUOnlyParameter(self.word_embedding.weight)
         if embeddings_weight is None:
             if init_range:
                 self.word_embedding.weight.data.uniform_(init_range[0], init_range[1])
@@ -156,7 +161,14 @@ class WordEmbedding(EmbeddingBase):
         return super().__getattr__(name)
 
     def forward(self, input):
-        return self.mlp(self.word_embedding(input))
+        input_device = input.device
+        embedding_device = self.word_embedding.weight.device
+        # We are comparing str(device) because torchscript doesn't support
+        # Device comparisons.
+        if str(input_device) != str(embedding_device):
+            input = input.to(embedding_device)
+        # We only want to do the embedding lookup on CPU
+        return self.mlp(self.word_embedding(input).to(input_device))
 
     def freeze(self):
         for param in self.word_embedding.parameters():
