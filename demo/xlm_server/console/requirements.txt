@@ -7,7 +7,7 @@ Flask-Cors==3.0.8
 Flask-RESTful==0.3.8
 idna==2.9
 itsdangerous==1.1.0
-Jinja2==2.11.1
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 numpy==1.18.2
 pandas==1.0.3
