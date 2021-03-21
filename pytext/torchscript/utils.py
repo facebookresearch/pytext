@@ -24,10 +24,12 @@ class ScriptBatchInput(NamedTuple):
 # ===== the following section should be replaced once JIT provide native support
 @torch.jit.script
 def list_max(l: List[int]):
-    max_value = l[0]  # fine to throw if empty
-    for i in range(len(l) - 1):  # don't forget the +1
-        max_value = max(max_value, l[i + 1])
-    return max_value
+    return max(l)
+
+    # max_value = l[0]  # fine to throw if empty
+    # for i in range(len(l) - 1):  # don't forget the +1
+    #     max_value = max(max_value, l[i + 1])
+    # return max_value
 
 
 @torch.jit.script
