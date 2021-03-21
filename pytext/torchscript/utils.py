@@ -88,19 +88,6 @@ def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
 
 
 @torch.jit.script
-def long_tensor_2d(shape: Tuple[int, int], fill_value: int = 0) -> torch.Tensor:
-    """Return a new 2d torch.LongTensor with size according to shape.
-    The values of this tensor will be fill_value."""
-    outer = torch.jit.annotate(List[List[int]], [])
-    inner = torch.jit.annotate(List[int], [])
-    for _i in range(shape[1]):
-        inner.append(fill_value)
-    for _i in range(shape[0]):
-        outer.append(inner)
-    return torch.tensor(outer, dtype=torch.long)
-
-
-@torch.jit.script
 def pad_2d_mask(
     input: List[List[int]],
     pad_value: int = 0,
@@ -120,7 +107,7 @@ def pad_2d_mask(
     max_batch_len = len(input)
     max_batch_len = pad_length(max_batch_len, batch_padding_control, -1)
 
-    tensor = long_tensor_2d((max_batch_len, max_seq_len), pad_value)
+    tensor = torch.full((max_batch_len, max_seq_len), pad_value)
     for i in range(len(input)):
         for j in range(min(len(input[i]), max_seq_len)):
             tensor[i][j] = input[i][j]
