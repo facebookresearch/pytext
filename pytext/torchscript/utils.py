@@ -80,10 +80,13 @@ def pad_length(
 
 @torch.jit.script
 def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
-    l_len = len(int_list)
-    res = []
-    for idx in range(l_len):
-        res.append(int_list[l_len - idx - 1])
+    res = int_list[:] # semi-deep copy
+    res.reverse()
+
+    # l_len = len(int_list)
+    # res = []
+    # for idx in range(l_len):
+    #    res.append(int_list[l_len - idx - 1])
     return res
 
 
