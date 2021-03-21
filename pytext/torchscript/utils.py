@@ -43,11 +43,13 @@ def list_str_index(l: List[str], element: str, start: int) -> int:
 
 @torch.jit.script
 def list_membership(item: int, list: List[int]):
-    item_present = False
-    for i in list:
-        if item == i:
-            item_present = True
-    return item_present
+    return item in list
+
+    # item_present = False
+    # for i in list:
+    #    if item == i:
+    #        item_present = True
+    # return item_present
 
 
 @torch.jit.script
