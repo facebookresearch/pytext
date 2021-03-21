@@ -26,11 +26,6 @@ class ScriptBatchInput(NamedTuple):
 def list_max(l: List[int]):
     return max(l)
 
-    # max_value = l[0]  # fine to throw if empty
-    # for i in range(len(l) - 1):  # don't forget the +1
-    #     max_value = max(max_value, l[i + 1])
-    # return max_value
-
 
 @torch.jit.script
 def list_str_index(l: List[str], element: str, start: int) -> int:
@@ -46,12 +41,6 @@ def list_str_index(l: List[str], element: str, start: int) -> int:
 @torch.jit.script
 def list_membership(item: int, list: List[int]):
     return item in list
-
-    # item_present = False
-    # for i in list:
-    #    if item == i:
-    #        item_present = True
-    # return item_present
 
 
 @torch.jit.script
@@ -86,11 +75,6 @@ def pad_length(
 def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
     res = int_list[:] # semi-deep copy
     res.reverse()
-
-    # l_len = len(int_list)
-    # res = []
-    # for idx in range(l_len):
-    #    res.append(int_list[l_len - idx - 1])
     return res
 
 
