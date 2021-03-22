@@ -29,7 +29,6 @@ from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import cuda, distributed, precision, timing
-from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
 
 
 class TrainerBase(Component):
@@ -121,7 +120,6 @@ class Trainer(TrainerBase):
         #: backward and master weight will be maintained on original optimizer.
         #: https://arxiv.org/abs/1710.03740
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
-        fp16_grad_compression: bool = False
         # PrivacyEngine related args
         privacy_engine: Optional[PrivacyEngine.Config] = None
         use_tensorboard: bool = False
@@ -186,10 +184,6 @@ class Trainer(TrainerBase):
                 find_unused_parameters=state.model.find_unused_parameters,
                 process_group=distributed._round_robin_process_group,
             )
-            if self.config.fp16_grad_compression:
-                state.model.register_comm_hook(
-                    distributed._round_robin_process_group, fp16_compress_hook
-                )
         state.start_time = time.time()
 
         if self.config.num_batches_per_epoch:
