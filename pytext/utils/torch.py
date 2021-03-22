@@ -7,8 +7,6 @@ from pytext.torchscript.tokenizer import ScriptBPE as BPE  # noqa
 from pytext.torchscript.utils import (  # noqa
     add_bos_eos_2d,
     add_special_token_2d,
-    list_max,
-    list_membership,
     long_tensor_2d,
     make_byte_inputs,
     make_sequence_lengths,
