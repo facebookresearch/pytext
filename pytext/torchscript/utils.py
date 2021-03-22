@@ -73,7 +73,7 @@ def pad_length(
 
 @torch.jit.script
 def reverse_tensor_list(int_list: List[torch.Tensor]) -> List[torch.Tensor]:
-    res = int_list[:] # semi-deep copy
+    res = int_list[:]  # semi-deep copy
     res.reverse()
     return res
 
