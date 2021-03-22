@@ -23,11 +23,6 @@ class ScriptBatchInput(NamedTuple):
 
 # ===== the following section should be replaced once JIT provide native support
 @torch.jit.script
-def list_max(l: List[int]):
-    return max(l)
-
-
-@torch.jit.script
 def list_str_index(l: List[str], element: str, start: int) -> int:
     """
     Equivalent to: list.index(v, start)
@@ -195,7 +190,7 @@ def make_sequence_lengths(batch: List[List[str]]) -> List[int]:
 def pad_2d(
     batch: List[List[int]], seq_lens: List[int], pad_idx: int, max_len: int = -1
 ) -> List[List[int]]:
-    pad_to_length = list_max(seq_lens)
+    pad_to_length = max(seq_lens)
     if max_len > 0:
         pad_to_length = min(pad_to_length, max_len)
     for sentence in batch:
@@ -219,7 +214,7 @@ def pad_3d(
     pad_to_2d: int = 0
     for tokens_length in tokens_lengths:
         pad_to_1d = max(pad_to_1d, len(tokens_length))
-        pad_to_2d = max(pad_to_2d, list_max(tokens_length))
+        pad_to_2d = max(pad_to_2d, max(tokens_length))
     for sentence, sentence_len in zip(batch, tokens_lengths):
         for _ in range(pad_to_1d - len(sentence)):
             new_list: List[int] = []
@@ -238,7 +233,7 @@ def pad_2d_float(
     pad_val: float = 0.0,
     max_len: int = -1,
 ) -> List[List[float]]:
-    pad_to_length = list_max(seq_lens)
+    pad_to_length = max(seq_lens)
     if max_len > 0:
         pad_to_length = min(pad_to_length, max_len)
     for sentence in batch:
@@ -256,7 +251,7 @@ def pad_2d_float(
 def pad_3d_float(
     batch: List[List[List[float]]], seq_lens: List[int], pad_val: float = 0.0
 ) -> List[List[List[float]]]:
-    outer_pad_to_length = list_max(seq_lens)
+    outer_pad_to_length = max(seq_lens)
     inner_pad_to_length = -1
     for outer_list in batch:
         for inner_list in outer_list:
@@ -306,7 +301,7 @@ def make_byte_inputs(
     batch: List[List[str]], max_byte_len: int, offset_for_non_padding: int = 0
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     seq_lens = make_sequence_lengths(batch)
-    max_num_tokens = list_max(seq_lens)
+    max_num_tokens = max(seq_lens)
     bytes = torch.zeros(len(batch), max_num_tokens, max_byte_len, dtype=torch.long)
 
     for batch_index in range(len(batch)):
