@@ -335,7 +335,10 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
         return cls(config.sp_model_path, config.max_input_text_length)
 
     def tokenize(self, input_str: str) -> List[Token]:
-        if self.max_input_text_length is not None:
+        if (
+            hasattr(self, "max_input_text_length")
+            and self.max_input_text_length is not None
+        ):
             input_str = input_str[: self.max_input_text_length]
         pieces = self.processor.EncodeAsPieces(input_str)
         tokens = []
