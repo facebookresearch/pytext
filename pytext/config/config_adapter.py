@@ -891,7 +891,10 @@ def upgrade_one_version(json_config):
     current_version = json_config.get("version", 0)
     adapter = ADAPTERS.get(current_version)
     if not adapter:
-        raise Exception(f"no adapter found for version {current_version}")
+        raise Exception(
+            f"no adapter found for version {current_version}."
+            "Make sure current revision is after pytext pkg's revision, and rebase if necessary"
+        )
     json_config = adapter(json_config)
     eprint(
         f"WARNING - Applying old config adapter for version={current_version}. "
