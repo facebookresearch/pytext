@@ -47,6 +47,7 @@ class TSV:
                 (line.replace("\0", "") for line in self.file),
                 fieldnames=self.field_names,
                 delimiter=self.delimiter,
+                escapechar="\\",
                 quoting=csv.QUOTE_MINIMAL if self.quoted else csv.QUOTE_NONE,
             )
             if self.drop_incomplete_rows:
