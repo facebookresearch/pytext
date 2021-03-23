@@ -9,9 +9,6 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import ModuleConfig
 from pytext.models.module import create_module
-from pytext.models.representations.transformer.positional_embedding import (
-    PositionalEmbedding,
-)
 from pytext.models.seq_models.base import (
     PlaceholderAttentionIdentity,
     PlaceholderIdentity,
@@ -19,7 +16,7 @@ from pytext.models.seq_models.base import (
 from pytext.models.seq_models.positional import (
     PostionalEmbedCombine,
     PostionalEmbedType,
-    SinusoidalPositionalEmbedding,
+    build_positional_embedding,
 )
 from pytext.models.seq_models.utils import Linear
 from torch import Tensor
@@ -317,35 +314,15 @@ class LightConvDecoderBase(PyTextIncrementalDecoderComponent):
         )
         self.embed_layer_norm = LayerNorm(embed_dim)
         self.combine_pos_embed = decoder_config.combine_pos_embed.value
-        if decoder_config.combine_pos_embed == PostionalEmbedCombine.SUM:
-            pos_embed_dim = embed_dim
-        elif decoder_config.combine_pos_embed == PostionalEmbedCombine.CONCAT:
-            pos_embed_dim = embed_dim - input_embed_dim
-        else:
-            raise NotImplementedError
-        if not decoder_config.no_token_positional_embeddings:
-            if decoder_config.positional_embedding_type == PostionalEmbedType.LEARNED:
-                self.embed_positions = PositionalEmbedding(
-                    decoder_config.max_target_positions,
-                    pos_embed_dim,
-                    padding_idx,
-                )
-            elif (
-                decoder_config.positional_embedding_type
-                == PostionalEmbedType.SINUSOIDAL
-                or decoder_config.positional_embedding_type == PostionalEmbedType.HYBRID
-            ):
-                self.embed_positions = SinusoidalPositionalEmbedding(
-                    pos_embed_dim,
-                    padding_idx,
-                    init_size=decoder_config.max_target_positions,
-                    learned_embed=decoder_config.positional_embedding_type
-                    == PostionalEmbedType.HYBRID,
-                )
-            else:
-                raise NotImplementedError("Positional embedding type not supported")
-        else:
-            self.embed_positions = PlaceholderIdentity()
+        self.embed_positions = build_positional_embedding(
+            positional_embedding_type=decoder_config.positional_embedding_type,
+            combine_pos_embed=decoder_config.combine_pos_embed,
+            max_target_positions=decoder_config.max_target_positions,
+            input_embed_dim=input_embed_dim,
+            embed_dim=embed_dim,
+            padding_idx=padding_idx,
+            no_token_positional_embeddings=decoder_config.no_token_positional_embeddings,
+        )
 
         self.layers = nn.ModuleList(layers)
 

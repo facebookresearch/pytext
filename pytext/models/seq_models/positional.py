@@ -7,7 +7,13 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytext.models.representations.transformer.positional_embedding import (
+    PositionalEmbedding,
+)
 from pytext.models.seq_models.base import PlaceholderIdentity
+from pytext.models.seq_models.base import (
+    PlaceholderIdentity,
+)
 from torch import Tensor
 
 from .utils import make_positions
@@ -156,3 +162,41 @@ class LearnedPositionalEmbedding(nn.Embedding):
             self.scale_grad_by_freq,
             self.sparse,
         )
+
+
+def build_positional_embedding(
+    positional_embedding_type: PostionalEmbedType,
+    combine_pos_embed: PostionalEmbedCombine,
+    max_target_positions: int,
+    input_embed_dim: int,
+    embed_dim: int,
+    padding_idx: int,
+    no_token_positional_embeddings: bool,
+):
+    if combine_pos_embed == PostionalEmbedCombine.SUM:
+        pos_embed_dim = embed_dim
+    elif combine_pos_embed == PostionalEmbedCombine.CONCAT:
+        pos_embed_dim = embed_dim - input_embed_dim
+    else:
+        raise NotImplementedError
+    if not no_token_positional_embeddings:
+        if positional_embedding_type == PostionalEmbedType.LEARNED:
+            return PositionalEmbedding(
+                max_target_positions,
+                pos_embed_dim,
+                padding_idx,
+            )
+        elif (
+            positional_embedding_type == PostionalEmbedType.SINUSOIDAL
+            or positional_embedding_type == PostionalEmbedType.HYBRID
+        ):
+            return SinusoidalPositionalEmbedding(
+                pos_embed_dim,
+                padding_idx,
+                init_size=max_target_positions,
+                learned_embed=positional_embedding_type == PostionalEmbedType.HYBRID,
+            )
+        else:
+            raise NotImplementedError("Positional embedding type not supported")
+    else:
+        return PlaceholderIdentity()
