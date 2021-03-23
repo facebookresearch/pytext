@@ -267,9 +267,17 @@ def lower_modules_to_accelerator(
     import torch_glow
 
     log_accelerator_feature_usage("build.NNPI")
-    if (hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder)) or (
-        hasattr(model, "representation")
-        and isinstance(model.representation, AcceleratorBiLSTM)
+    if (
+        (hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder))
+        or (
+            hasattr(model, "representation")
+            and isinstance(model.representation, AcceleratorBiLSTM)
+        )
+        or (
+            hasattr(model, "lower_module")
+            # Internal CNN LM module to add accelerator support.
+            and type(model.lower_module).__qualname__ == "CNNLowerModule"
+        )
     ):
         backend = "NNPI"
         (
