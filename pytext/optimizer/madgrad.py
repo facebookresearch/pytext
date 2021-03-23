@@ -57,6 +57,7 @@ class MADGRAD(Optimizer, PT_Optimizer):
         momentum: float = 0.9,
         weight_decay: float = 0,
         eps: float = 1e-6,
+        k: int = 0,
     ):
         if momentum < 0 or momentum >= 1:
             raise ValueError(f"Momentum {momentum} must be in the range [0,1]")
@@ -72,7 +73,7 @@ class MADGRAD(Optimizer, PT_Optimizer):
             "eps": eps,
             "momentum": momentum,
             "weight_decay": weight_decay,
-            "k": 0,
+            "k": k,
         }
 
         self.momentum = momentum
