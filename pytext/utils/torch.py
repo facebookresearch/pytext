@@ -12,7 +12,6 @@ from pytext.torchscript.utils import (  # noqa
     make_sequence_lengths,
     pad_2d,
     pad_2d_mask,
-    reverse_tensor_list,
     utf8_chars,
 )
 from pytext.torchscript.vocab import ScriptVocabulary as Vocabulary  # noqa

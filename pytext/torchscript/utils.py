@@ -34,11 +34,6 @@ def list_str_index(l: List[str], element: str, start: int) -> int:
 
 
 @torch.jit.script
-def list_membership(item: int, list: List[int]):
-    return item in list
-
-
-@torch.jit.script
 def validate_padding_control(padding_control: Optional[List[int]]) -> bool:
     if padding_control is not None:
         if len(padding_control) < 2:

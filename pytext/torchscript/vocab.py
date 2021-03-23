@@ -6,8 +6,6 @@ from typing import Dict, List, Optional
 import torch
 from pytext.common.constants import SpecialTokens
 
-from .utils import list_membership
-
 
 class ScriptVocabulary(torch.jit.ScriptModule):
     def __init__(
@@ -69,7 +67,7 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         result = torch.jit.annotate(List[str], [])
         for idx in range(values.size(0)):
             value = int(values[idx])
-            if not list_membership(value, filter_token_list):
+            if not (value in filter_token_list):
                 result.append(self.lookup_word(value, possible_unk_token))
         return result
 
@@ -94,7 +92,7 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         result = torch.jit.annotate(List[str], [])
         for idx in range(values.size(0)):
             value = int(values[idx])
-            if not list_membership(value, filter_token_list):
+            if not (value in filter_token_list):
                 if value < vocab_length and value != self.unk_idx:
                     result.append(self.vocab[value])
                 else:
