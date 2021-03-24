@@ -187,23 +187,17 @@ def prepare_task(
     return task, training_state
 
 
-def reload_model_for_multi_export(
-    config: PyTextConfig,
-):
-    latest_snapshot_path = config.save_snapshot_path
-    print(f"Latest snapshot saved at {latest_snapshot_path}")
-    if latest_snapshot_path:
-        print("Reloading fresh model from snapshot path for multiple export")
-        assert PathManager.isfile(latest_snapshot_path)
-        if config.use_config_from_snapshot:
-            task, _, _ = load(latest_snapshot_path)
-        else:
-            task, _, _ = load(latest_snapshot_path, overwrite_config=config)
-        print(f"Loaded task from {latest_snapshot_path}!")
-        return task.model
+def reload_task_for_multi_export(config: PyTextConfig, latest_snapshot_path: str):
+    assert PathManager.isfile(latest_snapshot_path)
+    # reset flags before exporting new model in case changed by prev export
+    cuda.CUDA_ENABLED = False
+    precision.FP16_ENABLED = False
+    if config.use_config_from_snapshot:
+        task, _, _ = load(latest_snapshot_path)
     else:
-        print("Couldn't get latest snapshot path.")
-        return None
+        task, _, _ = load(latest_snapshot_path, overwrite_config=config)
+    print(f"Loaded task from {latest_snapshot_path}!")
+    return task
 
 
 def save_and_export(
@@ -211,7 +205,8 @@ def save_and_export(
     task: Task_Deprecated,
     metric_channels: Optional[List[Channel]] = None,
 ) -> None:
-    print("\n=== Saving model to: " + config.save_snapshot_path)
+    latest_snapshot_path = config.save_snapshot_path
+    print("\n=== Saving model to: " + latest_snapshot_path)
     meta = None
     tensorizers = None
     if hasattr(task, "data_handler"):
@@ -226,40 +221,40 @@ def save_and_export(
         export_configs = [config.export]
     else:
         export_configs = []
-        print("No export options.")
+        print("No export options provided.")
 
     for export_config in export_configs:
-        model = reload_model_for_multi_export(config)
-        if model is None:
-            model = task.model
-        if export_config.export_caffe2_path:
-            task.export(
-                model,
-                export_config.export_caffe2_path,
-                metric_channels,
-                export_config.export_onnx_path,
-            )
-        elif export_config.export_torchscript_path:
-            try:
-                task.torchscript_export(
-                    model=model,
-                    export_path=export_config.export_torchscript_path,
+        if export_config is not None:
+            if len(export_configs) > 1:
+                local_task = reload_task_for_multi_export(config, latest_snapshot_path)
+            else:
+                local_task = task
+            if export_config.export_caffe2_path:
+                local_task.export(
+                    model=local_task.model,
+                    export_path=export_config.export_caffe2_path,
+                    metric_channels=metric_channels,
+                    export_onnx_path=export_config.export_onnx_path,
+                )
+            if export_config.export_torchscript_path:
+                try:
+                    local_task.torchscript_export(
+                        model=local_task.model,
+                        export_path=export_config.export_torchscript_path,
+                        export_config=export_config,
+                    )
+                except (RuntimeError, TypeError) as e:
+                    print("Ran into error: {}".format(", ".join(e.args)))
+                    traceback.print_exception(*sys.exc_info())
+                    print(
+                        f"The torchscript model at {export_config.export_torchscript_path} could not be saved, skipping for now."
+                    )
+            if export_config.export_lite_path:
+                local_task.lite_export(
+                    model=local_task.model,
+                    export_path=export_config.export_lite_path,
                     export_config=export_config,
                 )
-            except (RuntimeError, TypeError) as e:
-                print("Ran into error: {}".format(", ".join(e.args)))
-                traceback.print_exception(*sys.exc_info())
-                print(
-                    f"The torchscript model at {export_config.export_torchscript_path} could not be saved, skipping for now."
-                )
-        elif export_config.export_lite_path:
-            task.lite_export(
-                model=model,
-                export_path=export_config.export_lite_path,
-                export_config=export_config,
-            )
-        else:
-            print("No model to export.")
 
 
 def export_saved_model_to_caffe2(
