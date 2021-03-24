@@ -27,6 +27,9 @@ from .accelerator_lowering import (
     lower_modules_to_accelerator,
     swap_modules_for_accelerator,
 )
+from .cuda_lowering import (
+    swap_modules_for_faster_transformer,
+)
 from .quantize import (
     quantize_statically,
     quantize_fx,
@@ -321,6 +324,8 @@ class _NewTask(TaskBase):
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
         use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
         use_cuda_half = "cuda:half" in accelerate
+        use_cuda_half_faster_transformers = "cuda:half:ft" in accelerate
+
         use_nnpi_quantize = "nnpi:quantize" in accelerate
         use_nnpi_fx_static_quantize = "nnpi:fx_static_quantize" in accelerate
         use_nnpi_fx_dynamic_quantize = "nnpi:fx_dynamic_quantize" in accelerate
@@ -379,25 +384,48 @@ class _NewTask(TaskBase):
             if quantize:
                 log_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
-
-            trace = model.trace(inputs)
-            print("traced!")
-
-            if use_cuda_half:
-                log_accelerator_feature_usage("build.CUDA.half")
-                # convert trace to half precision
-                trace.cuda().half()
-
-                #### trace test: demonstrate that it is usable
+            if use_cuda_half_faster_transformers:
+                log_accelerator_feature_usage("build.CUDA.half.faster_transformers")
+                # We need a separate path for GPU-only tracing, as we can't just trace a CPU model
+                # and invoke .cuda().half(),
+                # as we don't have equivalent CPU implementations of these operators.
                 precision.FP16_ENABLED = True
                 cuda.CUDA_ENABLED = True
+
+                model = swap_modules_for_faster_transformer(model)
+                model.eval()
+                model.half().cuda()
+                # obtain new inputs with cuda/fp16 enabled.
+                unused_raw_batch, batch = next(
+                    iter(self.data.batches(Stage.TRAIN, load_early=True))
+                )
+                inputs = model.onnx_trace_input(batch)
+                trace = model.trace(inputs)
+                print("traced (faster_transformers)!")
+                # should be unnecessary.
+                trace.cuda().half()
                 unused_raw_batch, batch = next(
                     iter(self.data.batches(Stage.TRAIN, load_early=True))
                 )
                 inputs = model.onnx_trace_input(batch)
                 assert trace(*inputs)
-                #### end of trace test
+            else:
+                trace = model.trace(inputs)
+                print("traced!")
+                if use_cuda_half:
+                    log_accelerator_feature_usage("build.CUDA.half")
+                    # convert trace to half precision
+                    trace.cuda().half()
 
+                    #### trace test: demonstrate that it is usable
+                    precision.FP16_ENABLED = True
+                    cuda.CUDA_ENABLED = True
+                    unused_raw_batch, batch = next(
+                        iter(self.data.batches(Stage.TRAIN, load_early=True))
+                    )
+                    inputs = model.onnx_trace_input(batch)
+                    assert trace(*inputs)
+                    #### end of trace test
         if hasattr(model, "torchscriptify"):
             trace = model.torchscriptify(self.data.tensorizers, trace)
         if hasattr(trace, "validate"):
