@@ -6,6 +6,9 @@ from typing import List, NamedTuple, Optional, Tuple
 import torch
 from torch import Tensor
 
+# Needed for pad_2d_mask
+torch.ops.load_library("//caffe2/torch/fb/nlp/operators:padded_sequences")
+
 
 class ScriptBatchInput(NamedTuple):
     """A batch of inputs for TorchScript Module(bundle of Tensorizer and Model)
@@ -88,12 +91,9 @@ def pad_2d_mask(
     max_batch_len = len(input)
     max_batch_len = pad_length(max_batch_len, batch_padding_control, -1)
 
-    tensor = torch.full((max_batch_len, max_seq_len), pad_value)
-    for i in range(len(input)):
-        numel_to_copy = min(len(input[i]), max_seq_len)
-        tensor[i][:numel_to_copy] = torch.tensor(input[i][:numel_to_copy])
-    mask = tensor.ne(pad_value).to(torch.long)
-    return tensor, mask
+    return torch.ops.fb.ragged_indices_to_padded_tensor_and_mask(
+        input, pad_value, max_batch_len, max_seq_len
+    )
 
 
 @torch.jit.script
