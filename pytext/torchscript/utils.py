@@ -106,7 +106,7 @@ def pad_float_tensor(
     bs = shape[0]
     max_batch_len = pad_length(bs, batch_padding_control, -1)
     shape[0] = max_batch_len - bs
-    pad_tensor = torch.zeros(shape, dtype=torch.float)
+    pad_tensor = input_tensor.new_zeros(shape)
     new_tensor = torch.cat([input_tensor, pad_tensor], 0)
     return new_tensor
 
