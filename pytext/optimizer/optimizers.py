@@ -83,13 +83,16 @@ class SGD(torch.optim.SGD, Optimizer):
     class Config(Optimizer.Config):
         lr: float = 0.001
         momentum: float = 0.0
+        weight_decay: float = 0.0
 
-    def __init__(self, parameters, lr, momentum):
-        super().__init__(parameters, lr=lr, momentum=momentum)
+    def __init__(self, parameters, lr, momentum, weight_decay):
+        super().__init__(
+            parameters, lr=lr, momentum=momentum, weight_decay=weight_decay
+        )
 
     @classmethod
     def from_config(cls, config: Config, model: torch.nn.Module):
-        return cls(model.parameters(), config.lr, config.momentum)
+        return cls(model.parameters(), config.lr, config.momentum, config.weight_decay)
 
 
 class AdamW(torch.optim.AdamW, Optimizer):
