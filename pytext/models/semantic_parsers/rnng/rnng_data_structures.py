@@ -3,7 +3,7 @@
 
 from typing import Any, List, Sized, Tuple
 
-import torch as torch
+import torch
 import torch.nn as nn
 from pytext.torchscript.utils import reverse_tensor_list
 from pytext.utils.cuda import FloatTensor
