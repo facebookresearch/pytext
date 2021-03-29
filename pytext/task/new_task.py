@@ -13,6 +13,8 @@ from pytext.data.sources.data_source import Schema
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import MetricReporter
 from pytext.models.model import BaseModel
+from pytext.models.representations.bilstm import BiLSTM
+from pytext.models.roberta import RoBERTaEncoder
 from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
@@ -25,10 +27,11 @@ from torch import sort
 
 from .accelerator_lowering import (
     lower_modules_to_accelerator,
-    swap_modules_for_accelerator,
+    nnpi_rewrite_roberta_transformer,
+    nnpi_rewrite_bilstm,
 )
 from .cuda_lowering import (
-    swap_modules_for_faster_transformer,
+    cuda_rewrite_roberta_transformer,
 )
 from .quantize import (
     quantize_statically,
@@ -42,6 +45,57 @@ ADDITIONAL_COLUMN_NAMES_ATTRIBUTES = (
     "additional_column_names",
     "student_column_names",
 )
+
+
+MODULE_TO_REWRITER = {
+    "nnpi": {
+        RoBERTaEncoder: nnpi_rewrite_roberta_transformer,
+        BiLSTM: nnpi_rewrite_bilstm,
+    },
+    "cuda": {
+        RoBERTaEncoder: cuda_rewrite_roberta_transformer,
+    },
+}
+
+
+def find_module_instances(model, module_type, cur_path):
+    """
+    Finds all module instances of the specified type and returns the paths to get to each of
+    those instances
+    """
+    if isinstance(model, module_type):
+        yield list(cur_path)  # copy the list since cur_path is a shared list
+    for attr in dir(model):
+        if (
+            attr[0] == "_" or len(cur_path) > 4
+        ):  # avoids infinite recursion and exploring unnecessary paths
+            continue
+        cur_path.append(attr)
+        # recursively yield
+        yield from find_module_instances(getattr(model, attr), module_type, cur_path)
+        cur_path.pop()
+
+
+def rewrite_transformer(model, module_path, rewriter):
+    """
+    Descends model hierarchy according to module_path and calls the rewriter at the end
+    """
+    for prefix in module_path[:-1]:
+        model = getattr(model, prefix)
+    rewriter(model)
+
+
+def swap_modules(model, module_to_rewriter):
+    """
+    Finds modules within a model that can be rewritten and rewrites them with predefined
+    rewrite functions
+    """
+    for module in module_to_rewriter:
+        instance_paths = find_module_instances(model, module, [])
+        rewriter = module_to_rewriter[module]
+        for path in instance_paths:
+            rewrite_transformer(model, path, rewriter)
+    return model
 
 
 def create_schema(
@@ -346,7 +400,7 @@ class _NewTask(TaskBase):
         optimizer.pre_export(model)
 
         if use_nnpi or use_fx_quantize:
-            model = swap_modules_for_accelerator(model)
+            model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
 
         # Trace needs eval mode, to disable dropout etc
         model.eval()
@@ -392,7 +446,7 @@ class _NewTask(TaskBase):
                 precision.FP16_ENABLED = True
                 cuda.CUDA_ENABLED = True
 
-                model = swap_modules_for_faster_transformer(model)
+                model = swap_modules(model, MODULE_TO_REWRITER["cuda"])
                 model.eval()
                 model.half().cuda()
                 # obtain new inputs with cuda/fp16 enabled.
