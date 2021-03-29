@@ -98,8 +98,19 @@ class AcceleratorTransformerLayersInternal(nn.Module):
                 "NNPI_IceCores": "12",
                 "NNPINumParallelChunks": "12",
                 "NNPIUseGeluLUT": "true",
+                "glow:ConvertToFP16": "true",
             },
-        )
+        ),
+        (
+            "NNPI:throughput_optimized",
+            {
+                "NNPI_IceCores": "4",
+                "NNPINumParallelChunks": "4",
+                "NNPIUseGeluLUT": "true",
+                "glow:ConvertToFP16": "true",
+                "glow:ReplicationCount": "3",
+            },
+        ),
     ],
     inputs_function=accelerator_transformerLayers_inputs,
 )
@@ -280,24 +291,38 @@ def lower_modules_to_accelerator(
         )
     ):
         backend = "NNPI"
+        backend_qualifier = ""
+
+        if throughput_optimize:
+            backend_qualifier = ":throughput_optimized"
+
+        modules_to_lower = accelerator.get_modules(model, backend + backend_qualifier)
+
+        if len(modules_to_lower) < 1:
+            raise RuntimeError("Need at least one module to lower to accelerator")
+        elif len(modules_to_lower) > 1:
+            print(f"Warning. Received {len(modules_to_lower)} modules to lower.")
+            print("Warning. Only lowering first module.")
+
         (
             submod_modelpath,
             compilation_spec_dict,
             inputs_function,
-        ) = accelerator.get_modules(model, backend)[0]
+        ) = modules_to_lower[0]
         submod_tracepath = accelerator.model2trace_path(submod_modelpath)
         spec = torch_glow.CompilationSpec()
         spec.get_settings().set_glow_backend(backend)
         compilation_group = torch_glow.CompilationGroup()
         spec.compilation_groups_append(compilation_group)
         compilation_group_settings = compilation_group.get_settings()
-        compilation_group_settings.set_convert_to_fp16(True)
 
-        # Override the options for throughput-optimized case
-        if throughput_optimize:
-            compilation_spec_dict["NNPI_IceCores"] = "4"
-            compilation_spec_dict["NNPINumParallelChunks"] = "4"
-            compilation_group_settings.set_replication_count(3)
+        # Set values from dict that are not set via backend-specific opts
+        compilation_group_settings.set_convert_to_fp16(
+            compilation_spec_dict.pop("glow:ConvertToFP16", "true") in ["true", "True"]
+        )
+        compilation_group_settings.set_replication_count(
+            int(compilation_spec_dict.pop("glow:ReplicationCount", "1"))
+        )
 
         for k, v in compilation_spec_dict.items():
             compilation_group.get_settings().backend_specific_opts_insert(k, v)
