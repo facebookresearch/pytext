@@ -254,20 +254,6 @@ class AcceleratorBiLSTM(nn.Module):
         return rep, (new_hidden, new_cell)
 
 
-# Swap a transformer for only RoBERTaEncoder encoders
-def swap_modules_for_accelerator(model):
-    if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
-        old_transformer = model.encoder.encoder.transformer
-        model.encoder.encoder.transformer = AcceleratorTransformer(old_transformer)
-        return model
-    elif hasattr(model, "representation") and isinstance(model.representation, BiLSTM):
-        old_biLSTM = model.representation
-        model.representation = AcceleratorBiLSTM(old_biLSTM)
-        return model
-    else:
-        return model
-
-
 def lower_modules_to_accelerator(
     model: nn.Module, trace, export_options: ExportConfig, throughput_optimize=False
 ):
@@ -346,3 +332,13 @@ def lower_modules_to_accelerator(
         return trace
     else:
         return trace
+
+
+def nnpi_rewrite_roberta_transformer(model):
+    model.encoder.encoder.transformer = AcceleratorTransformer(
+        model.encoder.encoder.transformer
+    )
+
+
+def nnpi_rewrite_bilstm(model):
+    model.representation = AcceleratorBiLSTM(model.representation)

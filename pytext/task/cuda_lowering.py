@@ -189,11 +189,7 @@ class NVFasterTransformerEncoder(nn.Module):
         return states
 
 
-# Swap a transformer for only RoBERTaEncoder encoders
-def swap_modules_for_faster_transformer(model):
-    if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
-        old_transformer = model.encoder.encoder.transformer
-        model.encoder.encoder.transformer = NVFasterTransformerEncoder(old_transformer)
-        return model
-    else:
-        return model
+def cuda_rewrite_roberta_transformer(model):
+    model.encoder.encoder.transformer = NVFasterTransformerEncoder(
+        model.encoder.encoder.transformer
+    )

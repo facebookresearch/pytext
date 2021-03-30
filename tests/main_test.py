@@ -163,7 +163,7 @@ class TestMain(unittest.TestCase):
         result = self.runner.invoke(main, args=["--config-json", config_json, "train"])
         assert not result.exception, result.exception
 
-        tgts = ["cpu", "nnpi"]
+        tgts = ["cpu"]
         for tgt in tgts:
             # export the trained model
             result = self.runner.invoke(
