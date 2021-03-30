@@ -276,6 +276,8 @@ def export_saved_model_to_caffe2(
 def export_saved_model_to_torchscript(
     saved_model_path: str, path: str, export_config: ExportConfig
 ) -> None:
+    cuda.CUDA_ENABLED = False
+    precision.FP16_ENABLED = False
     task, train_config, _training_state = load(saved_model_path)
     task.torchscript_export(task.model, path, False, 1, export_config=export_config)
 
