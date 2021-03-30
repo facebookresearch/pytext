@@ -26,6 +26,8 @@ from torch import sort
 from .accelerator_lowering import (
     lower_modules_to_accelerator,
     swap_modules_for_accelerator,
+    split_model_for_accelerator,
+    lower_split_model_to_accelerator,
 )
 from .cuda_lowering import (
     swap_modules_for_faster_transformer,
@@ -348,6 +350,9 @@ class _NewTask(TaskBase):
         if use_nnpi or use_fx_quantize:
             model = swap_modules_for_accelerator(model)
 
+        if "split" in accelerate:
+            model = split_model_for_accelerator(model)
+
         # Trace needs eval mode, to disable dropout etc
         model.eval()
         model.prepare_for_onnx_export_()
@@ -450,6 +455,9 @@ class _NewTask(TaskBase):
             trace = lower_modules_to_accelerator(
                 model, trace, export_config, use_nnpi_throughput_optimized
             )
+        if "split" in accelerate:
+            print("lowering split model to glow")
+            trace = lower_split_model_to_accelerator(model, trace, export_config)
 
         if export_path is not None:
             print(f"Saving torchscript model to: {export_path}")
