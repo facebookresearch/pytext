@@ -185,7 +185,7 @@ class ConvEncoderConfig(ConfigBase):
     no_token_positional_embeddings: bool = False
     positional_embedding_type: PostionalEmbedType = PostionalEmbedType.LEARNED
     combine_pos_embed: PostionalEmbedCombine = PostionalEmbedCombine.CONCAT
-    encoder_embed_dim: Optional[int] = 128
+    encoder_embed_dim: Optional[int] = None
     embedding_dim: Optional[int] = 128
 
 
@@ -200,6 +200,8 @@ class LightConvEncoder(PyTextSeq2SeqModule, NAREncoderUtility):
     def from_config(cls, config, src_dict, src_embedding):
         kernel_size_list = config.encoder_kernel_size_list
         layers = []
+        # Overwrite the config.layer_config.encoder_embed_dim so that it will always match with config.encoder_config.encoder_embed_dim
+        config.layer_config.encoder_embed_dim = config.encoder_config.encoder_embed_dim
         for size in kernel_size_list:
             assert (
                 config.encoder_config.encoder_embed_dim
@@ -264,7 +266,7 @@ class LightConvEncoder(PyTextSeq2SeqModule, NAREncoderUtility):
 
         self.normalize = encoder_config.encoder_normalize_before
         if self.normalize:
-            self.layer_norm = LayerNorm(input_embed_dim)
+            self.layer_norm = LayerNorm(encoder_config.encoder_embed_dim)
         else:
             self.layer_norm = PlaceholderIdentity()
 
