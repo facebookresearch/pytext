@@ -29,6 +29,7 @@ from pytext.optimizer.sparsifiers.sparsifier import Sparsifier
 from pytext.task.serialize import save
 from pytext.trainers.training_state import TrainingState
 from pytext.utils import cuda, distributed, precision, timing
+from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import fp16_compress_hook
 
 
 class TrainerBase(Component):
@@ -691,3 +692,34 @@ class TaskTrainer(Trainer):
         if scheduler.batch_based_schedulers:
             raise Exception("New tasks don't yet support batch-based scheduling")
         return scheduler
+
+
+class FP16GradsTrainer(TaskTrainer):
+    """Trainer with fp16 grad compression"""
+
+    @timing.time("pre-training")
+    def set_up_training(self, state: TrainingState, training_data: BatchIterator):
+        if cuda.CUDA_ENABLED:
+            state.model.cuda()
+        state.scheduler.prepare(training_data, self.config.epochs)
+
+        if cuda.DISTRIBUTED_WORLD_SIZE > 1:
+            device_id = torch.cuda.current_device()
+            state.model = DistributedModel(
+                module=state.model,
+                device_ids=[device_id],
+                output_device=device_id,
+                broadcast_buffers=False,
+                find_unused_parameters=state.model.find_unused_parameters,
+                process_group=distributed._round_robin_process_group,
+            )
+            state.model.register_comm_hook(
+                distributed._round_robin_process_group, fp16_compress_hook
+            )
+        state.start_time = time.time()
+
+        if self.config.num_batches_per_epoch:
+            # Set the training_data iterator to cycle, so it will never run out,
+            # but rather after reaching the end will loop back to the beginning.
+            training_data = cycle(training_data)
+        return training_data
