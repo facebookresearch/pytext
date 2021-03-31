@@ -70,9 +70,14 @@ def find_module_instances(model, module_type, cur_path):
             attr[0] == "_" or len(cur_path) > 4
         ):  # avoids infinite recursion and exploring unnecessary paths
             continue
+        try:
+            next_model = getattr(model, attr)
+        # some objects dynamically throw errors if you try to access their attributes
+        except Exception:
+            continue
         cur_path.append(attr)
         # recursively yield
-        yield from find_module_instances(getattr(model, attr), module_type, cur_path)
+        yield from find_module_instances(next_model, module_type, cur_path)
         cur_path.pop()
 
 
