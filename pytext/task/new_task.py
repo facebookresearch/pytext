@@ -389,13 +389,21 @@ class _NewTask(TaskBase):
 
         use_nnpi_quantize = "nnpi:quantize" in accelerate
         use_nnpi_fx_static_quantize = "nnpi:fx_static_quantize" in accelerate
+        use_nnpi_fx_static_selectively_quantize = (
+            "nnpi:fx_static_selectively_quantize" in accelerate
+        )
         use_nnpi_fx_dynamic_quantize = "nnpi:fx_dynamic_quantize" in accelerate
         use_cpu_fx_static_quantize = "cpu:fx_static_quantize" in accelerate
+        use_cpu_fx_static_selectively_quantize = (
+            "cpu:fx_static_selectively_quantize" in accelerate
+        )
         use_cpu_fx_dynamic_quantize = "cpu:fx_dynamic_quantize" in accelerate
         use_fx_quantize = (
             use_nnpi_fx_static_quantize
+            or use_nnpi_fx_static_selectively_quantize
             or use_nnpi_fx_dynamic_quantize
             or use_cpu_fx_static_quantize
+            or use_cpu_fx_static_selectively_quantize
             or use_cpu_fx_dynamic_quantize
         )
 
@@ -434,6 +442,8 @@ class _NewTask(TaskBase):
                 inputs,
                 data_loader,
                 use_nnpi_fx_dynamic_quantize or use_cpu_fx_dynamic_quantize,
+                use_nnpi_fx_static_selectively_quantize
+                or use_cpu_fx_static_selectively_quantize,
             )
         elif (quantize or use_nnpi_quantize) and hasattr(model, "graph_mode_quantize"):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)

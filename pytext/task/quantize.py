@@ -13,7 +13,7 @@ from torch.quantization import (
 from torch.quantization.quantize_fx import prepare_fx, convert_fx
 
 # Quantize linear layers using fx static or dynamic quantization
-def quantize_fx(model, inputs, data_loader, dynamic=True):
+def quantize_fx(model, inputs, data_loader, dynamic=True, selective=False):
 
     if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
 
@@ -29,7 +29,37 @@ def quantize_fx(model, inputs, data_loader, dynamic=True):
 
         # Only linear layers
         qconfig_dict = {"": None}
-        qconfig_dict["object_type"] = [(torch.nn.Linear, qconfig)]
+        if static and selective:
+            qconfig_dict["module_name"] = []
+            layers = model.encoder.encoder.transformer.layers.layers.layers
+            layers_str = "layers"
+            # skip first layer
+            for layer_idx in range(1, len(layers)):
+                qconfig_dict["module_name"].append(
+                    (
+                        layers_str + ".{}.attention.input_projection".format(layer_idx),
+                        qconfig,
+                    )
+                )
+                qconfig_dict["module_name"].append(
+                    (
+                        layers_str
+                        + ".{}.attention.output_projection".format(layer_idx),
+                        qconfig,
+                    )
+                )
+                for mlp_idx, m in enumerate(layers[layer_idx].residual_mlp.mlp):
+                    # Only quantize first linear otherwise there are accuarcy issues with static quantization
+                    if type(m) == torch.nn.Linear and mlp_idx < 1:
+                        qconfig_dict["module_name"].append(
+                            (
+                                layers_str
+                                + ".{}.residual_mlp.mlp.{}".format(layer_idx, mlp_idx),
+                                qconfig,
+                            )
+                        )
+        else:
+            qconfig_dict["object_type"] = [(torch.nn.Linear, qconfig)]
 
         def calibrate(model, loader, max_samples=-1):
             model.eval()
