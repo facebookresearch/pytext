@@ -22,15 +22,9 @@ from pytext.utils.usage import log_accelerator_feature_usage
 from torch import nn
 
 
-def accelerator_transformerLayers_inputs(
-    model: nn.Module,
-    trace: torch.jit.ScriptFunction,
-    export_options: ExportConfig,
-    dataset_iterable: Iterable,
-    module_path,
+def get_seq_and_batch_padding_control(
+    trace: torch.jit.ScriptFunction, export_options: ExportConfig
 ):
-    import torch_glow
-
     # we use the padding control from the Export Config:
     if export_options is None:
         export_options = ExportConfig()
@@ -50,6 +44,22 @@ def accelerator_transformerLayers_inputs(
             seq_padding_control.append(pad)
     seq_padding_control.append(max_seq_len)
 
+    return seq_padding_control, batch_padding_control
+
+
+def accelerator_transformerLayers_inputs(
+    model: nn.Module,
+    trace: torch.jit.ScriptFunction,
+    export_options: ExportConfig,
+    dataset_iterable: Iterable,
+    module_path,
+):
+    import torch_glow
+
+    seq_padding_control, batch_padding_control = get_seq_and_batch_padding_control(
+        trace, export_options
+    )
+
     # this should use a method, or module_path, instead of being hardcoded
     # embedding_dim = model.encoder.encoder.transformer.token_embedding.embedding_dim
     embedding_dim = accelerator.get_embedding_module_from_path(model, module_path)
@@ -67,6 +77,34 @@ def accelerator_transformerLayers_inputs(
             )
             input2 = torch.randn([batch_size, seq_len]).bool()
             input_specs = torch_glow.input_specs_from_tensors([input1, input2])
+            input_examples.append(input_specs)
+
+    return input_examples
+
+
+def accelerator_split_module_inputs(
+    trace: torch.jit.ScriptFunction, export_options: ExportConfig
+):
+    import torch_glow
+
+    seq_padding_control, batch_padding_control = get_seq_and_batch_padding_control(
+        trace, export_options
+    )
+
+    input_examples = []
+    for seq_len in seq_padding_control:
+        if seq_len <= 0:
+            continue
+
+        for batch_size in batch_padding_control:
+            if batch_size <= 0:
+                continue
+
+            input1 = torch.randint(3, (batch_size, seq_len))
+            input2 = torch.randint(3, (batch_size, seq_len))
+            input3 = torch.rand(batch_size, seq_len).bool()
+
+            input_specs = torch_glow.input_specs_from_tensors([input1, input2, input3])
             input_examples.append(input_specs)
 
     return input_examples
@@ -254,6 +292,28 @@ class AcceleratorBiLSTM(nn.Module):
         return rep, (new_hidden, new_cell)
 
 
+@accelerator(
+    [
+        (
+            "NNPI",
+            {
+                "NNPI_IceCores": "12",
+                "NNPINumParallelChunks": "12",
+                "NNPIUseGeluLUT": "true",
+            },
+        )
+    ],
+    inputs_function=accelerator_split_module_inputs,
+)
+class AcceleratorSplitTransformer(nn.Module):
+    def __init__(self, split_module):
+        super().__init__()
+        self.split_module = split_module
+
+    def forward(self, *inputs):
+        return self.split_module(*inputs)
+
+
 def lower_modules_to_accelerator(
     model: nn.Module, trace, export_options: ExportConfig, throughput_optimize=False
 ):
@@ -342,3 +402,62 @@ def nnpi_rewrite_roberta_transformer(model):
 
 def nnpi_rewrite_bilstm(model):
     model.representation = AcceleratorBiLSTM(model.representation)
+
+
+def split_model_for_accelerator(model: nn.Module) -> nn.modules:
+    import glow.fb.nnpi.lowering.split as split
+
+    if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
+        with torch.no_grad():
+            example_input = torch.randint(3, (1, 4))
+            settings = split.FxNetSplitterSettings()
+            settings.skip_fusion = True
+            splitter = split.FxNetSplitter(
+                model.encoder.encoder.transformer,
+                (example_input,),
+                settings=settings,
+            )
+            split_module = splitter()
+            model.encoder.encoder.transformer = AcceleratorSplitTransformer(
+                split_module
+            )
+            return model
+    raise RuntimeError("Can't find the right entry to split.")
+
+
+def lower_split_model_to_accelerator(
+    model: nn.Module,
+    trace: torch.jit.RecursiveScriptModule,
+    export_options: ExportConfig,
+) -> torch.jit.RecursiveScriptModule:
+    import torch_glow
+
+    if hasattr(model, "encoder") and isinstance(model.encoder, RoBERTaEncoder):
+        backend = "NNPI"
+        (
+            submod_modelpath,
+            compilation_spec_dict,
+            inputs_function,
+        ) = accelerator.get_modules(model, backend)[0]
+        submod_tracepath = accelerator.model2trace_path(submod_modelpath)
+
+        spec = torch_glow.CompilationSpec()
+        spec.get_settings().set_glow_backend(backend)
+        compilation_group = torch_glow.CompilationGroup()
+        spec.compilation_groups_append(compilation_group)
+        compilation_group_settings = compilation_group.get_settings()
+        compilation_group_settings.set_convert_to_fp16(True)
+
+        for k, v in compilation_spec_dict.items():
+            compilation_group.get_settings().backend_specific_opts_insert(k, v)
+
+        input_sets = inputs_function(trace, export_options)
+        compilation_group.set_input_sets(input_sets)
+
+        trace = torch_glow.to_glow_selective(
+            trace,
+            {f"{submod_tracepath}.split_module._run_on_acc_1": spec},
+            inplace=False,
+        )
+
+    return trace
