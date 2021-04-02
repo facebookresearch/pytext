@@ -417,7 +417,7 @@ class _NewTask(TaskBase):
         if use_nnpi or use_fx_quantize:
             model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
 
-        if "split" in accelerate:
+        if "nnpi:split" in accelerate:
             model = split_model_for_accelerator(model)
 
         # Trace needs eval mode, to disable dropout etc
