@@ -39,7 +39,7 @@ class LightConvEncoderLayer(PyTextSeq2SeqModule):
             LightweightConv.Config, PlaceholderIdentity.Config
         ] = LightweightConv.Config()
         self_attention_type: Optional[MultiheadAttention.Config] = None
-        encoder_embed_dim: int = 128
+        encoder_embed_dim: Optional[int] = None
         encoder_ffn_embed_dim: int = 512
         self_attention_heads: int = 2
         encoder_glu: bool = True
@@ -185,7 +185,7 @@ class ConvEncoderConfig(ConfigBase):
     no_token_positional_embeddings: bool = False
     positional_embedding_type: PostionalEmbedType = PostionalEmbedType.LEARNED
     combine_pos_embed: PostionalEmbedCombine = PostionalEmbedCombine.CONCAT
-    encoder_embed_dim: Optional[int] = None
+    encoder_embed_dim: int = 128
     embedding_dim: Optional[int] = 128
 
 
