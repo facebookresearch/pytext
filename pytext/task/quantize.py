@@ -10,7 +10,8 @@ from torch.quantization import (
     default_weight_observer,
     per_channel_dynamic_qconfig,
 )
-from torch.quantization.quantize_fx import prepare_fx, convert_fx
+from torch.quantization.quantize_fx import convert_fx, prepare_fx
+
 
 # Quantize linear layers using fx static or dynamic quantization
 def quantize_fx(model, inputs, data_loader, dynamic=True, selective=False):

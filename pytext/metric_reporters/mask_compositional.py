@@ -10,7 +10,6 @@ from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.compositional_metric_reporter import (
     CompositionalMetricReporter,
 )
-
 # These classes have been migrated to the open source directories. Imported
 # here for compatibility purposes.
 from pytext.metric_reporters.seq2seq_compositional import (  # noqa

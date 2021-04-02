@@ -24,15 +24,12 @@ from torch.nn import LayerNorm
 
 from .attention import MultiheadAttention
 from .base import (
+    PlaceholderIdentity,
     PyTextIncrementalDecoderComponent,
     PyTextSeq2SeqModule,
-    PlaceholderIdentity,
 )
 from .light_conv import LightweightConv
-from .projection_layers import (
-    DecoderWithLinearOutputProjection,
-    DecoupledDecoderHead,
-)
+from .projection_layers import DecoderWithLinearOutputProjection, DecoupledDecoderHead
 from .utils import extract_ontology_vocab
 
 

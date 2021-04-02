@@ -10,7 +10,7 @@ from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_ty
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import PyTextConfig, TestConfig, ExportConfig
+from pytext.config import ExportConfig, PyTextConfig, TestConfig
 from pytext.config.component import ComponentType, create_component, create_exporter
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata

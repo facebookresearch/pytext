@@ -4,6 +4,7 @@ from pytext.common.utils import eprint
 
 from .pytext_config import LATEST_VERSION, PyTextConfig
 
+
 ADAPTERS = {}
 DOWNGRADE_ADAPTERS = {}
 NOT_THERE = (None, None, None)

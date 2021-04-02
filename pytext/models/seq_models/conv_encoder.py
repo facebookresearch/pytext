@@ -25,7 +25,7 @@ from torch import Tensor
 from torch.nn import LayerNorm
 
 from .attention import MultiheadAttention
-from .base import PyTextSeq2SeqModule, PlaceholderIdentity
+from .base import PlaceholderIdentity, PyTextSeq2SeqModule
 from .light_conv import LightweightConv
 from .nar_modules import NAREncoderUtility
 from .utils import Linear

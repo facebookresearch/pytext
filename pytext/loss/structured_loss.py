@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 
-from .loss import Loss, NLLLoss, HingeLoss
+from .loss import HingeLoss, Loss, NLLLoss
 
 
 class CostFunctionType(Enum):

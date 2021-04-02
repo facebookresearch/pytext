@@ -3,6 +3,7 @@
 
 import functools
 
+
 # module decorator for specifying acceleration
 # The purpose is to avoid ImportError when glow_decorator is not available
 class accelerator:

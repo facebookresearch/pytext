@@ -8,7 +8,7 @@ import json
 import os
 import typing
 
-from pytext.config import ConfigBase, PyTextConfig, ExportConfig
+from pytext.config import ConfigBase, ExportConfig, PyTextConfig
 from pytext.config.component import Registry
 from pytext.config.serialize import config_to_json
 from pytext.utils.file_io import PathManager

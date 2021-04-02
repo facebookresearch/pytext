@@ -11,9 +11,6 @@ from pytext.models.representations.transformer.positional_embedding import (
     PositionalEmbedding,
 )
 from pytext.models.seq_models.base import PlaceholderIdentity
-from pytext.models.seq_models.base import (
-    PlaceholderIdentity,
-)
 from torch import Tensor
 
 from .utils import make_positions

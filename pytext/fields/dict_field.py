@@ -8,12 +8,14 @@ from pytext.common.constants import VocabMeta
 from pytext.utils.data import no_tokenize
 from torchtext import vocab
 
+from .field import VocabUsingField
+
+
 try:
     from torchtext.legacy import data as textdata
 except ImportError:
     from torchtext import data as textdata
 
-from .field import VocabUsingField
 
 
 class DictFeatureField(VocabUsingField):

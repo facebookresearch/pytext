@@ -6,6 +6,7 @@ from typing import List, NamedTuple, Optional, Tuple
 import torch
 from torch import Tensor
 
+
 # Needed for pad_2d_mask
 torch.ops.load_library("//caffe2/torch/fb/nlp/operators:padded_sequences")
 

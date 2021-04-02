@@ -11,7 +11,7 @@ import numpy as np
 from pytext.common.constants import Stage
 from pytext.metric_reporters.channel import Channel, ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
-from pytext.metrics import compute_classification_metrics, LabelPrediction
+from pytext.metrics import LabelPrediction, compute_classification_metrics
 from pytext.metrics.squad_metrics import SquadMetrics
 
 

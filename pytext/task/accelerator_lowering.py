@@ -4,6 +4,12 @@
 from typing import Iterable, List, Tuple
 
 import torch
+from pytext.config import ExportConfig
+from pytext.models.representations.bilstm import BiLSTM
+from pytext.models.roberta import RoBERTaEncoder
+from pytext.utils.usage import log_accelerator_feature_usage
+from torch import nn
+
 
 accelerator_lowering_supported = True
 try:
@@ -15,11 +21,6 @@ except ImportError:
 
     print("Accelerator Lowering not supported!")
 
-from pytext.config import ExportConfig
-from pytext.models.representations.bilstm import BiLSTM
-from pytext.models.roberta import RoBERTaEncoder
-from pytext.utils.usage import log_accelerator_feature_usage
-from torch import nn
 
 
 def get_seq_and_batch_padding_control(

@@ -8,11 +8,7 @@ from pytext.config import ConfigBase
 from pytext.models.module import Module
 from pytext.torchscript.vocab import ScriptVocabulary
 from torch import Tensor
-from torch.quantization import float_qparams_weight_only_qconfig
-from torch.quantization import (
-    prepare,
-    convert,
-)
+from torch.quantization import convert, float_qparams_weight_only_qconfig, prepare
 
 
 class BeamRankingAlgorithm(Enum):

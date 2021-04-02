@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Type, Union
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import ConfigBase, PyTextConfig, ExportConfig
+from pytext.config import ConfigBase, ExportConfig, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
 from pytext.data.sources.data_source import Schema
@@ -19,26 +19,21 @@ from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import (
+    log_accelerator_feature_usage,
     log_class_usage,
     log_feature_usage,
-    log_accelerator_feature_usage,
 )
 from torch import sort
 
 from .accelerator_lowering import (
     lower_modules_to_accelerator,
-    nnpi_rewrite_roberta_transformer,
-    nnpi_rewrite_bilstm,
-    split_model_for_accelerator,
     lower_split_model_to_accelerator,
+    nnpi_rewrite_bilstm,
+    nnpi_rewrite_roberta_transformer,
+    split_model_for_accelerator,
 )
-from .cuda_lowering import (
-    cuda_rewrite_roberta_transformer,
-)
-from .quantize import (
-    quantize_statically,
-    quantize_fx,
-)
+from .cuda_lowering import cuda_rewrite_roberta_transformer
+from .quantize import quantize_fx, quantize_statically
 from .task import TaskBase
 
 

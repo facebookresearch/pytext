@@ -32,12 +32,14 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
 from pytext.utils.usage import log_class_usage
 
+from .utils import align_target_labels
+
+
 try:
     from torchtext.legacy import data as textdata
 except ImportError:
     from torchtext import data as textdata
 
-from .utils import align_target_labels
 
 
 class CommonMetadata:

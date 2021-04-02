@@ -26,9 +26,9 @@ from pytext.models.module import Module, create_module
 from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
-    QuantizedMultiheadLinearAttention,
     MultiheadSelfAttention,
     PostEncoder,
+    QuantizedMultiheadLinearAttention,
     SELFIETransformer,
     SentenceEncoder,
     Transformer,

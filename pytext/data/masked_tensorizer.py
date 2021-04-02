@@ -3,9 +3,9 @@
 import torch
 from pytext.config.component import ComponentType, create_component
 from pytext.data.masked_util import (
+    MaskedVocabBuilder,
     MaskingFunction,
     RandomizedMaskingFunction,
-    MaskedVocabBuilder,
 )
 from pytext.data.tensorizers import TokenTensorizer
 from pytext.data.utils import pad, pad_and_tensorize

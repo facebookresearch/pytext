@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Optional, Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.utils.usage import log_class_usage
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from .base import PyTextIncrementalDecoderComponent
 from .utils import Linear

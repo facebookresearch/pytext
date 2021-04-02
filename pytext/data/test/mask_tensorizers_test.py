@@ -6,11 +6,7 @@ import unittest
 from typing import List
 
 from pytext.data.masked_tensorizer import MaskedTokenTensorizer
-from pytext.data.masked_util import (
-    MaskEverything,
-    RandomizedMaskingFunction,
-    TreeMask,
-)
+from pytext.data.masked_util import MaskEverything, RandomizedMaskingFunction, TreeMask
 from pytext.data.sources.data_source import SafeFileWrapper
 from pytext.data.sources.tsv import TSVDataSource
 from pytext.utils.test import import_tests_module

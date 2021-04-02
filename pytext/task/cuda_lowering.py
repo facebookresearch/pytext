@@ -7,11 +7,12 @@ from typing import List
 import numpy as np
 import torch
 from pytext.models.representations.transformer import (
-    TransformerLayer,
     MultiheadSelfAttention,
+    TransformerLayer,
 )
 from pytext.models.roberta import RoBERTaEncoder
-from torch import nn, Tensor
+from torch import Tensor, nn
+
 
 torch.ops.load_library("//pytorch/FasterTransformers3.1:faster_transformers")
 

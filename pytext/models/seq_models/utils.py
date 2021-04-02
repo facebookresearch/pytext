@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 
 def prepare_full_key(instance_id: str, key: str, secondary_key: Optional[str] = None):

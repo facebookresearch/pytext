@@ -4,7 +4,7 @@ import copy
 import json
 import re
 from collections import OrderedDict
-from typing import List, NamedTuple, Union, Optional
+from typing import List, NamedTuple, Optional, Union
 
 from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
@@ -14,10 +14,7 @@ from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTok
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
 from sentencepiece import SentencePieceProcessor
-from transformers.tokenization_bert import (
-    BasicTokenizer,
-    WordpieceTokenizer,
-)
+from transformers.tokenization_bert import BasicTokenizer, WordpieceTokenizer
 
 
 class Token(NamedTuple):

@@ -11,6 +11,7 @@ from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
 from pytext.utils.data import is_number, unkify
 
+
 try:
     from torchtext.legacy.data import Dataset
 except ImportError:

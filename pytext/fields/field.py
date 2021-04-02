@@ -8,13 +8,14 @@ import torch
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import data as data_utils, precision
+from torchtext.vocab import Vocab
+
 
 try:
     from torchtext.legacy import data as textdata
 except ImportError:
     from torchtext import data as textdata
 
-from torchtext.vocab import Vocab
 
 
 def create_fields(fields_config, field_cls_dict):
