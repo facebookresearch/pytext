@@ -8,6 +8,7 @@ from pytext.config import ExportConfig
 from pytext.config.component import create_trainer
 from pytext.data.bert_tensorizer import BERTTensorizer
 from pytext.data.data import Data
+from pytext.data.decoupled_data import DecoupledSeq2SeqData
 from pytext.data.packed_lm_data import PackedLMData
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import (
@@ -26,6 +27,9 @@ from pytext.metric_reporters import (
 from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.language_model_metric_reporter import (
     MaskedLMMetricReporter,
+)
+from pytext.metric_reporters.mask_compositional import (
+    MaskedSeq2SeqCompositionalMetricReporter,
 )
 from pytext.metric_reporters.seq2seq_compositional import (
     Seq2SeqCompositionalMetricReporter,
@@ -54,6 +58,10 @@ from pytext.models.roberta import RoBERTaWordTaggingModel
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
 from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
+)
+from pytext.models.seq_models.nar_seq2seq_model import (
+    NARSeq2SeqModel,
+    NARDecoupledSeq2SeqModel,
 )
 from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
 from pytext.models.seq_models.seqnn import SeqNNModel
@@ -378,3 +386,20 @@ class SequenceLabelingTask(NewTask):
             jit_module = model.torchscriptify()
             with PathManager.open(export_path, "wb") as f:
                 torch.jit.save(jit_module, f)
+
+
+class NARSeq2SeqTask(NewTask):
+    class Config(NewTask.Config):
+        model: NARSeq2SeqModel.Config = NARSeq2SeqModel.Config()
+        metric_reporter: MaskedSeq2SeqCompositionalMetricReporter.Config = (
+            MaskedSeq2SeqCompositionalMetricReporter.Config()
+        )
+
+
+class DecoupledNARSeq2SeqTask(NewTask):
+    class Config(NewTask.Config):
+        data: DecoupledSeq2SeqData.Config = DecoupledSeq2SeqData.Config()
+        model: NARDecoupledSeq2SeqModel.Config = NARDecoupledSeq2SeqModel.Config()
+        metric_reporter: MaskedSeq2SeqCompositionalMetricReporter.Config = (
+            MaskedSeq2SeqCompositionalMetricReporter.Config()
+        )
