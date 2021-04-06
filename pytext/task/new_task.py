@@ -363,6 +363,7 @@ class _NewTask(TaskBase):
             self.data.tensorizers, batch, export_path, export_onnx_path=export_onnx_path
         )
 
+    @torch.no_grad()
     def torchscript_export(
         self,
         model,
@@ -371,6 +372,9 @@ class _NewTask(TaskBase):
         sort_key=1,
         export_config=None,
     ):
+        # TODO(T88310041) Remove These
+        torch._C._jit_set_profiling_executor(True)
+        torch._C._jit_set_profiling_mode(False)
         # unpack export config
         if export_config is None:
             export_config = ExportConfig()
