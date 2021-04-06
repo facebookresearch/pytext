@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -27,13 +27,26 @@ class MultiheadSelfAttention(nn.Module):
         self,
         embed_dim: int,
         num_heads: int,
-        scaling: float = 0.125,
+        scaling: Optional[float] = None,
         dropout: float = 0.1,
     ):
         super().__init__()
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
+
+        # for backward compatibility with previous default
+        if not scaling and self.head_dim == 64:
+            scaling = 0.125
+
+        if not scaling:
+            raise Exception(
+                f"""
+                scaling not set and previous default value of 0.125 does not match
+                1/sqrt(head_dim) where embed_dim = {embed_dim} and num_heads = {num_heads}
+                resulting in head_dim = {self.head_dim}
+                """
+            )
         self.scaling = scaling
         self.dropout = nn.Dropout(dropout)
         self.input_projection = nn.Linear(embed_dim, 3 * embed_dim)

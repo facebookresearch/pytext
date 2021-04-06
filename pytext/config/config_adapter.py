@@ -863,6 +863,25 @@ def v25_to_v26(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=27)
+def v27_to_v26(json_config):
+    """
+    Downgrade by removing scaling option for RoBERTaEncoder
+    """
+    for v in get_json_config_iterator(json_config, "RoBERTaEncoder"):
+        if "scaling" in v:
+            del v["scaling"]
+    return json_config
+
+
+@register_adapter(from_version=26)
+def v26_to_v27(json_config):
+    """
+    No-op since scaling is optional
+    """
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized

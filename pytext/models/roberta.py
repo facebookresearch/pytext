@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+
 import logging
 from typing import Dict, List, Optional, Tuple
 
@@ -141,6 +142,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         use_selfie_encoder: bool = False
         transformer_layer_to_keep: Optional[int] = None
         attention_heads_to_keep_per_layer: Optional[int] = None
+        scaling: Optional[float] = None
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -195,6 +197,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                     attention=MultiheadSelfAttention(
                         embed_dim=config.embedding_dim,
                         num_heads=config.num_attention_heads,
+                        scaling=config.scaling,
                     ),
                 )
                 for _ in range(config.num_encoder_layers)

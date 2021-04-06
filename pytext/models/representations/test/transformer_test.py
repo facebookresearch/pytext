@@ -8,6 +8,9 @@ from pytext.models.representations.transformer import (
     Transformer,
     TransformerLayer,
 )
+from pytext.models.representations.transformer.multihead_attention import (
+    MultiheadSelfAttention,
+)
 from pytext.models.representations.transformer.representation import (
     TransformerRepresentation,
 )
@@ -15,7 +18,15 @@ from pytext.models.representations.transformer.representation import (
 
 class SentenceEncoderTest(unittest.TestCase):
     def _small_encoder(self):
-        layers = [TransformerLayer(embedding_dim=12) for _ in range(2)]
+        layers = [
+            TransformerLayer(
+                embedding_dim=12,
+                attention=MultiheadSelfAttention(
+                    embed_dim=12, num_heads=12, scaling=0.125
+                ),
+            )
+            for _ in range(2)
+        ]
         transformer = Transformer(vocab_size=100, embedding_dim=12, layers=layers)
         return SentenceEncoder(transformer)
 
@@ -50,7 +61,9 @@ class SentenceRepresentationTest(unittest.TestCase):
         padding_mask = torch.BoolTensor([[False, False, True]])
 
         representation = TransformerRepresentation.from_config(
-            TransformerRepresentation.Config(ffnn_embed_dim=10, num_attention_heads=2),
+            TransformerRepresentation.Config(
+                ffnn_embed_dim=10, num_attention_heads=2, scaling=0.125
+            ),
             embed_dim=10,
         )
 

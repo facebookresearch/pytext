@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+from typing import Optional
 
 import torch.nn as nn
 from pytext.config import ConfigBase
@@ -26,6 +27,7 @@ class TransformerRepresentation(Module):
         num_attention_heads: int = 4
         ffnn_embed_dim: int = 32
         dropout: float = 0.0
+        scaling: Optional[float] = None
 
     def __init__(self, config: Config, embed_dim: int) -> None:
         super().__init__()
@@ -43,7 +45,9 @@ class TransformerRepresentation(Module):
         return TransformerLayer(
             embedding_dim=embed_dim,
             attention=MultiheadSelfAttention(
-                embed_dim=embed_dim, num_heads=config.num_attention_heads
+                embed_dim=embed_dim,
+                num_heads=config.num_attention_heads,
+                scaling=config.scaling,
             ),
             residual_mlp=ResidualMLP(
                 input_dim=embed_dim,
