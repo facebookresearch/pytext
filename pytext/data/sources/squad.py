@@ -17,15 +17,17 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
 
 
-def _shift_answers(orig_starts, piece_start, piece_end):
+def _shift_answers(orig_answers, orig_starts, piece_start, piece_end):
     # Re-align answer index for each piece when we split a long document.
     answer_starts = []
+    answers = []
     has_answer = False
-    for start in orig_starts:
+    for ans, start in zip(orig_answers, orig_starts):
         if start >= piece_start and start < piece_end:
             answer_starts.append(start - piece_start)
+            answers.append(ans)
             has_answer = True
-    return answer_starts, has_answer
+    return answers, answer_starts, has_answer
 
 
 def _split_document(
@@ -56,7 +58,9 @@ def _split_document(
                 n * (max_character_length - overlap),
                 (n + 1) * (max_character_length - overlap) + overlap,
             )
-            answer_starts, piece_has_answer = _shift_answers(answer_starts, start, end)
+            answers, answer_starts, piece_has_answer = _shift_answers(
+                answers, answer_starts, start, end
+            )
             pieces.append(
                 {
                     "id": id,

@@ -101,6 +101,11 @@ class SquadForBERTTensorizer(BERTTensorizer):
 
         # now map original answer spans to tokenized spans
         offset = len(question_tokens)
+
+        # important to make sure labels are always aligned
+        assert len(row[self.answers_column]) == len(
+            row[self.answer_starts_column]
+        ), f"Answer Starts({row[self.answer_starts_column]}) and Answers({row[self.answer_column]}) columns misaligned."
         answer_start_indices, answer_end_indices = self._calculate_answer_indices(
             row, offset, start_idx, end_idx
         )
