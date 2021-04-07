@@ -5,6 +5,7 @@ import enum
 from typing import Any, Dict, List, Tuple, Type, Union
 
 import torch
+from pytext.utils.usage import log_class_usage
 
 from .pytext_config import ConfigBase, PyTextConfig
 
@@ -185,6 +186,7 @@ class Component(metaclass=ComponentMeta):
 
     def __init__(self, config=None, *args, **kwargs):
         self.config = config
+        log_class_usage(self.__class__)
 
 
 def register_tasks(task_cls: Union[Type, List[Type]]):

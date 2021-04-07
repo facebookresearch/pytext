@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import zipfile
 from typing import Dict
 
 import torch
@@ -10,7 +9,6 @@ import torch.nn as nn
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.config.module_config import ModuleConfig
 from pytext.utils.file_io import PathManager
-from pytext.utils.usage import log_class_usage
 
 
 SHARED_MODULE_REGISTRY: Dict[str, torch.nn.Module] = {}
@@ -92,7 +90,6 @@ class Module(nn.Module, Component):
     def __init__(self, config=None) -> None:
         nn.Module.__init__(self)
         Component.__init__(self, config)
-        log_class_usage(__class__)
 
     def freeze(self) -> None:
         for param in self.parameters():

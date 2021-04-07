@@ -271,7 +271,7 @@ class _NewTask(TaskBase):
             self.Config.metric_reporter, model
         )
         self.trainer = trainer or TaskTrainer()
-        log_class_usage
+        log_class_usage(self.__class__)
 
     def train(
         self,
