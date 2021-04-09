@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-
+import math
 from typing import List, Optional
 
 import numpy as np
@@ -35,6 +35,8 @@ class MultiheadSelfAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
 
+        expected_scaling = float(1 / math.sqrt(self.head_dim))
+
         # for backward compatibility with previous default
         if not scaling and self.head_dim == 64:
             scaling = 0.125
@@ -42,11 +44,14 @@ class MultiheadSelfAttention(nn.Module):
         if not scaling:
             raise Exception(
                 f"""
-                scaling not set and previous default value of 0.125 does not match
-                1/sqrt(head_dim) where embed_dim = {embed_dim} and num_heads = {num_heads}
-                resulting in head_dim = {self.head_dim}
+                Scaling not set. Please manually set scaling for transformers with
+                head_dim != 64. The suggested value in this case is {expected_scaling},
+                or float(1 / math.sqrt(head_dim))
+                where head_dim = embed_dim // num_heads = {self.head_dim}
+                and embed_dim = {embed_dim} and num_heads = {num_heads}.
                 """
             )
+
         self.scaling = scaling
         self.dropout = nn.Dropout(dropout)
         self.input_projection = nn.Linear(embed_dim, 3 * embed_dim)
