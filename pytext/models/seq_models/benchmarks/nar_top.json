@@ -1,0 +1,404 @@
+{
+    "config": {
+      "task": {
+        "DecoupledNARSeq2SeqTask": {
+          "data": {
+            "source": {
+              "TSVDataSource": {
+                "column_mapping": {},
+                "train_filename": "<INSERT_TOP_TRAIN_FILE",
+                "test_filename": "<INSERT_TOP_TEST_FILE>",
+                "eval_filename": "<INSERT_TOP_EVAL_FILE>",
+                "field_names": [
+                  "source_sequence",
+                  "target_sequence"
+                ]
+              }
+            },
+            "batcher": {
+              "PoolingBatcher": {
+                "train_batch_size": 8,
+                "eval_batch_size": 64,
+                "test_batch_size": 64,
+                "pool_num_batches": 1,
+                "num_shuffled_pools": 10000
+              }
+            },
+            "sort_key": "src_seq_tokens",
+            "in_memory": true,
+            "decoupled_source": false,
+            "decoupled_target": true,
+            "unk_token": "<unk>",
+            "pad_token": "<pad>",
+            "bos_token": "<bos>",
+            "eos_token": "<eos>",
+            "mask_token": "<mask>",
+            "filter_target_ood_slots": true,
+            "merge_source_vocab": false
+          },
+          "trainer": {
+            "TaskTrainer": {
+              "epochs": 200,
+              "early_stop_after": 20,
+              "max_clip_norm": 5,
+              "report_train_metrics": true,
+              "target_time_limit_seconds": null,
+              "do_eval": true,
+              "num_samples_to_log_progress": 1000,
+              "num_accumulated_batches": 1,
+              "num_batches_per_epoch": null,
+              "optimizer": {
+                "Adam": {
+                  "lr": 0.00023130681150221,
+                  "weight_decay": 0.00001,
+                  "eps": 1e-8
+                }
+              },
+              "scheduler": {
+                "ReduceLROnPlateau": {
+                  "lower_is_better": false,
+                  "factor": 0.1,
+                  "patience": 10
+                }
+              },
+              "sparsifier": null,
+              "fp16_args": {
+                "FP16OptimizerFairseq": {
+                  "init_loss_scale": 128,
+                  "scale_window": null,
+                  "scale_tolerance": 0,
+                  "threshold_loss_scale": null,
+                  "min_loss_scale": 0.0001
+                }
+              },
+              "privacy_engine": null
+            }
+          },
+          "use_elastic": null,
+          "model": {
+            "inputs": {
+              "src_seq_tokens": {
+                "is_input": true,
+                "column": "source_sequence",
+                "tokenizer": {
+                  "AssistantFeaturizer": {
+                    "split_regex": "\\s+",
+                    "lowercase": true,
+                    "use_byte_offsets": false,
+                    "tokenizer_config_dict": {},
+                    "use_assistant_tokenizer": true,
+                    "sentence_marker_dict": null,
+                    "pretrained_models_dict": {},
+                    "prefixes_to_strip": null,
+                    "suffixes_to_strip": null
+                  }
+                },
+                "add_bos_token": true,
+                "add_eos_token": true,
+                "use_eos_token_for_bos": false,
+                "max_seq_len": null,
+                "vocab": {
+                  "build_from_data": true,
+                  "size_from_data": 0,
+                  "min_counts": 0,
+                  "vocab_files": []
+                },
+                "vocab_file_delimiter": " "
+              },
+              "trg_seq_tokens": {
+                "is_input": true,
+                "column": "target_sequence",
+                "tokenizer": {
+                  "Tokenizer": {
+                    "split_regex": "\\s+",
+                    "lowercase": true,
+                    "use_byte_offsets": false
+                  }
+                },
+                "add_bos_token": false,
+                "add_eos_token": false,
+                "use_eos_token_for_bos": false,
+                "max_seq_len": null,
+                "vocab": {
+                  "build_from_data": true,
+                  "size_from_data": 0,
+                  "min_counts": 0,
+                  "vocab_files": []
+                },
+                "vocab_file_delimiter": " ",
+                "masking_function": {
+                  "MaskEverything": {}
+                }
+              },
+              "dict_feat": null
+            },
+            "encoder_decoder": {
+              "encoder": {
+                "load_path": null,
+                "save_path": null,
+                "freeze": false,
+                "shared_module_key": null,
+                "encoder_config": {
+                  "dropout": 0.38970274534076,
+                  "encoder_learned_pos": false,
+                  "encoder_normalize_before": false,
+                  "max_source_positions": 1024,
+                  "max_target_positions": 100,
+                  "no_token_positional_embeddings": false,
+                  "positional_embedding_type": "hybrid",
+                  "combine_pos_embed": "sum",
+                  "encoder_embed_dim": 160,
+                  "embedding_dim": 160
+                },
+                "layer_config": {
+                  "dropout": 0.24071085508913,
+                  "encoder_conv_dim": 160,
+                  "encoder_conv_type": {
+                    "LightweightConv": {
+                      "num_heads": 4,
+                      "weight_softmax": false,
+                      "bias": true
+                    }
+                  },
+                  "self_attention_type": {
+                    "dropout": 0,
+                    "kdim": null,
+                    "vdim": null,
+                    "bias": true
+                  },
+                  "encoder_embed_dim": 160,
+                  "encoder_ffn_embed_dim": 160,
+                  "self_attention_heads": 1,
+                  "encoder_glu": true,
+                  "encoder_normalize_before": false,
+                  "input_dropout": 0.1,
+                  "relu_dropout": 0,
+                  "convolution_type": "non-causal"
+                },
+                "encoder_kernel_size_list": [
+                  3,
+                  7,
+                  15,
+                  21,
+                  27
+                ],
+                "compression_dim": 160
+              },
+              "decoder": {
+                "load_path": null,
+                "save_path": null,
+                "freeze": false,
+                "shared_module_key": null,
+                "decoder_config": {
+                  "dropout": 0.27368621211499,
+                  "decoder_embed_dim": 160,
+                  "decoder_input_dim": 160,
+                  "decoder_output_dim": 160,
+                  "max_target_positions": 160,
+                  "decoder_learned_pos": true,
+                  "no_token_positional_embeddings": false,
+                  "positional_embedding_type": "learned",
+                  "combine_pos_embed": "concat",
+                  "decoder_normalize_before": false
+                },
+                "layer_config": {
+                  "attention_dropout": 0,
+                  "decoder_attention_heads": 4,
+                  "self_attention_heads": 2,
+                  "decoder_conv_dim": 160,
+                  "decoder_conv_type": {
+                    "LightweightConv": {
+                      "num_heads": 2,
+                      "weight_softmax": false,
+                      "bias": true
+                    }
+                  },
+                  "attention_type": {
+                    "dropout": 0,
+                    "kdim": 160,
+                    "vdim": 160,
+                    "bias": true
+                  },
+                  "self_attention_type": {
+                    "dropout": 0,
+                    "kdim": null,
+                    "vdim": null,
+                    "bias": true
+                  },
+                  "decoder_embed_dim": 160,
+                  "decoder_ffn_embed_dim": 512,
+                  "decoder_glu": true,
+                  "decoder_normalize_before": false,
+                  "dropout": 0.26139599140733,
+                  "input_dropout": 0.1,
+                  "relu_dropout": 0,
+                  "need_attention": true,
+                  "convolution_type": "non-causal"
+                },
+                "decoder_kernel_size_list": [
+                  7,
+                  27
+                ],
+                "decoder_layers": 2,
+                "decoupled_attention_heads": 8,
+                "ontology_generation_only": true,
+                "model_output_logprob": true
+              }
+            },
+            "source_embedding": {
+              "load_path": null,
+              "save_path": null,
+              "freeze": false,
+              "shared_module_key": null,
+              "embed_dim": 160,
+              "embedding_init_strategy": "random",
+              "embedding_init_range": null,
+              "embeddding_init_std": 0.02,
+              "export_input_names": [
+                "tokens_vals"
+              ],
+              "pretrained_embeddings_path": "",
+              "vocab_file": "",
+              "vocab_size": 0,
+              "vocab_from_train_data": true,
+              "vocab_from_all_data": false,
+              "vocab_from_pretrained_embeddings": false,
+              "lowercase_tokens": true,
+              "min_freq": 1,
+              "mlp_layer_dims": [],
+              "padding_idx": null,
+              "cpu_only": false,
+              "skip_header": true,
+              "delimiter": " "
+            },
+            "target_embedding": {
+              "load_path": null,
+              "save_path": null,
+              "freeze": false,
+              "shared_module_key": null,
+              "embed_dim": 8,
+              "embedding_init_strategy": "random",
+              "embedding_init_range": null,
+              "embeddding_init_std": 0.02,
+              "export_input_names": [
+                "tokens_vals"
+              ],
+              "pretrained_embeddings_path": "",
+              "vocab_file": "",
+              "vocab_size": 0,
+              "vocab_from_train_data": true,
+              "vocab_from_all_data": false,
+              "vocab_from_pretrained_embeddings": false,
+              "lowercase_tokens": true,
+              "min_freq": 1,
+              "mlp_layer_dims": [],
+              "padding_idx": null,
+              "cpu_only": false,
+              "skip_header": true,
+              "delimiter": " "
+            },
+            "dict_embedding": null,
+            "contextual_token_embedding": null,
+            "output_layer": {
+              "loss": {
+                "NARSequenceLoss": {
+                  "beta": 0.284413513328,
+                  "assert_valid_targets": true,
+                  "label_type": "log_probs",
+                  "length_type": "log_probs",
+                  "label_loss": {
+                    "beta": 0.1,
+                    "label_loss": {
+                      "NLLLoss": {}
+                    },
+                    "smoothing_loss": {
+                      "UniformRegularizer": {}
+                    }
+                  },
+                  "length_loss": {
+                    "beta": 0.38964643668091,
+                    "label_loss": {
+                      "NLLLoss": {}
+                    },
+                    "smoothing_loss": {
+                      "UniformRegularizer": {}
+                    }
+                  }
+                }
+              }
+            },
+            "sequence_generator": {
+              "beam_size": 1,
+              "quantize": true,
+              "embed_quantize": "None",
+              "use_gold_length": false,
+              "force_eval_predictions": true,
+              "generate_predictions_every": 1,
+              "beam_ranking_algorithm": "LENGTH_CONDITIONED_RANK",
+              "clip_target_length": false,
+              "targetlen_cap": 30,
+              "targetlen_a": 0,
+              "targetlen_b": 2,
+              "targetlen_c": 2
+            },
+            "length_prediction_model": {
+              "ConvLengthPredictionModule": {
+                "load_path": null,
+                "save_path": null,
+                "freeze": false,
+                "shared_module_key": null,
+                "conv_dim": 512,
+                "max_target_positions": 100,
+                "length_dropout": 0.38796739950776,
+                "kernel_sizes": [
+                  3,
+                  9
+                ],
+                "glu": true,
+                "activation": "glu",
+                "convolution_type": {
+                  "num_heads": 2,
+                  "weight_softmax": false,
+                  "bias": true
+                },
+                "pooling_type": "mean"
+              }
+            }
+          },
+          "metric_reporter": {
+            "output_path": "/tmp/test_out.txt",
+            "pep_format": false,
+            "student_column_names": [],
+            "log_gradient": false,
+            "accept_flat_intents_slots": true,
+            "model_select_metric_key": "fa",
+            "select_length_beam": 0,
+            "TEMP_DUMP_PREDICTIONS": true,
+            "log_samplewise_losses": true
+          }
+        }
+      },
+      "use_cuda_if_available": true,
+      "use_fp16": false,
+      "distributed_world_size": 1,
+      "gpu_streams_for_distributed_training": 1,
+      "load_snapshot_path": "",
+      "save_snapshot_path": "/tmp/model.pt",
+      "use_config_from_snapshot": true,
+      "auto_resume_from_snapshot": false,
+      "modules_save_dir": "",
+      "save_module_checkpoints": false,
+      "save_all_checkpoints": false,
+      "use_tensorboard": true,
+      "random_seed": 1,
+      "use_deterministic_cudnn": false,
+      "report_eval_results": true,
+      "report_test_results": true,
+      "include_dirs": null,
+      "version": 26,
+      "use_cuda_for_testing": true,
+      "read_chunk_size": 1000000000,
+      "test_out_path": "/tmp/test_out.txt",
+      "debug_path": "/tmp/model.debug"
+    }
+  }
