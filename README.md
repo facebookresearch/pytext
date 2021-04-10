@@ -19,6 +19,7 @@ PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText 
 - Extensible components that allows easy creation of new models and tasks
 - Reference implementation and a pretrained model for the paper: [Gupta et al. (2018): Semantic Parsing for Task Oriented Dialog using Hierarchical Representations](http://aclweb.org/anthology/D18-1300)
 - Ensemble training support
+- Reference implementation for the paper: [Babu et al. 2021: Non-autoregressive Semantic Parsing for Compositional Task Oriented Dialog](https://github.com/facebookresearch/pytext/tree/master/pytext/models/seq_models/benchmark/nar_top.json)
 
 # Installing PyText
 
@@ -67,7 +68,7 @@ More examples and tutorials can be found in [Full Documentation](https://pytext.
 
 # Join the community
 
-* Facebook group: https://www.facebook.com/groups/pytext/ 
+* Facebook group: https://www.facebook.com/groups/pytext/
 
 # License
 PyText is BSD-licensed, as found in the LICENSE file.
