@@ -80,19 +80,6 @@
               "src_seq_tokens": {
                 "is_input": true,
                 "column": "source_sequence",
-                "tokenizer": {
-                  "AssistantFeaturizer": {
-                    "split_regex": "\\s+",
-                    "lowercase": true,
-                    "use_byte_offsets": false,
-                    "tokenizer_config_dict": {},
-                    "use_assistant_tokenizer": true,
-                    "sentence_marker_dict": null,
-                    "pretrained_models_dict": {},
-                    "prefixes_to_strip": null,
-                    "suffixes_to_strip": null
-                  }
-                },
                 "add_bos_token": true,
                 "add_eos_token": true,
                 "use_eos_token_for_bos": false,
