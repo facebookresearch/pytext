@@ -65,6 +65,7 @@ class DictFeatConfig(ModuleConfig):
     export_input_names: List[str] = ["dict_vals", "dict_weights", "dict_lens"]
     vocab_from_train_data: bool = True
     mobile: bool = False
+    use_weights: bool = True
 
 
 class CharFeatConfig(ModuleConfig):

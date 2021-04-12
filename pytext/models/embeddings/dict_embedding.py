@@ -91,6 +91,7 @@ class DictEmbedding(EmbeddingBase):
             pad_index=pad_index,
             unk_index=unk_index,
             mobile=config.mobile,
+            use_weights=config.use_weights,
         )
 
     def __init__(
@@ -101,6 +102,7 @@ class DictEmbedding(EmbeddingBase):
         pad_index: int = PAD_INDEX,
         unk_index: int = UNK_INDEX,
         mobile: bool = False,
+        use_weights: bool = True,
     ) -> None:
         super().__init__(embed_dim)
         self.unk_index = unk_index
@@ -112,6 +114,7 @@ class DictEmbedding(EmbeddingBase):
         # is resolved
         self.pooling_type = pooling_type.value
         self.mobile = mobile
+        self.use_weights = use_weights
         log_class_usage(__class__)
 
     def find_and_replace(
@@ -161,7 +164,9 @@ class DictEmbedding(EmbeddingBase):
         dict_emb = self.embedding(feats)
 
         # Calculate weighted average of the embeddings
-        weighted_embds = dict_emb * weights.unsqueeze(2)
+        weighted_embds = (
+            dict_emb * weights.unsqueeze(2) if self.use_weights else dict_emb
+        )
         new_emb_shape = torch.cat(
             (
                 batch_size.view(1),
