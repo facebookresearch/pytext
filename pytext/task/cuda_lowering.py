@@ -13,7 +13,7 @@ from pytext.models.representations.transformer import (
 from pytext.models.roberta import RoBERTaEncoder
 from torch import nn, Tensor
 
-torch.ops.load_library("//pytorch/FasterTransformers3.1:faster_transformers")
+torch.ops.load_library("//pytorch/FasterTransformers4.0:faster_transformers")
 
 
 @torch.jit.script
