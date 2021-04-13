@@ -18,7 +18,7 @@ from pytext.models.seq_models.positional import (
     PostionalEmbedType,
     build_positional_embedding,
 )
-from pytext.models.seq_models.utils import Linear
+from pytext.models.seq_models.utils import Linear, log_and_overwrite
 from torch import Tensor
 from torch.nn import LayerNorm
 
@@ -528,6 +528,25 @@ class LightConvDecoupledDecoder(LightConvDecoderBase):
     def from_config(cls, config, tgt_dict, tgt_embedding):
         kernel_size_list = config.decoder_kernel_size_list
         layers = []
+
+        config.layer_config.decoder_embed_dim = log_and_overwrite(
+            param_name="layer_config.decoder_embed_dim, decoder_config.decoder_embed_dim",
+            x=config.layer_config.decoder_embed_dim,
+            y=config.decoder_config.decoder_embed_dim,
+        )
+
+        config.decoder_config.decoder_input_dim = log_and_overwrite(
+            param_name="decoder_config.decoder_input_dim, decoder_config.decoder_embed_dim",
+            x=config.decoder_config.decoder_input_dim,
+            y=config.decoder_config.decoder_embed_dim,
+        )
+
+        config.layer_config.decoder_conv_dim = log_and_overwrite(
+            param_name="layer_config.decoder_conv_dim, decoder_config.decoder_embed_dim",
+            x=config.layer_config.decoder_conv_dim,
+            y=config.decoder_config.decoder_embed_dim,
+        )
+
         for size in kernel_size_list:
             assert (
                 config.decoder_config.decoder_embed_dim

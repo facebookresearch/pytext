@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import logging
 from typing import Optional, List, Dict
 
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
+
+
+def log_and_overwrite(param_name: str, x, y) -> int:
+    if x != y:
+        logging.warning(f"Mismatch of {param_name} expected {y} got {x}")
+    return y
 
 
 def prepare_full_key(instance_id: str, key: str, secondary_key: Optional[str] = None):
