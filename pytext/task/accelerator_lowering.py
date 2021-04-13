@@ -149,6 +149,17 @@ class AcceleratorTransformerLayersInternal(nn.Module):
                 "glow:ReplicationCount": "3",
             },
         ),
+        (
+            "NNPI:throughput_optimized_gelu_clip",
+            {
+                "NNPI_IceCores": "4",
+                "NNPINumParallelChunks": "4",
+                "NNPIUseGeluLUT": "true",
+                "NNPIGeluLUTEnableClip": "true",
+                "glow:ConvertToFP16": "true",
+                "glow:ReplicationCount": "3",
+            },
+        ),
     ],
     inputs_function=accelerator_transformerLayers_inputs,
 )
@@ -315,7 +326,11 @@ class AcceleratorSplitTransformer(nn.Module):
 
 
 def lower_modules_to_accelerator(
-    model: nn.Module, trace, export_options: ExportConfig, throughput_optimize=False
+    model: nn.Module,
+    trace,
+    export_options: ExportConfig,
+    throughput_optimize=False,
+    gelu_clip=False,
 ):
     # Raise error if accelerator could not be imported
     if not accelerator_lowering_supported:
@@ -339,7 +354,9 @@ def lower_modules_to_accelerator(
         backend = "NNPI"
         backend_qualifier = ""
 
-        if throughput_optimize:
+        if throughput_optimize and gelu_clip:
+            backend_qualifier = ":throughput_optimized_gelu_clip"
+        elif throughput_optimize:
             backend_qualifier = ":throughput_optimized"
 
         modules_to_lower = accelerator.get_modules(model, backend + backend_qualifier)

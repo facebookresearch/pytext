@@ -388,6 +388,7 @@ class _NewTask(TaskBase):
         # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
         use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
+        use_nnpi_gelu_clip = "nnpi:gelu_clip" in accelerate
         use_cuda_half = "cuda:half" in accelerate
         use_cuda_half_faster_transformers = "cuda:half:ft" in accelerate
 
@@ -526,7 +527,11 @@ class _NewTask(TaskBase):
         if use_nnpi:
             print("lowering using to_glow")
             trace = lower_modules_to_accelerator(
-                model, trace, export_config, use_nnpi_throughput_optimized
+                model,
+                trace,
+                export_config,
+                use_nnpi_throughput_optimized,
+                use_nnpi_gelu_clip,
             )
         if "split" in accelerate:
             print("lowering split model to glow")
