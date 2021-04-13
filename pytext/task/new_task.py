@@ -5,6 +5,10 @@
 from typing import Any, Dict, Optional, Type, Union
 
 import torch
+from accelerators.pytorch.lib.quantize import (
+    quantize_statically,
+    quantize_fx,
+)
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig, ExportConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
@@ -34,10 +38,6 @@ from .accelerator_lowering import (
 )
 from .cuda_lowering import (
     cuda_rewrite_roberta_transformer,
-)
-from .quantize import (
-    quantize_statically,
-    quantize_fx,
 )
 from .task import TaskBase
 
