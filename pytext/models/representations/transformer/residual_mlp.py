@@ -32,6 +32,7 @@ class ResidualMLP(nn.Module):
         hidden_dims: List[int],
         dropout: float = 0.1,
         activation=GeLU,
+        add_residual=True,
     ):
         super().__init__()
         modules = []
@@ -45,8 +46,12 @@ class ResidualMLP(nn.Module):
         modules.extend([nn.Linear(last_dim, input_dim), nn.Dropout(dropout)])
 
         self.mlp = nn.Sequential(*modules)
+        self.add_residual = add_residual
         log_class_usage(__class__)
 
     def forward(self, input):
         bias = self.mlp(input)
-        return input + bias
+        if self.add_residual:
+            return input + bias
+        else:
+            return bias

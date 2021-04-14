@@ -28,6 +28,7 @@ class TransformerLayer(nn.Module):
         attention: Optional[MultiheadSelfAttention] = None,
         residual_mlp: Optional[ResidualMLP] = None,
         dropout: float = 0.1,
+        normalize_before: bool = False,
     ):
         super().__init__()
         self.dropout = nn.Dropout(dropout)
@@ -35,21 +36,33 @@ class TransformerLayer(nn.Module):
             embedding_dim, num_heads=DEFAULT_NUM_ATTENTION_HEADS
         )
         self.residual_mlp = residual_mlp or ResidualMLP(
-            embedding_dim, hidden_dims=[embedding_dim * 4]
+            embedding_dim,
+            hidden_dims=[embedding_dim * 4],
+            add_residual=not normalize_before,
         )
 
         self.attention_layer_norm = nn.LayerNorm(embedding_dim)
         self.final_layer_norm = nn.LayerNorm(embedding_dim)
+        self.normalize_before = normalize_before
         log_class_usage(__class__)
 
     def forward(self, input, key_padding_mask):
-        attention = self.attention(input, key_padding_mask)
-        attention = self.dropout(attention)
-        biased_input = input + attention
-        biased_input = self.attention_layer_norm(biased_input)
+        if self.normalize_before:
+            x = self.attention_layer_norm(input)
+            attention = self.attention(x, key_padding_mask)
+            attention = self.dropout(attention)
+            biased_input = input + attention
+            x = self.final_layer_norm(biased_input)
+            return self.residual_mlp(x) + biased_input
 
-        biased = self.residual_mlp(biased_input)
-        return self.final_layer_norm(biased)
+        else:
+            attention = self.attention(input, key_padding_mask)
+            attention = self.dropout(attention)
+            biased_input = input + attention
+            biased_input = self.attention_layer_norm(biased_input)
+
+            biased = self.residual_mlp(biased_input)
+            return self.final_layer_norm(biased)
 
 
 class Transformer(nn.Module):
@@ -61,6 +74,7 @@ class Transformer(nn.Module):
         max_seq_len: int = DEFAULT_MAX_SEQUENCE_LENGTH,
         layers: List[TransformerLayer] = (),
         dropout: float = 0.1,
+        normalize_before: bool = False,
     ):
         super().__init__()
         self.padding_idx = padding_idx
@@ -74,6 +88,7 @@ class Transformer(nn.Module):
         )
         self.embedding_layer_norm = nn.LayerNorm(embedding_dim)
         self.dropout = nn.Dropout(dropout)
+        self.normalize_before = normalize_before
         log_class_usage(__class__)
 
     def forward(self, tokens: torch.Tensor) -> List[torch.Tensor]:
@@ -83,19 +98,25 @@ class Transformer(nn.Module):
         embedded = self.token_embedding(tokens)
         embedded_positions = self.positional_embedding(tokens)
 
-        normed = self.embedding_layer_norm(embedded + embedded_positions)
-        normed = self.dropout(normed)
+        embedded += embedded_positions
+        if not self.normalize_before:
+            embedded = self.embedding_layer_norm(embedded)
+        embedded = self.dropout(embedded)
         # account for padding while computing the representation
-        padded_normed = normed * (1 - padding_mask.unsqueeze(-1).type_as(normed))
+        padded_embedded = embedded * (1 - padding_mask.unsqueeze(-1).type_as(embedded))
 
         # B x T x C -> T x B x C
-        encoded = padded_normed.transpose(0, 1)
+        encoded = padded_embedded.transpose(0, 1)
 
         states = [encoded]
 
         for layer in self.layers:
             encoded = layer(encoded, padding_mask)
             states.append(encoded)
+
+        if self.normalize_before:
+            for i, state in enumerate(states):
+                states[i] = self.embedding_layer_norm(state)
 
         # states are returned as T x B x C
         # commonly you can retrieve a single "sentence representation" as
@@ -135,6 +156,7 @@ class SELFIETransformer(Transformer):
         for layer in self.layers:
             encoded = layer(encoded, padding_mask)
             states.append(encoded)
+
 
         # states are returned as T x B x C
         # commonly you can retrieve a single "sentence representation" as

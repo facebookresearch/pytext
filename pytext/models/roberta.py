@@ -143,6 +143,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         transformer_layer_to_keep: Optional[int] = None
         attention_heads_to_keep_per_layer: Optional[int] = None
         scaling: Optional[float] = None
+        normalize_before: bool = False
 
     def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
@@ -199,6 +200,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                         num_heads=config.num_attention_heads,
                         scaling=config.scaling,
                     ),
+                    normalize_before=config.normalize_before,
                 )
                 for _ in range(config.num_encoder_layers)
             ]
@@ -210,6 +212,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                     embedding_dim=config.embedding_dim,
                     layers=layers,
                     max_seq_len=config.max_seq_len,
+                    normalize_before=config.normalize_before,
                 )
             )
             if not self.use_selfie_encoder
