@@ -198,7 +198,7 @@ class PytextembeddingmoduleTest(unittest.TestCase):
         return MockModel()
 
     def setUp(self) -> None:
-        self.batch_size = 10
+        self.batch_size = 4 # this needs to be a variable passed thru goals
         self.NONE_INPUT = None
         self.EMPTYLIST = []
         self.EMPTY_TUPLE = [()]

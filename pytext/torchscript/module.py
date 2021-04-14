@@ -402,7 +402,9 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
+        # the right batchsize depends on the target architecture and should
+        # be passed via the goals config doctionary
+        max_bs = int(goals.get("batchsize", "4"))
         len_mb = len(mega_batch)
         num_batches = (len_mb + max_bs - 1) // max_bs
 
@@ -935,7 +937,9 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
         sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
+        # the right batchsize depends on the target architecture and should
+        # be passed via the goals config doctionary
+        max_bs = int(goals.get("batchsize", "4"))
         len_mb = len(mega_batch)
         num_batches = (len_mb + max_bs - 1) // max_bs
 
@@ -1199,7 +1203,9 @@ class PyTextEmbeddingModule(torch.jit.ScriptModule):
         sorted_mega_batch = [mega_batch[n] for (_, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
+        # the right batchsize depends on the target architecture and should
+        # be passed via the goals config doctionary
+        max_bs = int(goals.get("batchsize", "4"))
         len_mb = len(mega_batch)
         num_batches = (len_mb + max_bs - 1) // max_bs
 
@@ -1609,7 +1615,9 @@ class PyTextTwoTowerEmbeddingModule(torch.jit.ScriptModule):
         sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
+        # the right batchsize depends on the target architecture and should
+        # be passed via the goals config doctionary
+        max_bs = int(goals.get("batchsize", "4"))
         len_mb = len(mega_batch)
         num_batches = (len_mb + max_bs - 1) // max_bs
 
@@ -1849,7 +1857,9 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
         sorted_mega_batch = [mega_batch[n] for (key, n) in sorted_mega_batch_key_list]
 
         # TBD: allow model server to specify batch size in goals dictionary
-        max_bs: int = 10
+        # the right batchsize depends on the target architecture and should
+        # be passed via the goals config doctionary
+        max_bs = int(goals.get("batchsize", "4"))
         len_mb = len(mega_batch)
         num_batches = (len_mb + max_bs - 1) // max_bs
 
