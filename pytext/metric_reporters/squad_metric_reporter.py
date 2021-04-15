@@ -157,7 +157,7 @@ class SquadMetricReporter(MetricReporter):
     def _add_target_answer_batch_stats(self, m_input, targets, **contexts):
         # For BERT, doc_tokens = concatenated tokens from question and document.
         doc_tokens = m_input[0]
-        batch_starts, batch_ends, _ = targets
+        batch_starts, batch_ends = targets[:2]
         target_starts = []
         target_ends = []
 
