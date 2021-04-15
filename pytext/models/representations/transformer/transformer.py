@@ -157,7 +157,6 @@ class SELFIETransformer(Transformer):
             encoded = layer(encoded, padding_mask)
             states.append(encoded)
 
-
         # states are returned as T x B x C
         # commonly you can retrieve a single "sentence representation" as
         # states[-1].transpose(0, 1)
