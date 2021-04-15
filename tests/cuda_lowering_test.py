@@ -31,6 +31,38 @@ class TestCUDALowering(unittest.TestCase):
                 for rref, ffast in zip(ref, fast):
                     torch.testing.assert_allclose(rref, ffast, atol=2e-2, rtol=2e-2)
 
+    def testLoweringBaseTransformerToNVFastTransformerUnfusedXL(self):
+        """
+        No padding (full sequence lengths), unfused path (no trt)
+        XL model (D > 1024, D/2 <= 1024), this will exercise
+        add_QKV_bias_generalized but not block-strided add_bias_input_layernorm.
+        """
+        V = 1000
+        L = 12
+        D = 1280
+        H = 32
+        layers = [
+            TransformerLayer(
+                embedding_dim=D,
+                attention=MultiheadSelfAttention(embed_dim=D, num_heads=H, scaling=1.0/np.sqrt(D / H)),
+            )
+            for _ in range(L)
+        ]
+        transformer = Transformer(vocab_size=V, embedding_dim=D, layers=layers).cuda().eval().half()
+        faster_transformer = NVFasterTransformerEncoder(transformer)
+
+        for B in range(1, 32):
+            for T in [0, 1, 7, 8, 16]:
+                tokens = (
+                    torch.randint(transformer.padding_idx + 1, V - 1, size=(B, T))
+                    .cuda()
+                    .long()
+                )
+                ref = transformer(tokens)
+                fast = faster_transformer(tokens)
+                for rref, ffast in zip(ref, fast):
+                    torch.testing.assert_allclose(rref, ffast, atol=3e-2, rtol=2e-2)
+
     def testLoweringBaseTransformerToNVFastTransformerUnfused(self):
         """
         No padding (full sequence lengths), unfused path (no trt)
