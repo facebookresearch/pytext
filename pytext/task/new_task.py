@@ -5,6 +5,13 @@
 from typing import Any, Dict, Optional, Type, Union
 
 import torch
+from accelerators.pytorch.lib.accelerator_lowering import (
+    lower_modules_to_accelerator,
+    nnpi_rewrite_roberta_transformer,
+    nnpi_rewrite_bilstm,
+    split_model_for_accelerator,
+    lower_split_model_to_accelerator,
+)
 from accelerators.pytorch.lib.quantize import (
     quantize_statically,
     quantize_fx,
@@ -29,13 +36,6 @@ from pytext.utils.usage import (
 )
 from torch import sort
 
-from .accelerator_lowering import (
-    lower_modules_to_accelerator,
-    nnpi_rewrite_roberta_transformer,
-    nnpi_rewrite_bilstm,
-    split_model_for_accelerator,
-    lower_split_model_to_accelerator,
-)
 from .cuda_lowering import (
     cuda_rewrite_roberta_transformer,
 )
