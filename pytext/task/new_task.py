@@ -487,7 +487,9 @@ class _NewTask(TaskBase):
                     iter(self.data.batches(Stage.TRAIN, load_early=True))
                 )
                 inputs = model.onnx_trace_input(batch)
-                assert trace(*inputs)
+                results = trace(*inputs)
+                assert results
+                print(results)
             else:
                 trace = model.trace(inputs)
                 print("traced!")
