@@ -12,6 +12,9 @@ from accelerators.pytorch.lib.accelerator_lowering import (
     split_model_for_accelerator,
     lower_split_model_to_accelerator,
 )
+from accelerators.pytorch.lib.cuda_lowering import (
+    cuda_rewrite_roberta_transformer,
+)
 from accelerators.pytorch.lib.quantize import (
     quantize_statically,
     quantize_fx,
@@ -36,9 +39,6 @@ from pytext.utils.usage import (
 )
 from torch import sort
 
-from .cuda_lowering import (
-    cuda_rewrite_roberta_transformer,
-)
 from .task import TaskBase
 
 
