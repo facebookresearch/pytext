@@ -286,7 +286,7 @@ class MaskedSequenceGenerator(Module):
         target_lengths: Optional[Tensor] = None,
         beam_size: Optional[int] = None,
         src_index_tokens: Optional[Tensor] = None,
-    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         encoder_out = self.get_encoder_out(
             src_tokens=src_tokens,
             dict_feats=dict_feats,
@@ -351,7 +351,7 @@ class MaskedSequenceGenerator(Module):
         # OneStep Generation
         pad_mask = tgt_tokens.eq(self.trg_vocab.pad_idx)
 
-        tgt_tokens, token_probs = self.generate_non_autoregressive(
+        tgt_tokens, token_probs, token_logits = self.generate_non_autoregressive(
             tiled_encoder_out, tgt_tokens
         )
         tgt_tokens[pad_mask] = torch.tensor(
@@ -373,7 +373,7 @@ class MaskedSequenceGenerator(Module):
 
         all_indices = torch.arange(bsz).unsqueeze(-1)
         hypotheses = hypotheses[all_indices, indices]
-        return hypotheses, beam, sorted_scores.exp(), token_probs
+        return hypotheses, beam, sorted_scores.exp(), token_probs, token_logits
 
     def get_clip_length(self, src_lengths: Tensor):
         predicted = (
@@ -432,7 +432,7 @@ class MaskedSequenceGenerator(Module):
         if "char_feats" in tensors:
             char_feats = tensors["char_feats"]
 
-        hypos, lens, hypo_scores, _token_probs = self.forward(
+        hypos, lens, hypo_scores, _, _ = self.forward(
             actual_src_tokens,
             dict_feats,
             contextual_embed,
@@ -447,5 +447,7 @@ class MaskedSequenceGenerator(Module):
 
     def generate_non_autoregressive(self, encoder_out: Dict[str, Tensor], tgt_tokens):
         decoder_out_tuple = self.model.decoder(tgt_tokens, encoder_out)
-        tgt_tokens, token_probs, _ = self.model.decoder.get_probs(decoder_out_tuple)
-        return tgt_tokens, token_probs
+        tgt_tokens, token_probs, token_logits = self.model.decoder.get_probs(
+            decoder_out_tuple
+        )
+        return tgt_tokens, token_probs, token_logits
