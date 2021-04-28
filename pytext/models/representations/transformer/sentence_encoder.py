@@ -173,3 +173,7 @@ def translate_roberta_state_dict(state_dict):
     new_state = remove_state_keys(new_state, r"segment_embedding")
 
     return new_state
+
+
+def translate_pytext_roberta_state_dict(state_dict):
+    return rename_component_from_root(state_dict, "encoder.transformer", "transformer")
