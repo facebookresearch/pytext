@@ -7,17 +7,17 @@ from typing import Any, Dict, Optional, Type, Union
 import torch
 from accelerators.pytorch.lib.accelerator_lowering import (
     lower_modules_to_accelerator,
-    nnpi_rewrite_roberta_transformer,
-    nnpi_rewrite_bilstm,
     split_model_for_accelerator,
     lower_split_model_to_accelerator,
-)
-from accelerators.pytorch.lib.cuda_lowering import (
-    cuda_rewrite_roberta_transformer,
 )
 from accelerators.pytorch.lib.quantize import (
     quantize_statically,
     quantize_fx,
+)
+from accelerators.pytorch.lib.utils.model_rewriter import (
+    find_module_instances,
+    MODULE_TO_REWRITER,
+    swap_modules,
 )
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig, ExportConfig
@@ -47,62 +47,6 @@ ADDITIONAL_COLUMN_NAMES_ATTRIBUTES = (
     "additional_column_names",
     "student_column_names",
 )
-
-
-MODULE_TO_REWRITER = {
-    "nnpi": {
-        RoBERTaEncoder: nnpi_rewrite_roberta_transformer,
-        BiLSTM: nnpi_rewrite_bilstm,
-    },
-    "cuda": {
-        RoBERTaEncoder: cuda_rewrite_roberta_transformer,
-    },
-}
-
-
-def find_module_instances(model, module_type, cur_path):
-    """
-    Finds all module instances of the specified type and returns the paths to get to each of
-    those instances
-    """
-    if isinstance(model, module_type):
-        yield list(cur_path)  # copy the list since cur_path is a shared list
-    for attr in dir(model):
-        if (
-            attr[0] == "_" or len(cur_path) > 4
-        ):  # avoids infinite recursion and exploring unnecessary paths
-            continue
-        try:
-            next_model = getattr(model, attr)
-        # some objects dynamically throw errors if you try to access their attributes
-        except Exception:
-            continue
-        cur_path.append(attr)
-        # recursively yield
-        yield from find_module_instances(next_model, module_type, cur_path)
-        cur_path.pop()
-
-
-def rewrite_transformer(model, module_path, rewriter):
-    """
-    Descends model hierarchy according to module_path and calls the rewriter at the end
-    """
-    for prefix in module_path[:-1]:
-        model = getattr(model, prefix)
-    rewriter(model)
-
-
-def swap_modules(model, module_to_rewriter):
-    """
-    Finds modules within a model that can be rewritten and rewrites them with predefined
-    rewrite functions
-    """
-    for module in module_to_rewriter:
-        instance_paths = find_module_instances(model, module, [])
-        rewriter = module_to_rewriter[module]
-        for path in instance_paths:
-            rewrite_transformer(model, path, rewriter)
-    return model
 
 
 def create_schema(
