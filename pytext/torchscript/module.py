@@ -73,7 +73,31 @@ class ScriptPyTextEmbeddingModule(torch.jit.ScriptModule):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
+        self.model_name: str = "*no name*"
+        self.model_host = ["cpu"]
+        self.model_type = ["nlp"]
         log_class_usage(self.__class__)
+
+    def set_name(self, name: str):
+        self.model_name = name
+
+    @torch.jit.script_method
+    def get_name(self) -> str:
+        return self.model_name
+
+    def set_host(self, hostlist: List[str]):
+        self.model_host = hostlist
+
+    @torch.jit.script_method
+    def check_host(self, host: str) -> bool:
+        return host in self.model_host
+
+    def set_type(self, typelist: List[str]):
+        self.model_type = typelist
+
+    @torch.jit.script_method
+    def check_type(self, type: str) -> bool:
+        return type in self.model_type
 
     def validate(self, export_conf: ExportConfig):
         deprecation_warning(export_conf)
@@ -659,6 +683,34 @@ class ScriptPyTextVariableSizeEmbeddingModule(ScriptPyTextEmbeddingModule):
 
 ######################## Two Tower ################################
 class ScriptTwoTowerModule(torch.jit.ScriptModule):
+    def __init__(self):
+        super().__init__()
+        self.model_name: str = "*no name*"
+        self.model_host = ["cpu"]
+        self.model_type = ["nlp"]
+        log_class_usage(self.__class__)
+
+    def set_name(self, name: str):
+        self.model_name = name
+
+    @torch.jit.script_method
+    def get_name(self) -> str:
+        return self.model_name
+
+    def set_host(self, hostlist: List[str]):
+        self.model_host = hostlist
+
+    @torch.jit.script_method
+    def check_host(self, host: str) -> bool:
+        return host in self.model_host
+
+    def set_type(self, typelist: List[str]):
+        self.model_type = typelist
+
+    @torch.jit.script_method
+    def check_type(self, type: str) -> bool:
+        return type in self.model_type
+
     @torch.jit.script_method
     def set_device(self, device: str):
         self.right_tensorizer.set_device(device)
@@ -1072,7 +1124,31 @@ class PyTextEmbeddingModule(torch.jit.ScriptModule):
         super().__init__()
         self.model = model
         self.tensorizer = tensorizer
+        self.model_name: str = "*no name*"
+        self.model_host = ["cpu"]
+        self.model_type = ["nlp"]
         log_class_usage(self.__class__)
+
+    def set_name(self, name: str):
+        self.model_name = name
+
+    @torch.jit.script_method
+    def get_name(self) -> str:
+        return self.model_name
+
+    def set_host(self, hostlist: List[str]):
+        self.model_host = hostlist
+
+    @torch.jit.script_method
+    def check_host(self, host: str) -> bool:
+        return host in self.model_host
+
+    def set_type(self, typelist: List[str]):
+        self.model_type = typelist
+
+    @torch.jit.script_method
+    def check_type(self, type: str) -> bool:
+        return type in self.model_type
 
     @torch.jit.script_method
     def set_device(self, device: str):
