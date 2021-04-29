@@ -412,6 +412,42 @@ class _NewTask(TaskBase):
             or use_cpu_fx_dynamic_quantize
         )
 
+        # what hosts can this model run on
+        # by default, pytext works on CPU and CUDA (because it implements set_device)
+        model_host = ["cpu", "cuda"]
+
+        if use_cuda_half or use_cuda_half_faster_transformers:
+            # CUDA FP16 models only work on CUDA
+            model_host = ["cuda"]
+
+        if (
+            use_nnpi
+            or use_nnpi_quantize
+            or use_nnpi_gelu_clip
+            or use_nnpi_throughput_optimized
+        ):
+            model_host = ["nnpi"]
+
+        if hasattr(model, "set_host"):
+            model.set_host(model_host)
+
+        # what is the type of this model
+        # pytext models are nlp models
+        model_type = ["nlp"]
+
+        instance_paths_p = any(
+            True for _ in find_module_instances(model, RoBERTaEncoder, [])
+        )
+        if instance_paths_p:
+            model_type.append("transformer")
+
+        instance_paths_p = any(True for _ in find_module_instances(model, BiLSTM, []))
+        if instance_paths_p:
+            model_type.append("BiLSTM")
+
+        if hasattr(model, "set_model"):
+            model.set_type(model_type)
+
         # Make sure to put the model on CPU and disable CUDA before exporting to
         # ONNX to disable any data_parallel pieces
         cuda.CUDA_ENABLED = False
