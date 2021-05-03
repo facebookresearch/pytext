@@ -279,7 +279,9 @@ def export_saved_model_to_torchscript(
     cuda.CUDA_ENABLED = False
     precision.FP16_ENABLED = False
     task, train_config, _training_state = load(saved_model_path)
-    task.torchscript_export(task.model, path, export_config=export_config)
+    jit_model = task.torchscript_export(task.model, path, export_config=export_config)
+    if export_config.export_lite_path is not None:
+        task.lite_export(task.model, jit_model, export_config.export_lite_path)
 
 
 def test_model(
