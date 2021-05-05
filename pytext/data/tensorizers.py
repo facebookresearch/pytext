@@ -274,7 +274,7 @@ class Tensorizer(Component):
         raise NotImplementedError
 
     def prepare_input(self, row):
-        """ Return preprocessed input tensors/blob for caffe2 prediction net."""
+        """Return preprocessed input tensors/blob for caffe2 prediction net."""
         return self.numberize(row)
 
     def sort_key(self, row):
