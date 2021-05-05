@@ -61,8 +61,8 @@ class DenseRetrievalMetricReporter(MetricReporter):
         ), "DenseRetrievalMetricReporter: Batch size cannot be zero."
         print(f"DenseRetrievalMetricReporter: task_batch_size = {task_batch_size}")
         assert (
-            num_negative_ctxs != 0
-        ), "DenseRetrievalMetricReporter: Number of hard negatives cannot be zero."
+            num_negative_ctxs >= 0
+        ), "DenseRetrievalMetricReporter: Number of hard negatives should be positive or zero."
         print(f"DenseRetrievalMetricReporter: num_negative_ctxs = {num_negative_ctxs}")
 
         self.task_batch_size = task_batch_size
