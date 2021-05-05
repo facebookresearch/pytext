@@ -257,7 +257,10 @@ class MultiSpanQAMetricReporter(MetricReporter):
                 target_spans
             ):
                 exact_matches += 1.0
-
+            if not (target_answers or pred_answers):
+                #  unanswerable
+                f1_scores_sum += 1.0
+                continue
             f1_per_bag = self._align_bags(pred_bags, target_bags)
             if len(f1_per_bag):
                 # avoid NaNs
