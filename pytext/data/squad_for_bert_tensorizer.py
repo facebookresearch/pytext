@@ -24,7 +24,8 @@ class SquadForBERTTensorizer(BERTTensorizer):
         # for labels
         answers_column: str = "answers"
         answer_starts_column: str = "answer_starts"
-        max_seq_len: int = 256
+        max_seq_len: int = 512
+        max_subseq_len: int = 512
 
     @classmethod
     def from_config(cls, config: Config, **kwargs):
@@ -34,6 +35,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
             config,
             answers_column=config.answers_column,
             answer_starts_column=config.answer_starts_column,
+            max_subseq_len=config.max_subseq_len,
             **kwargs,
         )
 
@@ -41,6 +43,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
         self,
         answers_column: str = Config.answers_column,
         answer_starts_column: str = Config.answer_starts_column,
+        max_subseq_len: int = Config.max_subseq_len,
         **kwargs,
     ):
         # Arguments which are common to both current and base class are passed
@@ -48,6 +51,7 @@ class SquadForBERTTensorizer(BERTTensorizer):
         super().__init__(**kwargs)
         self.answers_column = answers_column
         self.answer_starts_column = answer_starts_column
+        self.max_subseq_len = max_subseq_len
 
     def _lookup_tokens(self, text: str, seq_len: int = None):
         # BoS token is added explicitly in numberize(), -1 from max_seq_len
@@ -89,18 +93,34 @@ class SquadForBERTTensorizer(BERTTensorizer):
 
     def numberize(self, row):
         question_column, doc_column = self.columns
-        doc_tokens, start_idx, end_idx = self._lookup_tokens(row[doc_column])
-        question_tokens, _, _ = self._lookup_tokens(row[question_column])
+        doc_tokens, start_idx, end_idx = self._lookup_tokens(
+            row[doc_column], seq_len=self.max_subseq_len
+        )
+        question_tokens, _, _ = self._lookup_tokens(
+            row[question_column], seq_len=self.max_subseq_len
+        )
         question_tokens = [self.vocab.get_bos_index()] + question_tokens
         seq_lens = (len(question_tokens), len(doc_tokens))
         segment_labels = ([i] * seq_len for i, seq_len in enumerate(seq_lens))
         tokens = list(itertools.chain(question_tokens, doc_tokens))
         segment_labels = list(itertools.chain(*segment_labels))
+        offset = len(question_tokens)
+
+        # apply max_seq_len to each final seq
+        tokens = tokens[: self.max_seq_len]
+        segment_labels = segment_labels[: self.max_seq_len]
+        if tokens[-1] != self.vocab.get_eos_index():
+            # if the doc seq was truncated,
+            # update final token to EoS
+            tokens[-1] = self.vocab.get_eos_index()
+            # adjust the start_idx and end_idx seqs
+            spl_start_idx = start_idx[-1]
+            spl_end_idx = end_idx[-1]
+            start_idx = start_idx[: self.max_seq_len - offset - 1] + (spl_start_idx,)
+            end_idx = end_idx[: self.max_seq_len - offset - 1] + (spl_end_idx,)
+
         seq_len = len(tokens)
         positions = list(range(seq_len))
-
-        # now map original answer spans to tokenized spans
-        offset = len(question_tokens)
 
         # important to make sure labels are always aligned
         assert len(row[self.answers_column]) == len(

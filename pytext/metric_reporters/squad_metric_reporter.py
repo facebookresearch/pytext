@@ -387,22 +387,28 @@ class SquadMetricReporter(MetricReporter):
         as well as the corresponding span in the raw text using the answer token indices.
         """
         # start_idx and end_idx are lists of char start and end positions in doc_str.
-        doc_tokens, start_idxs, end_idxs = self.tensorizer._lookup_tokens(doc_str)
+        doc_tokens, start_idxs, end_idxs = self.tensorizer._lookup_tokens(
+            doc_str, seq_len=self.tensorizer.max_subseq_len
+        )
         # find the offset of doc_tokens in tokens
-        offset = list(
+        try:
+            offset_end = tokens.index(self.tensorizer.vocab.get_pad_index()) - 1
+        except ValueError:
+            offset_end = len(tokens) - 1
+        offset_start = list(
             map(
-                lambda x: tokens[x : x + len(doc_tokens)] == doc_tokens,
-                range(len(tokens) - len(doc_tokens) + 1),
+                lambda x: tokens[x:offset_end] == doc_tokens[: offset_end - x],
+                range(offset_end),
             )
         ).index(True)
-        assert offset > -1
+        assert offset_start > -1
 
         # find the answer char idxs
         start_char_idx = 0
         end_char_idx = end_idxs[-1]
         try:
-            start_char_idx = start_idxs[ans_token_start - offset]
-            end_char_idx = end_idxs[ans_token_end - offset]
+            start_char_idx = start_idxs[ans_token_start - offset_start]
+            end_char_idx = end_idxs[ans_token_end - offset_start]
         except IndexError:
             # if token indices fall outside the bounds due to a model misprediction.
             pass
