@@ -299,6 +299,61 @@ class MaskedSequenceGenerator(Module):
         encoder_mask: Optional[Tensor] = None
         if "encoder_mask" in encoder_out:
             encoder_mask = encoder_out["encoder_mask"]
+
+        length_prediction_result: Dict[str, Tensor] = self.get_length_prediction(
+            encoder_out=encoder_out,
+            encoder_mask=encoder_mask,
+            src_lengths=src_lengths,
+            target_lengths=target_lengths,
+            beam_size=beam_size,
+        )
+        tgt_tokens = length_prediction_result["target_tokens"]
+        length_prob = length_prediction_result["length_probabilities"]
+        length_mask = length_prediction_result["length_mask"]
+        beam = length_prediction_result["beam"]
+
+        bsz = src_tokens.size(0)
+        max_len = tgt_tokens.size(1)
+
+        tiled_encoder_out = self.model.encoder.prepare_for_nar_inference(
+            self.length_beam_size, encoder_out
+        )
+
+        # OneStep Generation
+        pad_mask = tgt_tokens.eq(self.trg_vocab.pad_idx)
+
+        tgt_tokens, token_probs, token_logits = self.generate_non_autoregressive(
+            tiled_encoder_out, tgt_tokens
+        )
+        tgt_tokens[pad_mask] = torch.tensor(
+            self.trg_vocab.pad_idx, device=tgt_tokens.device
+        ).long()
+        token_probs[pad_mask] = torch.tensor(
+            1.0, device=token_probs.device, dtype=token_probs.dtype
+        )
+        token_probs = token_probs.view(bsz, self.length_beam_size, max_len).log()
+        lprobs = token_probs.sum(-1)
+        hypotheses = tgt_tokens.view(bsz, self.length_beam_size, max_len)
+        lprobs = lprobs.view(bsz, self.length_beam_size)
+        tgt_lengths = (1 - length_mask).sum(-1)
+
+        hyp_score = self.beam_ranking_algorithm(
+            token_lprob=lprobs, length_lprob=length_prob, target_lengths=tgt_lengths
+        )
+        sorted_scores, indices = torch.sort(hyp_score, dim=-1, descending=True)
+
+        all_indices = torch.arange(bsz).unsqueeze(-1)
+        hypotheses = hypotheses[all_indices, indices]
+        return hypotheses, beam, sorted_scores.exp(), token_probs, token_logits
+
+    def get_length_prediction(
+        self,
+        encoder_out: Dict[str, Tensor],
+        encoder_mask: Optional[Tensor],
+        src_lengths: Tensor,
+        target_lengths: Optional[Tensor] = None,
+        beam_size: Optional[int] = None,
+    ) -> Dict[str, Tensor]:
         predicted_tgt_length, _ = self.length_prediction_model(
             encoder_out["encoder_out"], encoder_mask
         )
@@ -341,39 +396,13 @@ class MaskedSequenceGenerator(Module):
             self.trg_vocab.pad_idx,
             self.length_beam_size,
         )
-        bsz = src_tokens.size(0)
-        max_len = tgt_tokens.size(1)
 
-        tiled_encoder_out = self.model.encoder.prepare_for_nar_inference(
-            self.length_beam_size, encoder_out
-        )
-
-        # OneStep Generation
-        pad_mask = tgt_tokens.eq(self.trg_vocab.pad_idx)
-
-        tgt_tokens, token_probs, token_logits = self.generate_non_autoregressive(
-            tiled_encoder_out, tgt_tokens
-        )
-        tgt_tokens[pad_mask] = torch.tensor(
-            self.trg_vocab.pad_idx, device=tgt_tokens.device
-        ).long()
-        token_probs[pad_mask] = torch.tensor(
-            1.0, device=token_probs.device, dtype=token_probs.dtype
-        )
-        token_probs = token_probs.view(bsz, self.length_beam_size, max_len).log()
-        lprobs = token_probs.sum(-1)
-        hypotheses = tgt_tokens.view(bsz, self.length_beam_size, max_len)
-        lprobs = lprobs.view(bsz, self.length_beam_size)
-        tgt_lengths = (1 - length_mask).sum(-1)
-
-        hyp_score = self.beam_ranking_algorithm(
-            token_lprob=lprobs, length_lprob=length_prob, target_lengths=tgt_lengths
-        )
-        sorted_scores, indices = torch.sort(hyp_score, dim=-1, descending=True)
-
-        all_indices = torch.arange(bsz).unsqueeze(-1)
-        hypotheses = hypotheses[all_indices, indices]
-        return hypotheses, beam, sorted_scores.exp(), token_probs, token_logits
+        return {
+            "target_tokens": tgt_tokens,
+            "length_mask": length_mask,
+            "length_probabilities": length_prob,
+            "beam": beam,
+        }
 
     def get_clip_length(self, src_lengths: Tensor):
         predicted = (
