@@ -6,6 +6,7 @@ import re
 from collections import OrderedDict
 from typing import List, NamedTuple, Union, Optional
 
+import torch
 from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
@@ -13,11 +14,13 @@ from pytext.config.component import Component, ComponentType, create_component
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTokenizer
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
-from sentencepiece import SentencePieceProcessor
 from transformers.tokenization_bert import (
     BasicTokenizer,
     WordpieceTokenizer,
 )
+
+
+torch.ops.load_library("//caffe2/torch/fb/nlp/operators:sentencepiece_tokenizer")
 
 
 class Token(NamedTuple):
@@ -321,18 +324,27 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
     class Config(ConfigBase):
         sp_model_path: str = ""
         max_input_text_length: Optional[int] = None
+        use_fb_sentencepiece: Optional[bool] = False
 
     def __init__(
-        self, sp_model_path: str = "", max_input_text_length: Optional[int] = None
+        self,
+        sp_model_path: str = "",
+        max_input_text_length: Optional[int] = None,
+        use_fb_sentencepiece: Optional[bool] = None,
     ):
         self.sp_model_path = sp_model_path
         self.max_input_text_length = max_input_text_length
+        self.use_fb_sentencepiece = use_fb_sentencepiece
         self._load_processor()
         log_class_usage(__class__)
 
     @classmethod
     def from_config(cls, config: Config):
-        return cls(config.sp_model_path, config.max_input_text_length)
+        return cls(
+            config.sp_model_path,
+            config.max_input_text_length,
+            config.use_fb_sentencepiece,
+        )
 
     def tokenize(self, input_str: str) -> List[Token]:
         if (
@@ -352,8 +364,14 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
         return tokens
 
     def _load_processor(self):
-        self.processor = SentencePieceProcessor()
-        self.processor.Load(PathManager.get_local_path(self.sp_model_path))
+        sp_model_path = PathManager.get_local_path(self.sp_model_path)
+        if self.use_fb_sentencepiece:
+            self.processor = torch.classes.fb.SentencePiece.fromFile(sp_model_path)
+        else:
+            from sentencepiece import SentencePieceProcessor
+
+            self.processor = SentencePieceProcessor()
+            self.processor.Load(sp_model_path)
 
     def torchscriptify(self):
         return ScriptDoNothingTokenizer()

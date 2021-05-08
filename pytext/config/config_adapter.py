@@ -901,6 +901,25 @@ def v27_to_v28(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=29)
+def v29_to_v28(json_config):
+    """
+    Downgrade by removing use_fb_sentencepiece from SentencePieceTokenizer.
+    """
+    for v in get_json_config_iterator(json_config, "SentencePieceTokenizer"):
+        if "use_fb_sentencepiece" in v:
+            del v["use_fb_sentencepiece"]
+    return json_config
+
+
+@register_adapter(from_version=28)
+def v28_to_v29(json_config):
+    """
+    No-op since use_fb_sentencepiece is optional.
+    """
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
