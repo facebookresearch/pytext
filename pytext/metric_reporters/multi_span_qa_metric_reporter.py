@@ -10,7 +10,7 @@ from pytext.common.constants import Stage
 from pytext.metric_reporters.channel import Channel, ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics.squad_metrics import SquadMetrics
-from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string
+from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string, Slot
 from scipy.optimize import linear_sum_assignment
 
 
@@ -226,7 +226,7 @@ class MultiSpanQAMetricReporter(MetricReporter):
                 str,
                 [
                     self.tensorizer.labels_vocab.pad_token,
-                    self.tensorizer.labels_vocab.unk_token,
+                    Slot.NO_LABEL_SLOT,
                 ],
             ):
                 continue
