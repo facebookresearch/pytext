@@ -348,7 +348,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
 
     def _load_processor(self):
         sp_model_path = PathManager.get_local_path(self.sp_model_path)
-        if self.use_fb_sentencepiece:
+        if getattr(self, "use_fb_sentencepiece", None):
             self.processor = torch.classes.fb.SentencePiece.fromFile(sp_model_path)
         else:
             from sentencepiece import SentencePieceProcessor
