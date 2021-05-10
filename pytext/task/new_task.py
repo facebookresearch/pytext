@@ -331,6 +331,7 @@ class _NewTask(TaskBase):
 
         # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
+        use_nnpi_embedding = "nnpi:embedding" in accelerate
         use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
         use_nnpi_gelu_clip = "nnpi:gelu_clip" in accelerate
         use_cuda_half = "cuda:half" in accelerate
@@ -400,8 +401,12 @@ class _NewTask(TaskBase):
         optimizer.pre_export(model)
 
         if use_nnpi or use_fx_quantize:
-            model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
+            if use_nnpi_embedding:
+                model = swap_modules(model, MODULE_TO_REWRITER["nnpi:embedding"])
+            else:
+                model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
 
+        # FIXME: this should be changed to use swap_modules()
         if "nnpi:split" in accelerate:
             model = split_model_for_accelerator(model)
 
