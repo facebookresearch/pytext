@@ -31,6 +31,7 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
     length_reports: ClassificationMetrics = None
     non_invalid_fa: float = 0.0
     extracted_fa: float = 0.0
+    print_length_metrics: bool = True
 
     def print_metrics(self) -> None:
         if self.frame_accuracy:
@@ -45,7 +46,8 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
             self.tree_metrics.print_metrics()
         if self.length_metrics:
             print("\n\nLength Metrics :", self.length_metrics)
-        if self.length_reports:
+            print(f"Length Accuracy: {self.length_reports.accuracy * 100:.2f}")
+        if self.length_reports and self.print_length_metrics:
             print("\n\nLength Reports :", self.length_reports.print_metrics())
         if self.non_invalid_fa:
             print(f"Non Invalid FA {self.non_invalid_fa}")
@@ -129,6 +131,7 @@ def compute_masked_metrics(
     length_metrics: Dict = None,
     non_invalid_frame_pairs: Optional[Sequence[FramePredictionPair]] = None,
     extracted_frame_pairs: Optional[Sequence[FramePredictionPair]] = None,
+    print_length_metrics: bool = True,
 ) -> MaskedSeq2SeqJointMetrics:
 
     all_metrics = compute_all_metrics(
@@ -157,6 +160,7 @@ def compute_masked_metrics(
         length_reports=length_reports,
         non_invalid_fa=compute_frame_accuracy(non_invalid_frame_pairs),
         extracted_fa=compute_frame_accuracy(extracted_frame_pairs),
+        print_length_metrics=print_length_metrics,
     )
 
 

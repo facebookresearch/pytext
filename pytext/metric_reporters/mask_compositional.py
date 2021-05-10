@@ -95,6 +95,7 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         log_gradient: bool = True
         TEMP_DUMP_PREDICTIONS: bool = True
         log_samplewise_losses: bool = True
+        print_length_metrics: bool = True
 
     def __init__(
         self,
@@ -104,6 +105,7 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         accept_flat_intents_slots,
         model_select_metric_key,
         select_length_beam,
+        print_length_metrics,
     ):
         super().__init__(channels, log_gradient, tensorizers, accept_flat_intents_slots)
         self.model_select_metric_key = model_select_metric_key
@@ -112,6 +114,7 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         else:
             self.lower_is_better = True
         self.select_length_beam = select_length_beam
+        self.print_length_metrics = print_length_metrics
 
     @classmethod
     def from_config(cls, config: Config, tensorizers: Dict[str, Tensorizer]):
@@ -132,6 +135,7 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
             config.accept_flat_intents_slots,
             config.model_select_metric_key,
             config.select_length_beam,
+            config.print_length_metrics,
         )
 
     def _reset(self):
@@ -193,6 +197,7 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
             extracted_frame_pairs=self.create_frame_prediction_pairs(
                 self.all_top_extract, self.all_target_trees
             ),
+            print_length_metrics=self.print_length_metrics,
         )
         return all_metrics
 
