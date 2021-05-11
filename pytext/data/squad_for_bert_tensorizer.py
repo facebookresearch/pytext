@@ -290,7 +290,8 @@ class SquadForRoBERTaTensorizer(RoBERTaTensorizer, SquadForBERTTensorizer):
         # for labels
         answers_column: str = "answers"
         answer_starts_column: str = "answer_starts"
-        max_seq_len: int = 256
+        max_seq_len: int = 512
+        max_subseq_len: int = 512
 
     @classmethod
     def from_config(cls, config: Config, **kwargs):
