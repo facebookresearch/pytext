@@ -825,6 +825,11 @@ def get_json_config_iterator(json_config, lookup_key):
         elif isinstance(value, dict):
             for v in get_json_config_iterator(value, lookup_key):
                 yield v
+        elif isinstance(value, list):
+            for val in value:
+                if isinstance(val, dict):
+                    for v in get_json_config_iterator(val, lookup_key):
+                        yield v
 
 
 @register_down_grade_adapter(from_version=26)
@@ -917,6 +922,26 @@ def v28_to_v29(json_config):
     """
     No-op since use_fb_sentencepiece is optional.
     """
+    return json_config
+
+
+@register_down_grade_adapter(from_version=30)
+def v30_to_v29(json_config):
+    for v in get_json_config_iterator(json_config, "SequenceLabellingTask"):
+        if "enable_beam_search" in v:
+            del v["enable_beam_search"]
+        if "beam_search_beam_width" in v:
+            del v["beam_search_beam_width"]
+        if "beam_search_top_k" in v:
+            del v["beam_search_top_k"]
+    for v in get_json_config_iterator(json_config, "SequenceLabellingMetricReporter"):
+        if "enable_beam_search" in v:
+            del v["enable_beam_search"]
+    return json_config
+
+
+@register_adapter(from_version=29)
+def v29_to_v30(json_config):
     return json_config
 
 
