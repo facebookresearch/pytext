@@ -332,6 +332,7 @@ class _NewTask(TaskBase):
         # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
         use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
         use_nnpi_embedding = "nnpi:embedding" in accelerate
+        use_nnpi_split = "nnpi:split" in accelerate
         use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
         use_nnpi_gelu_clip = "nnpi:gelu_clip" in accelerate
         use_cuda_half = "cuda:half" in accelerate
@@ -370,6 +371,7 @@ class _NewTask(TaskBase):
             or use_nnpi_quantize
             or use_nnpi_gelu_clip
             or use_nnpi_throughput_optimized
+            or use_nnpi_split
         ):
             model_host = ["nnpi"]
 
@@ -406,9 +408,8 @@ class _NewTask(TaskBase):
             else:
                 model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
 
-        # FIXME: this should be changed to use swap_modules()
-        if "nnpi:split" in accelerate:
-            model = split_model_for_accelerator(model)
+        if use_nnpi_split:
+            model = swap_modules(model, MODULE_TO_REWRITER["nnpi:split"])
 
         # Trace needs eval mode, to disable dropout etc
         model.eval()
