@@ -11,6 +11,7 @@ from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
 from fairseq.data.encoders.gpt2_bpe_utils import Encoder as GPT2BPEEncoder
 from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_component
+from pytext.data.pickleable_gpt2bpe_encoder import PickleableGPT2BPEEncoder
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTokenizer
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
@@ -239,7 +240,6 @@ class GPT2BPETokenizer(Tokenizer):
         bpe = create_gpt2_bpe(config.bpe_encoder_path, config.bpe_vocab_path)
         # This hacks the bpe instance to be picklable
         bpe = copy.copy(bpe)
-        from pytext.data.pickleable_gpt2bpe_encoder import PickleableGPT2BPEEncoder
 
         bpe.__class__ = PickleableGPT2BPEEncoder
 
