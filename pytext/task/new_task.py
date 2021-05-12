@@ -334,6 +334,7 @@ class _NewTask(TaskBase):
         use_nnpi_embedding = "nnpi:embedding" in accelerate
         use_nnpi_split = "nnpi:split" in accelerate
         use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
+        use_nnpi_throughput_maximized = "nnpi:throughput_maximized" in accelerate
         use_nnpi_gelu_clip = "nnpi:gelu_clip" in accelerate
         use_cuda_half = "cuda:half" in accelerate
         use_cuda_half_faster_transformers = "cuda:half:ft" in accelerate
@@ -372,6 +373,7 @@ class _NewTask(TaskBase):
             or use_nnpi_gelu_clip
             or use_nnpi_throughput_optimized
             or use_nnpi_split
+            or use_nnpi_throughput_maximized
         ):
             model_host = ["nnpi"]
 
@@ -519,6 +521,7 @@ class _NewTask(TaskBase):
                 trace,
                 export_config,
                 use_nnpi_throughput_optimized,
+                use_nnpi_throughput_maximized,
                 use_nnpi_gelu_clip,
             )
         if "split" in accelerate:
