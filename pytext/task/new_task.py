@@ -92,6 +92,14 @@ def create_tensorizers(
     return tensorizers
 
 
+def is_accelerate_option(option_string, accelerate):
+    # an option is either specified explicitly, or implicitly as prefix to a suboption
+    for option in accelerate:
+        if option_string == option or option.startswith(option_string + ":"):
+            return True
+    return False
+
+
 class _NewTask(TaskBase):
     """This task abstraction separates the concerns into three main components,
     `pytext.data.Data`, `pytext.models.new_model.NewModel` (names and paths
@@ -329,27 +337,45 @@ class _NewTask(TaskBase):
         seq_padding_control = export_config.seq_padding_control
         batch_padding_control = export_config.batch_padding_control
 
-        # introduce a single nnpi:quantize that obviates need for torchscript quantize on NNPI
-        use_nnpi = ("nnpi" in accelerate) or ("nnpi:quantize" in accelerate)
-        use_nnpi_embedding = "nnpi:embedding" in accelerate
-        use_nnpi_split = "nnpi:split" in accelerate
-        use_nnpi_throughput_optimized = "nnpi:throughput_optimized" in accelerate
-        use_nnpi_throughput_maximized = "nnpi:throughput_maximized" in accelerate
-        use_nnpi_gelu_clip = "nnpi:gelu_clip" in accelerate
-        use_cuda_half = "cuda:half" in accelerate
-        use_cuda_half_faster_transformers = "cuda:half:ft" in accelerate
+        # CUDA options
+        use_cuda_half = is_accelerate_option("cuda:half", accelerate)
+        use_cuda_half_faster_transformers = is_accelerate_option(
+            "cuda:half:ft", accelerate
+        )
 
-        use_nnpi_quantize = "nnpi:quantize" in accelerate
-        use_nnpi_fx_static_quantize = "nnpi:fx_static_quantize" in accelerate
-        use_nnpi_fx_static_selectively_quantize = (
-            "nnpi:fx_static_selectively_quantize" in accelerate
+        # NNPI options
+        use_nnpi = is_accelerate_option("nnpi", accelerate)
+        use_nnpi_embedding = is_accelerate_option("nnpi:embedding", accelerate)
+        use_nnpi_throughput_optimized = is_accelerate_option(
+            "nnpi:throughput_optimized", accelerate
         )
-        use_nnpi_fx_dynamic_quantize = "nnpi:fx_dynamic_quantize" in accelerate
-        use_cpu_fx_static_quantize = "cpu:fx_static_quantize" in accelerate
-        use_cpu_fx_static_selectively_quantize = (
-            "cpu:fx_static_selectively_quantize" in accelerate
+        use_nnpi_throughput_maximized = is_accelerate_option(
+            "nnpi:throughput_maximized", accelerate
         )
-        use_cpu_fx_dynamic_quantize = "cpu:fx_dynamic_quantize" in accelerate
+        use_nnpi_gelu_clip = is_accelerate_option("nnpi:gelu_clip", accelerate)
+        use_nnpi_split = is_accelerate_option("nnpi:split", accelerate)
+
+        use_nnpi_quantize = is_accelerate_option("nnpi:quantize", accelerate)
+        use_nnpi_fx_static_quantize = is_accelerate_option(
+            "nnpi:fx_static_quantize", accelerate
+        )
+        use_nnpi_fx_static_selectively_quantize = is_accelerate_option(
+            "nnpi:fx_static_selectively_quantize", accelerate
+        )
+        use_nnpi_fx_dynamic_quantize = is_accelerate_option(
+            "nnpi:fx_dynamic_quantize", accelerate
+        )
+        use_cpu_fx_static_quantize = is_accelerate_option(
+            "cpu:fx_static_quantize", accelerate
+        )
+
+        # CPU options
+        use_cpu_fx_static_selectively_quantize = is_accelerate_option(
+            "cpu:fx_static_selectively_quantize", accelerate
+        )
+        use_cpu_fx_dynamic_quantize = is_accelerate_option(
+            "cpu:fx_dynamic_quantize", accelerate
+        )
         use_fx_quantize = (
             use_nnpi_fx_static_quantize
             or use_nnpi_fx_static_selectively_quantize
@@ -358,23 +384,17 @@ class _NewTask(TaskBase):
             or use_cpu_fx_static_selectively_quantize
             or use_cpu_fx_dynamic_quantize
         )
+        # make torchscript_quantize an accelerate option in the future
 
         # what hosts can this model run on
         # by default, pytext works on CPU and CUDA (because it implements set_device)
         model_host = ["cpu", "cuda"]
 
-        if use_cuda_half or use_cuda_half_faster_transformers:
+        if use_cuda_half:
             # CUDA FP16 models only work on CUDA
             model_host = ["cuda"]
 
-        if (
-            use_nnpi
-            or use_nnpi_quantize
-            or use_nnpi_gelu_clip
-            or use_nnpi_throughput_optimized
-            or use_nnpi_split
-            or use_nnpi_throughput_maximized
-        ):
+        if use_nnpi:
             model_host = ["nnpi"]
 
         if hasattr(model, "set_host"):
