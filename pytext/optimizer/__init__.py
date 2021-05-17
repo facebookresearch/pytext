@@ -17,6 +17,5 @@ from pytext.optimizer.optimizers import (  # noqa
     Optimizer,
     learning_rates,
 )
-from pytext.optimizer.privacy_engine import PrivacyEngine  # noqa
 from pytext.optimizer.radam import RAdam  # noqa
 from pytext.optimizer.swa import StochasticWeightAveraging  # noqa
