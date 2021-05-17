@@ -70,8 +70,7 @@
                   "threshold_loss_scale": null,
                   "min_loss_scale": 0.0001
                 }
-              },
-              "privacy_engine": null
+              }
             }
           },
           "use_elastic": null,

@@ -945,6 +945,25 @@ def v29_to_v30(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=31)
+def v31_to_v30(json_config):
+    """
+    No-op since privacy_engine is optional
+    """
+    return json_config
+
+
+@register_adapter(from_version=30)
+def v30_to_v31(json_config):
+    """
+    Upgrade by removing privacy_engine option
+    """
+    for v in get_json_config_iterator(json_config, "TaskTrainer"):
+        if "privacy_engine" in v:
+            del v["privacy_engine"]
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized

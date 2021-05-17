@@ -61,8 +61,7 @@
                                     "init_loss_scale": null,
                                     "min_loss_scale": null
                                 }
-                            },
-                            "privacy_engine": null
+                            }
                         }
                     },
                     "use_elastic": null,
@@ -222,8 +221,7 @@
                                     "init_loss_scale": null,
                                     "min_loss_scale": null
                                 }
-                            },
-                            "privacy_engine": null
+                            }
                         }
                     },
                     "use_elastic": null,
