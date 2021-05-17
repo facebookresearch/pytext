@@ -534,7 +534,7 @@ class _NewTask(TaskBase):
                     "Padding_control not supported by model. Ignoring batch_padding_control"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
-        if use_nnpi:
+        if use_nnpi and not use_nnpi_split:
             print("lowering using to_glow")
             trace = lower_modules_to_accelerator(
                 model,
@@ -544,7 +544,7 @@ class _NewTask(TaskBase):
                 use_nnpi_throughput_maximized,
                 use_nnpi_gelu_clip,
             )
-        if "split" in accelerate:
+        if use_nnpi_split:
             print("lowering split model to glow")
             trace = lower_split_model_to_accelerator(model, trace, export_config)
 
