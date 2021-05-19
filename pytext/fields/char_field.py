@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import copy
+import operator
 from collections import Counter
+from distutils.version import LooseVersion
 from typing import List
 
 import torch
+import torchtext
 from pytext.common.constants import VocabMeta
 from pytext.utils.data import no_tokenize
-from torchtext import vocab
 
-try:
+
+if operator.ge(torchtext.__version__, LooseVersion("0.10.0")):
+    from torchtext.legacy import vocab
+else:
+    from torchtext import vocab
+
+if operator.ge(torchtext.__version__, LooseVersion("0.8.0")):
     from torchtext.legacy import data as textdata
-except ImportError:
+else:
     from torchtext import data as textdata
 
 from .field import VocabUsingField

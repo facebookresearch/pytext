@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import operator
 from collections import Counter, OrderedDict
+from distutils.version import LooseVersion
 from itertools import chain
 from typing import List, Optional, Tuple, Union
 
 import six
 import torch
+import torchtext
 from pytext.common.constants import VocabMeta
 from pytext.fields import TextFeatureField
 from pytext.utils.data import is_number, unkify
 
-try:
-    from torchtext.legacy.data import Dataset
-except ImportError:
-    from torchtext.data import Dataset
+if operator.ge(torchtext.__version__, LooseVersion("0.8.0")):
+    from torchtext.legacy import data as torchtextdata
+else:
+    from torchtext import data as torchtextdata
 
 
 class TextFeatureFieldWithSpecialUnk(TextFeatureField):
@@ -34,7 +37,7 @@ class TextFeatureFieldWithSpecialUnk(TextFeatureField):
         counter = Counter()
         sources = []
         for arg in args:
-            if isinstance(arg, Dataset):
+            if isinstance(arg, torchtextdata.Dataset):
                 sources += [
                     getattr(arg, name)
                     for name, field in arg.fields.items()

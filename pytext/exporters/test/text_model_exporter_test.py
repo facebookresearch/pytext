@@ -2,8 +2,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import json
+import operator
 import tempfile
 from collections import Counter
+from distutils.version import LooseVersion
 
 import caffe2.python.hypothesis_test_util as hu
 import caffe2.python.predictor.predictor_exporter as pe
@@ -11,6 +13,7 @@ import hypothesis.strategies as st
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torchtext
 from caffe2.python import workspace
 from hypothesis import given, settings
 from pytext.builtin_task import (
@@ -34,7 +37,11 @@ from pytext.fields import (
 )
 from pytext.task.new_task import _NewTask
 from pytext.utils.onnx import CAFFE2_DB_TYPE
-from torchtext.vocab import Vocab
+
+if operator.ge(torchtext.__version__, LooseVersion("0.10.0")):
+    from torchtext.legacy.vocab import Vocab
+else:
+    from torchtext.vocab import Vocab
 
 
 JOINT_CONFIG = """

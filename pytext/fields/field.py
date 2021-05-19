@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import operator
 import re
+from distutils.version import LooseVersion
 from typing import Any, Dict, Tuple, Union
 
 import torch
+import torchtext
 from pytext.common.constants import Padding, VocabMeta
 from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import data as data_utils, precision
 
-try:
+if operator.ge(torchtext.__version__, LooseVersion("0.8.0")):
     from torchtext.legacy import data as textdata
-except ImportError:
+else:
     from torchtext import data as textdata
 
-from torchtext.vocab import Vocab
+if operator.ge(torchtext.__version__, LooseVersion("0.10.0")):
+    from torchtext.legacy.vocab import Vocab
+else:
+    from torchtext.vocab import Vocab
 
 
 def create_fields(fields_config, field_cls_dict):
