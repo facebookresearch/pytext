@@ -188,6 +188,7 @@ class PyTextConfig(ConfigBase):
     # RNNG, should be removed once RNNG refactoring is done
     test_out_path: str = "/tmp/test_out.txt"
     debug_path: str = "/tmp/model.debug"
+    encoder_eval_mode: bool = False
 
     def __init__(self, **kwargs):
         version = kwargs["version"]
@@ -408,4 +409,4 @@ class LogitsConfig(TestConfig):
     fp16: bool = False
 
 
-LATEST_VERSION = 31
+LATEST_VERSION = 32
