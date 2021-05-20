@@ -7,17 +7,16 @@ from typing import Any, Dict, Optional, Type, Union
 import torch
 from accelerators.pytorch.lib.accelerator_lowering import (
     lower_modules_to_accelerator,
-    split_model_for_accelerator,
     lower_split_model_to_accelerator,
 )
 from accelerators.pytorch.lib.quantize import (
     quantize_statically,
     quantize_fx,
 )
+from accelerators.pytorch.lib.utils.export_helper import AccelerateOptions
 from accelerators.pytorch.lib.utils.model_rewriter import (
     find_module_instances,
-    MODULE_TO_REWRITER,
-    swap_modules,
+    rewrite_modules,
 )
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig, ExportConfig
@@ -40,7 +39,6 @@ from pytext.utils.usage import (
 from torch import sort
 
 from .task import TaskBase
-
 
 ADDITIONAL_COLUMN_NAMES_ATTRIBUTES = (
     "text_column_names",
@@ -332,71 +330,19 @@ class _NewTask(TaskBase):
             export_config = ExportConfig()
 
         quantize = export_config.torchscript_quantize
-
-        accelerate = export_config.accelerate
         seq_padding_control = export_config.seq_padding_control
         batch_padding_control = export_config.batch_padding_control
-
-        # CUDA options
-        use_cuda_half = is_accelerate_option("cuda:half", accelerate)
-        use_cuda_half_faster_transformers = is_accelerate_option(
-            "cuda:half:ft", accelerate
-        )
-
-        # NNPI options
-        use_nnpi = is_accelerate_option("nnpi", accelerate)
-        use_nnpi_embedding = is_accelerate_option("nnpi:embedding", accelerate)
-        use_nnpi_throughput_optimized = is_accelerate_option(
-            "nnpi:throughput_optimized", accelerate
-        )
-        use_nnpi_throughput_maximized = is_accelerate_option(
-            "nnpi:throughput_maximized", accelerate
-        )
-        use_nnpi_gelu_clip = is_accelerate_option("nnpi:gelu_clip", accelerate)
-        use_nnpi_split = is_accelerate_option("nnpi:split", accelerate)
-
-        use_nnpi_quantize = is_accelerate_option("nnpi:quantize", accelerate)
-        use_nnpi_fx_static_quantize = is_accelerate_option(
-            "nnpi:fx_static_quantize", accelerate
-        )
-        use_nnpi_fx_static_selectively_quantize = is_accelerate_option(
-            "nnpi:fx_static_selectively_quantize", accelerate
-        )
-        use_nnpi_fx_dynamic_quantize = is_accelerate_option(
-            "nnpi:fx_dynamic_quantize", accelerate
-        )
-        use_cpu_fx_static_quantize = is_accelerate_option(
-            "cpu:fx_static_quantize", accelerate
-        )
-
-        # CPU options
-        use_cpu_fx_static_selectively_quantize = is_accelerate_option(
-            "cpu:fx_static_selectively_quantize", accelerate
-        )
-        use_cpu_fx_dynamic_quantize = is_accelerate_option(
-            "cpu:fx_dynamic_quantize", accelerate
-        )
-        use_fx_quantize = (
-            use_nnpi_fx_static_quantize
-            or use_nnpi_fx_static_selectively_quantize
-            or use_nnpi_fx_dynamic_quantize
-            or use_cpu_fx_static_quantize
-            or use_cpu_fx_static_selectively_quantize
-            or use_cpu_fx_dynamic_quantize
-        )
-        # make torchscript_quantize an accelerate option in the future
+        accel = AccelerateOptions(export_config.accelerate)
+        print(f"Using accelerate options: {accel.__dict__}")
 
         # what hosts can this model run on
         # by default, pytext works on CPU and CUDA (because it implements set_device)
         model_host = ["cpu", "cuda"]
-
-        if use_cuda_half:
+        if accel.use_cuda:
             # CUDA FP16 models only work on CUDA
             model_host = ["cuda"]
-
-        if use_nnpi:
+        if accel.use_nnpi:
             model_host = ["nnpi"]
-
         if hasattr(model, "set_host"):
             model.set_host(model_host)
 
@@ -424,14 +370,7 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
-        if use_nnpi or use_fx_quantize:
-            if use_nnpi_embedding:
-                model = swap_modules(model, MODULE_TO_REWRITER["nnpi:embedding"])
-            else:
-                model = swap_modules(model, MODULE_TO_REWRITER["nnpi"])
-
-        if use_nnpi_split:
-            model = swap_modules(model, MODULE_TO_REWRITER["nnpi:split"])
+        model = rewrite_modules(model, accel)
 
         # Trace needs eval mode, to disable dropout etc
         model.eval()
@@ -448,22 +387,24 @@ class _NewTask(TaskBase):
         model(*inputs)
 
         # Default to dynamic
-        if use_fx_quantize:
+        if accel.use_fx_quantize:
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             trace = quantize_fx(
                 model,
                 inputs,
                 data_loader,
-                use_nnpi_fx_dynamic_quantize or use_cpu_fx_dynamic_quantize,
-                use_nnpi_fx_static_selectively_quantize
-                or use_cpu_fx_static_selectively_quantize,
+                accel.use_nnpi_fx_dynamic_quantize or accel.use_cpu_fx_dynamic_quantize,
+                accel.use_nnpi_fx_static_selectively_quantize
+                or accel.use_cpu_fx_static_selectively_quantize,
             )
-        elif (quantize or use_nnpi_quantize) and hasattr(model, "graph_mode_quantize"):
+        elif (quantize or accel.use_nnpi_quantize) and hasattr(
+            model, "graph_mode_quantize"
+        ):
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
             print("Quantizing the model ...")
             # recognize legazy nnpi_q or $platform:$option syntax
-            quantize_linear_only = use_nnpi_quantize or ("nnpi_quantize" in accelerate)
-            module_swap = use_nnpi
+            quantize_linear_only = accel.use_nnpi_quantize
+            module_swap = accel.use_nnpi
             trace = quantize_statically(
                 model, inputs, data_loader, quantize_linear_only, module_swap
             )
@@ -471,15 +412,13 @@ class _NewTask(TaskBase):
             if quantize:
                 log_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
-            if use_cuda_half_faster_transformers:
+            if accel.use_cuda_half_ft:
                 log_accelerator_feature_usage("build.CUDA.half.faster_transformers")
                 # We need a separate path for GPU-only tracing, as we can't just trace a CPU model
                 # and invoke .cuda().half(),
                 # as we don't have equivalent CPU implementations of these operators.
                 precision.FP16_ENABLED = True
                 cuda.CUDA_ENABLED = True
-
-                model = swap_modules(model, MODULE_TO_REWRITER["cuda"])
                 model.eval()
                 model.half().cuda()
                 # obtain new inputs with cuda/fp16 enabled.
@@ -488,7 +427,7 @@ class _NewTask(TaskBase):
                 )
                 inputs = model.onnx_trace_input(batch)
                 trace = model.trace(inputs)
-                print("traced (faster_transformers)!")
+                print("Traced (faster_transformers)!")
                 # should be unnecessary.
                 trace.cuda().half()
                 unused_raw_batch, batch = next(
@@ -497,11 +436,10 @@ class _NewTask(TaskBase):
                 inputs = model.onnx_trace_input(batch)
                 results = trace(*inputs)
                 assert results
-                print(results)
             else:
                 trace = model.trace(inputs)
-                print("traced!")
-                if use_cuda_half:
+                print("Traced!")
+                if accel.use_cuda_half:
                     log_accelerator_feature_usage("build.CUDA.half")
                     # convert trace to half precision
                     trace.cuda().half()
@@ -534,18 +472,18 @@ class _NewTask(TaskBase):
                     "Padding_control not supported by model. Ignoring batch_padding_control"
                 )
         trace.apply(lambda s: s._pack() if s._c._has_method("_pack") else None)
-        if use_nnpi and not use_nnpi_split:
-            print("lowering using to_glow")
+        if accel.use_nnpi and not accel.use_nnpi_split:
+            print("Lowering using to_glow")
             trace = lower_modules_to_accelerator(
                 model,
                 trace,
                 export_config,
-                use_nnpi_throughput_optimized,
-                use_nnpi_throughput_maximized,
-                use_nnpi_gelu_clip,
+                accel.use_nnpi_throughput_optimized,
+                accel.use_nnpi_throughput_maximized,
+                accel.use_nnpi_gelu_clip,
             )
-        if use_nnpi_split:
-            print("lowering split model to glow")
+        if accel.use_nnpi_split:
+            print("Lowering split model to Glow")
             trace = lower_split_model_to_accelerator(model, trace, export_config)
 
         if export_path is not None:
