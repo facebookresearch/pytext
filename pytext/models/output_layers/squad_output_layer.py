@@ -76,6 +76,7 @@ class SquadOutputLayer(OutputLayerBase):
         start_pos_logits: torch.Tensor,
         end_pos_logits: torch.Tensor,
         max_span_length: int,
+        best_n: int = 1,
     ):
         # the following is to enforce end_pos > start_pos.  We create a matrix
         # of start_position X end_position, fill it with the sum logits,
@@ -107,9 +108,16 @@ class SquadOutputLayer(OutputLayerBase):
         logit_sum_matrix = (start_pos_logits + end_pos_logits).triu()
         for i in range(logit_sum_matrix.size()[1]):
             logit_sum_matrix[:, i, i + max_span_length :] = 0
-        vals, ids = logit_sum_matrix.max(-1)
-        _, start_position = vals.max(-1)
-        end_position = ids.gather(-1, start_position.unsqueeze(-1)).squeeze(-1)
+
+        # Method 1, can't guarantee non overlapping of spans
+        _, ids_flatten = torch.topk(
+            logit_sum_matrix.flatten(start_dim=-2, end_dim=-1), best_n, dim=-1
+        ) # ids_flatten shape of (bs, best_n)
+        ids = ids_flatten.flatten() # (bs*best_n,)
+        start_position = ids // logit_sum_matrix.shape[-1] # (bs*best_n,)
+        end_position = ids.fmod(logit_sum_matrix.shape[-1]) # (bs*best_n,)
+        start_position = start_position.reshape(-1, best_n)  # (bs, best_n)
+        end_position = end_position.reshape(-1, best_n)  # (bs, best_n)
 
         return start_position, end_position
 

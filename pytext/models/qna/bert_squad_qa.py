@@ -78,7 +78,11 @@ class BertSquadQAModel(NewBertModel):
         )
 
         return cls(
-            encoder, pos_decoder, has_ans_decoder, output_layer, is_kd=config.is_kd
+            encoder,
+            pos_decoder,
+            has_ans_decoder,
+            output_layer,
+            is_kd=config.is_kd,
         )
 
     def __init__(
