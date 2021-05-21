@@ -264,8 +264,10 @@ class VocabBuilder:
         """Count a single value in the vocabulary."""
         self._counter[value] += 1
 
-    def add_from_file(self, file_pointer, skip_header_line, lowercase_tokens, size):
-        vocab_from_file = set()
+    def add_from_file(
+        self, file_pointer, skip_header_line, lowercase_tokens, size, re_sort=True
+    ):
+        vocab_from_file = []
         if skip_header_line:
             next(file_pointer)
         for i, line in enumerate(file_pointer):
@@ -278,8 +280,12 @@ class VocabBuilder:
             token = line.split(self.delimiter)[0].strip()
             if lowercase_tokens:
                 token = token.lower()
-            vocab_from_file.add(token)
-        self.add_all(sorted(vocab_from_file))
+            vocab_from_file.append(token)
+        if re_sort:
+            vocab_from_file = set(vocab_from_file)
+            self.add_all(sorted(vocab_from_file))
+        else:
+            self.add_all(vocab_from_file)
 
     def has_added_tokens(self):
         return bool(self._counter)
