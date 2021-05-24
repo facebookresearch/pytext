@@ -112,10 +112,10 @@ class SquadOutputLayer(OutputLayerBase):
         # Method 1, can't guarantee non overlapping of spans
         _, ids_flatten = torch.topk(
             logit_sum_matrix.flatten(start_dim=-2, end_dim=-1), best_n, dim=-1
-        ) # ids_flatten shape of (bs, best_n)
-        ids = ids_flatten.flatten() # (bs*best_n,)
-        start_position = ids // logit_sum_matrix.shape[-1] # (bs*best_n,)
-        end_position = ids.fmod(logit_sum_matrix.shape[-1]) # (bs*best_n,)
+        )  # ids_flatten shape of (bs, best_n)
+        ids = ids_flatten.flatten()  # (bs*best_n,)
+        start_position = ids // logit_sum_matrix.shape[-1]  # (bs*best_n,)
+        end_position = ids.fmod(logit_sum_matrix.shape[-1])  # (bs*best_n,)
         start_position = start_position.reshape(-1, best_n)  # (bs, best_n)
         end_position = end_position.reshape(-1, best_n)  # (bs, best_n)
 
