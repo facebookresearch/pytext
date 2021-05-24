@@ -16,7 +16,9 @@ from accelerators.pytorch.lib.quantize import (
 from accelerators.pytorch.lib.utils.export_helper import AccelerateOptions
 from accelerators.pytorch.lib.utils.model_rewriter import (
     find_module_instances,
-    rewrite_modules,
+    rewrite_nnpi_modules,
+    MODULE_TO_REWRITER,
+    swap_modules,
 )
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig, ExportConfig
@@ -370,7 +372,7 @@ class _NewTask(TaskBase):
         optimizer = self.trainer.optimizer
         optimizer.pre_export(model)
 
-        model = rewrite_modules(model, accel)
+        model = rewrite_nnpi_modules(model, accel)
 
         # Trace needs eval mode, to disable dropout etc
         model.eval()
@@ -419,6 +421,7 @@ class _NewTask(TaskBase):
                 # as we don't have equivalent CPU implementations of these operators.
                 precision.FP16_ENABLED = True
                 cuda.CUDA_ENABLED = True
+                model = swap_modules(model, MODULE_TO_REWRITER["cuda"])
                 model.eval()
                 model.half().cuda()
                 # obtain new inputs with cuda/fp16 enabled.
