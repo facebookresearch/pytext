@@ -964,6 +964,22 @@ def v30_to_v31(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=32)
+def v32_to_v31(json_config):
+    """
+    No-op since deleted class ELAIDADataSource
+    """
+    return json_config
+
+
+@register_adapter(from_version=31)
+def v31_to_v32(json_config):
+    """
+    No-op - using delete class ELAIDADataSource should raise an exception
+    """
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
