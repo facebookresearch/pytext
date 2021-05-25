@@ -26,6 +26,8 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
+    percent_invalid_trees: Optional[float]
+    percent_trees_wrong_label: Optional[float]
     loss: Optional[float] = None
     length_metrics: Dict[int, float] = None
     length_reports: ClassificationMetrics = None
@@ -53,6 +55,12 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
             print(f"Non Invalid FA {self.non_invalid_fa}")
         if self.extracted_fa:
             print(f"Extracted FA {self.extracted_fa}")
+        if self.percent_invalid_trees is not None:
+            print(f"\n\n% Invalid Trees = {self.percent_invalid_trees * 100:.2f}%")
+        if self.percent_trees_wrong_label is not None:
+            print(
+                f"\n\n% Trees w/ wrong IN/SL = {self.percent_trees_wrong_label * 100:.2f}%"
+            )
 
 
 class NASMaskedSeq2SeqJointMetrics(MaskedSeq2SeqJointMetrics):
@@ -155,6 +163,8 @@ def compute_masked_metrics(
         frame_accuracies_by_depth=all_metrics.frame_accuracies_by_depth,
         bracket_metrics=all_metrics.bracket_metrics,
         tree_metrics=all_metrics.tree_metrics,
+        percent_invalid_trees=all_metrics.percent_invalid_trees,
+        percent_trees_wrong_label=all_metrics.percent_trees_wrong_label,
         loss=all_metrics.loss,
         length_metrics=length_metrics,
         length_reports=length_reports,

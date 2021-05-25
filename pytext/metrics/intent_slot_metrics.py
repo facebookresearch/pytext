@@ -16,6 +16,7 @@ from typing import (
     Tuple,
 )
 
+from pytext.data.data_structures.annotation import INVALID_TREE_INTENT
 from pytext.data.data_structures.node import Node as NodeBase, Span
 
 from . import (
@@ -154,6 +155,8 @@ class AllMetrics(NamedTuple):
         tree_metrics: Tree metrics for intents and slots. For details, see the function
             `compute_intent_slot_metrics()`.
         loss: Cross entropy loss.
+        percent_invalid_trees: Percentage of invalid trees.
+        percent_trees_wrong_label: Percentage of trees with incorrect IN/SL labels
     """
 
     top_intent_accuracy: Optional[float]
@@ -162,6 +165,8 @@ class AllMetrics(NamedTuple):
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
     bracket_metrics: Optional[IntentSlotMetrics]
     tree_metrics: Optional[IntentSlotMetrics]
+    percent_invalid_trees: Optional[float]
+    percent_trees_wrong_label: Optional[float]
     loss: Optional[float] = None
 
     def print_metrics(self) -> None:
@@ -175,6 +180,12 @@ class AllMetrics(NamedTuple):
         if self.tree_metrics:
             print("\n\nTree Metrics")
             self.tree_metrics.print_metrics()
+        if self.percent_invalid_trees is not None:
+            print(f"\n\n% Invalid Trees = {self.percent_invalid_trees * 100:.2f}%")
+        if self.percent_trees_wrong_label is not None:
+            print(
+                f"\n\n% Trees w/ wrong IN/SL = {self.percent_trees_wrong_label * 100:.2f}%"
+            )
 
 
 class IntentSlotConfusions(NamedTuple):
@@ -465,6 +476,75 @@ def compute_frame_accuracies_by_depth(
     return frame_accuracies_by_depth
 
 
+def compute_percent_invalid_trees(frame_pairs: Sequence[FramePredictionPair]) -> float:
+    """
+    Computes percent of invlaid trees given a list of predicted and gold intent frames.
+
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+
+    Returns:
+        Percent of invalid trees. A tree is invalid if its frame label matches
+        INVALID_TREE_STR
+    """
+    num_invalid = 0
+    num_samples = len(frame_pairs)
+    for (predicted_frame, _) in frame_pairs:
+        num_invalid += int(predicted_frame.label == INVALID_TREE_INTENT)
+    return safe_division(num_invalid, num_samples)
+
+
+def compute_percent_trees_wrong_label(
+    frame_pairs: Sequence[FramePredictionPair],
+) -> float:
+    """
+    Computes percent of trees with incorrect intent (IN) or slot (SL) labels given a list
+    of predicted and gold intent frames.
+
+    Args:
+        frame_pairs: List of predicted and gold intent frames.
+
+    Returns:
+        Percent of trees with incorrect labels. These include valid predicted trees of
+        correct strucure but incorrect IN/SL labels.
+    """
+    num_incorrect = 0
+    num_samples = len(frame_pairs)
+    for (predicted_frame, expected_frame) in frame_pairs:
+        # For trees with incorrect IN/SL labels,
+        # 1. tree is valid
+        # 2. structure is correct
+        # 3. there is at lease 1 incorect label
+        num_incorrect += int(
+            predicted_frame.label != INVALID_TREE_INTENT
+            and _check_node(predicted_frame, expected_frame, check_label=False)
+            and not _check_node(predicted_frame, expected_frame, check_label=True)
+        )
+    return safe_division(num_incorrect, num_samples)
+
+
+def _get_node_children(node: Node) -> List[Node]:
+    if not node.children:
+        return []
+    return sorted(node.children, key=lambda node_child: node_child.span.start)
+
+
+def _check_node(predicted_node: Node, target_node: Node, check_label: bool) -> bool:
+    if check_label and predicted_node.label != target_node.label:
+        return False
+    predicted_children = _get_node_children(predicted_node)
+    target_children = _get_node_children(target_node)
+    if len(predicted_children) != len(target_children):
+        return False
+    for (p_child_node, t_child_node) in zip(
+        predicted_children,
+        target_children,
+    ):
+        if not _check_node(p_child_node, t_child_node, check_label):
+            return False
+    return True
+
+
 def compute_all_metrics(
     frame_pairs: Sequence[FramePredictionPair],
     top_intent_accuracy: bool = True,
@@ -526,6 +606,8 @@ def compute_all_metrics(
         if tree_metrics
         else None
     )
+    invalid_trees = compute_percent_invalid_trees(frame_pairs)
+    trees_wrong_label = compute_percent_trees_wrong_label(frame_pairs)
 
     return AllMetrics(
         top_intent,
@@ -534,5 +616,7 @@ def compute_all_metrics(
         accuracies,
         bracket,
         tree,
+        invalid_trees,
+        trees_wrong_label,
         calculated_loss,
     )

@@ -3,6 +3,7 @@
 
 from typing import Any, Dict, List
 
+from pytext.data.data_structures.annotation import INVALID_TREE_INTENT
 from pytext.metrics import Confusions, MacroPRF1Scores
 from pytext.metrics.intent_slot_metrics import (
     FrameAccuracy,
@@ -19,6 +20,8 @@ from pytext.metrics.intent_slot_metrics import (
     compute_frame_accuracy,
     compute_intent_slot_metrics,
     compute_top_intent_accuracy,
+    compute_percent_invalid_trees,
+    compute_percent_trees_wrong_label,
 )
 from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 
@@ -344,6 +347,103 @@ FRAME_PAIRS = [
     for example in TEST_EXAMPLES
 ]
 
+TEST_EXAMPLES_MORE: List[Dict[str, Any]] = [
+    # Invalid tree
+    {
+        "predicted": Node(
+            label=INVALID_TREE_INTENT,
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+        "expected": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+    },
+    # Correct
+    {
+        "predicted": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+        "expected": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+    },
+    # Incorrect slot
+    {
+        "predicted": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+        "expected": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot2", span=Span(start=1, end=2))},
+        ),
+    },
+    # Incorrect intent
+    {
+        "predicted": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+        "expected": Node(
+            label="intent2",
+            span=Span(start=0, end=20),
+            children={Node(label="slot1", span=Span(start=1, end=2))},
+        ),
+    },
+    # Incorrect slot order
+    {
+        "predicted": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children=[
+                Node(label="slot1", span=Span(start=1, end=2)),
+                Node(label="slot2", span=Span(start=4, end=5)),
+            ],
+        ),
+        "expected": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children=[
+                Node(label="slot2", span=Span(start=1, end=2)),
+                Node(label="slot1", span=Span(start=4, end=5)),
+            ],
+        ),
+    },
+    # Incorrect structure
+    {
+        "predicted": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children=[
+                Node(label="slot1", span=Span(start=1, end=2)),
+            ],
+        ),
+        "expected": Node(
+            label="intent1",
+            span=Span(start=0, end=20),
+            children=[
+                Node(label="slot1", span=Span(start=1, end=2)),
+                Node(label="slot2", span=Span(start=4, end=5)),
+            ],
+        ),
+    },
+]
+
+FRAME_PAIRS_MORE = [
+    FramePredictionPair(example["predicted"], example["expected"])
+    for example in TEST_EXAMPLES_MORE
+]
+
 
 class MetricsTest(MetricsTestBase):
     def test_immutable_node(self) -> None:
@@ -497,6 +597,18 @@ class MetricsTest(MetricsTestBase):
         self.assertMetricsAlmostEqual(
             compute_frame_accuracies_by_depth(FRAME_PAIRS),
             {2: FrameAccuracy(9, 1.0 / 9), 4: FrameAccuracy(2, 0.5)},
+        )
+
+    def test_compute_percent_invalid_trees(self) -> None:
+        self.assertAlmostEqual(
+            compute_percent_invalid_trees(FRAME_PAIRS_MORE),
+            1.0 / 6,
+        )
+
+    def test_compute_percent_trees_wrong_label(self) -> None:
+        self.assertAlmostEqual(
+            compute_percent_trees_wrong_label(FRAME_PAIRS_MORE),
+            3.0 / 6,
         )
 
     # Just to test the metrics print without errors
