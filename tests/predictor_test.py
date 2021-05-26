@@ -26,6 +26,7 @@ tests_module = test.import_tests_module()
 
 
 class PredictorTest(unittest.TestCase):
+    @unittest.skip("C2 deprecated")
     def test_batch_predict_caffe2_model(self):
         with tempfile.NamedTemporaryFile() as snapshot_file, tempfile.NamedTemporaryFile() as caffe2_model_file:
             train_data = tests_module.test_file("train_data_tiny.tsv")

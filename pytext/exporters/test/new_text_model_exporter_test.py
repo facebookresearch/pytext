@@ -3,6 +3,7 @@
 
 import tempfile
 from typing import Type
+import unittest
 
 import caffe2.python.hypothesis_test_util as hu
 import caffe2.python.predictor.predictor_exporter as pe
@@ -164,6 +165,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
             np.exp(np.array(c2_out).transpose()).flatten(),
         )
 
+    @unittest.skip("C2 deprecated")
     def test_document_export_to_caffe2(self):
         task_class = DocumentClassificationTask
 
@@ -175,6 +177,7 @@ class ModelExporterTest(hu.HypothesisTestCase):
             )
             self._test_task_export_to_caffe2(task_class=task_class, config=config)
 
+    @unittest.skip("C2 deprecated")
     def test_document_export_list_to_caffe2(self):
         task_class = DocumentClassificationTask
 
