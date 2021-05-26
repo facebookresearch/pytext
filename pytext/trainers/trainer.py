@@ -431,6 +431,8 @@ class Trainer(TrainerBase):
             with timing.time("train epoch"):
                 state.stage = Stage.TRAIN
                 state.model.train()
+                if train_config.encoder_eval_mode and hasattr(state.model, "encoder"):
+                    state.model.encoder.eval()
                 print(f"start training epoch {state.epoch}")
                 epoch_data = training_data
                 if self.config.num_batches_per_epoch:
