@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import tempfile
-from typing import Type
 import unittest
+from typing import Type
 
 import caffe2.python.hypothesis_test_util as hu
 import caffe2.python.predictor.predictor_exporter as pe
