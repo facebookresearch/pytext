@@ -51,10 +51,6 @@ class ResidualMLP(nn.Module):
 
     def forward(self, input):
         bias = self.mlp(input)
-        # Using hasattr to make it backward compatible with models
-        # which were trained before attribute was added.
-        if not hasattr(self, "add_residual"):
-            self.add_residual = True
         if self.add_residual:
             return input + bias
         else:
