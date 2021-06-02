@@ -4,10 +4,13 @@
 from typing import Dict, List, Optional
 
 import torch
+import torch.nn as nn
 from pytext.common.constants import SpecialTokens
 
 
-class ScriptVocabulary(torch.jit.ScriptModule):
+class ScriptVocabulary(nn.Module):
+    idx: Dict[str, int]
+
     def __init__(
         self,
         vocab_list,
@@ -19,17 +22,15 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         unk_token: Optional[str] = None,
     ):
         super().__init__()
-        self.vocab = torch.jit.Attribute(vocab_list, List[str])
-        self.unk_idx = torch.jit.Attribute(unk_idx, int)
-        self.pad_idx = torch.jit.Attribute(pad_idx, int)
-        self.eos_idx = torch.jit.Attribute(eos_idx, int)
-        self.bos_idx = torch.jit.Attribute(bos_idx, int)
-        self.mask_idx = torch.jit.Attribute(mask_idx, int)
-        self.idx = torch.jit.Attribute(
-            {word: i for i, word in enumerate(vocab_list)}, Dict[str, int]
-        )
+        self.vocab: List[str] = vocab_list
+        self.unk_idx: int = unk_idx
+        self.pad_idx: int = pad_idx
+        self.eos_idx: int = eos_idx
+        self.bos_idx: int = bos_idx
+        self.mask_idx: int = mask_idx
+        self.idx: Dict[str, int] = {word: i for i, word in enumerate(vocab_list)}
         pad_token = vocab_list[pad_idx] if pad_idx >= 0 else SpecialTokens.PAD
-        self.pad_token = torch.jit.Attribute(pad_token, str)
+        self.pad_token: str = pad_token
         self.unk_token = unk_token
 
     def get_pad_index(self):
@@ -38,21 +39,18 @@ class ScriptVocabulary(torch.jit.ScriptModule):
     def get_unk_index(self):
         return self.unk_idx
 
-    @torch.jit.script_method
     def lookup_indices_1d(self, values: List[str]) -> List[int]:
-        result = torch.jit.annotate(List[int], [])
+        result: List[int] = []
         for value in values:
             result.append(self.idx.get(value, self.unk_idx))
         return result
 
-    @torch.jit.script_method
     def lookup_indices_2d(self, values: List[List[str]]) -> List[List[int]]:
-        result = torch.jit.annotate(List[List[int]], [])
+        result: List[List[int]] = []
         for value in values:
             result.append(self.lookup_indices_1d(value))
         return result
 
-    @torch.jit.script_method
     def lookup_words_1d(
         self,
         values: torch.Tensor,
@@ -64,14 +62,13 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         This is a simple way to resolve UNK's when there's a correspondence
         between source and target translations.
         """
-        result = torch.jit.annotate(List[str], [])
+        result: List[str] = []
         for idx in range(values.size(0)):
             value = int(values[idx])
             if not (value in filter_token_list):
                 result.append(self.lookup_word(value, possible_unk_token))
         return result
 
-    @torch.jit.script_method
     def lookup_words_1d_cycle_heuristic(
         self,
         values: torch.Tensor,
@@ -85,11 +82,11 @@ class ScriptVocabulary(torch.jit.ScriptModule):
         substantial amount of queries with multiple unk tokens.
         """
         unk_idx = 0
-        unk_idx_length = torch.jit.annotate(int, len(ordered_unks_token))
-        unk_copy = torch.jit.annotate(bool, unk_idx_length != 0)
-        vocab_length = torch.jit.annotate(int, len(self.vocab))
+        unk_idx_length: int = len(ordered_unks_token)
+        unk_copy: bool = unk_idx_length != 0
+        vocab_length: int = len(self.vocab)
 
-        result = torch.jit.annotate(List[str], [])
+        result: List[str] = []
         for idx in range(values.size(0)):
             value = int(values[idx])
             if not (value in filter_token_list):
@@ -105,7 +102,6 @@ class ScriptVocabulary(torch.jit.ScriptModule):
 
         return result
 
-    @torch.jit.script_method
     def lookup_word(self, idx: int, possible_unk_token: Optional[str] = None):
         if idx < len(self.vocab) and idx != self.unk_idx:
             return self.vocab[idx]

@@ -307,7 +307,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
     class Config(ConfigBase):
         sp_model_path: str = ""
         max_input_text_length: Optional[int] = None
-        use_fb_sentencepiece: Optional[bool] = False
+        use_fb_sentencepiece: Optional[bool] = None
 
     def __init__(
         self,
@@ -347,12 +347,25 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
         return tokens
 
     def _load_processor(self):
-        sp_model_path = PathManager.get_local_path(self.sp_model_path)
         if getattr(self, "use_fb_sentencepiece", None):
-            self.processor = torch.classes.fb.SentencePiece.fromFile(sp_model_path)
+            try:
+                import importlib.resources
+
+                import sentencepiece_model
+
+                with importlib.resources.path(
+                    sentencepiece_model, "model"
+                ) as sp_model_path:
+                    self.processor = torch.classes.fb.SentencePiece.fromFile(
+                        str(sp_model_path)
+                    )
+            except Exception:
+                sp_model_path = PathManager.get_local_path(self.sp_model_path)
+                self.processor = torch.classes.fb.SentencePiece.fromFile(sp_model_path)
         else:
             from sentencepiece import SentencePieceProcessor
 
+            sp_model_path = PathManager.get_local_path(self.sp_model_path)
             self.processor = SentencePieceProcessor()
             self.processor.Load(sp_model_path)
 
