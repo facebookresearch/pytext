@@ -2,7 +2,11 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import collections
-from typing import NamedTuple
+from typing import NamedTuple, Dict
+
+from pytext.metrics import (
+    ClassificationMetrics,
+)
 
 
 class Seq2SeqMetrics(NamedTuple):
@@ -46,6 +50,45 @@ class Seq2SeqTopKMetrics(Seq2SeqMetrics):
             print(f"F1 for top {self.k} predictions = {self.f1_top_k}")
         if self.bleu_top_k is not None:
             print(f"BLEU for top {self.k} predictions = {self.bleu_top_k}")
+
+
+class MaskedSeq2SeqTopKMetrics(Seq2SeqTopKMetrics):
+    k: int
+    exact_match_top_k: float
+    f1_top_k: float
+    bleu_top_k: float
+    length_metrics: Dict[int, float] = None
+    length_reports: ClassificationMetrics = None
+
+    def __new__(
+        cls,
+        loss,
+        exact_match,
+        f1,
+        bleu,
+        k,
+        exact_match_top_k,
+        f1_top_k,
+        bleu_top_k,
+        length_metrics,
+        length_reports,
+    ):
+        self = super(Seq2SeqTopKMetrics, cls).__new__(cls, loss, exact_match, f1, bleu)
+        self.k = k
+        self.exact_match_top_k = exact_match_top_k
+        self.f1_top_k = f1_top_k
+        self.bleu_top_k = bleu_top_k
+        self.length_metrics = length_metrics
+        self.length_reports = length_reports
+        return self
+
+    def print_metrics(self) -> None:
+        super().print_metrics()
+        if self.length_metrics:
+            print("\n\nLength Metrics :", self.length_metrics)
+            print(f"Length Accuracy: {self.length_reports.accuracy * 100:.2f}")
+        if self.length_reports:
+            print("\n\nLength Reports :", self.length_reports.print_metrics())
 
 
 def compute_f1(hypothesis_list, reference_list, eps=1e-8):
