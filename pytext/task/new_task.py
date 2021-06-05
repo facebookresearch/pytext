@@ -414,7 +414,7 @@ class _NewTask(TaskBase):
             if quantize:
                 log_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
-            if accel.use_cuda_half_ft:
+            if accel.use_cuda and accel.use_cuda_half_ft:
                 log_accelerator_feature_usage("build.CUDA.half.faster_transformers")
                 # We need a separate path for GPU-only tracing, as we can't just trace a CPU model
                 # and invoke .cuda().half(),
@@ -442,7 +442,7 @@ class _NewTask(TaskBase):
             else:
                 trace = model.trace(inputs)
                 print("Traced!")
-                if accel.use_cuda_half:
+                if accel.use_cuda and accel.use_cuda_half:
                     log_accelerator_feature_usage("build.CUDA.half")
                     # convert trace to half precision
                     trace.cuda().half()
