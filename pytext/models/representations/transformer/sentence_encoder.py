@@ -177,3 +177,23 @@ def translate_roberta_state_dict(state_dict):
 
 def translate_pytext_roberta_state_dict(state_dict):
     return rename_component_from_root(state_dict, "encoder.transformer", "transformer")
+
+
+def translate_encoder_from_stl_text(state_dict):
+    regex = re.compile("^model.encoder(.*)$")
+    translated = {}
+    for k, v in state_dict.items():
+        if regex.findall(k):
+            new_key = regex.sub(r"encoder\1", k)
+            translated[new_key] = v
+    return translated
+
+
+def translate_decoder_from_stl_text(state_dict):
+    regex = re.compile("^model.decoder.(.*)$")
+    translated = {}
+    for k, v in state_dict.items():
+        if regex.findall(k):
+            new_key = regex.sub(r"\1", k)
+            translated[new_key] = v
+    return translated
