@@ -320,16 +320,9 @@ class MaskedSequenceGenerator(Module):
         )
 
         # OneStep Generation
-        pad_mask = tgt_tokens.eq(self.trg_vocab.pad_idx)
-
-        tgt_tokens, token_probs, token_logits = self.generate_non_autoregressive(
-            tiled_encoder_out, tgt_tokens
-        )
-        tgt_tokens[pad_mask] = torch.tensor(
-            self.trg_vocab.pad_idx, device=tgt_tokens.device
-        ).long()
-        token_probs[pad_mask] = torch.tensor(
-            1.0, device=token_probs.device, dtype=token_probs.dtype
+        tgt_tokens, token_probs, token_logits = self.generate(
+            tiled_encoder_out=tiled_encoder_out,
+            tgt_tokens=tgt_tokens,
         )
         token_probs = token_probs.view(bsz, self.length_beam_size, max_len).log()
         lprobs = token_probs.sum(-1)
@@ -345,6 +338,25 @@ class MaskedSequenceGenerator(Module):
         all_indices = torch.arange(bsz).unsqueeze(-1)
         hypotheses = hypotheses[all_indices, indices]
         return hypotheses, beam, sorted_scores.exp(), token_probs, token_logits
+
+    def generate(
+        self,
+        tiled_encoder_out: Dict[str, Tensor],
+        tgt_tokens: torch.Tensor,
+    ):
+        # One step Generation
+        pad_mask = tgt_tokens.eq(self.trg_vocab.pad_idx)
+
+        tgt_tokens, token_probs, token_logits = self.generate_non_autoregressive(
+            tiled_encoder_out, tgt_tokens
+        )
+        tgt_tokens[pad_mask] = torch.tensor(
+            self.trg_vocab.pad_idx, device=tgt_tokens.device
+        ).long()
+        token_probs[pad_mask] = torch.tensor(
+            1.0, device=token_probs.device, dtype=token_probs.dtype
+        )
+        return tgt_tokens, token_probs, token_logits
 
     def get_length_prediction(
         self,
