@@ -10,24 +10,28 @@ from .tensorizers import Tensorizer
 from .utils import Vocabulary
 
 
+class DecoupledUtils:
+    @classmethod
+    def is_intent_token(cls, token):
+        return token.lower().startswith("[in:") or cls.is_ood_token(token)
+
+    @classmethod
+    def is_slot_token(cls, token):
+        return token.lower().startswith("[sl:")
+
+    @classmethod
+    def is_ood_token(cls, token):
+        return token.lower().startswith("[") and token.lower().endswith("outofdomain")
+
+
 def get_decoupled(tokens, filter_ood_slots):
     """
     Convert the seqlogical form to the decoupled form
     """
-
-    def is_intent_token(token):
-        return token.lower().startswith("[in:") or is_ood_token(token)
-
-    def is_slot_token(token):
-        return token.lower().startswith("[sl:")
-
-    def is_ood_token(token):
-        return token.lower().startswith("[") and token.lower().endswith("outofdomain")
-
     if not tokens:
         return []
     if filter_ood_slots:
-        if is_ood_token(tokens[0]):
+        if DecoupledUtils.is_ood_token(tokens[0]):
             # Out of domain sample
             return [tokens[0], "]"]
 
@@ -36,7 +40,7 @@ def get_decoupled(tokens, filter_ood_slots):
     # [index_of_opening_bracket: int, has_children: bool]
     stack = []
     for i, token in enumerate(tokens):
-        if is_intent_token(token) or is_slot_token(token):
+        if DecoupledUtils.is_intent_token(token) or DecoupledUtils.is_slot_token(token):
             # everything on stack now has children
             for tup in stack:
                 tup[1] = True
@@ -50,7 +54,7 @@ def get_decoupled(tokens, filter_ood_slots):
                 raise ValueError(" ".join(tokens))
             idx, has_child = stack.pop()
             # don't keep tokens if it is an intent OR it has children
-            if has_child or is_intent_token(tokens[idx]):
+            if has_child or DecoupledUtils.is_intent_token(tokens[idx]):
                 decoupled.append(token)
             else:
                 # leaf level slot: keep all tokens
