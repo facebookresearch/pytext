@@ -95,6 +95,9 @@ class ConvLengthPredictionModule(Module):
         predicted_lengths = F.log_softmax(predicted_lengths_logits, dim=-1)
         return predicted_lengths, predicted_lengths_logits
 
+    def create_eval_module(self):
+        return self
+
     @classmethod
     def from_config(cls, config: Config, embed_dim: int):
         conv_layers = []
@@ -156,6 +159,9 @@ class MaskedLengthPredictionModule(Module):
             predicted_lengths_logits.dtype
         )
         return predicted_lengths, predicted_lengths_logits
+
+    def create_eval_module(self):
+        return self
 
     @classmethod
     def from_config(cls, config: Config, embed_dim: int):

@@ -190,6 +190,7 @@ class MaskedSequenceGenerator(Module):
         embed_quantize,
     ):
         super().__init__()
+        length_prediction_model = length_prediction_model.create_eval_module()
         if quantize:
             self.model = torch.quantization.quantize_dynamic(
                 model,
