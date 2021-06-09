@@ -58,7 +58,11 @@ class LabelSmoothingLoss(Loss):
         self.label_loss = label_loss
         self.smoothing_loss = smoothing_loss
 
-        loss = label_loss + self.beta * smoothing_loss
+        loss = label_loss
+        if self.beta > 0:
+            # if beta is 0 and logits contains -inf smoothing_loss will
+            # messup
+            loss += self.beta * smoothing_loss
 
         return loss
 
@@ -182,6 +186,7 @@ class NARSequenceLoss(Loss):
         length_type: SourceType = SourceType.LOG_PROBS
         label_loss: LabelSmoothingLoss.Config = LabelSmoothingLoss.Config()
         length_loss: LabelSmoothingLoss.Config = LabelSmoothingLoss.Config()
+        disable_label_loss: bool = False
 
     def __init__(self, config, ignore_index=1):
         self.beta = config.beta
@@ -195,6 +200,7 @@ class NARSequenceLoss(Loss):
 
         self.label_loss_fn = create_loss(config.label_loss, ignore_index=ignore_index)
         self.length_loss_fn = create_loss(config.length_loss, ignore_index=ignore_index)
+        self.disable_label_loss = config.disable_label_loss
 
     def __call__(
         self,
@@ -239,6 +245,11 @@ class NARSequenceLoss(Loss):
         length_loss = self.length_loss_fn(
             length_logits, length_targets.squeeze(-1), reduce
         )
+
+        if self.disable_label_loss:
+            # disable the label loss and only optimize length
+            # loss
+            label_loss = label_loss * 0
 
         loss = label_loss + self.beta * length_loss
 
