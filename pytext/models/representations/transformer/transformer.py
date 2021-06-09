@@ -54,7 +54,6 @@ class TransformerLayer(nn.Module):
             biased_input = input + attention
             x = self.final_layer_norm(biased_input)
             return self.residual_mlp(x) + biased_input
-
         else:
             attention = self.attention(input, key_padding_mask)
             attention = self.dropout(attention)
