@@ -334,13 +334,27 @@ JSONString = TypeVar("JSONString", str, bytes)
 
 @RootDataSource.register_type(Gazetteer)
 @RootDataSource.register_type(Dict[int, int])
+@RootDataSource.register_type(Dict[int, Dict[int, float]])
 @RootDataSource.register_type(List[str])
 @RootDataSource.register_type(List[int])
 def load_json(s):
     if isinstance(s, List) and all(isinstance(x, (str, int)) for x in s):
         return s
+
     if isinstance(s, Dict) and all(
-        isinstance(x[0], int) and isinstance(x[1], int) for x in s.items()
+        isinstance(x[0], int)
+        and (
+            # Dict[int, int]
+            isinstance(x[1], int)
+            or (  # Dict[int, Dict[int, float]]
+                isinstance(x[1], Dict)
+                and all(
+                    isinstance(y[0], int) and isinstance(y[1], float)
+                    for y in x[1].items()
+                )
+            )
+        )
+        for x in s.items()
     ):
         return s
     return json.loads(s)
