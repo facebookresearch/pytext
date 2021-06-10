@@ -5,10 +5,11 @@ from .contextual_token_embedding import ContextualTokenEmbedding
 from .dict_embedding import DictEmbedding
 from .embedding_base import EmbeddingBase
 from .embedding_list import EmbeddingList
+from .int_single_category_embedding import IntSingleCategoryEmbedding
+from .int_weighted_multi_category_embedding import IntWeightedMultiCategoryEmbedding
 from .mlp_embedding import MLPEmbedding
 from .word_embedding import WordEmbedding
 from .word_seq_embedding import WordSeqEmbedding
-
 
 __all__ = [
     "EmbeddingBase",
@@ -19,4 +20,6 @@ __all__ = [
     "ContextualTokenEmbedding",
     "WordSeqEmbedding",
     "MLPEmbedding",
+    "IntSingleCategoryEmbedding",
+    "IntWeightedMultiCategoryEmbedding",
 ]
