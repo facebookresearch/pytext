@@ -415,7 +415,7 @@ class PerLabelConfusions:
         confusions = self.label_confusions_map[label]
         setattr(confusions, item, getattr(confusions, item) + count)
 
-    def compute_metrics(self) -> MacroPRF1Metrics:
+    def compute_metrics(self, log_per_label_metrics: bool = True) -> MacroPRF1Metrics:
         per_label_scores: Dict[str, PRF1Scores] = {}
         precision_sum, recall_sum, f1_sum = 0.0, 0.0, 0.0
         for label, confusions in sorted(self.label_confusions_map.items()):
@@ -427,7 +427,7 @@ class PerLabelConfusions:
                 f1_sum += scores.f1
         num_labels = len(self.label_confusions_map)
         return MacroPRF1Metrics(
-            per_label_scores=per_label_scores,
+            per_label_scores=per_label_scores if log_per_label_metrics else {},
             macro_scores=MacroPRF1Scores(
                 num_labels=num_labels,
                 precision=safe_division(precision_sum, num_labels),
@@ -1013,6 +1013,7 @@ def compute_classification_metrics(
     average_precisions: bool = True,
     recall_at_precision_thresholds: Sequence[float] = RECALL_AT_PRECISION_THRESHOLDS,
     precision_at_recall_thresholds: Sequence[float] = PRECISION_AT_RECALL_THRESHOLDS,
+    log_per_label_metrics: bool = True,
 ) -> ClassificationMetrics:
     """
     A general function that computes classification metrics given a list of label
@@ -1044,7 +1045,9 @@ def compute_classification_metrics(
             per_label_confusions.update(expected_label, "FN", 1)
             per_label_confusions.update(predicted_label, "FP", 1)
     accuracy = safe_division(num_correct, len(predictions))
-    macro_prf1_metrics = per_label_confusions.compute_metrics()
+    macro_prf1_metrics = per_label_confusions.compute_metrics(
+        log_per_label_metrics=log_per_label_metrics
+    )
 
     soft_metrics = (
         compute_soft_metrics(
@@ -1073,7 +1076,7 @@ def compute_classification_metrics(
     return ClassificationMetrics(
         accuracy=accuracy,
         macro_prf1_metrics=macro_prf1_metrics,
-        per_label_soft_scores=soft_metrics,
+        per_label_soft_scores=soft_metrics if log_per_label_metrics else {},
         mcc=mcc,
         roc_auc=roc_auc,
         loss=loss,

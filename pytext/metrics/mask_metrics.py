@@ -89,6 +89,7 @@ def compute_length_metrics(
     all_target_lens: List[int],
     all_target_length_preds: List[List[int]],
     select_length_beam,
+    log_per_label_metrics: bool = True,
 ):
     length_metrics = {}
     length_report = {}
@@ -117,7 +118,10 @@ def compute_length_metrics(
         ]
 
         length_report = compute_classification_metrics(
-            all_pairs, [str(l) for l in range(max_len + 1)], 0.0  # Placeholder loss
+            all_pairs,
+            [str(l) for l in range(max_len + 1)],
+            0.0,  # Placeholder loss
+            log_per_label_metrics=log_per_label_metrics,
         )
 
     return length_metrics, length_report
@@ -154,7 +158,10 @@ def compute_masked_metrics(
         calculated_loss,
     )
     length_metrics, length_reports = compute_length_metrics(
-        all_target_lens, all_target_length_preds, select_length_beam
+        all_target_lens,
+        all_target_length_preds,
+        select_length_beam,
+        log_per_label_metrics=print_length_metrics,
     )
     return MaskedSeq2SeqJointMetrics(
         top_intent_accuracy=all_metrics.top_intent_accuracy,
