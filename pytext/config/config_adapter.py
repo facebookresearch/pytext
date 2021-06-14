@@ -992,6 +992,19 @@ def v32_to_v33(json_config):
     return json_config
 
 
+@register_adapter(from_version=33)
+def v33_to_v34(json_config):
+    return json_config
+
+
+@register_down_grade_adapter(from_version=34)
+def v34_to_v33(json_config):
+    for v in get_json_config_iterator(json_config, "YuMentionDetectionTask"):
+        if "max_mention_tokens" in v:
+            del v["max_mention_tokens"]
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
