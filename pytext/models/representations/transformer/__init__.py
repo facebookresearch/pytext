@@ -22,7 +22,7 @@ from .multihead_linear_attention import (
 )
 from .positional_embedding import PositionalEmbedding
 from .representation import TransformerRepresentation
-from .residual_mlp import ResidualMLP
+from .residual_mlp import ResidualMLP, GeLU
 from .sentence_encoder import PostEncoder, SentenceEncoder
 from .transformer import SELFIETransformer, Transformer, TransformerLayer
 
@@ -39,4 +39,5 @@ __all__ = [
     "Transformer",
     "TransformerLayer",
     "TransformerRepresentation",
+    "GeLU",
 ]
