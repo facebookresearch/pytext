@@ -20,6 +20,11 @@ DEFAULT_NUM_LAYERS = 12
 DEFAULT_MAX_SEQUENCE_LENGTH = 514
 DEFAULT_NUM_ATTENTION_HEADS = 12
 
+# The logic in this Pytorch module is mirrored in custom operators such as
+# FasterTransformer and DeepSpeed
+# If you change the logic here, please ensure appropriate alignment of the
+# corresponding custom operators.
+
 
 class TransformerLayer(nn.Module):
     def __init__(
