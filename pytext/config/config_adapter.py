@@ -1005,6 +1005,20 @@ def v34_to_v33(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=35)
+def v35_to_v34(json_config):
+    for v in get_json_config_iterator(json_config, "LASERTensorizer"):
+        if "lowercase" in v:
+            del v["lowercase"]
+    return json_config
+
+
+@register_adapter(from_version=34)
+def v34_to_v35(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
