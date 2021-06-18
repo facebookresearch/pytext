@@ -8,10 +8,8 @@ import os
 # in case we want some hacks in PathManager, we can do it here without updating
 # the import everywhere in PyText
 # TODO: @stevenliu use PathManagerFactory after it's released to PyPI
-from iopath.common.file_io import HTTPURLHandler, PathManager as PathManagerBase
-
-
-PathManager = PathManagerBase()
+from iopath.common.file_io import HTTPURLHandler
+from pytorch.text.fb.utils import PATH_MANAGER as PathManager  # noqa
 
 
 def register_http_url_handler():
