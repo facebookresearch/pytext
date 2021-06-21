@@ -121,3 +121,22 @@ class Stage(Enum):
 
 class RawExampleFieldName:
     ROW_INDEX = "row_index"
+
+
+matcha_entity_domains = [
+    "person",
+    "organization",
+    "media",
+    "sport",
+    "holiday",
+    "event",
+    "civic",
+    "music",
+    "food",
+    "product",
+    "geo",
+    "medical",
+    "general_knowledge",
+    "fb_product",
+    "misc",
+]
