@@ -616,9 +616,6 @@ class Trainer(TrainerBase):
                 )
         # update gradients after len(samples) forward & backward
         self.optimizer_step(state)
-        with timing.time("add gradients"):
-            if report_metric and state.stage == Stage.TRAIN:
-                metric_reporter.add_gradients(state.model)
         self.sparsification_step(state)
 
 
@@ -673,9 +670,6 @@ class TaskTrainer(Trainer):
                     metric_reporter.report_realtime_metric(state.stage)
         # update gradients after #len(samples) forward & backward
         self.optimizer_step(state)
-        with timing.time("add gradients"):
-            if report_metric and state.stage == Stage.TRAIN:
-                metric_reporter.add_gradients(state.model)
         self.sparsification_step(state)
 
     def _prepare_scheduler(self, training_batches, scheduler=None):

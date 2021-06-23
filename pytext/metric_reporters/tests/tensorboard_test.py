@@ -46,8 +46,6 @@ class TensorboardTest(TestCase):
             meta={},
             model=model,
             optimizer=optimizer,
-            log_gradient=False,
-            gradients={},
         )
 
     def test_report_metrics_to_others(self):
@@ -72,6 +70,4 @@ class TensorboardTest(TestCase):
             meta={},
             model=model,
             optimizer=optimizer,
-            log_gradient=False,
-            gradients={},
         )
