@@ -10,7 +10,7 @@ from pytext.common.constants import (
 )
 from pytext.data.data_structures.annotation import INVALID_TREE_STR, Annotation
 from pytext.data.tensorizers import Tensorizer
-from pytext.metric_reporters.channel import ConsoleChannel
+from pytext.metric_reporters.channel import Channel, ConsoleChannel
 from pytext.metric_reporters.compositional_metric_reporter import (
     CompositionalMetricReporter,
 )
@@ -66,7 +66,13 @@ class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
 
 
 class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
-    def __init__(self, channels, log_gradient, tensorizers, accept_flat_intents_slots):
+    def __init__(
+        self,
+        channels: List[Channel],
+        log_gradient: bool,
+        tensorizers: Dict[str, Tensorizer],
+        accept_flat_intents_slots: bool,
+    ) -> None:
         super().__init__(channels, log_gradient, tensorizers)
         self.accept_flat_intents_slots = accept_flat_intents_slots
 

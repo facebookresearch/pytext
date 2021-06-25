@@ -12,11 +12,10 @@ from pytext.common.constants import (
 )
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
+from pytext.metric_reporters.channel import Channel, ConsoleChannel
 from pytext.metrics import RealtimeMetrics
 from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
-
-from .channel import ConsoleChannel
 
 
 class MetricReporter(Component):
@@ -54,7 +53,12 @@ class MetricReporter(Component):
         student_column_names: List[str] = []
         log_gradient: bool = False
 
-    def __init__(self, channels, log_gradient=False, pep_format=False) -> None:
+    def __init__(
+        self,
+        channels: List[Channel],
+        log_gradient: bool = False,
+        pep_format: bool = False,
+    ) -> None:
         self.log_gradient = log_gradient
         self._reset()
         self.channels = channels
