@@ -10,7 +10,11 @@ from pytext.common.constants import (
     Stage,
 )
 from pytext.data.tensorizers import Tensorizer
-from pytext.metric_reporters.channel import ConsoleChannel, FileChannel
+from pytext.metric_reporters.channel import (
+    Channel,
+    ConsoleChannel,
+    FileChannel,
+)
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics import safe_division
 from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics, compute_f1
@@ -48,7 +52,12 @@ class Seq2SeqMetricReporter(MetricReporter):
     class Config(MetricReporter.Config):
         pass
 
-    def __init__(self, channels, log_gradient, tensorizers):
+    def __init__(
+        self,
+        channels: List[Channel],
+        log_gradient: bool,
+        tensorizers: Dict[str, Tensorizer],
+    ) -> None:
         super().__init__(channels, log_gradient)
         self.tensorizers = tensorizers
 
