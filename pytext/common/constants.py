@@ -129,7 +129,6 @@ matcha_entity_domains = [
     "media",
     "sport",
     "holiday",
-    "event",
     "civic",
     "music",
     "food",
@@ -137,6 +136,5 @@ matcha_entity_domains = [
     "geo",
     "medical",
     "general_knowledge",
-    "fb_product",
     "misc",
 ]
