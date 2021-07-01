@@ -620,3 +620,64 @@ class LabelSmoothedCrossEntropyLoss(Loss):
         self.label_smoothing_loss = label_smoothing_loss
 
         return (1.0 - self.beta) * cross_entropy_loss + self.beta * label_smoothing_loss
+
+
+class BinaryFocalLoss(Loss):
+    """
+    Focal loss for binary classification
+    refrence: https://arxiv.org/pdf/1708.02002.pdf
+    """
+
+    class Config(ConfigBase):
+        alpha: float = 0.25
+        gamma: float = 2.0
+        logits: bool = True
+
+    def __init__(self, config, *args, **kwargs):
+        self.alpha = config.alpha
+        self.gamma = config.gamma
+        self.logits = config.logits
+
+    def __call__(self, logits, targets, reduce=True):
+        if self.logits:
+            bce_loss = F.binary_cross_entropy_with_logits(
+                logits, targets, reduction="none"
+            )
+        else:
+            bce_loss = F.binary_cross_entropy(logits, targets, reduction="none")
+        pt = torch.exp(-bce_loss)
+        loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+        return loss.mean() if reduce else loss
+
+
+class FocalLoss(Loss):
+    """
+    Focal loss for multi-class outputs
+    refrence: https://arxiv.org/pdf/1708.02002.pdf
+    """
+
+    class Config(ConfigBase):
+        alpha: float = 0.25
+        gamma: float = 2.0
+        logits: bool = True
+
+    def __init__(self, config, ignore_index=-100, weight=None, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.weight = weight
+        self.alpha = config.alpha
+        self.gamma = config.gamma
+        self.logits = config.logits
+
+    def __call__(self, logits, targets, reduce=True):
+        # Per CrossEntropyLoss implementation, we didn't use F.cross_entropy().
+        # There's some wisdom from fairseq folks that it's the preferred way.
+        # Needs more testing before we can change to using F.cross_entropy().
+        log_prob = F.log_softmax(logits, 1, dtype=torch.float32)
+        pt = torch.exp(log_prob)
+        return F.nll_loss(
+            (self.alpha * (1 - pt) ** self.gamma) * log_prob,
+            targets,
+            weight=self.weight,
+            ignore_index=self.ignore_index,
+            reduction="mean" if reduce else "none",
+        )

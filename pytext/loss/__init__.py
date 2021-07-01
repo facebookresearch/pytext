@@ -18,6 +18,8 @@ from .loss import (
     NLLLoss,
     PairwiseRankingLoss,
     SourceType,
+    BinaryFocalLoss,
+    FocalLoss,
 )
 from .regularized_loss import (
     LabelSmoothingLoss,
@@ -56,4 +58,6 @@ __all__ = [
     "UniformRegularizer",
     "EntropyRegularizer",
     "AdaptiveRegularizer",
+    "BinaryFocalLoss",
+    "FocalLoss",
 ]

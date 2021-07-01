@@ -7,7 +7,13 @@ import torch
 import torch.nn.functional as F
 from pytext.config.component import create_loss
 from pytext.fields import FieldMeta
-from pytext.loss import CrossEntropyLoss, KLDivergenceCELoss, Loss
+from pytext.loss import (
+    CrossEntropyLoss,
+    KLDivergenceCELoss,
+    BinaryFocalLoss,
+    FocalLoss,
+    Loss,
+)
 from pytext.models.output_layers import OutputLayerBase
 from pytext.utils.usage import log_class_usage
 
@@ -15,7 +21,10 @@ from pytext.utils.usage import log_class_usage
 class SquadOutputLayer(OutputLayerBase):
     class Config(OutputLayerBase.Config):
         loss: Union[
-            CrossEntropyLoss.Config, KLDivergenceCELoss.Config
+            CrossEntropyLoss.Config,
+            KLDivergenceCELoss.Config,
+            BinaryFocalLoss.Config,
+            FocalLoss.Config,
         ] = CrossEntropyLoss.Config()
         ignore_impossible: bool = True
         pos_loss_weight: float = 0.5
