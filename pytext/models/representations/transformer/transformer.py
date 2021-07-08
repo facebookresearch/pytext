@@ -103,10 +103,10 @@ class Transformer(nn.Module):
         # compute padding mask. This is needed for multi-head attention
         padding_mask = tokens.eq(self.padding_idx)
 
-        embedded = self.token_embedding(tokens)
+        token_embeddings = self.token_embedding(tokens)
         embedded_positions = self.positional_embedding(tokens)
 
-        embedded += embedded_positions
+        embedded = token_embeddings + embedded_positions
 
         # Using hasattr to make it backward compatible with models
         # which were trained before attribute was added.
