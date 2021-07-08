@@ -52,6 +52,10 @@ class TransformerLayer(nn.Module):
         log_class_usage(__class__)
 
     def forward(self, input, key_padding_mask):
+        # Using hasattr to make it backward compatible with models
+        # which were trained before attribute was added.
+        if not hasattr(self, "normalize_before"):
+            self.normalize_before = False
         if self.normalize_before:
             x = self.attention_layer_norm(input)
             attention = self.attention(x, key_padding_mask)
@@ -103,6 +107,11 @@ class Transformer(nn.Module):
         embedded_positions = self.positional_embedding(tokens)
 
         embedded += embedded_positions
+
+        # Using hasattr to make it backward compatible with models
+        # which were trained before attribute was added.
+        if not hasattr(self, "normalize_before"):
+            self.normalize_before = False
         if not self.normalize_before:
             embedded = self.embedding_layer_norm(embedded)
         embedded = self.dropout(embedded)
