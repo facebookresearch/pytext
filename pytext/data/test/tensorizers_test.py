@@ -39,6 +39,7 @@ from pytext.data.tensorizers import (
     TokenTensorizer,
     VocabConfig,
     VocabFileConfig,
+    LabelListRankTensorizer,
     initialize_tensorizers,
     lookup_tokens,
 )
@@ -1685,3 +1686,21 @@ class CharacterVocabTokenTensorizerTest(unittest.TestCase):
         self.assertIsInstance(torchscript_tensor_lens, torch.LongTensor)
         self.assertEqual(torchscript_tensor.tolist(), expected_tensors[0])
         self.assertEqual(torchscript_tensor_lens.tolist(), expected_tensors[1])
+
+
+class LabelListRankTensorizerTest(unittest.TestCase):
+    def _initialize_tensorizer(self, tensorizer):
+        data = [{"label": ['["label_1", 1]', '["label_2", 1]']}]
+        init = tensorizer.initialize()
+        init.send(None)  # start the init generator
+        for row in data:
+            init.send(row)
+        init.close()
+
+    def test_create_with_additional_labels(self):
+        add_labels = ["add_label_1", "add_label_2"]
+        tensorizer = LabelListRankTensorizer.from_config(
+            LabelListRankTensorizer.Config(add_labels=add_labels)
+        )
+        self._initialize_tensorizer(tensorizer)
+        self.assertEqual(4, len(tensorizer.vocab))

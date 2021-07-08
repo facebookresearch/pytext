@@ -1331,6 +1331,7 @@ class LabelListRankTensorizer(LabelTensorizer):
             config.label_vocab,
             config.label_vocab_file,
             config.is_input,
+            config.add_labels,
             pad_missing=config.pad_missing,
         )
 
@@ -1396,7 +1397,6 @@ class LabelListRankTensorizer(LabelTensorizer):
             if self.add_labels:
                 self.vocab_builder.add_all(self.add_labels)
             self.vocab, self.pad_idx = self._create_vocab()
-
 
 class UidTensorizer(Tensorizer):
     """Numberize user IDs which can be either strings or tensors."""
