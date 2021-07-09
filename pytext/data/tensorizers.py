@@ -1398,6 +1398,7 @@ class LabelListRankTensorizer(LabelTensorizer):
                 self.vocab_builder.add_all(self.add_labels)
             self.vocab, self.pad_idx = self._create_vocab()
 
+
 class UidTensorizer(Tensorizer):
     """Numberize user IDs which can be either strings or tensors."""
 
