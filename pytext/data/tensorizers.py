@@ -1335,6 +1335,10 @@ class LabelListRankTensorizer(LabelTensorizer):
             pad_missing=config.pad_missing,
         )
 
+    @staticmethod
+    def format_input_string(label: str, rank: int) -> str:
+        return f'["[\\"{label}\\", {rank}]"]'
+
     def __init__(self, *args, pad_missing: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.pad_missing = pad_missing
