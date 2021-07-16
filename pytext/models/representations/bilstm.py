@@ -155,6 +155,15 @@ class BiLSTM(RepresentationBase):
                 )
             else:
                 rnn_input = embedded_tokens
+
+            # check to make sure rnn_input and states have same dtype, this is useful for FP16 training
+            # where rnn_input is in float16 but states is still in float32
+            if (
+                rnn_input[0].dtype != states[0].dtype
+                and rnn_input[0].dtype == torch.half
+            ):
+                states = [state.half() for state in states]
+
             rep, new_state = self.lstm(rnn_input, states)
             if self.pack_sequence:
                 rep, _ = pad_packed_sequence(

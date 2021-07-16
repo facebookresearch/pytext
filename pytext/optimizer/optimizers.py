@@ -115,6 +115,12 @@ class AdamW(torch.optim.AdamW, Optimizer):
     def from_config(cls, config: Config, model: torch.nn.Module):
         return cls(model.parameters(), config.lr, config.weight_decay, config.eps)
 
+    def step(self, *args, **kwargs):
+        # this is to enable FP16 training, following https://fb.workplace.com/groups/300451907202972/permalink/804122046835953/
+        if "groups" in kwargs.keys():
+            kwargs.pop("groups")
+        return super().step(*args, **kwargs)
+
 
 def learning_rates(optimizer):
     for param_group in optimizer.param_groups:
