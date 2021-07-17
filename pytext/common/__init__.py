@@ -9,5 +9,6 @@ from .constants import (
     Padding,
     Stage,
     VocabMeta,
-    matcha_entity_domains,
+    matcha_entity_raw_domains,
+    matcha_entity_high_level_domains,
 )
