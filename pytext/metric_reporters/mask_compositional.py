@@ -181,6 +181,15 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         return loss_agg
 
     def calculate_metric(self):
+        # Load number of weights and current_model_parameter_size if information is available.
+        num_weights = None
+        current_model_parameter_size = None
+        if "num_weights" in self.all_context:
+            num_weights = self.all_context["num_weights"]
+        if "current_model_parameter_size" in self.all_context:
+            current_model_parameter_size = self.all_context[
+                "current_model_parameter_size"
+            ]
         all_metrics = compute_masked_metrics(
             self.create_frame_prediction_pairs(
                 self.all_pred_trees, self.all_target_trees
@@ -198,6 +207,8 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
                 self.all_top_extract, self.all_target_trees
             ),
             print_length_metrics=self.print_length_metrics,
+            num_weights=num_weights,
+            current_model_parameter_size=current_model_parameter_size,
         )
         return all_metrics
 

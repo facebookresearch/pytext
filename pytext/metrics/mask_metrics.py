@@ -18,9 +18,15 @@ from pytext.metrics.intent_slot_metrics import (
 )
 from sklearn.metrics import accuracy_score
 
+BIT2BYTE_CONSTANT = 2 ** 23
+
 
 class MaskedSeq2SeqJointMetrics(NamedTuple):
     top_intent_accuracy: Optional[float]
+    current_model_parameter_size: Optional[float]
+    size_32bit_model: Optional[float]
+    size_8bit_model: Optional[float]
+    size_4bit_model: Optional[float]
     frame_accuracy: Optional[float]
     frame_accuracy_top_k: Optional[float]
     frame_accuracies_by_depth: Optional[FrameAccuraciesByDepth]
@@ -36,6 +42,14 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
     print_length_metrics: bool = True
 
     def print_metrics(self) -> None:
+        if self.size_32bit_model:
+            print(f"\n\nsize of 32bit model = {self.size_32bit_model} MB")
+        if self.size_8bit_model:
+            print(f"\n\nsize of 8bit model = {self.size_8bit_model} MB")
+        if self.size_4bit_model:
+            print(f"\n\nsize of 4bit model = {self.size_4bit_model} MB")
+        if self.current_model_parameter_size:
+            print(f"\n\nparameter size of current model = {self.current_model_parameter_size} MB")
         if self.frame_accuracy:
             print(f"\n\nFrame accuracy = {self.frame_accuracy * 100:.2f}")
         if self.frame_accuracy_top_k:
@@ -144,6 +158,8 @@ def compute_masked_metrics(
     non_invalid_frame_pairs: Optional[Sequence[FramePredictionPair]] = None,
     extracted_frame_pairs: Optional[Sequence[FramePredictionPair]] = None,
     print_length_metrics: bool = True,
+    num_weights=None,
+    current_model_parameter_size=None,
 ) -> MaskedSeq2SeqJointMetrics:
 
     all_metrics = compute_all_metrics(
@@ -163,8 +179,25 @@ def compute_masked_metrics(
         select_length_beam,
         log_per_label_metrics=print_length_metrics,
     )
+    # Compute sizes of 32bit, 8bit, and 4bit versions of the model
+    # in MB (hence the conversion factor), if the number of weights is provided.
+    # Default to -1 if unavailable.
+    size_32bit_model = -1
+    size_8bit_model = -1
+    size_4bit_model = -1
+    if num_weights:
+        size_32bit_model = 32 * num_weights / (BIT2BYTE_CONSTANT)
+        size_8bit_model = 8 * num_weights / (BIT2BYTE_CONSTANT)
+        size_4bit_model = 4 * num_weights / (BIT2BYTE_CONSTANT)
+    if not current_model_parameter_size:
+        current_model_parameter_size = -1
+
     return MaskedSeq2SeqJointMetrics(
         top_intent_accuracy=all_metrics.top_intent_accuracy,
+        current_model_parameter_size=current_model_parameter_size,
+        size_32bit_model=size_32bit_model,
+        size_8bit_model=size_8bit_model,
+        size_4bit_model=size_4bit_model,
         frame_accuracy=all_metrics.frame_accuracy,
         frame_accuracy_top_k=all_metrics.frame_accuracy_top_k,
         frame_accuracies_by_depth=all_metrics.frame_accuracies_by_depth,
