@@ -49,7 +49,9 @@ class MaskedSeq2SeqJointMetrics(NamedTuple):
         if self.size_4bit_model:
             print(f"\n\nsize of 4bit model = {self.size_4bit_model} MB")
         if self.current_model_parameter_size:
-            print(f"\n\nparameter size of current model = {self.current_model_parameter_size} MB")
+            print(
+                f"\n\nparameter size of current model = {self.current_model_parameter_size} MB"
+            )
         if self.frame_accuracy:
             print(f"\n\nFrame accuracy = {self.frame_accuracy * 100:.2f}")
         if self.frame_accuracy_top_k:
