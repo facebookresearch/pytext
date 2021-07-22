@@ -64,7 +64,7 @@ class TwoTowerClassificationModel(BaseModel):
             right_tensorizer=right_script_tensorizer,
             left_tensorizer=left_script_tensorizer,
             right_normalizer=tensorizers["right_dense"].normalizer,
-            left_normalizer=tensorizers["left_dense"].normalizer,
+            # left_normalizer=tensorizers["left_dense"].normalizer,
         )
 
     def graph_mode_quantize(self, inputs, data_loader, calibration_num_batches=64):
@@ -99,7 +99,7 @@ class TwoTowerClassificationModel(BaseModel):
             tensor_dict["right_tokens"],
             tensor_dict["left_tokens"],
             tensor_dict["right_dense"],
-            tensor_dict["left_dense"],
+            # tensor_dict["left_dense"],
         )
 
         return model_inputs
@@ -148,7 +148,8 @@ class TwoTowerClassificationModel(BaseModel):
         )
 
         right_dense_dim = tensorizers["right_dense"].dim
-        left_dense_dim = tensorizers["left_dense"].dim
+        # left_dense_dim = tensorizers["left_dense"].dim
+        left_dense_dim = 0
 
         decoder = create_module(
             config.decoder,

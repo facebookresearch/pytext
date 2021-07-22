@@ -777,17 +777,17 @@ class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
         right_tensorizer: ScriptTensorizer,
         left_tensorizer: ScriptTensorizer,
         right_normalizer: VectorNormalizer,
-        left_normalizer: VectorNormalizer,
+        # left_normalizer: VectorNormalizer,
     ):
         super().__init__(model, output_layer, right_tensorizer, left_tensorizer)
         self.right_normalizer = right_normalizer
-        self.left_normalizer = left_normalizer
+        # self.left_normalizer = left_normalizer
 
     @torch.jit.script_method
     def forward(
         self,
         right_dense_feat: List[List[float]],
-        left_dense_feat: List[List[float]],
+        # left_dense_feat: List[List[float]],
         right_texts: Optional[List[str]] = None,
         left_texts: Optional[List[str]] = None,
         right_tokens: Optional[List[List[str]]] = None,
@@ -808,19 +808,19 @@ class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
         left_input_tensors = self.left_tensorizer(left_inputs)
 
         right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
-        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        # left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
         right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
-        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        # left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
         if self.right_tensorizer.device != "":
             right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
-        if self.left_tensorizer.device != "":
-            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+        # if self.left_tensorizer.device != "":
+        #     left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
 
         logits = self.model(
             right_input_tensors,
             left_input_tensors,
             right_dense_tensor,
-            left_dense_tensor,
+            # left_dense_tensor,
         )
         return self.output_layer(logits)
 
@@ -877,7 +877,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
                 Optional[List[List[str]]],  # left_tokens
                 Optional[List[str]],  # languages
                 Optional[List[List[float]]],  # right_dense_feat
-                Optional[List[List[float]]],  # left_dense_feat
+                # Optional[List[List[float]]],  # left_dense_feat
             ]
         ],
     ) -> List[torch.Tensor]:
@@ -931,7 +931,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
                 left_tokens=None,
                 languages=None,
                 right_dense_feat=None,
-                left_dense_feat=None,
+                # left_dense_feat=None,
             )
 
         else:
@@ -954,7 +954,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
                 Optional[List[List[str]]],  # left_tokens
                 Optional[List[str]],  # languages
                 Optional[List[List[float]]],  # right_dense_feat
-                Optional[List[List[float]]],  # left_dense_feat
+                # Optional[List[List[float]]],  # left_dense_feat
                 int,
             ]
         ],
@@ -968,7 +968,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
                 Optional[List[List[str]]],  # left_tokens
                 Optional[List[str]],  # languages
                 Optional[List[List[float]]],  # right_dense_feat
-                Optional[List[List[float]]],  # left_dense_feat
+                # Optional[List[List[float]]],  # left_dense_feat
                 int,
             ]
         ]
@@ -1004,7 +1004,7 @@ class ScriptPyTextTwoTowerEmbeddingModule(ScriptTwoTowerModule):
                     Optional[List[List[str]]],  # left_tokens
                     Optional[List[str]],  # languages
                     Optional[List[List[float]]],  # right_dense_feat
-                    Optional[List[List[float]]],  # left_dense_feat
+                    # Optional[List[List[float]]],  # left_dense_feat
                     int,  # position
                 ]
             ]
@@ -1027,11 +1027,11 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
         right_tensorizer: ScriptTensorizer,
         left_tensorizer: ScriptTensorizer,
         right_normalizer: VectorNormalizer,
-        left_normalizer: VectorNormalizer,
+        # left_normalizer: VectorNormalizer,
     ):
         super().__init__(model, right_tensorizer, left_tensorizer)
         self.right_normalizer = right_normalizer
-        self.left_normalizer = left_normalizer
+        # self.left_normalizer = left_normalizer
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
@@ -1040,21 +1040,21 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
         right_inputs: ScriptBatchInput,
         left_inputs: ScriptBatchInput,
         right_dense_tensor: torch.Tensor,
-        left_dense_tensor: torch.Tensor,
+        # left_dense_tensor: torch.Tensor,
     ):
         right_input_tensors = self.right_tensorizer(right_inputs)
         left_input_tensors = self.left_tensorizer(left_inputs)
 
         if self.right_tensorizer.device != "":
             right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
-        if self.left_tensorizer.device != "":
-            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+        # if self.left_tensorizer.device != "":
+        #     left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
 
         return self.model(
             right_input_tensors,
             left_input_tensors,
             right_dense_tensor,
-            left_dense_tensor,
+            # left_dense_tensor,
         ).cpu()
 
     @torch.jit.script_method
@@ -1066,10 +1066,10 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
         left_tokens: Optional[List[List[str]]] = None,
         languages: Optional[List[str]] = None,
         right_dense_feat: Optional[List[List[float]]] = None,
-        left_dense_feat: Optional[List[List[float]]] = None,
+        # left_dense_feat: Optional[List[List[float]]] = None,
     ) -> torch.Tensor:
-        if right_dense_feat is None or left_dense_feat is None:
-            raise RuntimeError("Expect dense feature.")
+        # if right_dense_feat is None or left_dense_feat is None:
+        #     raise RuntimeError("Expect dense feature.")
 
         right_inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(right_texts),
@@ -1083,12 +1083,17 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
         )
 
         right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
-        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        # left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
         right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
-        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        # left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
 
+        # sentence_embedding = self._forward(
+        #     right_inputs, left_inputs, right_dense_tensor, left_dense_tensor
+        # )
         sentence_embedding = self._forward(
-            right_inputs, left_inputs, right_dense_tensor, left_dense_tensor
+            right_inputs,
+            left_inputs,
+            right_dense_tensor,
         )
         return sentence_embedding
 
@@ -1745,11 +1750,11 @@ class PyTextTwoTowerEmbeddingModuleWithDense(PyTextTwoTowerEmbeddingModule):
         right_tensorizer: ScriptTensorizer,
         left_tensorizer: ScriptTensorizer,
         right_normalizer: VectorNormalizer,
-        left_normalizer: VectorNormalizer,
+        # left_normalizer: VectorNormalizer,
     ):
         super().__init__(model, right_tensorizer, left_tensorizer)
         self.right_normalizer = right_normalizer
-        self.left_normalizer = left_normalizer
+        # self.left_normalizer = left_normalizer
         log_class_usage(self.__class__)
 
     @torch.jit.script_method
@@ -1758,21 +1763,21 @@ class PyTextTwoTowerEmbeddingModuleWithDense(PyTextTwoTowerEmbeddingModule):
         right_inputs: ScriptBatchInput,
         left_inputs: ScriptBatchInput,
         right_dense_tensor: torch.Tensor,
-        left_dense_tensor: torch.Tensor,
+        # left_dense_tensor: torch.Tensor,
     ):
         right_input_tensors = self.right_tensorizer(right_inputs)
         left_input_tensors = self.left_tensorizer(left_inputs)
 
         if self.right_tensorizer.device != "":
             right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
-        if self.left_tensorizer.device != "":
-            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+        # if self.left_tensorizer.device != "":
+        #     left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
 
         return self.model(
             right_input_tensors,
             left_input_tensors,
             right_dense_tensor,
-            left_dense_tensor,
+            # left_dense_tensor,
         ).cpu()
 
     @torch.jit.script_method
@@ -1781,7 +1786,7 @@ class PyTextTwoTowerEmbeddingModuleWithDense(PyTextTwoTowerEmbeddingModule):
         right_texts: List[str],
         left_texts: List[str],
         right_dense_feat: List[List[float]],
-        left_dense_feat: List[List[float]],
+        # left_dense_feat: List[List[float]],
     ) -> torch.Tensor:
 
         right_inputs: ScriptBatchInput = ScriptBatchInput(
@@ -1796,12 +1801,15 @@ class PyTextTwoTowerEmbeddingModuleWithDense(PyTextTwoTowerEmbeddingModule):
         )
 
         right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
-        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        # left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
         right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
-        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        # left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
 
         sentence_embedding = self._forward(
-            right_inputs, left_inputs, right_dense_tensor, left_dense_tensor
+            right_inputs,
+            left_inputs,
+            right_dense_tensor,
+            # left_dense_tensor
         )
         return sentence_embedding
 
@@ -1814,11 +1822,11 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
         right_tensorizer: ScriptTensorizer,
         left_tensorizer: ScriptTensorizer,
         right_normalizer: VectorNormalizer,
-        left_normalizer: VectorNormalizer,
+        # left_normalizer: VectorNormalizer,
     ):
         super().__init__(model, output_layer, right_tensorizer, left_tensorizer)
         self.right_normalizer = right_normalizer
-        self.left_normalizer = left_normalizer
+        # self.left_normalizer = left_normalizer
 
     @torch.jit.script_method
     def forward(
@@ -1826,7 +1834,7 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
         right_texts: List[str],
         left_texts: List[str],
         right_dense_feat: List[List[float]],
-        left_dense_feat: List[List[float]],
+        # left_dense_feat: List[List[float]],
     ):
         right_inputs: ScriptBatchInput = ScriptBatchInput(
             texts=resolve_texts(right_texts),
@@ -1842,19 +1850,19 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
         left_input_tensors = self.left_tensorizer(left_inputs)
 
         right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
-        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        # left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
         right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
-        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        # left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
         if self.right_tensorizer.device != "":
             right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
-        if self.left_tensorizer.device != "":
-            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+        # if self.left_tensorizer.device != "":
+        #     left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
 
         logits = self.model(
             right_input_tensors,
             left_input_tensors,
             right_dense_tensor,
-            left_dense_tensor,
+            # left_dense_tensor,
         )
         return self.output_layer(logits)
 
@@ -1866,7 +1874,7 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
                 List[str],  # right_texts
                 List[str],  # left_texts
                 List[List[float]],  # right_dense_feat
-                List[List[float]],  # left_dense_feat
+                # List[List[float]],  # left_dense_feat
             ]
         ],
     ) -> List[torch.Tensor]:
@@ -1876,24 +1884,24 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
         flat_right_texts: List[str] = []
         flat_left_texts: List[str] = []
         flat_right_dense: List[List[float]] = []
-        flat_left_dense: List[List[float]] = []
+        # flat_left_dense: List[List[float]] = []
 
         for i in range(batchsize):
             batch_right_element = batch[i][0]
             batch_left_element = batch[i][1]
             batch_right_dense_element = batch[i][2]
-            batch_left_dense_element = batch[i][3]
+            # batch_left_dense_element = batch[i][3]
 
             flat_right_texts.extend(batch_right_element)
             flat_left_texts.extend(batch_left_element)
             flat_right_dense.extend(batch_right_dense_element)
-            flat_left_dense.extend(batch_left_dense_element)
+            # flat_left_dense.extend(batch_left_dense_element)
 
         flat_result: torch.Tensor = self.forward(
             right_texts=flat_right_texts,
             left_texts=flat_left_texts,
             right_dense_feat=flat_right_dense,
-            left_dense_feat=flat_left_dense,
+            # left_dense_feat=flat_left_dense,
         )
 
         return destructure_tensor([len(be[0]) for be in batch], flat_result)
@@ -1906,7 +1914,7 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
                 List[str],  # right_texts
                 List[str],  # left_texts
                 List[List[float]],  # right_dense_feat
-                List[List[float]],  # left_dense_feat
+                # List[List[float]],  # left_dense_feat
                 int,
             ]
         ],
@@ -1917,7 +1925,7 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
                 List[str],  # right_texts
                 List[str],  # left_texts
                 List[List[float]],  # right_dense_feat
-                List[List[float]],  # left_dense_feat
+                # List[List[float]],  # left_dense_feat
                 int,
             ]
         ]
@@ -1945,7 +1953,7 @@ class PyTextTwoTowerLayerModuleWithDense(PyTextTwoTowerLayerModule):
                     List[str],  # right_texts
                     List[str],  # left_texts
                     List[List[float]],  # right_dense_feat
-                    List[List[float]],  # left_dense_feat
+                    # List[List[float]],  # left_dense_feat
                     int,  # position
                 ]
             ]
