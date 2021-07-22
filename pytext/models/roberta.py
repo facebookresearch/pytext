@@ -145,6 +145,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         scaling: Optional[float] = None
         normalize_before: bool = False
 
+        export_type: str = "none"
+
     def __init__(
         self, config: Config, output_encoded_layers: bool, token_embedding, **kwarg
     ) -> None:
@@ -230,17 +232,39 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         )
         self.apply(init_params)
         if config.model_path:
-            with PathManager.open(config.model_path, "rb") as f:
-                roberta_state = torch.load(
-                    f, map_location=lambda s, l: default_restore_location(s, "cpu")
-                )
-            # In case the model has previously been loaded in PyText and finetuned,
-            # then we dont need to do the special state dict translation. Load
-            # it directly
-            if not config.is_finetuned:
-                self.encoder.load_roberta_state_dict(roberta_state["model"])
+            if config.export_type == "none":
+                with PathManager.open(config.model_path, "rb") as f:
+                    roberta_state = torch.load(
+                        f, map_location=lambda s, l: default_restore_location(s, "cpu")
+                    )
+                # In case the model has previously been loaded in PyText and finetuned,
+                # then we dont need to do the special state dict translation. Load
+                # it directly
+                if not config.is_finetuned:
+                    self.encoder.load_roberta_state_dict(roberta_state["model"])
+                else:
+                    self.load_state_dict(roberta_state)
             else:
-                self.load_state_dict(roberta_state)
+                with PathManager.open(config.model_path, "rb") as f:
+                    model = torch.load(
+                        f, map_location=lambda s, l: default_restore_location(s, "cpu")
+                    )
+
+                if not config.is_finetuned:
+                    self.encoder.load_roberta_state_dict(model["model"])
+                else:
+                    encoder_string = (
+                        "right_encoder."
+                        if config.export_type == "right"
+                        else "left_encoder."
+                    )
+                    encoder_state = {
+                        k.replace(encoder_string, ""): v
+                        for k, v in model["model_state"].items()
+                        if k.startswith(encoder_string)
+                    }
+                    print(f"loaded {config.export_type} encoder state")
+                    self.load_state_dict(encoder_state)
 
         if config.use_bias_finetuning:
             for (n, p) in self.encoder.named_parameters():
