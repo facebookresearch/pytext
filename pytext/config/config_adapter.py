@@ -1019,6 +1019,20 @@ def v34_to_v35(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=36)
+def v36_to_v35(json_config):
+    for v in get_json_config_iterator(json_config, "TwoTowerClassificationModel"):
+        if "use_shared_encoder" in v:
+            del v["use_shared_encoder"]
+    return json_config
+
+
+@register_adapter(from_version=35)
+def v35_to_v36(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
