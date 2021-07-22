@@ -134,15 +134,19 @@ class TwoTowerClassificationModel(BaseModel):
         if not labels:
             raise ValueError("Labels were not created, see preceding errors")
 
+        token_embedding = torch.nn.Embedding(250002, 768, padding_idx=1)
+
         right_vocab = tensorizers["right_tokens"].vocab
         right_encoder = create_module(
             config.right_encoder,
+            token_embedding=token_embedding,
             padding_idx=right_vocab.get_pad_index(),
             vocab_size=len(right_vocab),
         )
         left_vocab = tensorizers["left_tokens"].vocab
         left_encoder = create_module(
             config.left_encoder,
+            token_embedding=token_embedding,
             padding_idx=left_vocab.get_pad_index(),
             vocab_size=len(left_vocab),
         )

@@ -145,7 +145,9 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         scaling: Optional[float] = None
         normalize_before: bool = False
 
-    def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
+    def __init__(
+        self, config: Config, output_encoded_layers: bool, token_embedding, **kwarg
+    ) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
 
         # map to the real model_path
@@ -208,6 +210,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         self.encoder = (
             SentenceEncoder(
                 transformer=Transformer(
+                    token_embedding=token_embedding,
                     vocab_size=config.vocab_size,
                     embedding_dim=config.embedding_dim,
                     layers=layers,
