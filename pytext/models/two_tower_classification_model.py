@@ -65,7 +65,7 @@ class TwoTowerClassificationModel(BaseModel):
             right_tensorizer=right_script_tensorizer,
             left_tensorizer=left_script_tensorizer,
             right_normalizer=tensorizers["right_dense"].normalizer,
-            left_normalizer=tensorizers["left_dense"].normalizer,
+            # left_normalizer=tensorizers["left_dense"].normalizer,
         )
 
     def graph_mode_quantize(self, inputs, data_loader, calibration_num_batches=64):
@@ -100,7 +100,7 @@ class TwoTowerClassificationModel(BaseModel):
             tensor_dict["right_tokens"],
             tensor_dict["left_tokens"],
             tensor_dict["right_dense"],
-            tensor_dict["left_dense"],
+            # tensor_dict["left_dense"],
         )
 
         return model_inputs
@@ -144,21 +144,26 @@ class TwoTowerClassificationModel(BaseModel):
         if not labels:
             raise ValueError("Labels were not created, see preceding errors")
 
+        token_embedding = torch.nn.Embedding(250002, 768, padding_idx=1)
+
         right_vocab = tensorizers["right_tokens"].vocab
         right_encoder = create_module(
             config.right_encoder,
+            token_embedding=token_embedding,
             padding_idx=right_vocab.get_pad_index(),
             vocab_size=len(right_vocab),
         )
         left_vocab = tensorizers["left_tokens"].vocab
         left_encoder = create_module(
             config.left_encoder,
+            token_embedding=token_embedding,
             padding_idx=left_vocab.get_pad_index(),
             vocab_size=len(left_vocab),
         )
 
         right_dense_dim = tensorizers["right_dense"].dim
-        left_dense_dim = tensorizers["left_dense"].dim
+        # left_dense_dim = tensorizers["left_dense"].dim
+        left_dense_dim = 0
 
         decoder = create_module(
             config.decoder,

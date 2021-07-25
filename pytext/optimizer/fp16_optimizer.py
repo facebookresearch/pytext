@@ -201,7 +201,9 @@ class FP16OptimizerApex(FP16Optimizer):
     def clip_grad_norm(self, max_norm, model):
         if max_norm is not None:
             return torch.nn.utils.clip_grad_norm_(
-                amp.master_params(self.fp32_optimizer), max_norm
+                amp.master_params(self.fp32_optimizer),
+                max_norm,
+                error_if_nonfinite=False,
             )
         else:
             return None

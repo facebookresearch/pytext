@@ -76,6 +76,7 @@ class TransformerLayer(nn.Module):
 class Transformer(nn.Module):
     def __init__(
         self,
+        token_embedding,
         vocab_size: int = DEFAULT_VOCAB_SIZE,
         embedding_dim: int = DEFAULT_EMBEDDING_DIM,
         padding_idx: int = DEFAULT_PADDING_IDX,
@@ -86,7 +87,7 @@ class Transformer(nn.Module):
     ):
         super().__init__()
         self.padding_idx = padding_idx
-        self.token_embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx)
+        self.token_embedding = token_embedding
         self.layers = nn.ModuleList(
             layers
             or [TransformerLayer(embedding_dim) for _ in range(DEFAULT_NUM_LAYERS)]
