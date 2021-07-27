@@ -7,7 +7,7 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.models.representations.transformer.positional_embedding import (
+from pytext.models.representations.transformer import (
     PositionalEmbedding,
 )
 from pytext.models.seq_models.base import PlaceholderIdentity

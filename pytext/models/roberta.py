@@ -28,15 +28,9 @@ from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
     QuantizedMultiheadLinearAttention,
-    MultiheadSelfAttention,
     PostEncoder,
     SELFIETransformer,
     SentenceEncoder,
-    Transformer,
-    TransformerLayer,
-)
-from pytext.models.representations.transformer.transformer import (
-    DEFAULT_MAX_SEQUENCE_LENGTH,
 )
 from pytext.models.representations.transformer_sentence_encoder_base import (
     PoolingMethod,
@@ -50,6 +44,14 @@ from pytext.torchscript.module import (
 )
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
+from pytorch.text.fb.nn.modules.transformer import (
+    Transformer,
+    TransformerLayer,
+)
+from pytorch.text.fb.nn.modules.transformer import (
+    DEFAULT_MAX_SEQUENCE_LENGTH,
+)
 from torch import nn
 from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 from torch.serialization import default_restore_location

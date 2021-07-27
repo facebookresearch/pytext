@@ -14,17 +14,24 @@ the publicly release RoBERTa weights, and it will translate these weights to
 the corresponding values in this implementation.
 """
 
+from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
+from pytorch.text.fb.nn.modules.residual_mlp import (
+    ResidualMLP,
+    GeLU,
+)
+from pytorch.text.fb.nn.modules.transformer import (
+    SELFIETransformer,
+    Transformer,
+    TransformerLayer,
+)
+from pytorch.text.fb.nn.modules.positional_embedding import PositionalEmbedding
 
-from .multihead_attention import MultiheadSelfAttention
 from .multihead_linear_attention import (
     MultiheadLinearAttention,
     QuantizedMultiheadLinearAttention,
 )
-from .positional_embedding import PositionalEmbedding
 from .representation import TransformerRepresentation
-from .residual_mlp import ResidualMLP, GeLU
 from .sentence_encoder import PostEncoder, SentenceEncoder
-from .transformer import SELFIETransformer, Transformer, TransformerLayer
 
 
 __all__ = [

@@ -6,9 +6,8 @@ from typing import List, Optional
 
 import torch
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.nn.modules.transformer import Transformer
 from torch import nn
-
-from .transformer import Transformer
 
 
 class SentenceEncoder(nn.Module):

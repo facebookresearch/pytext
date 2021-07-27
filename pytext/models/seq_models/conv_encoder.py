@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import ModuleConfig
 from pytext.models.module import create_module
-from pytext.models.representations.transformer.positional_embedding import (
+from pytext.models.representations.transformer import (
     PositionalEmbedding,
 )
 from pytext.models.seq_models.base import (

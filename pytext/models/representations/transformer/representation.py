@@ -6,11 +6,10 @@ import torch.nn as nn
 from pytext.config import ConfigBase
 from pytext.models.module import Module
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
+from pytorch.text.fb.nn.modules.residual_mlp import ResidualMLP
+from pytorch.text.fb.nn.modules.transformer import TransformerLayer
 from torch import Tensor
-
-from .multihead_attention import MultiheadSelfAttention
-from .residual_mlp import ResidualMLP
-from .transformer import TransformerLayer
 
 
 class TransformerRepresentation(Module):
