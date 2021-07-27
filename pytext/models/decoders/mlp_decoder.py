@@ -7,7 +7,9 @@ import torch
 import torch.nn as nn
 from pytext.config.module_config import Activation
 from pytext.optimizer import get_activation
+from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
+from torch.serialization import default_restore_location
 
 from .decoder_base import DecoderBase
 
@@ -49,6 +51,8 @@ class MLPDecoder(DecoderBase):
         activation: Activation = Activation.RELU
         temperature: float = 1.0
         spectral_normalization: bool = False
+        load_model_path: Optional[str] = ""
+        load_strict: Optional[bool] = False
 
     def __init__(self, config: Config, in_dim: int, out_dim: int = 0) -> None:
         super().__init__(config)
@@ -73,6 +77,15 @@ class MLPDecoder(DecoderBase):
         self.mlp = nn.Sequential(*layers)
         self.out_dim = out_dim if out_dim > 0 else config.hidden_dims[-1]
         self.temperature = config.temperature
+
+        if config.load_model_path:
+            with PathManager.open(config.load_model_path, "rb") as f:
+                mlp_state = torch.load(
+                    f, map_location=lambda s, l: default_restore_location(s, "cpu")
+                )
+            print("loaded mlp state")
+            self.load_state_dict(mlp_state, strict=config.load_stric)
+
         log_class_usage(__class__)
 
     def forward(self, *input: torch.Tensor) -> torch.Tensor:
