@@ -15,6 +15,7 @@ the corresponding values in this implementation.
 """
 
 from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
+from pytorch.text.fb.nn.modules.positional_embedding import PositionalEmbedding
 from pytorch.text.fb.nn.modules.residual_mlp import (
     ResidualMLP,
     GeLU,
@@ -24,7 +25,6 @@ from pytorch.text.fb.nn.modules.transformer import (
     Transformer,
     TransformerLayer,
 )
-from pytorch.text.fb.nn.modules.positional_embedding import PositionalEmbedding
 
 from .multihead_linear_attention import (
     MultiheadLinearAttention,
