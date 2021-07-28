@@ -1035,6 +1035,11 @@ def v35_to_v36(json_config):
 
 @register_down_grade_adapter(from_version=37)
 def v37_to_v36(json_config):
+    for v in get_json_config_iterator(json_config, "decoder"):
+        if "load_model_path" in v:
+            del v["load_model_path"]
+        if "load_strict" in v:
+            del v["load_strict"]
     for v in get_json_config_iterator(json_config, "MLPDecoder"):
         if "load_model_path" in v:
             del v["load_model_path"]
