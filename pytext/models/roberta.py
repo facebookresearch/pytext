@@ -144,6 +144,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         use_selfie_encoder: bool = False
         transformer_layer_to_keep: Optional[int] = None
         attention_heads_to_keep_per_layer: Optional[int] = None
+        attention_heads_to_keep_per_layer_list: Optional[List[int]] = None
+        prune_before_load: Optional[bool] = False
         scaling: Optional[float] = None
         normalize_before: bool = False
 
@@ -228,6 +230,10 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             )
         )
         self.apply(init_params)
+
+        if config.prune_before_load:
+            self._prune_transformer_layers_and_heads(config)
+
         if config.model_path:
             with PathManager.open(config.model_path, "rb") as f:
                 roberta_state = torch.load(
@@ -248,7 +254,8 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 if n.split(".")[-1] != "bias":
                     p.requires_grad_(False)
 
-        self._prune_transformer_layers_and_heads(config)
+        if not config.prune_before_load:
+            self._prune_transformer_layers_and_heads(config)
 
         self.export_encoder = config.export_encoder
         self.variable_size_embedding = config.variable_size_embedding
@@ -265,20 +272,32 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 0 : config.transformer_layer_to_keep
             ]
 
-        if config.attention_heads_to_keep_per_layer is not None:
-            logger.info(
-                f"prune the heads to {config.attention_heads_to_keep_per_layer}"
+        if (
+            config.attention_heads_to_keep_per_layer is not None
+            or config.attention_heads_to_keep_per_layer_list is not None
+        ):
+            attention_heads_to_keep_per_layer_list = (
+                config.attention_heads_to_keep_per_layer_list
+                if config.attention_heads_to_keep_per_layer_list is not None
+                else [config.attention_heads_to_keep_per_layer]
+                * config.transformer_layer_to_keep
+            )
+
+            assert (
+                len(attention_heads_to_keep_per_layer_list)
+                == config.transformer_layer_to_keep
             )
             heads_to_prune = {
                 i: list(
                     range(
                         config.num_attention_heads
-                        - config.attention_heads_to_keep_per_layer
+                        - attention_heads_to_keep_per_layer_list[i]
                     )
                 )
                 for i in range(config.transformer_layer_to_keep)
             }
             for layer_index, heads in heads_to_prune.items():
+                logger.info(f"prune layer {layer_index} heads by {len(heads)}")
                 if config.use_linformer_encoder or config.use_selfie_encoder:
                     self.encoder.transformer.layers[
                         layer_index
