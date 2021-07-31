@@ -329,15 +329,15 @@ class Trainer(TrainerBase):
                 identifier=str(state.epoch),
             )
 
-    def load_best_model(self, state: TrainingState):
+    def load_best_model(self, state: TrainingState, strict=True):
         if cuda.CUDA_ENABLED:
             # Move current model to CPU to avoid multiple models in GPU memory
             state.model.cpu()
-            state.model.load_state_dict(state.best_model_state)
+            state.model.load_state_dict(state.best_model_state, strict=strict)
             # Move model back to GPU
             state.model.cuda()
         else:
-            state.model.load_state_dict(state.best_model_state)
+            state.model.load_state_dict(state.best_model_state, strict=strict)
 
     def train(
         self,
