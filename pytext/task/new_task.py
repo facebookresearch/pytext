@@ -414,14 +414,17 @@ class _NewTask(TaskBase):
             if quantize:
                 log_feature_usage("quantize.dynamically.CPU")
                 model.quantize()
-            if accel.use_cuda and accel.use_cuda_half_ft:
+            if accel.use_cuda and (accel.use_cuda_half_ft or accel.use_cuda_dq):
                 log_accelerator_feature_usage("build.CUDA.half.faster_transformers")
                 # We need a separate path for GPU-only tracing, as we can't just trace a CPU model
                 # and invoke .cuda().half(),
                 # as we don't have equivalent CPU implementations of these operators.
                 precision.FP16_ENABLED = True
                 cuda.CUDA_ENABLED = True
-                model = swap_modules(model, MODULE_TO_REWRITER["cuda"])
+                if accel.use_cuda_dq:
+                    model = swap_modules(model, MODULE_TO_REWRITER["cuda-dq"])
+                else:
+                    model = swap_modules(model, MODULE_TO_REWRITER["cuda"])
                 model.eval()
                 model.half().cuda()
                 # obtain new inputs with cuda/fp16 enabled.
