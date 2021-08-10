@@ -105,6 +105,7 @@ class Vocabulary:
         self._vocab = vocab_list
         self.counts = counts
         self.idx = {word: i for i, word in enumerate(vocab_list)}
+        self.names = {i: word for i, word in enumerate(vocab_list)}
         self.unk_token = unk_token
         self.pad_token = pad_token
         self.bos_token = bos_token
