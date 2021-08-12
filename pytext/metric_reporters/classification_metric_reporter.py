@@ -260,6 +260,7 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
             ],
             self.label_names,
             self.calculate_loss(),
+            average_precisions=(not self.is_memory_efficient),
             recall_at_precision_thresholds=self.recall_at_precision_thresholds,
         )
 
