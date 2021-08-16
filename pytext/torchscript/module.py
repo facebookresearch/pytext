@@ -1093,6 +1093,184 @@ class ScriptPyTextTwoTowerEmbeddingModuleWithDense(ScriptPyTextTwoTowerEmbedding
         return sentence_embedding
 
 
+######################## Tri Tower ################################
+class ScriptTriTowerModule(torch.jit.ScriptModule):
+    def __init__(self):
+        super().__init__()
+        self.model_name: str = "*no name*"
+        self.model_host = ["cpu"]
+        self.model_type = ["nlp"]
+        log_class_usage(self.__class__)
+
+    def set_name(self, name: str):
+        self.model_name = name
+
+    @torch.jit.script_method
+    def get_name(self) -> str:
+        return self.model_name
+
+    def set_host(self, hostlist: List[str]):
+        self.model_host = hostlist
+
+    @torch.jit.script_method
+    def check_host(self, host: str) -> bool:
+        return host in self.model_host
+
+    def set_type(self, typelist: List[str]):
+        self.model_type = typelist
+
+    @torch.jit.script_method
+    def check_type(self, type: str) -> bool:
+        return type in self.model_type
+
+    @torch.jit.script_method
+    def set_device(self, device: str):
+        self.right_tensorizer.set_device(device)
+        self.middle_tensorizer.set_device(device)
+        self.left_tensorizer.set_device(device)
+
+    @torch.jit.script_method
+    def set_padding_control(self, dimension: str, control: Optional[List[int]]):
+        """
+        This functions will be called to set a padding style.
+        None - No padding
+        List: first element 0, round seq length to the smallest list element larger than inputs
+        """
+        self.right_tensorizer.set_padding_control(dimension, control)
+        self.middle_tensorizer.set_padding_control(dimension, control)
+        self.left_tensorizer.set_padding_control(dimension, control)
+
+    def validate(self, export_conf: ExportConfig):
+        deprecation_warning(export_conf)
+
+
+class ScriptPyTextTriTowerModule(ScriptTriTowerModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        middle_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+    ):
+        super().__init__()
+        self.model = model
+        self.output_layer = output_layer
+        self.right_tensorizer = right_tensorizer
+        self.middle_tensorizer = middle_tensorizer
+        self.left_tensorizer = left_tensorizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_texts: Optional[List[str]] = None,
+        middle_texts: Optional[List[str]] = None,
+        left_texts: Optional[List[str]] = None,
+        right_tokens: Optional[List[List[str]]] = None,
+        middle_tokens: Optional[List[List[str]]] = None,
+        left_tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(right_tokens),
+            languages=squeeze_1d(languages),
+        )
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        middle_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(middle_texts),
+            tokens=squeeze_2d(middle_tokens),
+            languages=squeeze_1d(languages),
+        )
+        middle_input_tensors = self.middle_tensorizer(middle_inputs)
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(left_tokens),
+            languages=squeeze_1d(languages),
+        )
+        left_input_tensors = self.left_tensorizer(left_inputs)
+        logits = self.model(
+            right_input_tensors, middle_input_tensors, left_input_tensors
+        )
+        return self.output_layer(logits)
+
+
+class ScriptPyTextTriTowerModuleWithDense(ScriptPyTextTriTowerModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        middle_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+        right_normalizer: VectorNormalizer,
+        middle_normalizer: VectorNormalizer,
+        left_normalizer: VectorNormalizer,
+    ):
+        super().__init__(
+            model, output_layer, right_tensorizer, middle_tensorizer, left_tensorizer
+        )
+        self.right_normalizer = right_normalizer
+        self.middle_normalizer = middle_normalizer
+        self.left_normalizer = left_normalizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        right_dense_feat: List[List[float]],
+        middle_dense_feat: List[List[float]],
+        left_dense_feat: List[List[float]],
+        right_texts: Optional[List[str]] = None,
+        middle_texts: Optional[List[str]] = None,
+        left_texts: Optional[List[str]] = None,
+        right_tokens: Optional[List[List[str]]] = None,
+        middle_tokens: Optional[List[List[str]]] = None,
+        left_tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(right_tokens),
+            languages=squeeze_1d(languages),
+        )
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        middle_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(middle_texts),
+            tokens=squeeze_2d(middle_tokens),
+            languages=squeeze_1d(languages),
+        )
+        middle_input_tensors = self.middle_tensorizer(middle_inputs)
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(left_tokens),
+            languages=squeeze_1d(languages),
+        )
+        left_input_tensors = self.left_tensorizer(left_inputs)
+
+        right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
+        middle_dense_feat = self.middle_normalizer.normalize(middle_dense_feat)
+        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
+        middle_dense_tensor = torch.tensor(middle_dense_feat, dtype=torch.float)
+        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        if self.right_tensorizer.device != "":
+            right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
+        if self.middle_tensorizer.device != "":
+            middle_dense_tensor = middle_dense_tensor.to(self.middle_tensorizer.device)
+        if self.left_tensorizer.device != "":
+            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+
+        logits = self.model(
+            right_input_tensors,
+            middle_input_tensors,
+            left_input_tensors,
+            right_dense_tensor,
+            middle_dense_tensor,
+            left_dense_tensor,
+        )
+        return self.output_layer(logits)
+
+
 ############################################################################
 #
 # New module hierarchy Pytext* mirrors ScriptPytext* while reflecting
