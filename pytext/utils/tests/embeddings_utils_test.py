@@ -14,8 +14,8 @@ from pytext.config.field_config import (
     WordLabelConfig,
 )
 from pytext.data.featurizer import SimpleFeaturizer
-from pytext.utils.embeddings import PretrainedEmbedding
 from pytext.utils.test import import_tests_module
+from pytorch.text.fb.utils.embeddings import PretrainedEmbedding
 
 
 tests_module = import_tests_module()

@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from enum import Enum
 from typing import Dict, List, Optional, Union
 
 from pytext.common.constants import DatasetFieldName
+from pytorch.text.fb.utils.config_utils import EmbedInitStrategy
 
 from .module_config import CNNParams, ModuleConfig, PoolingType
 from .pytext_config import ConfigBase
-
-
-class EmbedInitStrategy(Enum):
-    RANDOM = "random"
-    ZERO = "zero"
 
 
 class Target:

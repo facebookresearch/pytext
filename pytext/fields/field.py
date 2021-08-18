@@ -9,8 +9,8 @@ from typing import Any, Dict, Tuple, Union
 import torch
 import torchtext
 from pytext.common.constants import Padding, VocabMeta
-from pytext.config.field_config import EmbedInitStrategy
 from pytext.utils import data as data_utils, precision
+from pytorch.text.fb.utils.config_utils import EmbedInitStrategy
 
 if operator.ge(torchtext.__version__, LooseVersion("0.8.0")):
     from torchtext.legacy import data as textdata

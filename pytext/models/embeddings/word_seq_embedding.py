@@ -3,11 +3,11 @@
 from typing import List, Optional
 
 import torch
-from pytext.config.field_config import EmbedInitStrategy
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.embeddings.embedding_base import EmbeddingBase
 from pytext.models.representations.bilstm import BiLSTM
-from pytext.utils.embeddings import PretrainedEmbedding
+from pytorch.text.fb.utils.config_utils import EmbedInitStrategy
+from pytorch.text.fb.utils.embeddings import PretrainedEmbedding
 from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 

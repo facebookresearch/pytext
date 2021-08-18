@@ -26,11 +26,12 @@ from pytext.config.field_config import Target
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.featurizer import Featurizer
 from pytext.fields import Field, FieldMeta, RawField, VocabUsingField
-from pytext.utils import cuda, distributed, embeddings as embeddings_utils
+from pytext.utils import cuda, distributed
 from pytext.utils.data import parse_json_array
 from pytext.utils.file_io import PathManager
 from pytext.utils.path import get_absolute_path
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.utils import embeddings as embeddings_utils
 
 try:
     from torchtext.legacy import data as textdata
