@@ -49,6 +49,10 @@ class TriTowerClassificationModel(BaseModel):
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
+        use_shared_embedding: Optional[bool] = False
+        vocab_size: Optional[int] = 250002
+        hidden_dim: Optional[int] = 768
+        padding_idx: Optional[int] = 1
 
     def trace(self, inputs):
         return torch.jit.trace(self, inputs)
@@ -124,6 +128,7 @@ class TriTowerClassificationModel(BaseModel):
         left_encoder_inputs: Tuple[torch.Tensor, ...],
         *args
     ) -> List[torch.Tensor]:
+
         if self.right_encoder.output_encoded_layers:
             # if encoded layers are returned, discard them
             right_representation = self.right_encoder(right_encoder_inputs)[1]
@@ -152,7 +157,12 @@ class TriTowerClassificationModel(BaseModel):
         if not labels:
             raise ValueError("Labels were not created, see preceding errors")
 
-        token_embedding = torch.nn.Embedding(250002, 768, padding_idx=1)
+        if config.use_shared_embedding:
+            token_embedding = torch.nn.Embedding(
+                config.vocab_size, config.hidden_dim, padding_idx=config.padding_idx
+            )
+        else:
+            token_embedding = None
 
         right_vocab = tensorizers["right_tokens"].vocab
         right_encoder = create_module(
@@ -205,7 +215,17 @@ class TriTowerClassificationModel(BaseModel):
             output_layer_cls = MulticlassOutputLayer
 
         output_layer = output_layer_cls(list(labels), loss)
-        return cls(right_encoder, middle_encoder, left_encoder, decoder, output_layer)
+        return cls(
+            right_encoder,
+            middle_encoder,
+            left_encoder,
+            decoder,
+            output_layer,
+            config.use_shared_embedding,
+            config.vocab_size,
+            config.hidden_dim,
+            config.padding_idx,
+        )
 
     def __init__(
         self,
@@ -214,6 +234,10 @@ class TriTowerClassificationModel(BaseModel):
         left_encoder,
         decoder,
         output_layer,
+        use_shared_embedding,
+        vocab_size,
+        hidden_dim,
+        padding_idx,
         stage=Stage.TRAIN,
     ) -> None:
         super().__init__(stage=stage)
@@ -223,5 +247,9 @@ class TriTowerClassificationModel(BaseModel):
         self.decoder = decoder
         self.module_list = [right_encoder, middle_encoder, left_encoder, decoder]
         self.output_layer = output_layer
+        self.use_shared_embedding = use_shared_embedding
+        self.vocab_size = vocab_size
+        self.hidden_dim = hidden_dim
+        self.padding_idx = padding_idx
         self.stage = stage
         log_class_usage(__class__)

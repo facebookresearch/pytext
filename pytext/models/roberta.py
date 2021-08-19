@@ -149,7 +149,13 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         scaling: Optional[float] = None
         normalize_before: bool = False
 
-    def __init__(self, config: Config, output_encoded_layers: bool, **kwarg) -> None:
+    def __init__(
+        self,
+        config: Config,
+        output_encoded_layers: bool,
+        token_embedding: nn.Embedding = None,
+        **kwarg,
+    ) -> None:
         super().__init__(config, output_encoded_layers=output_encoded_layers)
 
         # map to the real model_path
@@ -217,6 +223,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                     layers=layers,
                     max_seq_len=config.max_seq_len,
                     normalize_before=config.normalize_before,
+                    token_embedding=token_embedding,
                 )
             )
             if not self.use_selfie_encoder

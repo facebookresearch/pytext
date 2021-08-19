@@ -47,6 +47,10 @@ class TwoTowerClassificationModel(BaseModel):
             ClassificationOutputLayer.Config()
         )
         use_shared_encoder: Optional[bool] = False
+        use_shared_embedding: Optional[bool] = False
+        vocab_size: Optional[int] = 250002
+        hidden_dim: Optional[int] = 768
+        padding_idx: Optional[int] = 1
 
     def trace(self, inputs):
         return torch.jit.trace(self, inputs)
@@ -144,15 +148,24 @@ class TwoTowerClassificationModel(BaseModel):
         if not labels:
             raise ValueError("Labels were not created, see preceding errors")
 
+        if config.use_shared_embedding:
+            token_embedding = torch.nn.Embedding(
+                config.vocab_size, config.hidden_dim, padding_idx=config.padding_idx
+            )
+        else:
+            token_embedding = None
+
         right_vocab = tensorizers["right_tokens"].vocab
         right_encoder = create_module(
             config.right_encoder,
+            token_embedding=token_embedding,
             padding_idx=right_vocab.get_pad_index(),
             vocab_size=len(right_vocab),
         )
         left_vocab = tensorizers["left_tokens"].vocab
         left_encoder = create_module(
             config.left_encoder,
+            token_embedding=token_embedding,
             padding_idx=left_vocab.get_pad_index(),
             vocab_size=len(left_vocab),
         )
@@ -189,6 +202,10 @@ class TwoTowerClassificationModel(BaseModel):
             decoder,
             output_layer,
             config.use_shared_encoder,
+            config.use_shared_embedding,
+            config.vocab_size,
+            config.hidden_dim,
+            config.padding_idx,
         )
 
     def __init__(
@@ -198,11 +215,16 @@ class TwoTowerClassificationModel(BaseModel):
         decoder,
         output_layer,
         use_shared_encoder,
+        use_shared_embedding,
+        vocab_size,
+        hidden_dim,
+        padding_idx,
         stage=Stage.TRAIN,
     ) -> None:
         super().__init__(stage=stage)
         self.right_encoder = right_encoder
         self.use_shared_encoder = use_shared_encoder
+        self.use_shared_embedding = use_shared_embedding
         self.decoder = decoder
         if self.use_shared_encoder:
             self.module_list = [right_encoder, decoder]
@@ -210,5 +232,8 @@ class TwoTowerClassificationModel(BaseModel):
             self.left_encoder = left_encoder
             self.module_list = [right_encoder, left_encoder, decoder]
         self.output_layer = output_layer
+        self.vocab_size = vocab_size
+        self.hidden_dim = hidden_dim
+        self.padding_idx = padding_idx
         self.stage = stage
         log_class_usage(__class__)
