@@ -254,18 +254,40 @@ class ClassificationMetrics(NamedTuple):
         print(f"Accuracy: {self.accuracy * 100:.2f}")
         print("\nSoft Metrics:")
         if self.per_label_soft_scores:
-            soft_scores = [
-                {
-                    "label": label,
-                    "avg_pr": f"{metrics.average_precision:.3f}",
-                    "roc_auc": f"{(metrics.roc_auc or 0.0):.3f}",
-                }
-                for label, metrics in sorted(self.per_label_soft_scores.items())
-            ]
+            soft_scores = []
+            for label, metrics in sorted(self.per_label_soft_scores.items()):
+                total_num_examples = 0
+                true_positive = 0
+                false_positive = 0
+                false_negative = 0
+                if label in self.macro_prf1_metrics.per_label_scores:
+                    per_label_score = self.macro_prf1_metrics.per_label_scores[label]
+                    true_positive = per_label_score.true_positives
+                    false_positive = per_label_score.false_positives
+                    false_negative = per_label_score.false_negatives
+                    total_num_examples = (
+                        per_label_score.true_positives + per_label_score.false_negatives
+                    )
+
+                soft_scores.append(
+                    {
+                        "label": label,
+                        "avg_pr": f"{metrics.average_precision:.3f}",
+                        "roc_auc": f"{(metrics.roc_auc or 0.0):.3f}",
+                        "true_positive": f"{true_positive}",
+                        "false_positive": f"{false_positive}",
+                        "false_negative": f"{false_negative}",
+                        "support": f"{total_num_examples}",
+                    }
+                )
             columns = {
                 "label": "Label",
                 "avg_pr": "Average precision",
                 "roc_auc": "ROC AUC",
+                "true_positive": "True positive",
+                "false_positive": "False positive",
+                "false_negative": "False negative",
+                "support": "Support",
             }
             print(ascii_table(soft_scores, columns))
             print("\nRecall at Precision")
