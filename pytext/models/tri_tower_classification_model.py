@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from pytext.common.constants import Stage
@@ -10,6 +10,7 @@ from pytext.config.component import create_loss
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import FloatListTensorizer, LabelTensorizer, Tensorizer
 from pytext.loss import BinaryCrossEntropyLoss, MultiLabelSoftMarginLoss
+from pytext.models.decoders.mlp_decoder_n_tower import MLPDecoderNTower
 from pytext.models.decoders.mlp_decoder_tri_tower import MLPDecoderTriTower
 from pytext.models.model import BaseModel
 from pytext.models.module import create_module
@@ -45,7 +46,9 @@ class TriTowerClassificationModel(BaseModel):
         right_encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
         middle_encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
         left_encoder: RoBERTaEncoderBase.Config = RoBERTaEncoder.Config()
-        decoder: MLPDecoderTriTower.Config = MLPDecoderTriTower.Config()
+        decoder: Union[
+            MLPDecoderTriTower.Config, MLPDecoderNTower.Config
+        ] = MLPDecoderNTower.Config()
         output_layer: ClassificationOutputLayer.Config = (
             ClassificationOutputLayer.Config()
         )
@@ -189,15 +192,25 @@ class TriTowerClassificationModel(BaseModel):
         right_dense_dim = tensorizers["right_dense"].dim
         middle_dense_dim = tensorizers["middle_dense"].dim
         left_dense_dim = tensorizers["left_dense"].dim
-        # left_dense_dim = 0
-
-        decoder = create_module(
-            config.decoder,
-            right_dim=right_encoder.representation_dim + right_dense_dim,
-            middle_dim=middle_encoder.representation_dim + middle_dense_dim,
-            left_dim=left_encoder.representation_dim + left_dense_dim,
-            to_dim=len(labels),
-        )
+        decoder = None
+        if isinstance(config.decoder, MLPDecoderTriTower.Config):
+            decoder = create_module(
+                config.decoder,
+                right_dim=right_encoder.representation_dim + right_dense_dim,
+                middle_dim=middle_encoder.representation_dim + middle_dense_dim,
+                left_dim=left_encoder.representation_dim + left_dense_dim,
+                to_dim=len(labels),
+            )
+        elif isinstance(config.decoder, MLPDecoderNTower.Config):
+            decoder = create_module(
+                config.decoder,
+                tower_dims=[
+                    right_encoder.representation_dim + right_dense_dim,
+                    middle_encoder.representation_dim + middle_dense_dim,
+                    left_encoder.representation_dim + left_dense_dim,
+                ],
+                to_dim=len(labels),
+            )
 
         label_weights = (
             get_label_weights(labels.idx, config.output_layer.label_weights)
