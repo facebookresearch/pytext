@@ -7,9 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytext.config.field_config import CharFeatConfig
-from pytext.data.utils import Vocabulary
 from pytext.fields import FieldMeta
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.nn.modules.highway import Highway
 
 from .embedding_base import EmbeddingBase
 
@@ -156,39 +156,3 @@ class CharacterEmbedding(EmbeddingBase):
 
         # Reshape to (bsize, max_sent_length, "output_dim")
         return char_out.view(batch_size, max_sent_length, -1)
-
-
-class Highway(nn.Module):
-    """
-    A `Highway layer <https://arxiv.org/abs/1505.00387>`.
-    Adopted from the AllenNLP implementation.
-    """
-
-    def __init__(self, input_dim: int, num_layers: int = 1):
-        super().__init__()
-        self.input_dim = input_dim
-        self.layers = nn.ModuleList(
-            [nn.Linear(input_dim, input_dim * 2) for _ in range(num_layers)]
-        )
-        self.activation = nn.ReLU()
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        for layer in self.layers:
-            # As per comment in AllenNLP:
-            # We should bias the highway layer to just carry its input forward. We do
-            # that by setting the bias on `B(x)` to be positive, because that means `g`
-            # will be biased to be high, so we will carry the input forward. The bias
-            # on `B(x)` is the second half of the bias vector in each Linear layer.
-            nn.init.constant_(layer.bias[self.input_dim :], 1)
-            nn.init.constant_(layer.bias[: self.input_dim], 0)
-            nn.init.xavier_normal_(layer.weight)
-
-    def forward(self, x: torch.Tensor):
-        for layer in self.layers:
-            projection = layer(x)
-            proj_x, gate = projection.chunk(2, dim=-1)
-            proj_x = self.activation(proj_x)
-            gate = F.sigmoid(gate)
-            x = gate * x + (gate.new_tensor([1]) - gate) * proj_x
-        return x
