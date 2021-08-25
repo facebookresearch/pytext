@@ -450,15 +450,18 @@ class TokenTensorizer(Tensorizer):
     def _reverse_lookup(self, token_ids):
         return [self.vocab[id] for id in token_ids]
 
-    def initialize(self, vocab_builder=None, from_scratch=True):
-        """Build vocabulary based on training corpus."""
+    def initalize_vocab(self, vocab_builder=None, from_scratch=True) -> bool:
+        """
+        returns True if needs to initialize vocabulary through data
+        returns False is vocab is initialized
+        """
         if self.vocab and from_scratch:
             if self.vocab_config.build_from_data or self.vocab_config.vocab_files:
                 print(
                     f"`{self.text_column}` column: vocab already provided, skipping "
                     f"adding tokens from data and from vocab files."
                 )
-            return
+            return True
 
         if not self.vocab_config.build_from_data and not self.vocab_config.vocab_files:
             raise ValueError(
@@ -476,6 +479,13 @@ class TokenTensorizer(Tensorizer):
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
             self.vocab = self.vocab_builder.make_vocab()
+            return True
+
+        return False
+
+    def initialize(self, vocab_builder=None, from_scratch=True):
+        """Build vocabulary based on training corpus."""
+        if self.initalize_vocab(vocab_builder, from_scratch):
             return
 
         try:
