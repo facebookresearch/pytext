@@ -4,7 +4,6 @@ from typing import Dict, List, Tuple
 
 import torch
 import torch.nn as nn
-import torch.onnx.operators
 from pytext.config.module_config import ModuleConfig
 from pytext.utils.usage import log_class_usage
 
