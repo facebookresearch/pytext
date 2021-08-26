@@ -99,7 +99,8 @@ class PredictorHandler : virtual public PredictorIf {
  public:
   // For XLM-R models
   PredictorHandler(string& modelFile, string& sentencepieceVocabFile) {
-    mModule = torch::jit::load(modelFile);
+    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
+    mModule = pytorchPredictor->getPredictor()->get_module();
     const auto status = mSpProcessor.Load(sentencepieceVocabFile);
     if (!status.ok()) {
       LOG(FATAL) << status.ToString();
@@ -111,7 +112,8 @@ class PredictorHandler : virtual public PredictorIf {
 
   // For DocNN models
   PredictorHandler(string& modelFile) {
-    mModule = torch::jit::load(modelFile);
+    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
+    mModule = pytorchPredictor->getPredictor()->get_module();
     mUseSentencePiece = false;
   }
 
