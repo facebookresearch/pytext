@@ -9,36 +9,16 @@ import torch.nn.functional as F
 from pytext.config.field_config import CharFeatConfig
 from pytext.fields import FieldMeta
 from pytext.utils.usage import log_class_usage
-from pytorch.text.fb.nn.modules.highway import Highway
+from pytorch.text.fb.nn.modules.cnn_char_embedding import CNNCharacterEmbedding
 
 from .embedding_base import EmbeddingBase
 
 
 class CharacterEmbedding(EmbeddingBase):
     """
-    Module for character aware CNN embeddings for tokens. It uses convolution
-    followed by max-pooling over character embeddings to obtain an embedding
-    vector for each token.
-
-    Implementation is loosely based on https://arxiv.org/abs/1508.06615.
-
-    Args:
-        num_embeddings (int): Total number of characters (vocabulary size).
-        embed_dim (int): Size of character embeddings to be passed to convolutions.
-        out_channels (int): Number of output channels.
-        kernel_sizes (List[int]): Dimension of input Tensor passed to MLP.
-        highway_layers (int): Number of highway layers applied to pooled output.
-        projection_dim (int): If specified, size of output embedding for token, via
-            a linear projection from convolution output.
-
+    Wrapper for character aware CNN embeddings for tokens.
     Attributes:
-        char_embed (nn.Embedding): Character embedding table.
-        convs (nn.ModuleList): Convolution layers that operate on character
-        embeddings.
-        highway_layers (nn.Module): Highway layers on top of convolution output.
-        projection (nn.Module): Final linear layer to token embedding.
-        embedding_dim (int): Dimension of the final token embedding produced.
-
+        embedding (CNNCharacterEmbedding): Character embedding
     """
 
     Config = CharFeatConfig
@@ -85,74 +65,34 @@ class CharacterEmbedding(EmbeddingBase):
         *args,
         **kwargs,
     ) -> None:
-        conv_out_dim = len(kernel_sizes) * out_channels
-        output_dim = projection_dim or conv_out_dim
-        super().__init__(output_dim)
-
-        self.char_embed = nn.Embedding(num_embeddings, embed_dim)
-        self.convs = nn.ModuleList(
-            [
-                # in_channels = embed_dim because input is treated as sequence
-                # of dim [max_word_length] with embed_dim channels
-                # Adding padding to provide robustness in cases where input
-                # length is less than conv filter width
-                nn.Conv1d(embed_dim, out_channels, K, padding=K // 2)
-                for K in kernel_sizes
-            ]
+        output_dim = CNNCharacterEmbedding.output_dim(
+            num_kernels=len(kernel_sizes),
+            out_channels=out_channels,
+            projection_dim=projection_dim,
         )
-        self.highway = None
-        if highway_layers > 0:
-            self.highway = Highway(conv_out_dim, highway_layers)
-        self.projection = None
-        if projection_dim:
-            self.projection = nn.Linear(conv_out_dim, projection_dim)
+        super().__init__(output_dim)
+        self.embedding = CNNCharacterEmbedding(
+            num_embeddings=num_embeddings,
+            embed_dim=embed_dim,
+            out_channels=out_channels,
+            kernel_sizes=kernel_sizes,
+            highway_layers=highway_layers,
+            projection_dim=projection_dim,
+        )
         log_class_usage(__class__)
 
     def forward(self, chars: torch.Tensor) -> torch.Tensor:
+        """See CNNCharacterEmbedding.forward() for details"""
+        return self.embedding(chars)
+
+    def load_state_dict(self, loaded_module: nn.Module) -> None:
+        """Add backward compatibility to load CharEmbedding from older versions
+        In older versions, state dict keys are like "char_embed.weight", "convs.0.weight", etc
+        In newer versions, state dict keys are like "embedding.char_embed.weight", "embedding.convs.0.weight"
         """
-        Given a batch of sentences such that tokens are broken into character ids,
-        produce token embedding vectors for each sentence in the batch.
-
-        Args:
-            chars (torch.Tensor): Batch of sentences where each token is broken
-            into characters.
-            Dimension: batch size X maximum sentence length X maximum word length
-
-        Returns:
-            torch.Tensor: Embedded batch of sentences. Dimension:
-            batch size X maximum sentence length, token embedding size.
-            Token embedding size = `out_channels * len(self.convs))`
-
-        """
-        batch_size = chars.size(0)
-        max_sent_length = chars.size(1)
-        max_word_length = chars.size(2)
-
-        chars = chars.view(batch_size * max_sent_length, max_word_length)
-
-        # char_embedding: (bsize * max_sent_length, max_word_length, embed_dim)
-        char_embedding = self.char_embed(chars)
-
-        # conv_inp dim: (bsize * max_sent_length, emb_size, max_word_length)
-        conv_inp = char_embedding.transpose(1, 2)
-        char_conv_outs = [F.relu(conv(conv_inp)) for conv in self.convs]
-
-        # Apply max pooling
-        # char_pool_out[i] dims: (bsize * max_sent_length, out_channels)
-        char_pool_outs = [torch.max(out, dim=2)[0] for out in char_conv_outs]
-
-        # Concat different feature maps together
-        # char_pool_out dim: (bsize * max_sent_length, out_channel * num_kernels)
-        char_out = torch.cat(char_pool_outs, 1)
-
-        # Highway layers, preserves dims
-        if self.highway is not None:
-            char_out = self.highway(char_out)
-
-        if self.projection is not None:
-            # Linear map back to final embedding size:
-            # (bsize * max_sent_length, projection_dim)
-            char_out = self.projection(char_out)
-
-        # Reshape to (bsize, max_sent_length, "output_dim")
-        return char_out.view(batch_size, max_sent_length, -1)
+        try:
+            # assume loaded_module was new version, with weights like embedding.convs.0.weight
+            super().load_state_dict(loaded_module)
+        except RuntimeError:
+            # if failed, perhaps loaded_module was old version, with weights like convs.0.weight
+            self.embedding.load_state_dict(loaded_module)
