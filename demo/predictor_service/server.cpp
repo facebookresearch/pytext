@@ -74,7 +74,8 @@ class PredictorHandler : virtual public PredictorIf {
 
  public:
   PredictorHandler(string& modelFile) {
-    mModule = torch::jit::load(modelFile);
+    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
+    mModule = pytorchPredictor->getPredictor()->get_module();
   }
 
   void predict(map<string, double>& _return, const string& doc) {
