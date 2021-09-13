@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import Dict, Optional, Type
+from typing import List, Dict, Optional, Type
 
 from . import Batcher, Data
 from .data import RowData
@@ -24,7 +24,7 @@ class DecoupledUtils:
         return token.lower().startswith("[") and token.lower().endswith("outofdomain")
 
 
-def get_decoupled(tokens, filter_ood_slots):
+def get_decoupled(tokens: List[str], filter_ood_slots: bool) -> List[str]:
     """
     Convert the seqlogical form to the decoupled form
     """
@@ -68,7 +68,7 @@ def get_decoupled(tokens, filter_ood_slots):
     return decoupled
 
 
-def get_blind_decoupled(bracket_form, filter_ood_slots=True, **kwargs):
+def get_blind_decoupled(bracket_form: str, filter_ood_slots=True, **kwargs) -> str:
     return " ".join(get_decoupled(bracket_form.split(), filter_ood_slots))
 
 
