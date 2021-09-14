@@ -53,7 +53,7 @@ def Linear(in_features, out_features, bias=True):
 
 def verify_encoder_out(encoder_out: Dict[str, Tensor], keys: List[str]):
     for key in keys:
-        assert key in encoder_out, f"Needed {key} to be in {keys}"
+        assert key in encoder_out, f"Needed {key} to be in {encoder_out.keys()}"
 
 
 def extract_ontology_vocab(target_dictionary):
