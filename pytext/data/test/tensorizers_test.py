@@ -1600,6 +1600,50 @@ class CharacterVocabTokenTensorizerTest(unittest.TestCase):
 
     def test_character_vocab_token_tensorizer(self):
         rows = [{"text": "Move fast"}, {"text": "And break things"}]
+
+        # test with use_unk = False
+        expected_outputs = [
+            [
+                (
+                    "char_tokens",
+                    [[0, 2, 3, 4], [5, 6, 7, 8]],
+                ),
+                ("char_tokens_lengths", [4, 4]),
+            ],
+            [
+                (
+                    "char_tokens",
+                    [[6, 9, 10], [11, 12, 4, 6, 13], [8, 14, 15, 9, 16, 7]],
+                ),
+                ("char_tokens_lengths", [3, 5, 6]),
+            ],
+        ]
+
+        expected_tensors = (
+            [
+                [
+                    [0, 2, 3, 4, 1, 1],
+                    [5, 6, 7, 8, 1, 1],
+                    [1, 1, 1, 1, 1, 1],
+                ],
+                [
+                    [6, 9, 10, 1, 1, 1],
+                    [11, 12, 4, 6, 13, 1],
+                    [8, 14, 15, 9, 16, 7],
+                ],
+            ],
+            [[4, 4, 0], [3, 5, 6]],
+        )
+
+        tensorizer = CharacterVocabTokenTensorizer(text_column="text", use_unk=False)
+        self._initialize_tensorizer(tensorizer, data=rows)
+        numberized_rows = [tensorizer.numberize(row) for row in rows]
+
+        for expected, numberized_row in zip(expected_outputs, numberized_rows):
+            for (field, value), out in zip(expected, numberized_row):
+                self.assertEqual(value, out, msg=f"{field} didn't match!")
+
+        # test for use_unk=True
         expected_outputs = [
             [
                 (

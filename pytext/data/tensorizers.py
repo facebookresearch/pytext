@@ -825,6 +825,8 @@ class CharacterVocabTokenTensorizerScriptImpl(TensorizerScriptImpl):
         max_seq_len: int,
         vocab: Vocabulary,
         tokenizer: Optional[Tokenizer],
+        lowercase_tokens: bool = False,
+        use_unk: bool = True,
     ):
         super().__init__()
 
@@ -851,6 +853,8 @@ class CharacterVocabTokenTensorizerScriptImpl(TensorizerScriptImpl):
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
         self.max_seq_len = max_seq_len
+        self.use_unk = use_unk
+        self.lowercase_tokens = lowercase_tokens
 
     def tokenize(
         self,
@@ -963,6 +967,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
         max_seq_len: Optional[int] = None
         vocab: VocabConfig = VocabConfig()
         vocab_file_delimiter: str = " "
+        lowercase_tokens: bool = False
+        use_unk: bool = True
 
     @classmethod
     def from_config(cls, config: Config):
@@ -977,6 +983,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
             vocab_config=config.vocab,
             vocab_file_delimiter=config.vocab_file_delimiter,
             is_input=config.is_input,
+            lowercase_tokens=config.lowercase_tokens,
+            use_unk=config.use_unk,
         )
 
     def __init__(
@@ -991,6 +999,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
         vocab=None,
         vocab_file_delimiter=" ",
         is_input=Config.is_input,
+        lowercase_tokens=Config.lowercase_tokens,
+        use_unk=Config.use_unk,
     ):
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
@@ -1002,6 +1012,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
         self.vocab_file_delimiter = vocab_file_delimiter
+        self.lowercase_tokens = lowercase_tokens
+        self.use_unk = use_unk
         super().__init__(is_input)
 
     @property
@@ -1027,10 +1039,13 @@ class CharacterVocabTokenTensorizer(Tensorizer):
             # else means not initialize from scratch, self.vocab_builder
             # would be set already
             self.vocab_builder = vocab_builder or VocabBuilder(
-                delimiter=self.vocab_file_delimiter
+                delimiter=self.vocab_file_delimiter,
+                lowercase_tokens=self.lowercase_tokens,
             )
             self.vocab_builder.use_bos = self.add_bos_token
             self.vocab_builder.use_eos = self.add_eos_token
+            self.vocab_builder.use_unk = self.use_unk
+
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
             self.vocab = self.vocab_builder.make_vocab()
@@ -1074,6 +1089,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
     def numberize(self, row):
         """Tokenize, look up in vocabulary."""
         raw_text = row[self.text_column]
+        if self.lowercase_tokens:
+            raw_text = raw_text.lower()
         tokenized = self.tokenizer.tokenize(raw_text)
         tokens_in_chars = self.character_tokenize(tokenized)
         char_tokens = self.vocab.lookup_all(tokens_in_chars)
@@ -1097,6 +1114,8 @@ class CharacterVocabTokenTensorizer(Tensorizer):
             max_seq_len=self.max_seq_len,
             vocab=self.vocab,
             tokenizer=self.tokenizer,
+            lowercase_tokens=self.lowercase_tokens,
+            use_unk=self.use_unk,
         )
 
 

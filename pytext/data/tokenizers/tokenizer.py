@@ -113,7 +113,12 @@ class DoNothingTokenizer(Tokenizer):
 
     def tokenize(self, tokens: Union[List[str], str]) -> List[Token]:
         if isinstance(tokens, str):
-            tokens = json.loads(tokens)
+            # parse tokens if in json format
+            try:
+                tokens = json.loads(tokens)
+            # else make it a List
+            except Exception:
+                tokens = [tokens]
         tokens = [Token(token_text, -1, -1) for token_text in tokens if token_text]
         return tokens
 

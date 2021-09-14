@@ -224,7 +224,7 @@ class Vocabulary:
 class VocabBuilder:
     """Helper class for aggregating and building `Vocabulary` objects."""
 
-    def __init__(self, delimiter=" "):
+    def __init__(self, delimiter=" ", lowercase_tokens=False):
         self._counter = Counter()
         self.use_unk = True
         self.unk_index = UNK_INDEX
@@ -240,6 +240,7 @@ class VocabBuilder:
         self.eol_index = 5
         self.use_mask = False
         self.mask_index = 6
+        self.lowercase_tokens = lowercase_tokens
 
         # Some tokenization libraries use special tokens, expose them so they
         # can be configured
@@ -263,6 +264,8 @@ class VocabBuilder:
 
     def add(self, value) -> None:
         """Count a single value in the vocabulary."""
+        if self.lowercase_tokens:
+            value = value.lower()
         self._counter[value] += 1
 
     def add_from_file(
