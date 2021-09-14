@@ -379,6 +379,25 @@ def load_float_list(s):
     return [float(f) for f in parsed]
 
 
+@RootDataSource.register_type(List[List[float]])
+def load_2d_float_lists(s):
+    if isinstance(s, List) and all(isinstance(i, float) for x in s for i in x):
+        return s
+    # replace spaces between float numbers with commas (regex101.com/r/C2705x/1)
+    processed = re.sub(r"(?<=[\d.])\s*,?\s+(?=[+-]?[\d.])", ",", s)
+    # remove dot not followed with a digit (regex101.com/r/goSmuG/1/)
+    processed = re.sub(r"(?<=\d)\.(?![\d])", "", processed)
+    try:
+        parsed = json.loads(processed)
+    except json.decoder.JSONDecodeError as e:
+        raise ValueError(
+            f"Unable to parse list of float lists `{s}` (normalized to `{processed}`)"
+        ) from e
+    if not isinstance(parsed, list):
+        raise ValueError(f"Expected list[list[float]], got {parsed}")
+    return [[float(f) for f in seq] for seq in parsed]
+
+
 @RootDataSource.register_type(JSONString)
 def load_json_string(s):
     parsed = json.loads(s)

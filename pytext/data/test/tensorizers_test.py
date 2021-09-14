@@ -14,7 +14,12 @@ from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizerScriptImpl,
 )
 from pytext.data.sources import SquadDataSource
-from pytext.data.sources.data_source import Gazetteer, SafeFileWrapper, load_float_list
+from pytext.data.sources.data_source import (
+    Gazetteer,
+    SafeFileWrapper,
+    load_float_list,
+    load_2d_float_lists,
+)
 from pytext.data.sources.pandas import SessionPandasDataSource
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
 from pytext.data.squad_for_bert_tensorizer import (
@@ -794,6 +799,44 @@ class TensorizersTest(unittest.TestCase):
         ]
         for raw, expected in tests:
             row = {"dense": load_float_list(raw)}
+            numberized = tensorizer.numberize(row)
+            self.assertEqual(expected, numberized)
+
+    def test_create_2d_float_list_tensor(self):
+        tensorizer = FloatListSeqTensorizer(column="dense", dim=2, error_check=True)
+        tests = [
+            ("[[0.1,0.2],[0.1,0.2]]", ([[0.1, 0.2], [0.1, 0.2]], 2)),  # comma
+            (
+                "[[0.1, 0.2], [0.1, 0.2]]",
+                ([[0.1, 0.2], [0.1, 0.2]], 2),
+            ),  # comma with single space
+            ("[[0.1,  0.2]]", ([[0.1, 0.2]], 1)),  # comma with multiple spaces
+            ("[[0.1 0.2]]", ([[0.1, 0.2]], 1)),  # space
+            ("[[0.1  0.2]]", ([[0.1, 0.2]], 1)),  # multiple spaces
+            ("[[ 0.1  0.2]]", ([[0.1, 0.2]], 1)),  # space after [
+            ("[[0.1  0.2 ]]", ([[0.1, 0.2]], 1)),  # space before ]
+            ("[[0.  1.]]", ([[0.0, 1.0]], 1)),  # 0., 1.
+        ]
+        for raw, expected in tests:
+            row = {"dense": load_2d_float_lists(raw)}
+            numberized = tensorizer.numberize(row)
+            self.assertEqual(expected, numberized)
+
+        # Test the case when dim is None
+        tensorizer = FloatListSeqTensorizer(
+            column="dense",
+            dim=None,
+            error_check=False,
+        )
+        tests = [
+            ("[[0.1,0.2],[0.1,0.2]]", ([[0.1, 0.2], [0.1, 0.2]], 2)),
+            (
+                "[[0.1, 0.2], [0.1, 0.2]]",
+                ([[0.1, 0.2], [0.1, 0.2]], 2),
+            ),
+        ]
+        for raw, expected in tests:
+            row = {"dense": load_2d_float_lists(raw)}
             numberized = tensorizer.numberize(row)
             self.assertEqual(expected, numberized)
 
