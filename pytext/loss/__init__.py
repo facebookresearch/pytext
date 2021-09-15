@@ -20,6 +20,7 @@ from .loss import (
     SourceType,
     BinaryFocalLoss,
     FocalLoss,
+    CTCLoss,
 )
 from .regularized_loss import (
     LabelSmoothingLoss,
@@ -60,4 +61,5 @@ __all__ = [
     "AdaptiveRegularizer",
     "BinaryFocalLoss",
     "FocalLoss",
+    "CTCLoss",
 ]

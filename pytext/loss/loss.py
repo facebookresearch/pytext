@@ -681,3 +681,42 @@ class FocalLoss(Loss):
             ignore_index=self.ignore_index,
             reduction="mean" if reduce else "none",
         )
+
+
+class CTCLoss(Loss):
+    """
+    CTCLoss for contiguous input sequence mapped to targets (target sequence is less than <len(input_sequence))
+    """
+
+    class Config(ConfigBase):
+        # add blank label for CTC loss
+        # blank needs to be 0 for CuDNN to work in PyTorch
+        # reference, https://pytorch.org/docs/stable/generated/torch.nn.CTCLoss.html#torch.nn.CTCLoss
+        blank: int = 0
+
+    def __init__(self, config, ignore_index=-100, *args, **kwargs):
+        self.ignore_index = ignore_index
+        self.blank = config.blank
+
+    def __call__(
+        self,
+        logits,
+        targets,
+        input_lengths,
+        target_lengths,
+        reduce=True,
+        zero_infinity=True,
+    ):
+        # convert logits to log_probs
+        log_probs = F.log_softmax(logits, -1, dtype=torch.float32)
+
+        return F.ctc_loss(
+            # Reshape logits for CTCLoss to (seq_len, batch_size, outputs)
+            log_probs.permute(1, 0, 2),
+            targets,
+            input_lengths,
+            target_lengths,
+            blank=self.blank,
+            reduction="mean" if reduce else "none",
+            zero_infinity=zero_infinity,
+        )
