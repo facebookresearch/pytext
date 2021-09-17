@@ -252,20 +252,6 @@ class TensorizersTest(unittest.TestCase):
         self._initialize_tensorizer(tensorizer)
         self.assertEqual(15, len(tensorizer.vocab))
 
-        # vocab from data + vocab_file + additional labels
-        tensorizer = TokenTensorizer(
-            text_column="text",
-            vocab_config=VocabConfig(
-                size_from_data=3,
-                vocab_files=[
-                    VocabFileConfig(filepath=embed_file, skip_header_line=True)
-                ],
-                additional_tokens=["new_label"],
-            ),
-        )
-        self._initialize_tensorizer(tensorizer)
-        self.assertEqual(16, len(tensorizer.vocab))
-
         # vocab just from vocab_file
         tensorizer = TokenTensorizer(
             text_column="text",
@@ -283,27 +269,6 @@ class TensorizersTest(unittest.TestCase):
         with self.assertRaises(StopIteration):
             init.send(None)
         self.assertEqual(7, len(tensorizer.vocab))  # 5 + unk token + pad token
-
-        # vocab from vocab_file + add labels
-        tensorizer = TokenTensorizer(
-            text_column="text",
-            vocab_config=VocabConfig(
-                build_from_data=False,
-                vocab_files=[
-                    VocabFileConfig(
-                        filepath=embed_file, skip_header_line=True, size_limit=5
-                    )
-                ],
-                additional_tokens=["new_label"],
-            ),
-        )
-        init = tensorizer.initialize()
-        # Should skip initialization
-        with self.assertRaises(StopIteration):
-            init.send(None)
-        self.assertEqual(
-            8, len(tensorizer.vocab)
-        )  # 5 + unk token + pad token + new_label
 
     def test_numberize_with_token_tensorizer(self):
         tensorizer = TokenTensorizer(text_column="text")
