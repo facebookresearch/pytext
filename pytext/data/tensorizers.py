@@ -358,6 +358,8 @@ class VocabConfig(Component.Config):
     #: than min_counts.
     min_counts: int = 0
     vocab_files: List[VocabFileConfig] = []
+    #: for small amount of additonal tokens that do not require a vocab file
+    additional_tokens: Optional[List[str]] = None
 
 
 class TokenTensorizer(Tensorizer):
@@ -478,9 +480,10 @@ class TokenTensorizer(Tensorizer):
             self.vocab_builder.use_eos = self.add_eos_token
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
+            if self.vocab_config.additional_tokens:
+                self.vocab_builder.add_all(self.vocab_config.additional_tokens)
             self.vocab = self.vocab_builder.make_vocab()
             return True
-
         return False
 
     def initialize(self, vocab_builder=None, from_scratch=True):
@@ -499,6 +502,8 @@ class TokenTensorizer(Tensorizer):
                 self.vocab_config.size_from_data, self.vocab_config.min_counts
             )
             self._add_vocab_from_files()
+            if self.vocab_config.additional_tokens:
+                self.vocab_builder.add_all(self.vocab_config.additional_tokens)
             self.vocab = self.vocab_builder.make_vocab()
 
     def _add_vocab_from_files(self):
