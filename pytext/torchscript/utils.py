@@ -183,9 +183,15 @@ def make_sequence_lengths(batch: List[List[str]]) -> List[int]:
 
 @torch.jit.script
 def pad_2d(
-    batch: List[List[int]], seq_lens: List[int], pad_idx: int, max_len: int = -1
+    batch: List[List[int]],
+    seq_lens: List[int],
+    pad_idx: int,
+    max_len: int = -1,
+    min_len: int = -1,
 ) -> List[List[int]]:
     pad_to_length = max(seq_lens)
+    if min_len > 0:
+        pad_to_length = max(pad_to_length, min_len)
     if max_len > 0:
         pad_to_length = min(pad_to_length, max_len)
     for sentence in batch:
