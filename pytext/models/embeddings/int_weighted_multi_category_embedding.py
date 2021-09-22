@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -19,9 +19,14 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
     class Config(ModuleConfig):
         embedding_dim: int = 32
         weight_scale: float = 1.0
-        embedding_bag_mode: str = "sum"
-        # when it's false, mode has to be 'sum'
-        ignore_weight: bool = False
+        # Deprecated, use features_embedding_bag_mode instead.
+        embedding_bag_mode: Optional[str] = None
+        # Deprecated, use features_embedding_bag_mode instead.
+        ignore_weight: Optional[bool] = None
+
+        # for every feaure in feature_buckets, configure its embedding bag (If not configured, by default it's `sum`).
+        # If embedding bag is mean/max, its weight will be ignored.
+        features_embedding_bag_mode: Dict[int, str] = {}
         # mean / max / none (concat)
         pooling_type: str = "none"
         # Apply MLP layers after pooling.
@@ -47,6 +52,7 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
         return cls(
             embedding_dim=config.embedding_dim,
             weight_scale=config.weight_scale,
+            features_embedding_bag_mode=config.features_embedding_bag_mode,
             embedding_bag_mode=config.embedding_bag_mode,
             ignore_weight=config.ignore_weight,
             pooling_type=config.pooling_type,
@@ -58,25 +64,44 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
         self,
         embedding_dim: int,
         weight_scale: float,
-        embedding_bag_mode: str,
-        ignore_weight: bool,
+        features_embedding_bag_mode: Dict[int, str],
+        embedding_bag_mode: Optional[str],
+        ignore_weight: Optional[bool],
         pooling_type: str,
         mlp_layer_dims: List[int],
         feature_buckets: Dict[int, int],
     ) -> None:
         super().__init__(embedding_dim)
 
+        features_embedding_bag_mode = {
+            int(k): v for k, v in features_embedding_bag_mode.items()
+        }
+        if (
+            ignore_weight is not None or embedding_bag_mode is not None
+        ):  # for back-compatibility.
+            assert (
+                len(features_embedding_bag_mode) == 0
+            ), "ignore_weight could only be set in old config and couldn't be set together with features_embedding_bag_mode"
+            ignore_weight = ignore_weight or False
+            embedding_bag_mode = embedding_bag_mode or "sum"
+            features_embedding_bag_mode = {
+                int(k): embedding_bag_mode if ignore_weight else "sum"
+                for k in feature_buckets.keys()
+            }
+
         self.weight_scale = weight_scale
-        self.ignore_weight = ignore_weight
-        if not ignore_weight:
-            assert embedding_bag_mode == "sum"  # EmbeddingBag required.
+        self.features_embedding_bag_mode = features_embedding_bag_mode
         self.pooling_type = pooling_type
         self.mlp_layer_dims = mlp_layer_dims
 
         self.feature_buckets = {int(k): v for k, v in feature_buckets.items()}
         self.feature_embeddings = nn.ModuleDict(
             {
-                str(k): nn.EmbeddingBag(v, embedding_dim, mode=embedding_bag_mode)
+                str(k): nn.EmbeddingBag(
+                    v,
+                    embedding_dim,
+                    mode=self.features_embedding_bag_mode.get(k, "sum"),
+                )
                 for k, v in feature_buckets.items()
             }
         )
@@ -124,7 +149,11 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
                 feat_emb(
                     feats_remap,
                     offsets=offsets,
-                    per_sample_weights=(weights if not self.ignore_weight else None),
+                    per_sample_weights=(
+                        weights
+                        if self.features_embedding_bag_mode.get(k, "sum") == "sum"
+                        else None
+                    ),
                 )
                 * self.weight_scale
             )
