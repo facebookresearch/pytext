@@ -84,7 +84,7 @@ class MLPDecoder(DecoderBase):
                     f, map_location=lambda s, l: default_restore_location(s, "cpu")
                 )
             print("loaded mlp state")
-            self.load_state_dict(mlp_state, strict=config.load_stric)
+            self.load_state_dict(mlp_state, strict=config.load_strict)
 
         log_class_usage(__class__)
 
