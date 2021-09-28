@@ -121,6 +121,7 @@ class Trainer(TrainerBase):
         #: https://arxiv.org/abs/1710.03740
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
         use_tensorboard: bool = False
+        find_unused_parameters: bool = False
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
@@ -174,7 +175,7 @@ class Trainer(TrainerBase):
                 device_ids=[device_id],
                 output_device=device_id,
                 broadcast_buffers=False,
-                find_unused_parameters=state.model.find_unused_parameters,
+                find_unused_parameters=self.config.find_unused_parameters,
                 process_group=distributed._round_robin_process_group,
             )
         state.start_time = time.time()
@@ -703,7 +704,7 @@ class FP16GradsTrainer(TaskTrainer):
                 device_ids=[device_id],
                 output_device=device_id,
                 broadcast_buffers=False,
-                find_unused_parameters=state.model.find_unused_parameters,
+                find_unused_parameters=self.config.find_unused_parameters,
                 process_group=distributed._round_robin_process_group,
             )
             state.model.register_comm_hook(
