@@ -83,7 +83,6 @@ class PassthroughEncoder(SentenceEncoder):
         return self.transformer(embedded_tokens, padding_mask[0])
 
 
-
 def remove_state_keys(state, keys_regex):
     """Remove keys from state that match a regex"""
     regex = re.compile(keys_regex)
