@@ -1084,6 +1084,20 @@ def v38_to_v39(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=40)
+def v40_to_v39(json_config):
+    for v in get_json_config_iterator(json_config, "RoBERTaEncoder"):
+        if "skip_token_embed" in v:
+            del v["skip_token_embed"]
+    return json_config
+
+
+@register_adapter(from_version=39)
+def v39_to_v40(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized

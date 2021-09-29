@@ -21,6 +21,7 @@ from pytorch.text.fb.nn.modules.residual_mlp import (
     GeLU,
 )
 from pytorch.text.fb.nn.modules.transformer import (
+    PassthroughTransformer,
     SELFIETransformer,
     Transformer,
     TransformerLayer,
@@ -31,13 +32,14 @@ from .multihead_linear_attention import (
     QuantizedMultiheadLinearAttention,
 )
 from .representation import TransformerRepresentation
-from .sentence_encoder import PostEncoder, SentenceEncoder
+from .sentence_encoder import PassthroughEncoder, PostEncoder, SentenceEncoder  # noqa
 
 
 __all__ = [
     "MultiheadLinearAttention",
     "QuantizedMultiheadLinearAttention",
     "MultiheadSelfAttention",
+    "PassthroughTransformer",
     "PositionalEmbedding",
     "ResidualMLP",
     "SentenceEncoder",

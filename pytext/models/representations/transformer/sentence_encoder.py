@@ -66,6 +66,24 @@ class PostEncoder(SentenceEncoder):
         return self.transformer(tokens, dense)
 
 
+class PassthroughEncoder(SentenceEncoder):
+    def forward(self, embedded_tokens: torch.Tensor, padding_mask: torch.Tensor):
+        all_layers = self.extract_features(
+            embedded_tokens, padding_mask
+        )  # list of [T x B x C]
+        return [layer.transpose(0, 1) for layer in all_layers]
+
+    def extract_features(
+        self, embedded_tokens: torch.Tensor, padding_mask: torch.Tensor
+    ):
+        # support passing in a single sentence
+        embedded_tokens = embedded_tokens.view(
+            -1, embedded_tokens.shape[-2], embedded_tokens.shape[-1]
+        )
+        return self.transformer(embedded_tokens, padding_mask[0])
+
+
+
 def remove_state_keys(state, keys_regex):
     """Remove keys from state that match a regex"""
     regex = re.compile(keys_regex)

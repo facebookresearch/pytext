@@ -28,6 +28,8 @@ from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
     QuantizedMultiheadLinearAttention,
+    PassthroughEncoder,
+    PassthroughTransformer,
     PostEncoder,
     SELFIETransformer,
     SentenceEncoder,
@@ -148,6 +150,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         prune_before_load: Optional[bool] = False
         scaling: Optional[float] = None
         normalize_before: bool = False
+        skip_token_embed: bool = False
 
     def __init__(
         self,
@@ -175,6 +178,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             )
 
         self.use_selfie_encoder = config.use_selfie_encoder
+        self.skip_token_embed = config.skip_token_embed
 
         if config.use_linformer_encoder:
             if config.linformer_quantize:
@@ -214,28 +218,38 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                 )
                 for _ in range(config.num_encoder_layers)
             ]
-
-        self.encoder = (
-            SentenceEncoder(
-                transformer=Transformer(
+        if not config.skip_token_embed:
+            self.encoder = (
+                SentenceEncoder(
+                    transformer=Transformer(
+                        vocab_size=config.vocab_size,
+                        embedding_dim=config.embedding_dim,
+                        layers=layers,
+                        max_seq_len=config.max_seq_len,
+                        normalize_before=config.normalize_before,
+                        token_embedding=token_embedding,
+                    )
+                )
+                if not self.use_selfie_encoder
+                else PostEncoder(
+                    transformer=SELFIETransformer(
+                        vocab_size=config.vocab_size,
+                        embedding_dim=config.embedding_dim,
+                        layers=layers,
+                        max_seq_len=config.max_seq_len,
+                    )
+                )
+            )
+        else:
+            self.encoder = PassthroughEncoder(
+                transformer=PassthroughTransformer(
                     vocab_size=config.vocab_size,
                     embedding_dim=config.embedding_dim,
                     layers=layers,
                     max_seq_len=config.max_seq_len,
                     normalize_before=config.normalize_before,
-                    token_embedding=token_embedding,
                 )
             )
-            if not self.use_selfie_encoder
-            else PostEncoder(
-                transformer=SELFIETransformer(
-                    vocab_size=config.vocab_size,
-                    embedding_dim=config.embedding_dim,
-                    layers=layers,
-                    max_seq_len=config.max_seq_len,
-                )
-            )
-        )
         self.apply(init_params)
 
         if config.prune_before_load:
@@ -324,7 +338,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
 
         encoded_layers, pooled_output = (
             self._encoder(input_tuple, args[0])
-            if self.use_selfie_encoder
+            if self.use_selfie_encoder or self.skip_token_embed
             else self._encoder(input_tuple)
         )
 
