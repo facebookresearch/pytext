@@ -121,7 +121,7 @@ class Trainer(TrainerBase):
         #: https://arxiv.org/abs/1710.03740
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
         use_tensorboard: bool = False
-        find_unused_parameters: bool = False
+        find_unused_parameters: bool = True
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
