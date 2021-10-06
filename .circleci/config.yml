@@ -3,7 +3,7 @@ _run:
     name: install_system_deps
     command: |
       sudo apt-get update
-      sudo apt-get install -y cmake python-pip python-dev build-essential protobuf-compiler libprotoc-dev
+      sudo apt-get install -y cmake python3-pip python-dev build-essential protobuf-compiler libprotoc-dev
   install_test_deps: &install_test_deps
     name: install_test_deps
     command: |
