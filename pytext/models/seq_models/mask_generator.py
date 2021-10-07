@@ -9,10 +9,6 @@ from pytext.models.module import Module
 from pytext.torchscript.vocab import ScriptVocabulary
 from torch import Tensor
 from torch.quantization import float_qparams_weight_only_qconfig
-from torch.quantization import (
-    prepare,
-    convert,
-)
 
 
 class BeamRankingAlgorithm(Enum):
@@ -192,24 +188,15 @@ class MaskedSequenceGenerator(Module):
         super().__init__()
         length_prediction_model = length_prediction_model.create_eval_module()
         if quantize:
-            self.model = torch.quantization.quantize_dynamic(
-                model,
-                {torch.nn.Linear: torch.quantization.per_channel_dynamic_qconfig},
-                dtype=torch.qint8,
-                inplace=False,
-            )
+            qconfig_dict = {
+                torch.nn.Linear: torch.quantization.per_channel_dynamic_qconfig
+            }
             # embedding quantization
             if embed_quantize != EmbedQuantizeType.NONE:
 
                 # 8-bit embedding quantization
                 if embed_quantize == EmbedQuantizeType.BIT_8:
-                    ## identify nn.Embedding
-                    for module in self.model.modules():
-                        if isinstance(module, torch.nn.Embedding):
-                            module.qconfig = float_qparams_weight_only_qconfig
-
-                    prepare(self.model, inplace=True)
-                    convert(self.model, inplace=True)
+                    qconfig_dict[torch.nn.Embedding] = float_qparams_weight_only_qconfig
 
                 # 4-bit embedding quantization
                 elif embed_quantize == EmbedQuantizeType.BIT_4:
@@ -220,6 +207,13 @@ class MaskedSequenceGenerator(Module):
                     raise NotImplementedError(
                         "Embedding Quantization should be either 8bit or 4bit"
                     )
+
+            self.model = torch.quantization.quantize_dynamic(
+                model,
+                qconfig_dict,
+                dtype=torch.qint8,
+                inplace=False,
+            )
 
             self.length_prediction_model = torch.quantization.quantize_dynamic(
                 length_prediction_model,
