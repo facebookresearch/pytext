@@ -27,6 +27,10 @@ from pytorch.text.fb.nn.modules.transformer import (
     TransformerLayer,
 )
 
+from .luna_attention import (
+    LunarMultiheadAttention,
+    LunarCausalAttention,
+)
 from .multihead_linear_attention import (
     MultiheadLinearAttention,
     QuantizedMultiheadLinearAttention,
@@ -37,6 +41,8 @@ from .sentence_encoder import PassthroughEncoder, PostEncoder, SentenceEncoder  
 
 __all__ = [
     "MultiheadLinearAttention",
+    "LunarMultiheadAttention",
+    "LunarCausalAttention",
     "QuantizedMultiheadLinearAttention",
     "MultiheadSelfAttention",
     "PassthroughTransformer",
