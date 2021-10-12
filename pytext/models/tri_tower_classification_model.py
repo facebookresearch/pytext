@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 from pytext.common.constants import Stage
+from pytext.common.constants import TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
@@ -24,7 +25,11 @@ from pytext.models.roberta import RoBERTaEncoder, RoBERTaEncoderBase
 from pytext.torchscript.module import ScriptPyTextTriTowerModuleWithDense
 from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
-from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
+
+if TORCH_VERSION >= (1, 11):
+    from torch.ao.quantization import convert_jit, get_default_qconfig, prepare_jit
+else:
+    from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 
 
 class TriTowerClassificationModel(BaseModel):

@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 from pytext import resources
 from pytext.common.constants import Stage
+from pytext.common.constants import TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
@@ -55,11 +56,14 @@ from pytorch.text.fb.nn.modules.transformer import (
     TransformerLayer,
 )
 from torch import nn
-from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 from torch.serialization import default_restore_location
 
 from .r3f_models import R3FConfigOptions, R3FPyTextMixin
 
+if TORCH_VERSION >= (1, 11):
+    from torch.ao.quantization import convert_jit, get_default_qconfig, prepare_jit
+else:
+    from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
 
 logger = logging.getLogger(name=__name__)
 

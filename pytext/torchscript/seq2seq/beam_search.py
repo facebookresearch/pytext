@@ -7,10 +7,16 @@ from typing import List, Optional, Tuple
 import torch
 import torch.jit
 import torch.jit.quantized
+from pytext.common.constants import TORCH_VERSION
 from torch import nn
 
 from .decoder import DecoderBatchedStepEnsemble
 from .encoder import EncoderEnsemble
+
+if TORCH_VERSION >= (1, 11):
+    import torch.ao.quantization as tq
+else:
+    import torch.quantization as tq
 
 
 @torch.jit.script
@@ -42,7 +48,7 @@ class BeamSearch(nn.Module):
         # Script the encoder model
         encoder_ens = EncoderEnsemble(self.models, self.beam_size)
         if quantize:
-            encoder_ens = torch.quantization.quantize_dynamic(
+            encoder_ens = tq.quantize_dynamic(
                 encoder_ens,
                 {torch.nn.Linear},  # Add after bug fix torch.nn.LSTM
                 dtype=torch.qint8,
@@ -56,7 +62,7 @@ class BeamSearch(nn.Module):
             self.models, beam_size, record_attention=record_attention
         )
         if quantize:
-            decoder_ens = torch.quantization.quantize_dynamic(
+            decoder_ens = tq.quantize_dynamic(
                 decoder_ens,
                 {torch.nn.Linear},  # Add after bug fix torch.nn.LSTM
                 dtype=torch.qint8,
