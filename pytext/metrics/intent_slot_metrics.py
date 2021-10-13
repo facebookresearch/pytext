@@ -157,6 +157,7 @@ class AllMetrics(NamedTuple):
         loss: Cross entropy loss.
         percent_invalid_trees: Percentage of invalid trees.
         percent_trees_wrong_label: Percentage of trees with incorrect IN/SL labels
+        exit_epoch: return the number of epochs run in the training. Useful for benchmark
     """
 
     top_intent_accuracy: Optional[float]
@@ -168,6 +169,7 @@ class AllMetrics(NamedTuple):
     percent_invalid_trees: Optional[float]
     percent_trees_wrong_label: Optional[float]
     loss: Optional[float] = None
+    exit_epoch: Optional[int] = None
 
     def print_metrics(self) -> None:
         if self.frame_accuracy:

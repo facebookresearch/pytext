@@ -19,6 +19,7 @@ from pytext.config.component import (
 from pytext.config.pytext_config import ConfigBase
 from pytext.data.data_handler import BatchIterator
 from pytext.metric_reporters import MetricReporter
+from pytext.metrics.intent_slot_metrics import AllMetrics
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
 from pytext.optimizer import Adam, Optimizer, learning_rates
@@ -497,7 +498,24 @@ class Trainer(TrainerBase):
         ):
             self.load_best_model(state)
 
-        return state.model, state.best_model_metric
+        metrics = state.best_model_metric
+        if isinstance(metrics, AllMetrics):
+            all_metrics = AllMetrics(
+                metrics.top_intent_accuracy,
+                metrics.frame_accuracy,
+                metrics.frame_accuracy_top_k,
+                metrics.frame_accuracies_by_depth,
+                metrics.bracket_metrics,
+                metrics.tree_metrics,
+                metrics.percent_invalid_trees,
+                metrics.percent_trees_wrong_label,
+                metrics.loss,
+                state.epoch,
+            )
+        else:
+            all_metrics = state.best_model_metric
+
+        return state.model, all_metrics
 
     @timing.report_snapshot
     def run_epoch(

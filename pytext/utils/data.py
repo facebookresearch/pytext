@@ -6,6 +6,8 @@ import os
 import unicodedata
 from typing import Any, List, Optional, Tuple
 
+USE_BYTE_OFFSET = True
+
 
 def simple_tokenize(s: str) -> List[str]:
     return s.split(" ")
@@ -16,7 +18,10 @@ def no_tokenize(s: Any) -> Any:
 
 
 def get_substring_from_offsets(
-    text: str, start: Optional[int], end: Optional[int], byte_offset: bool = True
+    text: str,
+    start: Optional[int],
+    end: Optional[int],
+    byte_offset: bool = USE_BYTE_OFFSET,
 ) -> str:
     """
     Access substring of a text using byte offset, if the switch is turned on.
