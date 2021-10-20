@@ -20,7 +20,10 @@ from pytext.models.output_layers.doc_classification_output_layer import (
     MultiLabelOutputLayer,
 )
 from pytext.models.roberta import RoBERTaEncoder, RoBERTaEncoderBase
-from pytext.torchscript.module import ScriptPyTextTwoTowerModuleWithDense
+from pytext.torchscript.module import (
+    ScriptPyTextTwoTowerModuleWithDense,
+    ScriptPyTextTwoTowerModuleWithDenseTower,
+)
 from pytext.utils.label import get_label_weights
 from pytext.utils.usage import log_class_usage
 from torch.quantization import convert_jit, get_default_qconfig, prepare_jit
@@ -36,6 +39,7 @@ class TwoTowerClassificationModel(BaseModel):
             left_tokens: RoBERTaTensorizer.Config = RoBERTaTensorizer.Config()
             right_dense: Optional[FloatListTensorizer.Config] = None
             left_dense: Optional[FloatListTensorizer.Config] = None
+            dense: Optional[FloatListTensorizer.Config] = None
 
             labels: LabelTensorizer.Config = LabelTensorizer.Config()
 
@@ -48,6 +52,8 @@ class TwoTowerClassificationModel(BaseModel):
         )
         use_shared_encoder: Optional[bool] = False
         use_shared_embedding: Optional[bool] = False
+        use_dense_in_decoder: Optional[bool] = False
+
         vocab_size: Optional[int] = 250002
         hidden_dim: Optional[int] = 768
         padding_idx: Optional[int] = 1
@@ -63,14 +69,24 @@ class TwoTowerClassificationModel(BaseModel):
         right_script_tensorizer = tensorizers["right_tokens"].torchscriptify()
         left_script_tensorizer = tensorizers["left_tokens"].torchscriptify()
 
-        return ScriptPyTextTwoTowerModuleWithDense(
-            model=traced_model,
-            output_layer=self.output_layer.torchscript_predictions(),
-            right_tensorizer=right_script_tensorizer,
-            left_tensorizer=left_script_tensorizer,
-            right_normalizer=tensorizers["right_dense"].normalizer,
-            left_normalizer=tensorizers["left_dense"].normalizer,
-        )
+        if self.use_dense_in_decoder:
+            return ScriptPyTextTwoTowerModuleWithDenseTower(
+                model=traced_model,
+                output_layer=self.output_layer.torchscript_predictions(),
+                right_tensorizer=right_script_tensorizer,
+                left_tensorizer=left_script_tensorizer,
+                right_normalizer=tensorizers["right_dense"].normalizer,
+                left_normalizer=tensorizers["left_dense"].normalizer,
+            )
+        else:
+            return ScriptPyTextTwoTowerModuleWithDense(
+                model=traced_model,
+                output_layer=self.output_layer.torchscript_predictions(),
+                right_tensorizer=right_script_tensorizer,
+                left_tensorizer=left_script_tensorizer,
+                right_normalizer=tensorizers["right_dense"].normalizer,
+                left_normalizer=tensorizers["left_dense"].normalizer,
+            )
 
     def graph_mode_quantize(self, inputs, data_loader, calibration_num_batches=64):
         """Quantize the model during export with graph mode quantization for linformer encoder."""
@@ -100,12 +116,21 @@ class TwoTowerClassificationModel(BaseModel):
         return trace
 
     def arrange_model_inputs(self, tensor_dict):
-        model_inputs = (
-            tensor_dict["right_tokens"],
-            tensor_dict["left_tokens"],
-            tensor_dict["right_dense"],
-            tensor_dict["left_dense"],
-        )
+        if not self.use_dense_in_decoder:
+            model_inputs = (
+                tensor_dict["right_tokens"],
+                tensor_dict["left_tokens"],
+                tensor_dict["right_dense"],
+                tensor_dict["left_dense"],
+            )
+        else:
+            model_inputs = (
+                tensor_dict["right_tokens"],
+                tensor_dict["left_tokens"],
+                tensor_dict["right_dense"],
+                tensor_dict["left_dense"],
+                tensor_dict["dense"],
+            )
 
         return model_inputs
 
@@ -206,6 +231,7 @@ class TwoTowerClassificationModel(BaseModel):
             config.vocab_size,
             config.hidden_dim,
             config.padding_idx,
+            use_dense_in_decoder=config.use_dense_in_decoder,
         )
 
     def __init__(
@@ -219,12 +245,15 @@ class TwoTowerClassificationModel(BaseModel):
         vocab_size,
         hidden_dim,
         padding_idx,
+        use_dense_in_decoder=False,
         stage=Stage.TRAIN,
     ) -> None:
         super().__init__(stage=stage)
         self.right_encoder = right_encoder
         self.use_shared_encoder = use_shared_encoder
         self.use_shared_embedding = use_shared_embedding
+        self.use_dense_in_decoder = use_dense_in_decoder
+
         self.decoder = decoder
         if self.use_shared_encoder:
             self.module_list = [right_encoder, decoder]

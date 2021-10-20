@@ -822,6 +822,69 @@ class ScriptPyTextTwoTowerModuleWithDense(ScriptPyTextTwoTowerModule):
             right_dense_tensor,
             left_dense_tensor,
         )
+
+        return self.output_layer(logits)
+
+
+class ScriptPyTextTwoTowerModuleWithDenseTower(ScriptPyTextTwoTowerModule):
+    def __init__(
+        self,
+        model: torch.jit.ScriptModule,
+        output_layer: torch.jit.ScriptModule,
+        right_tensorizer: ScriptTensorizer,
+        left_tensorizer: ScriptTensorizer,
+        right_normalizer: VectorNormalizer,
+        left_normalizer: VectorNormalizer,
+    ):
+        super().__init__(model, output_layer, right_tensorizer, left_tensorizer)
+        self.right_normalizer = right_normalizer
+        self.left_normalizer = left_normalizer
+
+    @torch.jit.script_method
+    def forward(
+        self,
+        dense_feat: List[List[float]],
+        right_dense_feat: List[List[float]],
+        left_dense_feat: List[List[float]],
+        right_texts: Optional[List[str]] = None,
+        left_texts: Optional[List[str]] = None,
+        right_tokens: Optional[List[List[str]]] = None,
+        left_tokens: Optional[List[List[str]]] = None,
+        languages: Optional[List[str]] = None,
+    ):
+        right_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(right_texts),
+            tokens=squeeze_2d(right_tokens),
+            languages=squeeze_1d(languages),
+        )
+        right_input_tensors = self.right_tensorizer(right_inputs)
+        left_inputs: ScriptBatchInput = ScriptBatchInput(
+            texts=resolve_texts(left_texts),
+            tokens=squeeze_2d(left_tokens),
+            languages=squeeze_1d(languages),
+        )
+        left_input_tensors = self.left_tensorizer(left_inputs)
+
+        right_dense_feat = self.right_normalizer.normalize(right_dense_feat)
+        left_dense_feat = self.left_normalizer.normalize(left_dense_feat)
+        right_dense_tensor = torch.tensor(right_dense_feat, dtype=torch.float)
+        left_dense_tensor = torch.tensor(left_dense_feat, dtype=torch.float)
+        if self.right_tensorizer.device != "":
+            right_dense_tensor = right_dense_tensor.to(self.right_tensorizer.device)
+        if self.left_tensorizer.device != "":
+            left_dense_tensor = left_dense_tensor.to(self.left_tensorizer.device)
+
+        dense_tensor = torch.tensor(dense_feat, dtype=torch.float)
+        if self.left_tensorizer.device != "":
+            dense_tensor = dense_tensor.to(self.left_tensorizer.device)
+        logits = self.model(
+            right_input_tensors,
+            left_input_tensors,
+            right_dense_tensor,
+            left_dense_tensor,
+            dense_tensor,
+        )
+
         return self.output_layer(logits)
 
 
