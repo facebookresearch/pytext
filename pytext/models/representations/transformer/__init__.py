@@ -31,6 +31,7 @@ from .luna_attention import (
     LunarMultiheadAttention,
     LunarCausalAttention,
 )
+from .luna_sentence_encoder import LunaSentenceEncoder
 from .multihead_linear_attention import (
     MultiheadLinearAttention,
     QuantizedMultiheadLinearAttention,
@@ -43,6 +44,7 @@ __all__ = [
     "MultiheadLinearAttention",
     "LunarMultiheadAttention",
     "LunarCausalAttention",
+    "LunaSentenceEncoder",
     "QuantizedMultiheadLinearAttention",
     "MultiheadSelfAttention",
     "PassthroughTransformer",
