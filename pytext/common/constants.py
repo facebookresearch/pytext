@@ -2,6 +2,18 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from enum import Enum
+from typing import Tuple
+
+import torch
+
+
+TORCH_VERSION: Tuple[int, ...] = tuple(
+    # Versions could be in the following formats:
+    # - 1.9, 1.10 etc.
+    # - torch.deploy-1.9, torch.deploy-1.10, etc.
+    int(x)
+    for x in torch.__version__.split("-")[-1].split(".")[:2]
+)
 
 
 class Token(str):

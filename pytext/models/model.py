@@ -8,11 +8,11 @@ import torch
 import torch.jit
 import torch.nn as nn
 from pytext.common.constants import Stage
+from pytext.common.constants import TORCH_VERSION
 from pytext.config.component import Component, ComponentType
 from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig
 from pytext.config.pytext_config import ConfigBase, ConfigBaseMeta
-from pytext.config.serialize import _is_optional
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models.module import create_module
@@ -20,12 +20,16 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.path import is_absolute_path
 from pytext.utils.precision import maybe_float
 from pytext.utils.usage import log_class_usage
-from torch.jit import quantized
 
 from .decoders import DecoderBase
 from .embeddings import EmbeddingBase, EmbeddingList
 from .output_layers import OutputLayerBase
 from .representations.representation_base import RepresentationBase
+
+if TORCH_VERSION >= (1, 11):
+    import torch.ao.quantization as tq
+else:
+    import torch.quantization as tq
 
 
 def _assert_tensorizer_type(t):
@@ -139,7 +143,7 @@ class BaseModel(nn.Module, Component):
         # model wants other modules quantized.
         # By default we dynamic quantize Linear for PyText models.
         # Todo: we can also add quantized torch.nn.LSTM/GRU support in the future.
-        torch.quantization.quantize_dynamic(
+        tq.quantize_dynamic(
             self, {torch.nn.Linear, torch.nn.LSTM}, dtype=torch.qint8, inplace=True
         )
 

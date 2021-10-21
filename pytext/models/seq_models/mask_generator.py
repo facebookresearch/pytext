@@ -4,11 +4,18 @@ from enum import Enum
 from typing import Dict, Optional, Tuple
 
 import torch
+from pytext.common.constants import TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.models.module import Module
 from pytext.torchscript.vocab import ScriptVocabulary
 from torch import Tensor
-from torch.quantization import float_qparams_weight_only_qconfig
+
+if TORCH_VERSION >= (1, 11):
+    import torch.ao.quantization as tq
+    from torch.ao.quantization import float_qparams_weight_only_qconfig
+else:
+    import torch.quantization as tq
+    from torch.quantization import float_qparams_weight_only_qconfig
 
 
 class BeamRankingAlgorithm(Enum):
@@ -188,9 +195,7 @@ class MaskedSequenceGenerator(Module):
         super().__init__()
         length_prediction_model = length_prediction_model.create_eval_module()
         if quantize:
-            qconfig_dict = {
-                torch.nn.Linear: torch.quantization.per_channel_dynamic_qconfig
-            }
+            qconfig_dict = {torch.nn.Linear: tq.per_channel_dynamic_qconfig}
             # embedding quantization
             if embed_quantize != EmbedQuantizeType.NONE:
 
@@ -208,16 +213,16 @@ class MaskedSequenceGenerator(Module):
                         "Embedding Quantization should be either 8bit or 4bit"
                     )
 
-            self.model = torch.quantization.quantize_dynamic(
+            self.model = tq.quantize_dynamic(
                 model,
                 qconfig_dict,
                 dtype=torch.qint8,
                 inplace=False,
             )
 
-            self.length_prediction_model = torch.quantization.quantize_dynamic(
+            self.length_prediction_model = tq.quantize_dynamic(
                 length_prediction_model,
-                {torch.nn.Linear: torch.quantization.per_channel_dynamic_qconfig},
+                {torch.nn.Linear: tq.per_channel_dynamic_qconfig},
                 dtype=torch.qint8,
                 inplace=False,
             )
