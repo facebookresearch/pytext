@@ -10,15 +10,15 @@ from accelerators.pytorch.lib.accelerator_lowering import (
     lower_split_model_to_accelerator,
 )
 from accelerators.pytorch.lib.export_helper import AccelerateOptions
-from accelerators.pytorch.lib.quantize import (
-    quantize_statically,
-    quantize_fx,
-)
 from accelerators.pytorch.lib.model_rewriter import (
     find_module_instances,
     rewrite_nnpi_modules,
     MODULE_TO_REWRITER,
     swap_modules,
+)
+from accelerators.pytorch.lib.quantize import (
+    quantize_statically,
+    quantize_fx,
 )
 from pytext.common.constants import Stage
 from pytext.config import ConfigBase, PyTextConfig, ExportConfig
