@@ -131,6 +131,7 @@ class DecoupledDecoderHead(nn.Module):
 
         # `x`: B x T_trg x C
         x, output_dict = decoder_out
+        output_dict["decoder_out"] = x
 
         # `logits`: B x T_trg x V_ontology
         logits = self.linear_projection(x)  # B x T_trg x V_ontology
@@ -170,6 +171,12 @@ class DecoupledDecoderHead(nn.Module):
         # `calc_src_attn_scores`: T_src, T_trg, B
         cur_src_attn, calc_src_attn_scores = self.pointer_attention(
             x, encoder_outs, encoder_mask, False
+        )
+        cur_src_attn = cur_src_attn.to(
+            device=optional_fixed_logits.device, dtype=optional_fixed_logits.dtype
+        )
+        calc_src_attn_scores = calc_src_attn_scores.to(
+            device=optional_fixed_logits.device, dtype=optional_fixed_logits.dtype
         )
 
         # `cur_src_attn`: B x T_trg x C
