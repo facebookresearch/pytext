@@ -86,6 +86,9 @@ class BinaryCrossEntropyWithLogitsLoss(Loss):
     class Config(ConfigBase):
         reduce: bool = True
 
+    def __init__(self, config, pos_weight=None, *args, **kwargs):
+        self.pos_weight = pos_weight
+
     def __call__(self, logits, targets, reduce=True):
         """
         Computes 1-vs-all binary cross entropy loss for multiclass classification. However, unlike BinaryCrossEntropyLoss, we require targets to be a one-hot vector.
@@ -99,7 +102,10 @@ class BinaryCrossEntropyWithLogitsLoss(Loss):
         """
 
         loss = F.binary_cross_entropy_with_logits(
-            precision.maybe_float(logits), target_labels, reduction="none"
+            precision.maybe_float(logits),
+            target_labels,
+            reduction="none",
+            pos_weight=self.pos_weight.to(logits.device),
         )
 
         return loss.sum(-1).mean() if reduce else loss.sum(-1)

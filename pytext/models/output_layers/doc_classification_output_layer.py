@@ -20,7 +20,10 @@ from pytext.loss import (
     LabelSmoothedCrossEntropyLoss,
     MultiLabelSoftMarginLoss,
 )
-from pytext.utils.label import get_label_weights
+from pytext.utils.label import (
+    get_custom_or_automatic_label_weights,
+)
+from pytext.utils.typing import WeightingMethod
 from torch import jit
 
 from .output_layer_base import OutputLayerBase
@@ -54,6 +57,7 @@ class ClassificationOutputLayer(OutputLayerBase):
             LabelSmoothedCrossEntropyLoss.Config,
         ] = CrossEntropyLoss.Config()
         label_weights: Optional[Dict[str, float]] = None
+        automatic_label_weighting_method: Optional[WeightingMethod] = None
 
     @classmethod
     def from_config(
@@ -74,8 +78,13 @@ class ClassificationOutputLayer(OutputLayerBase):
             pad_token_idx = getattr(metadata, "pad_token_idx", -1)
 
         label_weights = (
-            get_label_weights(vocab_dict, config.label_weights)
-            if config.label_weights
+            get_custom_or_automatic_label_weights(
+                vocab_dict,
+                labels.counts,
+                config.label_weights,
+                config.automatic_label_weighting_method,
+            )
+            if config.label_weights or config.automatic_label_weighting_method
             else None
         )
 
@@ -86,8 +95,10 @@ class ClassificationOutputLayer(OutputLayerBase):
         if isinstance(loss, BinaryCrossEntropyLoss):
             cls = BinaryClassificationOutputLayer
         elif isinstance(loss, MultiLabelSoftMarginLoss):
+            loss = create_loss(config.loss, pos_weight=label_weights)
             cls = MultiLabelOutputLayer
         elif isinstance(loss, BinaryCrossEntropyWithLogitsLoss):
+            loss = create_loss(config.loss, pos_weight=label_weights)
             cls = MultiLabelOutputLayer
         else:
             cls = MulticlassOutputLayer

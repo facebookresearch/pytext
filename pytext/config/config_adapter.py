@@ -1107,7 +1107,21 @@ def v41_to_v40(json_config):
 
 
 @register_adapter(from_version=40)
-def v409_to_v41(json_config):
+def v40_to_v41(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
+@register_down_grade_adapter(from_version=42)
+def v42_to_v41(json_config):
+    for v in get_json_config_iterator(json_config, "output_layer"):
+        if "automatic_label_weighting_method" in v:
+            del v["automatic_label_weighting_method"]
+    return json_config
+
+
+@register_adapter(from_version=41)
+def v41_to_v42(json_config):
     # New config field was added with backwards-compatible default value
     return json_config
 
