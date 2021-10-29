@@ -174,6 +174,23 @@ class Annotation:
 
         return root
 
+    def validate_alignment(self) -> bool:
+        term_nodes = self.root.list_terminals()
+
+        for term_node in term_nodes:
+            label = term_node.label
+            if label.startswith("{") and label.endswith("}"):
+                if (
+                    type(term_node.parent) != Slot
+                    or len(term_node.parent.children) != 1
+                ):
+                    # invalid annotation if
+                    # 1. template not align with slot
+                    # 2. there are sibling nodes of the template
+                    return False
+
+        return True
+
     def __str__(self):
         """
         A tab-indented version of the tree.
