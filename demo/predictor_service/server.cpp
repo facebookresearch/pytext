@@ -52,7 +52,7 @@ class PredictorHandler : virtual public PredictorIf {
     size_t start = 0;
     size_t end = 0;
     for (size_t i = 0; i < doc.length(); i++) {
-      if (isspace(doc.at(i))){
+      if (isspace(doc.at(i))) {
         end = i;
         if (end != start) {
           tokens.push_back(doc.substr(start, end - start));
@@ -74,8 +74,9 @@ class PredictorHandler : virtual public PredictorIf {
 
  public:
   PredictorHandler(string& modelFile) {
-    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
-    mModule = pytorchPredictor->getPredictor()->get_module();
+    auto pytorchPredictor =
+        std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile) mModule =
+            pytorchPredictor->getPredictor()->get_module();
   }
 
   void predict(map<string, double>& _return, const string& doc) {
@@ -109,11 +110,10 @@ class RestProxyHandler : public Http::Handler {
   shared_ptr<TTransport> mTransport;
   shared_ptr<PredictorClient> mPredictorClient;
 
-  string urlDecode(const string &encoded)
-  {
-    CURL *curl = curl_easy_init();
+  string urlDecode(const string& encoded) {
+    CURL* curl = curl_easy_init();
     int decodedLength;
-    char *decodedCstr = curl_easy_unescape(
+    char* decodedCstr = curl_easy_unescape(
         curl, encoded.c_str(), encoded.length(), &decodedLength);
     string decoded(decodedCstr, decodedCstr + decodedLength);
     curl_free(decodedCstr);
@@ -126,8 +126,7 @@ class RestProxyHandler : public Http::Handler {
 
   RestProxyHandler(
       shared_ptr<TTransport>& transport,
-      shared_ptr<PredictorClient>& predictorClient
-    ) {
+      shared_ptr<PredictorClient>& predictorClient) {
     mTransport = transport;
     mPredictorClient = predictorClient;
   }
@@ -145,18 +144,17 @@ class RestProxyHandler : public Http::Handler {
       mPredictorClient->predict(scores, doc);
       for (const auto& score : scores) {
         out << score.first << ":" << score.second << endl;
-        }
+      }
 
       response.send(Http::Code::Ok, out.str());
-    }
-    else {
+    } else {
       out << "Missing query parameter: " << docParam << endl;
       response.send(Http::Code::Bad_Request, out.str());
     }
   }
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // Parse command line args
   if (argc < 2) {
     cerr << "Usage:" << endl;
@@ -170,13 +168,14 @@ int main(int argc, char **argv) {
   // Initialize predictor thrift service
   shared_ptr<PredictorHandler> handler(new PredictorHandler(modelFile));
   shared_ptr<TProcessor> processor(new PredictorProcessor(handler));
-  shared_ptr<TServerTransport> serverTransport(new TServerSocket(FLAGS_port_thrift));
+  shared_ptr<TServerTransport> serverTransport(
+      new TServerSocket(FLAGS_port_thrift));
   shared_ptr<TTransportFactory> transportFactory(
       new TBufferedTransportFactory());
   shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
   TSimpleServer thriftServer(
       processor, serverTransport, transportFactory, protocolFactory);
-  thread thriftThread([&](){ thriftServer.serve(); });
+  thread thriftThread([&]() { thriftServer.serve(); });
   cout << "Server running. Thrift port: " << FLAGS_port_thrift;
 
   if (FLAGS_rest) {
@@ -193,7 +192,7 @@ int main(int argc, char **argv) {
     restServer.init(opts);
     restServer.setHandler(
         make_shared<RestProxyHandler>(transport, predictorClient));
-    thread restThread([&](){ restServer.serve(); });
+    thread restThread([&]() { restServer.serve(); });
 
     cout << ", REST port: " << FLAGS_port_rest << endl;
     restThread.join();

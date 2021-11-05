@@ -1,12 +1,12 @@
 // Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 #include <algorithm>
+#include <csignal>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-#include <csignal>
 
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/server/TSimpleServer.h>
@@ -16,15 +16,15 @@
 #include <thrift/transport/TTransportUtils.h>
 #include "gen-cpp/Predictor.h"
 
-#include "pistache/endpoint.h"
-#include <sentencepiece_processor.h>
 #include <curl/curl.h>
+#include <sentencepiece_processor.h>
 #include <torch/script.h>
+#include "pistache/endpoint.h"
 
 #include "formatter.hpp"
 
-#include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 DEFINE_int32(
     port_thrift,
     9090,
@@ -76,7 +76,7 @@ class PredictorHandler : virtual public PredictorIf {
     size_t start = 0;
     size_t end = 0;
     for (size_t i = 0; i < doc.length(); i++) {
-      if (isspace(doc.at(i))){
+      if (isspace(doc.at(i))) {
         end = i;
         if (end != start) {
           tokens.push_back(doc.substr(start, end - start));
@@ -99,8 +99,9 @@ class PredictorHandler : virtual public PredictorIf {
  public:
   // For XLM-R models
   PredictorHandler(string& modelFile, string& sentencepieceVocabFile) {
-    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
-    mModule = pytorchPredictor->getPredictor()->get_module();
+    auto pytorchPredictor =
+        std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile) mModule =
+            pytorchPredictor->getPredictor()->get_module();
     const auto status = mSpProcessor.Load(sentencepieceVocabFile);
     if (!status.ok()) {
       LOG(FATAL) << status.ToString();
@@ -112,8 +113,9 @@ class PredictorHandler : virtual public PredictorIf {
 
   // For DocNN models
   PredictorHandler(string& modelFile) {
-    auto pytorchPredictor = std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile)
-    mModule = pytorchPredictor->getPredictor()->get_module();
+    auto pytorchPredictor =
+        std::make_shared<caffe2::PyTorchPredictorContainer>(modelFile) mModule =
+            pytorchPredictor->getPredictor()->get_module();
     mUseSentencePiece = false;
   }
 
@@ -131,7 +133,8 @@ class PredictorHandler : virtual public PredictorIf {
       stringstream ss;
       ss << "[";
       copy(tokens.begin(), tokens.end(), ostream_iterator<string>(ss, ", "));
-      ss.seekp(-1, ss.cur); ss << "]";
+      ss.seekp(-1, ss.cur);
+      ss << "]";
       VLOG(1) << "Tokens for \"" << doc << "\": " << ss.str();
     }
 
@@ -163,10 +166,10 @@ class RestProxyHandler : public Http::Handler {
   shared_ptr<PredictorClient> mPredictorClient;
   shared_ptr<Formatter> mFormatter;
 
-  string urlDecode(const string &encoded) {
-    CURL *curl = curl_easy_init();
+  string urlDecode(const string& encoded) {
+    CURL* curl = curl_easy_init();
     int decodedLength;
-    char *decodedCstr = curl_easy_unescape(
+    char* decodedCstr = curl_easy_unescape(
         curl, encoded.c_str(), encoded.length(), &decodedLength);
     string decoded(decodedCstr, decodedCstr + decodedLength);
     curl_free(decodedCstr);
@@ -179,8 +182,7 @@ class RestProxyHandler : public Http::Handler {
 
   RestProxyHandler(
       shared_ptr<TTransport>& transport,
-      shared_ptr<PredictorClient>& predictorClient
-    ) {
+      shared_ptr<PredictorClient>& predictorClient) {
     mTransport = transport;
     mPredictorClient = predictorClient;
 
@@ -200,15 +202,18 @@ class RestProxyHandler : public Http::Handler {
     try {
       contentType = headers.get<Http::Header::ContentType>();
     } catch (runtime_error) {
-      response.send(Http::Code::Bad_Request,
-                    "Expected HTTP header Content-Type: application/json\n");
+      response.send(
+          Http::Code::Bad_Request,
+          "Expected HTTP header Content-Type: application/json\n");
       return;
     }
 
     auto mediaType = contentType->mime();
     if (mediaType != MIME(Application, Json)) {
-      response.send(Http::Code::Bad_Request,
-                    "Expected HTTP header Content-Type: application/json, found " + mediaType.toString() + "\n");
+      response.send(
+          Http::Code::Bad_Request,
+          "Expected HTTP header Content-Type: application/json, found " +
+              mediaType.toString() + "\n");
       return;
     }
 
@@ -216,8 +221,8 @@ class RestProxyHandler : public Http::Handler {
     try {
       text = mFormatter->formatRequest(request.body());
     } catch (out_of_range e) {
-      response.send(Http::Code::Bad_Request,
-                    string("Exception: ") + e.what() + "\n");
+      response.send(
+          Http::Code::Bad_Request, string("Exception: ") + e.what() + "\n");
       return;
     }
 
@@ -227,8 +232,7 @@ class RestProxyHandler : public Http::Handler {
   }
 };
 
-int main(int argc, char **argv) {
-
+int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_logtostderr = 1;
@@ -236,7 +240,8 @@ int main(int argc, char **argv) {
   if (argc < 2) {
     cerr << "Usage:" << endl;
     cerr << "./server <DocNN model file>" << endl;
-    cerr << "./server <XLM-R model file> <XLM-R sentencepiece vocab file>" << endl;
+    cerr << "./server <XLM-R model file> <XLM-R sentencepiece vocab file>"
+         << endl;
     return 1;
   }
 
@@ -260,13 +265,14 @@ int main(int argc, char **argv) {
 
   // Initialize predictor thrift service
   shared_ptr<TProcessor> mSpProcessor(new PredictorProcessor(handler));
-  shared_ptr<TServerTransport> serverTransport(new TServerSocket(FLAGS_port_thrift));
+  shared_ptr<TServerTransport> serverTransport(
+      new TServerSocket(FLAGS_port_thrift));
   shared_ptr<TTransportFactory> transportFactory(
       new TBufferedTransportFactory());
   shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
   thriftServer = make_unique<TSimpleServer>(
       mSpProcessor, serverTransport, transportFactory, protocolFactory);
-  thread thriftThread([&](){ thriftServer->serve(); });
+  thread thriftThread([&]() { thriftServer->serve(); });
   LOG(INFO) << "Thrift server running at port: " << FLAGS_port_thrift;
 
   if (FLAGS_rest) {

@@ -1,11 +1,11 @@
 // Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+#include <glog/logging.h>
+#include <nlohmann/json.hpp>
 #include <cassert>
 #include <set>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
-#include <glog/logging.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -27,29 +27,37 @@ class Formatter {
     transform(text.begin(), text.end(), normalizedText.begin(), ::tolower);
     normalizedText = stripPrefixChars(normalizedText, mPrefixCharsToStrip);
     normalizedText = stripSuffixChars(normalizedText, mSuffixCharsToStrip);
-    VLOG(1) << "Normalized \"" << text << "\" into \"" << normalizedText << "\"";
+    VLOG(1) << "Normalized \"" << text << "\" into \"" << normalizedText
+            << "\"";
 
     return normalizedText;
   }
 
-  const string& formatResponse(const map<string, double>& scores, const string& text) {
+  const string& formatResponse(
+      const map<string, double>& scores,
+      const string& text) {
     // Exponentiate
     map<string, double> expScores;
-    transform(scores.begin(), scores.end(), inserter(expScores, expScores.begin()),
-              [](const auto& p) {
-                return make_pair(p.first, exp(p.second));
-              });
+    transform(
+        scores.begin(),
+        scores.end(),
+        inserter(expScores, expScores.begin()),
+        [](const auto& p) { return make_pair(p.first, exp(p.second)); });
 
     // Sum up
-    double sum = accumulate(begin(expScores), end(expScores), 0.,
-                            [](double previous, const auto& p) { return previous + p.second; });
+    double sum = accumulate(
+        begin(expScores),
+        end(expScores),
+        0.,
+        [](double previous, const auto& p) { return previous + p.second; });
 
     // Normalize (end up with softmax)
     map<string, double> normScores;
-    transform(expScores.begin(), expScores.end(), inserter(normScores, normScores.begin()),
-              [sum](const auto& p) {
-                return make_pair(p.first, p.second / sum);
-              });
+    transform(
+        expScores.begin(),
+        expScores.end(),
+        inserter(normScores, normScores.begin()),
+        [sum](const auto& p) { return make_pair(p.first, p.second / sum); });
 
     // Sort in descending order
     vector<pair<string, double>> sortedScores = sortMapByValue(normScores);
@@ -58,8 +66,9 @@ class Formatter {
     // Reformat into name / confidence pairs. Strip "intent:" prefix
     json ir = json::array();
     for (const auto& p : sortedScores) {
-      ir.push_back({{mName, stripPrefixWord(p.first, mIntentPrefix)},
-                    {mConfidence, p.second}});
+      ir.push_back(
+          {{mName, stripPrefixWord(p.first, mIntentPrefix)},
+           {mConfidence, p.second}});
     }
 
     json j;
@@ -72,17 +81,19 @@ class Formatter {
     }
     j[mEntities] = json::array();
 
-    LOG(INFO) << "Processed \"" << text << "\", predicted " << (j[mIntent] != nullptr ? j[mIntent].dump() : "no intents");
+    LOG(INFO) << "Processed \"" << text << "\", predicted "
+              << (j[mIntent] != nullptr ? j[mIntent].dump() : "no intents");
     return j.dump(2 /*indentation*/);
   }
 
   template <typename A, typename B>
   vector<pair<A, B>> sortMapByValue(const map<A, B>& src) {
-    vector<pair<A, B>> v{make_move_iterator(begin(src)),
-                         make_move_iterator(end(src))};
+    vector<pair<A, B>> v{
+        make_move_iterator(begin(src)), make_move_iterator(end(src))};
 
-    sort(begin(v), end(v),
-         [](auto lhs, auto rhs) { return lhs.second > rhs.second; });  // descending order
+    sort(begin(v), end(v), [](auto lhs, auto rhs) {
+      return lhs.second > rhs.second;
+    }); // descending order
 
     return v;
   }
@@ -97,11 +108,15 @@ class Formatter {
     return text;
   }
 
-  const string& stripPrefixChars(const string& text, const set<char>& prefixes) {
-    int textLength = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
+  const string& stripPrefixChars(
+      const string& text,
+      const set<char>& prefixes) {
+    int textLength = text.length(); // cast to int to avoid unsigned size_t
+                                    // underflow on subtraction from 0
     int startIdx = 0;
     while (startIdx < textLength) {
-      if (prefixes.find(text.at(startIdx)) == prefixes.end()) { // character is not in prefixes set
+      if (prefixes.find(text.at(startIdx)) ==
+          prefixes.end()) { // character is not in prefixes set
         break;
       }
       startIdx++;
@@ -111,17 +126,23 @@ class Formatter {
 
   const string& stripSuffixWord(const string& text, const string& suffix) {
     if (text.length() >= suffix.length()) {
-      if (0 == text.compare(text.length() - suffix.length(), suffix.length(), suffix)) {
+      if (0 ==
+          text.compare(
+              text.length() - suffix.length(), suffix.length(), suffix)) {
         return text.substr(0, text.length() - suffix.length());
       }
     }
     return text;
   }
 
-  const string& stripSuffixChars(const string& text, const set<char>& suffixes) {
-    int endIdx = text.length();  // cast to int to avoid unsigned size_t underflow on subtraction from 0
+  const string& stripSuffixChars(
+      const string& text,
+      const set<char>& suffixes) {
+    int endIdx = text.length(); // cast to int to avoid unsigned size_t
+                                // underflow on subtraction from 0
     while (endIdx > 0) {
-      if (suffixes.find(text.at(endIdx - 1)) == suffixes.end()) { // character is not in suffixes set
+      if (suffixes.find(text.at(endIdx - 1)) ==
+          suffixes.end()) { // character is not in suffixes set
         break;
       }
       endIdx--;
@@ -157,12 +178,10 @@ class Formatter {
     assert(stripSuffixChars("", {' ', '?', '!'}) == "");
 
     // Composite
-    assert (
-      stripSuffixChars(
-        stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip),
-        mSuffixCharsToStrip
-      ) == "what is foo"
-    );
+    assert(
+        stripSuffixChars(
+            stripPrefixChars(" what is foo.?!?? ", mPrefixCharsToStrip),
+            mSuffixCharsToStrip) == "what is foo");
 
     LOG(INFO) << "All formatter tests passed";
   }
