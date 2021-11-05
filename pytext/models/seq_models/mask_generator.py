@@ -194,6 +194,31 @@ class MaskedSequenceGenerator(Module):
     ):
         super().__init__()
         length_prediction_model = length_prediction_model.create_eval_module()
+        # self.quantize = quantize
+        # self.embed_quantize = embed_quantize
+        self.model = model
+        self.length_prediction_model = length_prediction_model
+        self.quantize_generator(quantize=quantize, embed_quantize=embed_quantize)
+
+        self.trg_vocab = ScriptVocabulary(
+            list(trg_vocab),
+            pad_idx=trg_vocab.get_pad_index(),
+            bos_idx=trg_vocab.get_bos_index(-1),
+            eos_idx=trg_vocab.get_eos_index(-1),
+            mask_idx=trg_vocab.get_mask_index(),
+        )
+        self.length_beam_size = beam_size
+        self.use_gold_length = use_gold_length
+        self.beam_ranking_algorithm = get_beam_ranking_function(
+            ranking_algorithm=beam_ranking_algorithm
+        )
+        self.clip_target_length = config.clip_target_length
+        self.targetlen_cap = config.targetlen_cap
+        self.targetlen_a = config.targetlen_a
+        self.targetlen_b = config.targetlen_b
+        self.targetlen_c = config.targetlen_c
+
+    def quantize_generator(self, quantize=False, embed_quantize=EmbedQuantizeType.NONE):
         if quantize:
             qconfig_dict = {torch.nn.Linear: tq.per_channel_dynamic_qconfig}
             # embedding quantization
@@ -214,39 +239,18 @@ class MaskedSequenceGenerator(Module):
                     )
 
             self.model = tq.quantize_dynamic(
-                model,
+                self.model,
                 qconfig_dict,
                 dtype=torch.qint8,
                 inplace=False,
             )
 
             self.length_prediction_model = tq.quantize_dynamic(
-                length_prediction_model,
+                self.length_prediction_model,
                 {torch.nn.Linear: tq.per_channel_dynamic_qconfig},
                 dtype=torch.qint8,
                 inplace=False,
             )
-        else:
-            self.model = model
-            self.length_prediction_model = length_prediction_model
-
-        self.trg_vocab = ScriptVocabulary(
-            list(trg_vocab),
-            pad_idx=trg_vocab.get_pad_index(),
-            bos_idx=trg_vocab.get_bos_index(-1),
-            eos_idx=trg_vocab.get_eos_index(-1),
-            mask_idx=trg_vocab.get_mask_index(),
-        )
-        self.length_beam_size = beam_size
-        self.use_gold_length = use_gold_length
-        self.beam_ranking_algorithm = get_beam_ranking_function(
-            ranking_algorithm=beam_ranking_algorithm
-        )
-        self.clip_target_length = config.clip_target_length
-        self.targetlen_cap = config.targetlen_cap
-        self.targetlen_a = config.targetlen_a
-        self.targetlen_b = config.targetlen_b
-        self.targetlen_c = config.targetlen_c
 
     def get_encoder_out(
         self,
