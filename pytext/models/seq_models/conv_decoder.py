@@ -11,7 +11,6 @@ from pytext.config.module_config import ModuleConfig
 from pytext.models.module import create_module
 from pytext.models.seq_models.base import (
     PlaceholderAttentionIdentity,
-    PlaceholderIdentity,
 )
 from pytext.models.seq_models.positional import (
     PostionalEmbedCombine,

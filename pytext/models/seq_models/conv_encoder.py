@@ -14,7 +14,6 @@ from pytext.models.representations.transformer import (
 )
 from pytext.models.seq_models.base import (
     PlaceholderAttentionIdentity,
-    PlaceholderIdentity,
 )
 from pytext.models.seq_models.positional import (
     PostionalEmbedCombine,
