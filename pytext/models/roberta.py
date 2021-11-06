@@ -138,6 +138,9 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         # dont need to translate the state dict and can just load it`
         # directly.
         is_finetuned: bool = False
+        # If loading RoBERTaEncoder from a model where RoBERTaEncoder is just a
+        # submodel, provide the submodel name here
+        load_partial_model: Optional[str] = None
         max_seq_len: int = DEFAULT_MAX_SEQUENCE_LENGTH
         # Fine-tune bias parameters only (https://nlp.biu.ac.il/~yogo/bitfit.pdf)
         use_bias_finetuning: bool = False
@@ -156,7 +159,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         normalize_before: bool = False
         skip_token_embed: bool = False
 
-    def __init__(
+    def __init__(  # noqa C901
         self,
         config: Config,
         output_encoded_layers: bool,
@@ -269,6 +272,13 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
             # it directly
             if not config.is_finetuned:
                 self.encoder.load_roberta_state_dict(roberta_state["model"])
+            elif config.load_partial_model is not None:
+                roberta_state = {
+                    k.replace(config.load_partial_model + ".", ""): v
+                    for k, v in roberta_state["model_state"].items()
+                    if k.startswith(config.load_partial_model)
+                }
+                self.load_state_dict(roberta_state)
             else:
                 self.load_state_dict(roberta_state)
 

@@ -409,4 +409,4 @@ class LogitsConfig(TestConfig):
     fp16: bool = False
 
 
-LATEST_VERSION = 42
+LATEST_VERSION = 43

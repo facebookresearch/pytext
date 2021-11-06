@@ -10,7 +10,9 @@ from pytext.config.module_config import Activation
 from pytext.models.decoders.decoder_base import DecoderBase
 from pytext.optimizer import get_activation
 from pytext.utils import precision
+from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
+from torch.serialization import default_restore_location
 
 
 class ExportType(Enum):
@@ -32,6 +34,8 @@ class MLPDecoderTwoTower(DecoderBase):
         layer_norm: bool = False
         dropout: float = 0.0
         dense_tower_dims: Optional[List[int]] = None
+        load_model_path: Optional[str] = None
+        load_strict: Optional[bool] = False
 
     def __init__(
         self,
@@ -81,6 +85,23 @@ class MLPDecoderTwoTower(DecoderBase):
         self.mlp = MLPDecoderTwoTower.get_mlp(
             from_dim, to_dim, config.hidden_dims, config.layer_norm, config.dropout
         )
+
+        # load model
+        if config.load_model_path:
+            with PathManager.open(config.load_model_path, "rb") as f:
+                model = torch.load(
+                    f, map_location=lambda s, l: default_restore_location(s, "cpu")
+                )
+            mlp_state = {
+                k.replace("decoder.", ""): v
+                for k, v in model["model_state"].items()
+                if k.startswith("decoder.mlp")
+                or k.startswith("decoder.mlp_for_right")
+                or k.startswith("decoder.mlp_for_left")
+                or k.startswith("decoder.mlp_for_dense")
+            }
+            self.load_state_dict(mlp_state, strict=config.load_strict)
+            print("loaded mlp state")
 
         self.out_dim = to_dim
         self.export_type = export_type

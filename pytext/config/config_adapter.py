@@ -1126,6 +1126,25 @@ def v41_to_v42(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=43)
+def v43_to_v42(json_config):
+    for v in get_json_config_iterator(json_config, "RoBERTaEncoder"):
+        if "load_partial_model" in v:
+            del v["load_partial_model"]
+    for v in get_json_config_iterator(json_config, "MLPDecoderTwoTower"):
+        if "load_model_path" in v:
+            del v["load_model_path"]
+        if "load_strict" in v:
+            del v["load_strict"]
+    return json_config
+
+
+@register_adapter(from_version=42)
+def v42_to_v43(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
