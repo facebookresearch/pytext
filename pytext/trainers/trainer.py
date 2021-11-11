@@ -123,22 +123,91 @@ class Trainer(TrainerBase):
         fp16_args: FP16Optimizer.Config = FP16OptimizerFairseq.Config()
         use_tensorboard: bool = False
         find_unused_parameters: bool = True
+        #: Set a discriminative learning rate for some of the parameters in model.
+        #: If None, all parameters will have the same lr.
+        discriminative_lr: Optional[float] = None
+        #: Model parameters match any patterns in the list will have discriminative_lr
+        #: Parameters not matching any patterns will have default lr.
+        # E.g. ["decoder.mlp.0", "decoder.mlp.3"]
+        discriminative_lr_params_pattern: Optional[List[str]] = None
+        #: Model parameters match any patterns in the list will have lr = 0.0
+        freeze_params_pattern: Optional[List[str]] = None
 
     def __init__(self, config: Config, model: torch.nn.Module):
         if config.early_stop_after > 0:
             assert config.do_eval, "can't do early stopping when not running evalution"
 
-        if precision.FP16_ENABLED:
-            self.optimizer: torch.optim.Optimizer = create_optimizer(
-                config.fp16_args,
-                model,
-                config.optimizer,
-                config.num_accumulated_batches,
+        if (
+            config.discriminative_lr is not None
+            or config.freeze_params_pattern is not None
+        ):
+            optimizer_grouped_parameters = []
+            optimizer_parameters_covered = []
+            if config.freeze_params_pattern is not None:
+                tmp_param = {
+                    n: p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in config.freeze_params_pattern)
+                }
+                if len(tmp_param) > 0:
+                    optimizer_parameters_covered.extend(list(tmp_param.keys()))
+                    optimizer_grouped_parameters.append(
+                        {
+                            "params": list(tmp_param.values()),
+                            "lr": 0.0,
+                        }
+                    )
+            if config.discriminative_lr is not None:
+                assert (
+                    config.discriminative_lr_params_pattern is not None
+                ), "Missing discriminative_lr_params_pattern"
+                tmp_param = {
+                    n: p
+                    for n, p in model.named_parameters()
+                    if any(nd in n for nd in config.discriminative_lr_params_pattern)
+                    and n not in optimizer_parameters_covered
+                }
+                if len(tmp_param) > 0:
+                    optimizer_parameters_covered.extend(list(tmp_param.keys()))
+                    optimizer_grouped_parameters.append(
+                        {
+                            "params": list(tmp_param.values()),
+                            "lr": config.discriminative_lr,
+                        }
+                    )
+            optimizer_grouped_parameters.append(
+                {
+                    "params": [
+                        p
+                        for n, p in model.named_parameters()
+                        if n not in optimizer_parameters_covered
+                    ]
+                }
             )
+            if precision.FP16_ENABLED:
+                self.optimizer: torch.optim.Optimizer = create_optimizer(
+                    config.fp16_args,
+                    model,
+                    config.optimizer,
+                    config.num_accumulated_batches,
+                    optimizer_grouped_parameters,
+                )
+            else:
+                self.optimizer: torch.optim.Optimizer = create_optimizer(
+                    config.optimizer, model, optimizer_grouped_parameters
+                )
         else:
-            self.optimizer: torch.optim.Optimizer = create_optimizer(
-                config.optimizer, model
-            )
+            if precision.FP16_ENABLED:
+                self.optimizer: torch.optim.Optimizer = create_optimizer(
+                    config.fp16_args,
+                    model,
+                    config.optimizer,
+                    config.num_accumulated_batches,
+                )
+            else:
+                self.optimizer: torch.optim.Optimizer = create_optimizer(
+                    config.optimizer, model
+                )
 
         self.scheduler: torch.optim.lr_scheduler = (
             create_scheduler(config.scheduler, self.optimizer)

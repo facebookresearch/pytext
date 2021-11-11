@@ -3,7 +3,7 @@
 import contextlib
 from collections import namedtuple
 from sys import stderr
-from typing import Optional
+from typing import List, Optional
 
 import torch
 from fairseq.optim.fp16_optimizer import DynamicLossScaler as Fairseq_DynamicLossScaler
@@ -169,9 +169,16 @@ class FP16OptimizerApex(FP16Optimizer):
         fp16_config: Config,
         model: torch.nn.Module,
         fp32_config: Optimizer.Config,
+        num_accumulated_batches: int,
+        optimizer_grouped_parameters: List = None,
         *unused,
     ):
-        fp32_optimizer = create_optimizer(fp32_config, model)
+        if optimizer_grouped_parameters is None:
+            fp32_optimizer = create_optimizer(fp32_config, model)
+        else:
+            fp32_optimizer = create_optimizer(
+                fp32_config, model, optimizer_grouped_parameters
+            )
         return cls(
             fp32_optimizer,
             model,
