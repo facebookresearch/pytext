@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-import operator
 import unittest
 from collections import Counter
-from distutils.version import LooseVersion
 
 import torch
 import torch.nn as nn
-import torchtext
 from pytext.common.constants import Stage
 from pytext.config.module_config import PoolingType
+from pytext.legacy.vocab import Vocab
 from pytext.models.embeddings import DictEmbedding, EmbeddingList, WordEmbedding
 from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     CompositionalNN,
@@ -20,11 +18,6 @@ from pytext.models.semantic_parsers.rnng.rnng_data_structures import (
     StackLSTM,
 )
 from pytext.models.semantic_parsers.rnng.rnng_parser import RNNGParser
-
-if operator.ge(torchtext.__version__, LooseVersion("0.10.0")):
-    from torchtext.legacy.vocab import Vocab
-else:
-    from torchtext.vocab import Vocab
 
 
 class RNNGDataStructuresTest(unittest.TestCase):
