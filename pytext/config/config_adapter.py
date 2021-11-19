@@ -1163,6 +1163,104 @@ def v43_to_v44(json_config):
     return json_config
 
 
+def migrate_to_old_sharder(sharder):
+    old_sharder = {}
+    # resolve strategy
+    if "base_random_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "random"
+    elif "base_broadcast_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "broadcast"
+    elif "base_column_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "column"
+    elif "base_round_robin_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "round_robin"
+    elif "base_sequential_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "sequential"
+    elif "base_power_law_sharder" == sharder["_base_"]:
+        old_sharder["sharding_strategy"] = "power_law"
+
+    # resolve other optional fields
+    num_shards = sharder.get("num_shards", None)
+    if num_shards is not None:
+        old_sharder["num_shards"] = num_shards
+
+    sharding_col = sharder.get("sharding_col", None)
+    if sharding_col is not None and sharding_col.isdigit():
+        old_sharder["sharding_colindex"] = sharding_col
+    elif sharding_col is not None:
+        old_sharder["sharding_col_name"] = sharding_col
+
+    examples_per_shard = sharder.get("examples_per_shard", None)
+    if examples_per_shard is not None:
+        old_sharder["shard_size_for_sequential"] = examples_per_shard
+
+    return old_sharder
+
+
+def migrate_to_new_sharder(sharder):
+    new_sharder = {}
+    # set strategy
+    if "random" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_random_sharder"
+    elif "broadcast" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_broadcast_sharder"
+    elif "column" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_column_sharder"
+    elif "round_robin" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_round_robin_sharder"
+    elif "sequential" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_sequential_sharder"
+    elif "power_law" == sharder["sharding_strategy"]:
+        new_sharder["_base_"] = "base_power_law_sharder"
+
+    # set non-null values
+    num_shards = sharder.get("num_shards", None)
+    if num_shards is not None:
+        new_sharder["num_shards"] = num_shards
+
+    sharding_colindex = sharder.get("sharding_colindex", None)
+    if sharding_colindex is not None:
+        new_sharder["sharding_col"] = sharding_colindex
+
+    sharding_col_name = sharder.get("sharding_col_name", None)
+    if sharding_col_name is not None:
+        new_sharder["sharding_col"] = sharding_col_name
+
+    shard_size_for_sequential = sharder.get("shard_size_for_sequential", None)
+    if shard_size_for_sequential is not None:
+        new_sharder["examples_per_shard"] = shard_size_for_sequential
+
+    return new_sharder
+
+
+@register_down_grade_adapter(from_version=45)
+def v45_to_v44(json_config):
+    """
+    Replace new Dict Sharder with FLDataSharderConfig
+    """
+    for v in get_json_config_iterator(json_config, "data"):
+        sharder = v.get("sharder", None)
+        if sharder is not None:
+            old_sharder = migrate_to_old_sharder(sharder)
+            del v["sharder"]
+            v["sharder"] = old_sharder
+    return json_config
+
+
+@register_adapter(from_version=44)
+def v44_to_v45(json_config):
+    """
+    Replace FLDataSharderConfig with a Dict
+    """
+    for v in get_json_config_iterator(json_config, "data"):
+        sharder = v.get("sharder", None)
+        if sharder is not None:
+            new_sharder = migrate_to_new_sharder(sharder)
+            del v["sharder"]
+            v["sharder"] = new_sharder
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
