@@ -96,6 +96,29 @@ def pad_2d_mask(
     )
 
 
+def pad_2d_mask_no_script(
+    input: List[List[int]],
+    pad_value: int = 0,
+    seq_padding_control: Optional[List[int]] = None,
+    max_seq_pad_len: int = -1,
+    batch_padding_control: Optional[List[int]] = None,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Used for torch.package"""
+
+    torch.ops.load_library("//caffe2/torch/fb/nlp/operators:padded_sequences")
+
+    # List comprehension required for TorchScript
+    max_seq_len = max([len(i) for i in input])  # noqa
+    max_seq_len = pad_length(max_seq_len, seq_padding_control, max_seq_pad_len)
+
+    max_batch_len = len(input)
+    max_batch_len = pad_length(max_batch_len, batch_padding_control, -1)
+
+    return torch.ops.fb.ragged_indices_to_padded_tensor_and_mask(
+        input, pad_value, max_batch_len, max_seq_len
+    )
+
+
 @torch.jit.script
 def pad_float_tensor(
     input_tensor: torch.Tensor,
