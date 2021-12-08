@@ -34,6 +34,7 @@ class SquadOutputLayer(OutputLayerBase):
         # For knowledge distillation we have soft and hard labels. This specifies
         # the weight on loss against hard labels.
         hard_weight: float = 0.0
+        use_zero_answer: bool = False
 
     @classmethod
     def from_config(
@@ -52,6 +53,7 @@ class SquadOutputLayer(OutputLayerBase):
             false_label=config.false_label,
             max_answer_len=config.max_answer_len,
             hard_weight=config.hard_weight,
+            use_zero_answer=config.use_zero_answer,
             is_kd=is_kd,
         )
 
@@ -65,6 +67,7 @@ class SquadOutputLayer(OutputLayerBase):
         false_label: str = Config.false_label,
         max_answer_len: int = Config.max_answer_len,
         hard_weight: float = Config.hard_weight,
+        use_zero_answer: bool = Config.use_zero_answer,
         is_kd: bool = False,
     ) -> None:
         super().__init__(loss_fn=loss_fn)
@@ -197,7 +200,8 @@ class SquadOutputLayer(OutputLayerBase):
         start_pos_logits, end_pos_logits, has_answer_logits, _, _ = logits
         start_pos_target, end_pos_target, has_answer_target = targets
         num_answers = start_pos_target.size()[-1]
-        if num_answers == 0:
+
+        if num_answers == 0 and not self.use_zero_answer:
             start_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logits)
             end_loss = torch.tensor(0.0, dtype=torch.float).type_as(end_pos_logits)
         else:
@@ -213,10 +217,14 @@ class SquadOutputLayer(OutputLayerBase):
             )
         loss = (start_loss + end_loss).mean()
         if not self.ignore_impossible:
-            has_answer_mask = (
-                has_answer_target.repeat((num_answers,)) == self.true_idx
-            ).float()
-            position_loss = (has_answer_mask * (start_loss + end_loss)).mean()
+            if self.use_zero_answer:
+                position_loss = (start_loss + end_loss).mean()
+            else:
+                has_answer_mask = (
+                    has_answer_target.repeat((num_answers,)) == self.true_idx
+                ).float()
+                position_loss = (has_answer_mask * (start_loss + end_loss)).mean()
+
             has_answer_loss = self.loss_fn(has_answer_logits, has_answer_target)
             loss = (
                 self.has_answer_loss_weight * has_answer_loss

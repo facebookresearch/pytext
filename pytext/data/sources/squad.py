@@ -167,6 +167,11 @@ class SquadDataSource(DataSource):
                     question = question["question"]
                     answer_texts = [answer["text"] for answer in answers]
                     answer_starts = [int(answer["answer_start"]) for answer in answers]
+
+                    if not has_answer:
+                        answer_texts = []
+                        answer_starts = []
+
                     for piece_dict in _split_document(
                         id,
                         doc,
@@ -210,6 +215,10 @@ class SquadDataSource(DataSource):
                 pass
             answers = json.loads(answers)
             answer_starts = json.loads(answer_starts)
+
+            if has_answer != "True":
+                answers = []
+                answer_starts = []
 
             for piece_dict in _split_document(
                 id,

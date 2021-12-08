@@ -86,8 +86,9 @@ class SquadForBERTTensorizer(BERTTensorizer):
             )
         ]
         if not (answer_start_indices and answer_end_indices):
-            answer_start_indices = [self.SPAN_PAD_IDX]
-            answer_end_indices = [self.SPAN_PAD_IDX]
+            # if there are no answers, we use the 0, 0 span.
+            answer_start_indices = [0]
+            answer_end_indices = [0]
 
         return answer_start_indices, answer_end_indices
 

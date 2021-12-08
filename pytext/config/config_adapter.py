@@ -1261,6 +1261,19 @@ def v44_to_v45(json_config):
     return json_config
 
 
+@register_adapter(from_version=45)
+def v45_to_v46(json_config):
+    """
+    Add a new argument to BertSquadQAModel
+    """
+    for v in get_json_config_iterator(json_config, "BertSquadQAModel"):
+        output_layer = v.get("output_layer", None)
+        if output_layer is not None and "use_zero_answer" not in output_layer:
+            output_layer["output_layer"] = False
+
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
