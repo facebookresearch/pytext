@@ -35,13 +35,9 @@ from pytext.fields import (
     SeqFeatureField,
     TextFeatureField,
 )
+from pytext.legacy.vocab import Vocab
 from pytext.task.new_task import _NewTask
 from pytext.utils.onnx import CAFFE2_DB_TYPE
-
-if operator.ge(torchtext.__version__, LooseVersion("0.10.0")):
-    from torchtext.legacy.vocab import Vocab
-else:
-    from torchtext.vocab import Vocab
 
 
 JOINT_CONFIG = """
