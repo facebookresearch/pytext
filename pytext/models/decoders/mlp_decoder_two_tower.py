@@ -100,6 +100,11 @@ class MLPDecoderTwoTower(DecoderBase):
                 or k.startswith("decoder.mlp_for_left")
                 or k.startswith("decoder.mlp_for_dense")
             }
+            if mlp_state["mlp.0.weight"].shape[1] != from_dim:
+                mlp_state = {
+                    k: v for k, v in mlp_state.items() if not k.startswith("mlp.")
+                }
+                print("top mlp weights not loaded")
             self.load_state_dict(mlp_state, strict=config.load_strict)
             print("loaded mlp state")
 
