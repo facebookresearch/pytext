@@ -81,6 +81,7 @@ class SquadOutputLayer(OutputLayerBase):
             self.true_idx = 1 - self.false_idx
         self.is_kd = is_kd
         self.hard_weight = hard_weight
+        self.use_zero_answer = use_zero_answer
         log_class_usage(__class__)
 
     def get_position_preds(
