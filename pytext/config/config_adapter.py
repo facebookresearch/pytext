@@ -1261,6 +1261,18 @@ def v44_to_v45(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=46)
+def v46_to_v45(json_config):
+    """
+    Remove use_zero_answer
+    """
+    for v in get_json_config_iterator(json_config, "BertSquadQAModel"):
+        output_layer = v.get("output_layer", None)
+        if output_layer is not None and "use_zero_answer" in output_layer:
+            del output_layer["use_zero_answer"]
+    return json_config
+
+
 @register_adapter(from_version=45)
 def v45_to_v46(json_config):
     """
@@ -1269,7 +1281,7 @@ def v45_to_v46(json_config):
     for v in get_json_config_iterator(json_config, "BertSquadQAModel"):
         output_layer = v.get("output_layer", None)
         if output_layer is not None and "use_zero_answer" not in output_layer:
-            output_layer["output_layer"] = False
+            output_layer["use_zero_answer"] = False
 
     return json_config
 
