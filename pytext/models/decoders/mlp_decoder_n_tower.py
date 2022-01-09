@@ -29,6 +29,7 @@ class MLPDecoderNTower(DecoderBase):
         hidden_dims: List[int] = []
         layer_norm: bool = False
         dropout: float = 0.0
+        activation: Activation = Activation.RELU
 
     def __init__(
         self,
@@ -48,6 +49,7 @@ class MLPDecoderNTower(DecoderBase):
                     config.tower_specific_hidden_dims[i],
                     config.layer_norm,
                     config.dropout,
+                    config.activation,
                     export_embedding=True,
                 ),
             )
@@ -56,7 +58,12 @@ class MLPDecoderNTower(DecoderBase):
             from_dim += dims[-1]
 
         self.mlp = MLPDecoderNTower.get_mlp(
-            from_dim, to_dim, config.hidden_dims, config.layer_norm, config.dropout
+            from_dim,
+            to_dim,
+            config.hidden_dims,
+            config.layer_norm,
+            config.dropout,
+            config.activation,
         )
         self.out_dim = to_dim
         self.export_type = export_type
@@ -69,6 +76,7 @@ class MLPDecoderNTower(DecoderBase):
         hidden_dims: List[int],
         layer_norm: bool,
         dropout: float,
+        activation: Activation,
         export_embedding: bool = False,
     ):
         layers = []
@@ -77,7 +85,7 @@ class MLPDecoderNTower(DecoderBase):
             layers.append(nn.Linear(from_dim, dim, True))
             # Skip ReLU, LayerNorm, and dropout for the last layer if export_embedding
             if not (export_embedding and i == len(hidden_dims) - 1):
-                layers.append(get_activation(Activation.RELU))
+                layers.append(get_activation(activation))
                 if layer_norm:
                     layers.append(nn.LayerNorm(dim))
                 if dropout > 0:

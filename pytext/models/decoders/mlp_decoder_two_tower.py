@@ -36,6 +36,7 @@ class MLPDecoderTwoTower(DecoderBase):
         dense_tower_dims: Optional[List[int]] = None
         load_model_path: Optional[str] = None
         load_strict: Optional[bool] = False
+        activation: Activation = Activation.RELU
 
     def __init__(
         self,
@@ -53,6 +54,7 @@ class MLPDecoderTwoTower(DecoderBase):
             config.right_hidden_dims,
             config.layer_norm,
             config.dropout,
+            config.activation,
             export_embedding=True,
         )
         self.mlp_for_left = MLPDecoderTwoTower.get_mlp(
@@ -61,6 +63,7 @@ class MLPDecoderTwoTower(DecoderBase):
             config.left_hidden_dims,
             config.layer_norm,
             config.dropout,
+            config.activation,
             export_embedding=True,
         )
 
@@ -74,6 +77,7 @@ class MLPDecoderTwoTower(DecoderBase):
                 hidden_dims=config.dense_tower_dims[1:-1],
                 layer_norm=config.layer_norm,
                 dropout=config.dropout,
+                activation=config.activation,
             )
             from_dim = (
                 config.right_hidden_dims[-1]
@@ -83,7 +87,12 @@ class MLPDecoderTwoTower(DecoderBase):
             self.concat_dense = True
 
         self.mlp = MLPDecoderTwoTower.get_mlp(
-            from_dim, to_dim, config.hidden_dims, config.layer_norm, config.dropout
+            from_dim,
+            to_dim,
+            config.hidden_dims,
+            config.layer_norm,
+            config.dropout,
+            config.activation,
         )
 
         # load model
@@ -119,6 +128,7 @@ class MLPDecoderTwoTower(DecoderBase):
         hidden_dims: List[int],
         layer_norm: bool,
         dropout: float,
+        activation: Activation,
         export_embedding: bool = False,
     ):
         layers = []
@@ -127,7 +137,7 @@ class MLPDecoderTwoTower(DecoderBase):
             layers.append(nn.Linear(from_dim, dim, True))
             # Skip ReLU, LayerNorm, and dropout for the last layer if export_embedding
             if not (export_embedding and i == len(hidden_dims) - 1):
-                layers.append(get_activation(Activation.RELU))
+                layers.append(get_activation(activation))
                 if layer_norm:
                     layers.append(nn.LayerNorm(dim))
                 if dropout > 0:

@@ -1286,6 +1286,26 @@ def v45_to_v46(json_config):
     return json_config
 
 
+@register_down_grade_adapter(from_version=47)
+def v47_to_v46(json_config):
+    for v in get_json_config_iterator(json_config, "MLPDecoderNTower"):
+        if "activation" in v:
+            del v["activation"]
+    for v in get_json_config_iterator(json_config, "MLPDecoderTwoTower"):
+        if "activation" in v:
+            del v["activation"]
+    for v in get_json_config_iterator(json_config, "MLPDecoderTriTower"):
+        if "activation" in v:
+            del v["activation"]
+    return json_config
+
+
+@register_adapter(from_version=46)
+def v46_to_v47(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized
