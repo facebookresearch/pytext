@@ -9,6 +9,8 @@ import torch
 from pytext.utils.cuda import tensor
 from pytext.utils.typing import WeightingMethod
 
+logging.basicConfig(level=logging.INFO)
+
 
 def get_custom_or_automatic_label_weights(
     vocab_dict,
