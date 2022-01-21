@@ -1306,6 +1306,20 @@ def v46_to_v47(json_config):
     return json_config
 
 
+@register_adapter(from_version=47)
+def v47_to_v48(json_config):
+    # New config field was added with backwards-compatible default value
+    return json_config
+
+
+@register_down_grade_adapter(from_version=48)
+def v48_to_v47(json_config):
+    for v in get_json_config_iterator(json_config, "DecoupledSeq2SeqData"):
+        if "noisy_decoupling" in v:
+            del v["noisy_decoupling"]
+    return json_config
+
+
 def get_name_from_options(export_config):
     """
     Reverse engineer which model is which based on recognized

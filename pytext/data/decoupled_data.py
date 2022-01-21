@@ -24,6 +24,54 @@ class DecoupledUtils:
         return token.lower().startswith("[") and token.lower().endswith("outofdomain")
 
 
+def get_no_fail_decoupled(tokens, filter_ood_slots: bool):
+    # this is identical to get_decoupled except it ignores tokens that would otherwise cause a failure
+    # this is necessary for IBT because we have noisy train data
+    """
+    Convert the seqlogical form to the decoupled form
+    """
+    if not tokens:
+        return []
+    if filter_ood_slots:
+        if DecoupledUtils.is_ood_token(tokens[0]):
+            # Out of domain sample
+            return [tokens[0], "]"]
+
+    decoupled = []
+    # stack contains mutable tuples of
+    # [index_of_opening_bracket: int, has_children: bool]
+    stack = []
+    for i, token in enumerate(tokens):
+        if DecoupledUtils.is_intent_token(token) or DecoupledUtils.is_slot_token(token):
+            # everything on stack now has children
+            for tup in stack:
+                tup[1] = True
+            # add an opening bracket to stack
+            stack.append([i, False])
+            # add to decoupled form
+            decoupled.append(tokens[i])
+        elif token == "]":
+            # no bracket to end
+            if len(stack) == 0:
+                continue
+            idx, has_child = stack.pop()
+            # don't keep tokens if it is an intent OR it has children
+            if has_child or DecoupledUtils.is_intent_token(tokens[idx]):
+                decoupled.append(token)
+            else:
+                # leaf level slot: keep all tokens
+                decoupled.extend(tokens[idx + 1 : i + 1])
+        else:
+            # normal token outside of a bracket
+            if len(stack) == 0:
+                continue
+    return decoupled
+
+
+def get_noisy_decoupled(bracket_form: str, filter_ood_slots=True, **kwargs) -> str:
+    return " ".join(get_no_fail_decoupled(bracket_form.split(), filter_ood_slots))
+
+
 def get_decoupled(tokens: List[str], filter_ood_slots: bool) -> List[str]:
     """
     Convert the seqlogical form to the decoupled form
@@ -78,6 +126,7 @@ class DecoupledSeq2SeqData(Data):
         # Whether source/target need to be converted from seqlogical to decoupled form.
         decoupled_source: bool = False
         decoupled_target: bool = False
+        noisy_decoupling: bool = False
         # As we are interfacing with external libraries, we need to replace PyText's
         # custom type for special tokens with simple strings. The tensorizers' vocab
         # will be overridden to make use of the special tokens specified below.
@@ -112,6 +161,7 @@ class DecoupledSeq2SeqData(Data):
             init_tensorizers,
             decoupled_source=config.decoupled_source,
             decoupled_target=config.decoupled_target,
+            noisy_decoupling=config.noisy_decoupling,
             filter_target_ood_slots=config.filter_target_ood_slots,
             merge_source_vocab=config.merge_source_vocab,
             unk_token=config.unk_token,
@@ -151,6 +201,7 @@ class DecoupledSeq2SeqData(Data):
         init_tensorizers_from_scratch: Optional[bool] = True,
         decoupled_source: bool = False,
         decoupled_target: bool = False,
+        noisy_decoupling: bool = False,
         filter_target_ood_slots: bool = True,
         merge_source_vocab: bool = False,
         unk_token: str = Config.unk_token,
@@ -170,14 +221,19 @@ class DecoupledSeq2SeqData(Data):
         )
         self.filter_target_ood_slots = filter_target_ood_slots
         self.merge_source_vocab = merge_source_vocab
-        self.decoupled_func_source = (
-            get_blind_decoupled if decoupled_source else (lambda x: x)
-        )
-        self.decoupled_func_target = (
-            get_blind_decoupled
-            if decoupled_target
-            else (lambda x, filter_ood_slots=None: x)
-        )
+        if decoupled_source and noisy_decoupling:
+            self.decoupled_func_source = get_noisy_decoupled
+        elif decoupled_source:
+            self.decoupled_func_source = get_blind_decoupled
+        else:
+            self.decoupled_func_source = lambda x, filter_ood_slots=None: x
+
+        if decoupled_target and noisy_decoupling:
+            self.decoupled_func_target = get_noisy_decoupled
+        elif decoupled_target:
+            self.decoupled_func_target = get_blind_decoupled
+        else:
+            self.decoupled_func_target = lambda x, filter_ood_slots=None: x
 
         # Don't mess with the tensorizers if they're being loaded from a saved state.
         if init_tensorizers:
