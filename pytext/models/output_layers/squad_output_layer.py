@@ -102,7 +102,7 @@ class SquadOutputLayer(OutputLayerBase):
         # To calculate this, first create a matrix with i,j entry containing
         # start_pos_logits[i] + end_pos_logits[j]
         #                   = [[3, 5, 7, 4, 6],
-        #                     [4, 7, 9, 6, 8],
+        #                     [5, 7, 9, 6, 8],
         #                     [2, 4, 6, 3, 5],
         #                     [7, 9, 11, 8, 10],
         #                     [4, 6, 8, 5, 7]]

@@ -270,13 +270,14 @@ class SquadMetricReporter(MetricReporter):
             self.all_has_answer_preds,
             self.all_has_answer_targets,
         )
-        f1_score = self._compute_f1_score(
+        f1_score, f1_score_pos_only = self._compute_f1_score(
             self.all_pred_answers,
             self.all_context[self.ANSWERS_COLUMN],
             self.all_has_answer_preds,
             self.all_has_answer_targets,
         )
         count = len(self.all_has_answer_preds)
+        count_pos = sum(self.all_has_answer_targets)
         self.all_preds = (
             self.all_pred_answers,
             self.all_start_pos_preds,
@@ -309,6 +310,7 @@ class SquadMetricReporter(MetricReporter):
         metrics = SquadMetrics(
             exact_matches=100.0 * exact_matches / count,
             f1_score=100.0 * f1_score / count,
+            f1_score_pos_only=100.0 * f1_score_pos_only / count_pos,
             num_examples=count,
             classification_metrics=compute_classification_metrics(
                 label_predictions,
@@ -359,6 +361,7 @@ class SquadMetricReporter(MetricReporter):
         target_has_answer_list,
     ):
         f1_scores_sum = 0.0
+        f1_scores_sum_pos_only = 0.0
         for pred_answer, target_answers, pred_has_answer, target_has_answer in zip(
             pred_answer_list,
             target_answers_list,
@@ -366,16 +369,26 @@ class SquadMetricReporter(MetricReporter):
             target_has_answer_list,
         ):
             if not self.ignore_impossible:
-                if pred_has_answer != target_has_answer:
+                if (not pred_answer and target_answers) or (
+                    pred_answer and not target_answers
+                ):
                     continue
-                if pred_has_answer == self.false_idx:
+                if not pred_answer and not target_answers:
                     f1_scores_sum += 1.0
                     continue
-            f1_scores_sum += max(
+                # Use pred_has_answer to compute token F1.
+                # if pred_has_answer != target_has_answer:
+                #     continue
+                # if pred_has_answer == self.false_idx:
+                #     f1_scores_sum += 1.0
+                #     continue
+            example_f1 = max(
                 self._compute_f1_per_answer(answer, pred_answer)
                 for answer in target_answers
             )
-        return f1_scores_sum
+            f1_scores_sum += example_f1
+            f1_scores_sum_pos_only += example_f1
+        return f1_scores_sum, f1_scores_sum_pos_only
 
     def _unnumberize(self, ans_token_start, ans_token_end, tokens, doc_str):
         """
@@ -412,6 +425,9 @@ class SquadMetricReporter(MetricReporter):
         except IndexError:
             # if token indices fall outside the bounds due to a model misprediction.
             pass
+        if (ans_token_end - offset_start).item() == -offset_start:
+            start_char_idx = 0
+            end_char_idx = 0
         ans_str = doc_str[start_char_idx:end_char_idx]
         return ans_str, start_char_idx, end_char_idx
 
