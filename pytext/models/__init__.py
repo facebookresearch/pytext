@@ -3,6 +3,7 @@
 from .model import BaseModel, Model
 from .tri_tower_classification_model import TriTowerClassificationModel
 from .two_tower_classification_model import TwoTowerClassificationModel
+from .two_tower_regression_model import TwoTowerRegressionModel
 
 
 __all__ = [
@@ -10,4 +11,5 @@ __all__ = [
     "BaseModel",
     "TwoTowerClassificationModel",
     "TriTowerClassificationModel",
+    "TwoTowerRegressionModel",
 ]
