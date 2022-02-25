@@ -19,15 +19,28 @@ def get_custom_or_automatic_label_weights(
     automatic_label_weighting_method_field,
 ):
     if label_weights_field and automatic_label_weighting_method_field:
-        raise ValueError(
-            "Both label_weights and automatic_label_weighting_method are provided. Only one of them is expected"
-        )
-    if label_weights_field:
-        return get_label_weights(vocab_dict, label_weights_field)
-    elif automatic_label_weighting_method_field:
-        return get_automatic_label_weights(
+        label_weights = get_automatic_label_weights(
             vocab_dict, label_counts, automatic_label_weighting_method_field
         )
+        custom_labels = []
+        for (label, custom_weight) in label_weights_field.items():
+            if label in vocab_dict:
+                label_weights[0][vocab_dict[label]] = custom_weight
+                custom_labels.append(label)
+        logging.warning(
+            f"WARNING: following labels are updated with user provided custom values \
+            {custom_labels}"
+        )
+    elif label_weights_field:
+        label_weights = get_label_weights(vocab_dict, label_weights_field)
+    elif automatic_label_weighting_method_field:
+        label_weights = get_automatic_label_weights(
+            vocab_dict, label_counts, automatic_label_weighting_method_field
+        )
+    else:
+        return
+    logging.info(f"INFO: Final label weights are {label_weights}")
+    return label_weights
 
 
 def get_label_weights(vocab_dict: Dict[str, int], label_weights: Dict[str, float]):
