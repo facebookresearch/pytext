@@ -25,6 +25,7 @@ from pytorch.text.fb.nn.modules.transformer import (
     SELFIETransformer,
     Transformer,
     TransformerLayer,
+    TransformerPrefixLayer,
 )
 
 from .luna_attention import (
@@ -57,4 +58,5 @@ __all__ = [
     "TransformerLayer",
     "TransformerRepresentation",
     "GeLU",
+    "TransformerPrefixLayer",
 ]
