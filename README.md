@@ -1,5 +1,6 @@
 # Overview
 
+[![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.fb.com/support-ukraine)
 [![CircleCI](https://circleci.com/gh/facebookresearch/pytext.svg?style=svg&circle-token=2e0e0cb6dc686b646df887c2e0f07a8429712243)](https://circleci.com/gh/facebookresearch/pytext)
 
 PyText is a deep-learning based NLP modeling framework built on PyTorch. PyText addresses the often-conflicting requirements of enabling rapid experimentation and of serving models at scale. It achieves this by providing simple and extensible interfaces and abstractions for model components, and by using PyTorch’s capabilities of exporting models for inference via the optimized Caffe2 execution engine. We are using PyText in Facebook to iterate quickly on new modeling ideas and then seamlessly ship them at scale.
