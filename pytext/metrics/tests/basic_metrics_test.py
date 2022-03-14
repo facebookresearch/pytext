@@ -60,6 +60,7 @@ class BasicMetricsTest(MetricsTestBase):
                 per_label_soft_scores=None,
                 mcc=None,
                 roc_auc=None,
+                pr_auc=None,
                 loss=2.0,
             ),
         )

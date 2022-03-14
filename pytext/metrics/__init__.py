@@ -20,6 +20,8 @@ import numpy as np
 from pytext.common.constants import SpecialTokens
 from pytext.utils import cuda
 from pytext.utils.ascii_table import ascii_table
+from scipy.special import softmax
+from sklearn.metrics import precision_recall_curve, auc
 
 
 NAN_LABELS = [SpecialTokens.UNK, SpecialTokens.PAD]
@@ -248,6 +250,7 @@ class ClassificationMetrics(NamedTuple):
     per_label_soft_scores: Optional[Dict[str, SoftClassificationMetrics]]
     mcc: Optional[float]
     roc_auc: Optional[float]
+    pr_auc: Optional[float]
     loss: float
 
     def print_metrics(self, report_pep=False) -> None:
@@ -346,6 +349,8 @@ class ClassificationMetrics(NamedTuple):
             print(f"\nMatthews correlation coefficient: {self.mcc :.3f}")
         if self.roc_auc:
             print(f"\nROC AUC: {self.roc_auc:.3f}")
+        if self.pr_auc:
+            print(f"\nPR AUC: {self.pr_auc:.3f}")
         if report_pep:
             self.print_pep()
 
@@ -967,6 +972,26 @@ def compute_multi_label_multi_class_soft_metrics(
     )
 
 
+def compute_pr_auc(
+    predictions: Sequence[LabelPrediction], target_class: int = 1
+) -> Optional[float]:
+    """
+    Computes PR-AUC, for binary classification.
+    Args:
+    predictions: List of (prob_scores, predicted_label, expected_label) for each row
+    target_class: Targt class index
+    Returns:
+        PR-AUC for binary classification
+    """
+    y_score = [
+        softmax(label_scores)[target_class] for label_scores, _, _ in predictions
+    ]
+    y_true = [expected == target_class for _, _, expected in predictions]
+    precision, recall, threshold = precision_recall_curve(y_true, y_score)
+    auc_precision_recall = auc(recall, precision)
+    return auc_precision_recall
+
+
 def compute_matthews_correlation_coefficients(
     TP: int, FP: int, FN: int, TN: int
 ) -> float:
@@ -1091,9 +1116,11 @@ def compute_classification_metrics(
         TN = confusion_dict[label_names[1]].TP
         mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
         roc_auc: Optional[float] = compute_roc_auc(predictions)
+        pr_auc: Optional[float] = compute_pr_auc(predictions)
     else:
         mcc = None
         roc_auc = None
+        pr_auc = None
 
     return ClassificationMetrics(
         accuracy=accuracy,
@@ -1101,6 +1128,7 @@ def compute_classification_metrics(
         per_label_soft_scores=soft_metrics if log_per_label_metrics else {},
         mcc=mcc,
         roc_auc=roc_auc,
+        pr_auc=pr_auc,
         loss=loss,
     )
 
@@ -1175,8 +1203,10 @@ def compute_multi_label_classification_metrics(
         FN = confusion_dict[label_names[0]].FN
         TN = confusion_dict[label_names[1]].TP
         mcc: Optional[float] = compute_matthews_correlation_coefficients(TP, FP, FN, TN)
+        pr_auc: Optional[float] = compute_pr_auc(predictions)
     else:
         mcc = None
+        pr_auc = None
 
     return ClassificationMetrics(
         accuracy=accuracy,
@@ -1184,6 +1214,7 @@ def compute_multi_label_classification_metrics(
         per_label_soft_scores=soft_metrics,
         mcc=mcc,
         roc_auc=roc_auc,
+        pr_auc=pr_auc,
         loss=loss,
     )
 
