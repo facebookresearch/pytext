@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import csv
 import gzip
 import io
 import os
@@ -11,7 +12,7 @@ from functools import partial
 
 import torch.utils.data
 from torchtext.data.utils import RandomShuffler
-from torchtext.utils import download_from_url, unicode_csv_reader
+from torchtext.utils import download_from_url
 
 from .example import Example
 
@@ -266,9 +267,9 @@ class TabularDataset(Dataset):
 
         with io.open(os.path.expanduser(path), encoding="utf8") as f:
             if format == "csv":
-                reader = unicode_csv_reader(f, **csv_reader_params)
+                reader = csv.reader(f, **csv_reader_params)
             elif format == "tsv":
-                reader = unicode_csv_reader(f, delimiter="\t", **csv_reader_params)
+                reader = csv.reader(f, delimiter="\t", **csv_reader_params)
             else:
                 reader = f
 

@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import csv
 import io
 import logging
 
 import torch
 from torchtext.data.utils import get_tokenizer
 from torchtext.data.utils import ngrams_iterator
-from torchtext.utils import download_from_url, extract_archive, unicode_csv_reader
+from torchtext.utils import download_from_url, extract_archive
 from tqdm import tqdm
 
 from ..vocab import build_vocab_from_iterator, Vocab
@@ -27,7 +28,7 @@ URLS = {
 def _csv_iterator(data_path, ngrams, yield_cls=False):
     tokenizer = get_tokenizer("basic_english")
     with io.open(data_path, encoding="utf8") as f:
-        reader = unicode_csv_reader(f)
+        reader = csv.reader(f)
         for row in reader:
             tokens = " ".join(row[1:])
             tokens = tokenizer(tokens)
