@@ -129,6 +129,8 @@ class Stage(Enum):
     EVAL = "Evaluation"
     TEST = "Test"
     OTHERS = "Others"
+    PERSONALIZED_EVAL = "Personalized Eval"
+    PERSONALIZED_TEST = "Personalized Test"
 
 
 class RawExampleFieldName:

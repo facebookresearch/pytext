@@ -31,7 +31,14 @@ class Channel:
 
     def __init__(
         self,
-        stages: Tuple[Stage, ...] = (Stage.TRAIN, Stage.EVAL, Stage.TEST, Stage.OTHERS),
+        stages: Tuple[Stage, ...] = (
+            Stage.TRAIN,
+            Stage.EVAL,
+            Stage.TEST,
+            Stage.OTHERS,
+            Stage.PERSONALIZED_TEST,
+            Stage.PERSONALIZED_EVAL,
+        ),
     ) -> None:
         self.stages = stages
 
