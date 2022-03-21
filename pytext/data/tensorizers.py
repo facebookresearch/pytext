@@ -2304,7 +2304,9 @@ class FloatTensorizer(Tensorizer):
 
 
 class FloatListSeqTensorizer(Tensorizer):
-    """Numberize numeric labels."""
+    """Numberize numeric labels.
+    Works for list of lists of floats, list[list[[float]]
+    """
 
     __TENSORIZER_SCRIPT_IMPL__ = ScriptFloatListSeqTensorizer
 
@@ -2314,6 +2316,7 @@ class FloatListSeqTensorizer(Tensorizer):
         error_check: bool = False
         dim: Optional[int] = None
         pad_token: float = -1.0
+        pad_shape: Optional[List[int]] = None
 
     @classmethod
     def from_config(cls, config: Config):
@@ -2322,6 +2325,7 @@ class FloatListSeqTensorizer(Tensorizer):
             config.error_check,
             config.dim,
             config.pad_token,
+            config.pad_shape,
             config.is_input,
         )
 
@@ -2331,12 +2335,14 @@ class FloatListSeqTensorizer(Tensorizer):
         error_check: bool,
         dim: Optional[int],
         pad_token: float = Config.pad_token,
+        pad_shape: Optional[List[int]] = Config.pad_shape,
         is_input: bool = Config.is_input,
     ):
         self.column = column
         self.error_check = error_check
         self.dim = dim
         self.pad_token = pad_token
+        self.pad_shape = pad_shape
         assert not self.error_check or self.dim is not None, "Error check requires dim"
         super().__init__(is_input)
 
@@ -2356,8 +2362,22 @@ class FloatListSeqTensorizer(Tensorizer):
 
     def tensorize(self, batch):
         float_lists, lens = zip(*batch)
+
+        # if batch size is not set. (N, L, C) where N is batch size
+        if self.pad_shape and (
+            self.pad_shape[0] is None
+            or self.pad_shape[0] == -1
+            or self.pad_shape[0] == 0
+        ):
+            # infer batch size
+            pad_shape = [len(lens), self.pad_shape[1], self.pad_shape[2]]
+            self.pad_shape = pad_shape
+
         padded_and_tensorized_float_lists = pad_and_tensorize(
-            float_lists, pad_token=self.pad_token, dtype=torch.float
+            float_lists,
+            pad_token=self.pad_token,
+            pad_shape=self.pad_shape,
+            dtype=torch.float,
         )
         return (padded_and_tensorized_float_lists, pad_and_tensorize(lens))
 
