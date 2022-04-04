@@ -223,14 +223,19 @@ class Trainer(TrainerBase):
     def from_config(cls, config: Config, model: torch.nn.Module, *args, **kwargs):
         return cls(config, model)
 
+    def eval_from_state(
+        self, state: TrainingState, data: BatchIterator, metric_reporter: MetricReporter
+    ):
+        with torch.no_grad():
+            return self.run_epoch(state, data, metric_reporter)
+
     @timing.time("Trainer.test")
     def test(self, test_iter, model, metric_reporter: MetricReporter):
         state = TrainingState(stage=Stage.TEST, model=model, epoch=1)
         if cuda.CUDA_ENABLED:
             state.model.cuda()
         state.model.eval()
-        with torch.no_grad():
-            return self.run_epoch(state, test_iter, metric_reporter)
+        return self.eval_from_state(state, test_iter, metric_reporter)
 
     @timing.time("pre-training")
     def set_up_training(self, state: TrainingState, training_data: BatchIterator):
@@ -524,8 +529,7 @@ class Trainer(TrainerBase):
                 state.stage = Stage.EVAL
                 model.eval(Stage.EVAL)
                 print(f"start evaluating epoch {state.epoch}")
-                with torch.no_grad():
-                    eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+                eval_metric = self.eval_from_state(state, eval_data, metric_reporter)
 
             # Step the learning rate scheduler(s)
             assert eval_metric is not None
@@ -551,7 +555,9 @@ class Trainer(TrainerBase):
                 model.eval(Stage.EVAL)
                 print(f"start evaluating finalized state")
                 with torch.no_grad():
-                    eval_metric = self.run_epoch(state, eval_data, metric_reporter)
+                    eval_metric = self.eval_from_state(
+                        state, eval_data, metric_reporter
+                    )
                 should_update_model = metric_reporter.compare_metric(
                     eval_metric, state.best_model_metric
                 )
@@ -631,6 +637,11 @@ class Trainer(TrainerBase):
                     "would appear in preceding stdout logs)."
                 )
                 raise ValueError(error_msg)
+
+            if hasattr(model, "get_model_size") and state.stage != Stage.TRAIN:
+                metric_reporter.all_context[
+                    "current_model_parameter_size"
+                ] = model.get_model_size()
 
             with timing.time("report metrics"):
                 metrics = metric_reporter.report_metric(
