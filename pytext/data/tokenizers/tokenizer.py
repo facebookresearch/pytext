@@ -116,6 +116,9 @@ class DoNothingTokenizer(Tokenizer):
             # parse tokens if in json format
             try:
                 tokens = json.loads(tokens)
+                # address edge case "true"/"false" converted to Boolean True/False
+                if isinstance(tokens, bool):
+                    tokens = [str(tokens).lower()]
             # else make it a List
             except Exception:
                 tokens = [tokens]
