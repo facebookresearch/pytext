@@ -78,6 +78,7 @@ class WordSeqEmbeddingTest(unittest.TestCase):
                     output_names=["embedding"],
                     export_params=True,
                     operator_export_type=OperatorExportTypes.ONNX_ATEN_FALLBACK,
+                    opset_version=9,
                     export_type=ExportTypes.ZIP_ARCHIVE,
                 )
             # make sure caffe2 can load
