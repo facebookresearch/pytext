@@ -48,6 +48,7 @@ def pytorch_to_caffe2(
             output_names=output_names,
             export_params=True,
             operator_export_type=OperatorExportTypes.ONNX_ATEN_FALLBACK,
+            opset_version=9,
             export_type=ExportTypes.ZIP_ARCHIVE,
         )
     # Convert the ONNX model to a caffe2 net
