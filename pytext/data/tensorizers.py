@@ -2309,6 +2309,7 @@ class FloatListSeqTensorizer(Tensorizer):
     """
 
     __TENSORIZER_SCRIPT_IMPL__ = ScriptFloatListSeqTensorizer
+    __EXPANSIBLE__ = True
 
     class Config(Tensorizer.Config):
         #: The name of the label column to parse from the data source.
