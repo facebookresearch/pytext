@@ -391,14 +391,25 @@ class _NewTask(TaskBase):
         # Default to dynamic
         if accel.use_fx_quantize:
             data_loader = self.data.batches(Stage.TRAIN, load_early=False)
-            trace = quantize_fx(
-                model,
-                inputs,
-                data_loader,
-                accel.use_nnpi_fx_dynamic_quantize or accel.use_cpu_fx_dynamic_quantize,
-                accel.use_nnpi_fx_static_selectively_quantize
-                or accel.use_cpu_fx_static_selectively_quantize,
-            )
+            if accel.use_customize:
+                print(
+                    "'customize' detected in accelerate options, \n entering customized graph mode quantization routine"
+                )
+                trace = model.graph_mode_quantize(
+                    inputs,
+                    data_loader,
+                    accel,
+                )
+            else:
+                trace = quantize_fx(
+                    model,
+                    inputs,
+                    data_loader,
+                    accel.use_nnpi_fx_dynamic_quantize
+                    or accel.use_cpu_fx_dynamic_quantize,
+                    accel.use_nnpi_fx_static_selectively_quantize
+                    or accel.use_cpu_fx_static_selectively_quantize,
+                )
         elif (quantize or accel.use_nnpi_quantize) and hasattr(
             model, "graph_mode_quantize"
         ):
