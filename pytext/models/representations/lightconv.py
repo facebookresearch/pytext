@@ -203,7 +203,7 @@ class LightConvRepresentation(RepresentationBase):
         """Maximum input length supported by the encoder."""
         if self.no_token_positional_embeddings:
             return self.max_source_positions
-        return min(self.max_source_positions, self.embed_positions.max_positions())
+        return min(self.max_source_positions, self.embed_positions.max_positions)
 
     def tile_encoder_out(
         self, tile_size: int, encoder_out: Dict[str, Tensor]

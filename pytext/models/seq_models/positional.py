@@ -79,6 +79,7 @@ class SinusoidalPositionalEmbedding(nn.Module):
             )
         )
         self.weights.requires_grad = False
+        self.max_positions = int(1e5)  # an arbitrary large number
 
     def forward(
         self,
@@ -112,10 +113,6 @@ class SinusoidalPositionalEmbedding(nn.Module):
         else:
             embed_out = sinusoidal_embedding
         return embed_out
-
-    def max_positions(self):
-        """Maximum number of supported positions."""
-        return int(1e5)  # an arbitrary large number
 
 
 class LearnedPositionalEmbedding(nn.Embedding):
