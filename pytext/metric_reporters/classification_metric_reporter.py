@@ -3,18 +3,22 @@
 
 from enum import Enum
 from itertools import tee, zip_longest
-from typing import Generator, List, Optional
+from typing import Sequence, Generator, List, Optional
 
 import torch
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
+    safe_division,
+    ClassificationMetrics,
     RECALL_AT_PRECISION_THRESHOLDS,
     LabelListPrediction,
     LabelPrediction,
+    LabelTopKPrediction,
     compute_classification_metrics,
     compute_multi_label_classification_metrics,
 )
+from pytext.metrics.intent_slot_metrics import PerLabelConfusions
 
 from .channel import Channel, ConsoleChannel, FileChannel
 from .metric_reporter import MetricReporter
@@ -285,3 +289,142 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
             [self.label_names[target] for target in targets if target != -1]
             for targets in self.all_targets
         ]
+
+
+class TopKClassificationMetricReporter(ClassificationMetricReporter):
+    class TopKConfig(ClassificationMetricReporter.Config):
+        topk: int = 3
+
+    def __init__(
+        self,
+        label_names: List[str],
+        channels: List[Channel],
+        model_select_metric: ComparableClassificationMetric = (
+            ComparableClassificationMetric.ACCURACY
+        ),
+        target_label: Optional[str] = None,
+        text_column_names: List[str] = TopKConfig.text_column_names,
+        additional_column_names: List[str] = TopKConfig.additional_column_names,
+        recall_at_precision_thresholds: List[float] = (
+            TopKConfig.recall_at_precision_thresholds
+        ),
+        is_memory_efficient: bool = TopKConfig.is_memory_efficient,
+        topk: int = TopKConfig.topk,
+    ) -> None:
+        """
+        A metric reporter specific for computing TopK accuracy for a multi-class task.
+
+        Args:
+            label_names: Indexed label names.
+            channels: Channel defines how to format/report the result of a PyText job to a stream.
+            model_select_metric: Metric to use when selecting best model.
+            target_label: n/a
+            text_column_names: See ClassificationMetricReporter.
+            additional_column_names: See ClassificationMetricReporter.
+            recall_at_precision_thresholds: Index values to track recall at.
+            is_memory_efficient: Whether to conserve memory or not.  Excludes scores if true.
+            topk: The number of candidates to be chosen from the multi-class list.
+
+        """
+        super().__init__(
+            label_names,
+            channels,
+            model_select_metric,
+            target_label,
+            text_column_names,
+            additional_column_names,
+            recall_at_precision_thresholds,
+            is_memory_efficient,
+        )
+        self.topk = topk
+
+    def _reset(self):
+        super()._reset()
+        self.all_topk_preds: List = []
+
+    def add_batch_stats(
+        self, n_batches, preds, targets, scores, loss, m_input, **context
+    ):
+        """
+        Aggregates a batch of output data (predictions, scores, targets/true labels
+        and loss).
+
+        Args:
+            n_batches (int): number of current batch
+            preds (torch.Tensor): predictions of current batch
+            targets (torch.Tensor): targets of current batch
+            scores (torch.Tensor): scores of current batch
+            loss (double): average loss of current batch
+            m_input (Tuple[torch.Tensor, ...]): model inputs of current batch
+            context (Dict[str, Any]): any additional context data, it could be
+                either a list of data which maps to each example, or a single value
+                for the batch
+        """
+        super().add_batch_stats(
+            n_batches, preds, targets, scores, loss, m_input, **context
+        )
+        self.aggregate_topkpreds(scores, context)
+
+    def aggregate_topkpreds(self, batch_scores, batch_context=None):
+        # first process the batch_scores so that it only contains the top k choices
+        values, indices = torch.topk(batch_scores, self.topk)
+        self.aggregate_data(self.all_topk_preds, indices)
+
+    def calculate_metric(self):
+        # If we are running in memory efficient mode, then scores in
+        # LabelPrediction should be an empty list
+        topk_label_predictions = [
+            LabelTopKPrediction(scores, pred, expect)
+            for scores, pred, expect in zip_longest(
+                self.all_scores, self.all_topk_preds, self.all_targets, fillvalue=[]
+            )
+        ]
+
+        return compute_topk_classification_metrics(
+            topk_label_predictions, self.label_names, self.calculate_loss()
+        )
+
+
+def compute_topk_classification_metrics(
+    predictions: Sequence[LabelTopKPrediction],
+    label_names: Sequence[str],
+    loss: float,
+    log_per_label_metrics: bool = True,
+) -> ClassificationMetrics:
+    """
+    A general function that computes classification metrics given a list of label predictions.
+
+    Args:
+        predictions: Label predictions, including the confidence score for each label.
+        label_names: Indexed label names.
+        loss: Calculated loss.
+        log_per_label_metrics: Report macro prf1 values per label.
+
+    Returns:
+        ClassificationMetrics which contains various classification metrics.
+    """
+    num_correct = 0
+    per_label_confusions = PerLabelConfusions()
+    for _, topk, label in predictions:
+        predicted_labels = list(map(label_names.__getitem__, topk))
+        expected_label = label_names[label]
+
+        if expected_label in predicted_labels:
+            num_correct += 1
+            per_label_confusions.update(expected_label, "TP", 1)
+        else:
+            per_label_confusions.update(expected_label, "FN", 1)
+            per_label_confusions.update(predicted_labels[0], "FP", 1)
+
+    macro_prf1_metrics = per_label_confusions.compute_metrics(
+        log_per_label_metrics=log_per_label_metrics
+    )
+
+    return ClassificationMetrics(
+        accuracy=safe_division(num_correct, len(predictions)),
+        macro_prf1_metrics=macro_prf1_metrics,
+        per_label_soft_scores={},
+        mcc=None,
+        roc_auc=None,
+        loss=loss,
+    )

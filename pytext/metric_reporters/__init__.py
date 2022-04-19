@@ -5,6 +5,7 @@ from .calibration_metric_reporter import CalibrationMetricReporter
 from .channel import Channel
 from .classification_metric_reporter import (
     ClassificationMetricReporter,
+    TopKClassificationMetricReporter,
     MultiLabelClassificationMetricReporter,
 )
 from .compositional_metric_reporter import CompositionalMetricReporter
@@ -29,6 +30,7 @@ __all__ = [
     "MetricReporter",
     "CalibrationMetricReporter",
     "ClassificationMetricReporter",
+    "TopKClassificationMetricReporter",
     "MultiLabelClassificationMetricReporter",
     "MultiLabelSequenceTaggingMetricReporter",
     "RegressionMetricReporter",

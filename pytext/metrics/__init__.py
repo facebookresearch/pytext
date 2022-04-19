@@ -48,6 +48,21 @@ class LabelPrediction(NamedTuple):
     expected_label: int
 
 
+class LabelTopKPrediction(NamedTuple):
+    """
+    Label topk predictions of an example.
+
+    Attributes:
+        label_scores: Confidence scores that each label receives.
+        predicted_labels: Indices of the predicted label.  Usually sorted in descending order.
+        expected_label: Index of the true label.
+    """
+
+    label_scores: List[float]
+    predicted_labels: List[int]
+    expected_label: int
+
+
 class LabelListPrediction(NamedTuple):
     """
     Label list predictions of an example.

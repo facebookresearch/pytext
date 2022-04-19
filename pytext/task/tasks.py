@@ -12,6 +12,7 @@ from pytext.data.decoupled_data import DecoupledSeq2SeqData
 from pytext.data.packed_lm_data import PackedLMData
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import (
+    TopKClassificationMetricReporter,
     ClassificationMetricReporter,
     CompositionalMetricReporter,
     DenseRetrievalMetricReporter,
@@ -111,7 +112,9 @@ class DocumentClassificationTask(NewTask):
     class Config(NewTask.Config):
         model: BaseModel.Config = DocModel.Config()
         metric_reporter: Union[
-            ClassificationMetricReporter.Config, PureLossMetricReporter.Config
+            ClassificationMetricReporter.Config,
+            PureLossMetricReporter.Config,
+            TopKClassificationMetricReporter.Config,
         ] = ClassificationMetricReporter.Config()
         #   for multi-label classification task,
         #   choose MultiLabelClassificationMetricReporter
