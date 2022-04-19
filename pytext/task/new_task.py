@@ -395,7 +395,7 @@ class _NewTask(TaskBase):
                 print(
                     "'customize' detected in accelerate options, \n entering customized graph mode quantization routine"
                 )
-                trace = model.graph_mode_quantize(
+                trace = model.customize_quantize(
                     inputs,
                     data_loader,
                     accel,
