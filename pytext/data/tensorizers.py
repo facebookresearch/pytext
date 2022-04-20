@@ -2372,12 +2372,13 @@ class FloatListSeqTensorizer(Tensorizer):
         ):
             # infer batch size
             pad_shape = [len(lens), self.pad_shape[1], self.pad_shape[2]]
-            self.pad_shape = pad_shape
+        else:
+            pad_shape = self.pad_shape
 
         padded_and_tensorized_float_lists = pad_and_tensorize(
             float_lists,
             pad_token=self.pad_token,
-            pad_shape=self.pad_shape,
+            pad_shape=pad_shape,
             dtype=torch.float,
         )
         return (padded_and_tensorized_float_lists, pad_and_tensorize(lens))
