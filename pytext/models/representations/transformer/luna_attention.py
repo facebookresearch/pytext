@@ -45,8 +45,8 @@ class LunarMultiheadAttention(nn.Module):
         assert (
             self.phead_dim * num_pheads == self.embed_dim
         ), "projected embed_dim must be divisible by num_pheads"
-        self.scaling = self.head_dim ** -0.5
-        self.pscaling = self.phead_dim ** -0.5
+        self.scaling = self.head_dim**-0.5
+        self.pscaling = self.phead_dim**-0.5
 
         self.self_attention = self_attention
         self.encoder_decoder_attention = encoder_decoder_attention
@@ -449,7 +449,7 @@ class LunarCausalAttention(nn.Module):
         assert (
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
-        self.scaling = self.head_dim ** -0.5
+        self.scaling = self.head_dim**-0.5
 
         self.pq_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
         self.q_proj = nn.Linear(embed_dim, embed_dim, bias=bias)

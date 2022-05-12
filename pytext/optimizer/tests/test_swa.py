@@ -18,13 +18,13 @@ from torch.utils import data
 
 def rosenbrock(tensor):
     x, y = tensor
-    return (1 - x) ** 2 + 100 * (y - x ** 2) ** 2
+    return (1 - x) ** 2 + 100 * (y - x**2) ** 2
 
 
 def drosenbrock(tensor):
     x, y = tensor
     return torch.DoubleTensor(
-        (-400 * x * (y - x ** 2) - 2 * (1 - x), 200 * (y - x ** 2))
+        (-400 * x * (y - x**2) - 2 * (1 - x), 200 * (y - x**2))
     )
 
 
@@ -500,11 +500,11 @@ class TestSWA(TestCase):
             total_num += preactivations.shape[0]
 
             preactivation_sum += torch.sum(preactivations, dim=0)
-            preactivation_squared_sum += torch.sum(preactivations ** 2, dim=0)
+            preactivation_squared_sum += torch.sum(preactivations**2, dim=0)
 
         preactivation_mean = preactivation_sum / total_num
         preactivation_var = preactivation_squared_sum / total_num
-        preactivation_var = preactivation_var - preactivation_mean ** 2
+        preactivation_var = preactivation_var - preactivation_mean**2
 
         swa = StochasticWeightAveraging(optim.SGD(dnn.parameters(), lr=1e-3))
         swa.bn_update(dl, dnn, device=device)

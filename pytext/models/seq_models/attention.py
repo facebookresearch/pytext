@@ -130,7 +130,7 @@ class MultiheadAttention(PyTextIncrementalDecoderComponent):
         assert (
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
-        self.scaling = self.head_dim ** -0.5
+        self.scaling = self.head_dim**-0.5
 
         self.out_proj = Linear(embed_dim, embed_dim, bias=bias)
 

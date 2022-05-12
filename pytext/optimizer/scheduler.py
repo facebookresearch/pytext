@@ -373,7 +373,7 @@ class WarmupScheduler(_LRScheduler, BatchScheduler):
         self.warmup_steps = warmup_steps
         self.current_steps = 0
         self.inverse_sqrt_decay = inverse_sqrt_decay
-        self.decay_factor = warmup_steps ** 0.5
+        self.decay_factor = warmup_steps**0.5
         super().__init__(optimizer)
 
     def prepare(self, train_iter, total_epochs):
@@ -387,7 +387,7 @@ class WarmupScheduler(_LRScheduler, BatchScheduler):
     def get_lr(self):
         if self.current_steps >= self.warmup_steps:
             if self.inverse_sqrt_decay:
-                lr_multiplier = self.decay_factor / (self.current_steps ** 0.5)
+                lr_multiplier = self.decay_factor / (self.current_steps**0.5)
             else:
                 lr_multiplier = 1.0
         else:

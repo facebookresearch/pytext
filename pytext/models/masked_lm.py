@@ -113,7 +113,7 @@ class MaskedLanguageModel(BaseModel):
         # initialize the frequency based sampling weights if these will be used
         self.token_sampling_weights = None
         if self.masking_strategy == MaskingStrategy.FREQUENCY:
-            self.token_sampling_weights = [x ** -0.5 for x in self.vocab.counts]
+            self.token_sampling_weights = [x**-0.5 for x in self.vocab.counts]
 
             # Set probability of masking special tokens to be very low, since it doesn't
             # make sense to use them for MLM (unless there are no other tokens in the

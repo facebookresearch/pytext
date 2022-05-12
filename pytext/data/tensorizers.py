@@ -69,7 +69,7 @@ def tokenize(
     eos_token: Optional[str] = None,
     pad_token: str = PAD,
     use_eos_token_for_bos: bool = False,
-    max_seq_len: int = 2 ** 30,
+    max_seq_len: int = 2**30,
 ):
     tokenized = (
         pre_tokenized
@@ -101,7 +101,7 @@ def lookup_tokens(
     eos_token: Optional[str] = None,
     pad_token: str = PAD,
     use_eos_token_for_bos: bool = False,
-    max_seq_len: int = 2 ** 30,
+    max_seq_len: int = 2**30,
 ):
     tokenized_texts, start_idx, end_idx = tokenize(
         text,
@@ -414,7 +414,7 @@ class TokenTensorizer(Tensorizer):
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
-        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_seq_len = max_seq_len or 2**30  # large number
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
         self.vocab_file_delimiter = vocab_file_delimiter
@@ -682,7 +682,7 @@ class ByteTokenTensorizer(Tensorizer):
     ):
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
-        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_seq_len = max_seq_len or 2**30  # large number
         self.max_byte_len = max_byte_len
         self.offset_for_non_padding = offset_for_non_padding
         self.add_bos_token = add_bos_token
@@ -1013,7 +1013,7 @@ class CharacterVocabTokenTensorizer(Tensorizer):
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
-        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_seq_len = max_seq_len or 2**30  # large number
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
         self.vocab_file_delimiter = vocab_file_delimiter
@@ -2068,7 +2068,7 @@ class SeqTokenTensorizer(Tensorizer):
         self.use_eol_token_for_bol = use_eol_token_for_bol
         # this is actually the max token count, it's named seq_len beause the variable is used in _tokenize
         # function from TokenTensorizer
-        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_seq_len = max_seq_len or 2**30  # large number
         self.max_turn = max_turn
         super().__init__(is_input)
 

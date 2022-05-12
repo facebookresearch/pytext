@@ -145,7 +145,7 @@ class VocabLookup(torch.jit.ScriptModule):
         bos_idx: Optional[int] = None,
         eos_idx: Optional[int] = None,
         use_eos_token_for_bos: bool = False,
-        max_seq_len: int = 2 ** 30,
+        max_seq_len: int = 2**30,
     ) -> Tuple[List[int], List[int], List[int]]:
         """Convert tokens into ids by doing vocab look-up.
 

@@ -182,7 +182,7 @@ class PyTextConfig(ConfigBase):
     # The memory usage can be estimated by: read_chunk_size * num_process
     # If you got Out-of-Memory issue due to using many GPUs(1 process/GPU),
     # you can decrease read_chunk_size to reduce memory usage
-    read_chunk_size: Optional[int] = 1000 ** 3  # 1GB
+    read_chunk_size: Optional[int] = 1000**3  # 1GB
 
     # TODO these two configs are only kept only to be backward comptible with
     # RNNG, should be removed once RNNG refactoring is done

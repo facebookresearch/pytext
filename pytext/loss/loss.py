@@ -437,7 +437,7 @@ class KLDivergenceBCELoss(Loss):
                 soft_targets_neg,
                 reduction="mean" if reduce else "none",
             )
-        soft_loss *= self.t ** 2  # see https://arxiv.org/pdf/1503.02531.pdf
+        soft_loss *= self.t**2  # see https://arxiv.org/pdf/1503.02531.pdf
 
         hard_loss = 0.0
         if self.hard_weight > 0.0:
@@ -498,7 +498,7 @@ class KLDivergenceCELoss(Loss):
                 log_probs, soft_targets, reduction="batchmean" if reduce else "none"
             )
 
-        soft_loss *= self.t ** 2  # See https://arxiv.org/pdf/1503.02531.pdf
+        soft_loss *= self.t**2  # See https://arxiv.org/pdf/1503.02531.pdf
         hard_loss = F.nll_loss(
             F.log_softmax(logits, 1, dtype=torch.float32),
             hard_targets,

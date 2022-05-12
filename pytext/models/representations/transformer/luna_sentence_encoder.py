@@ -279,7 +279,7 @@ class LunaSentenceEncoder(nn.Module):
                 self.num_segments, self.embedding_dim, padding_idx=None
             )
             nn.init.normal_(
-                self.segment_embeddings.weight, mean=0.0, std=self.embedding_dim ** -0.5
+                self.segment_embeddings.weight, mean=0.0, std=self.embedding_dim**-0.5
             )
         else:
             self.segment_embeddings = None
@@ -299,7 +299,7 @@ class LunaSentenceEncoder(nn.Module):
             torch.Tensor(self.proj_len, self.embedding_dim)
         )
         nn.init.normal_(
-            self.projected_embeddings, mean=0.0, std=self.embedding_dim ** -0.5
+            self.projected_embeddings, mean=0.0, std=self.embedding_dim**-0.5
         )
         if self.use_position_embeddings and not self.learned_pos_embedding:
             projected_positions = get_sinusoidal_positional_embedding(
@@ -375,7 +375,7 @@ class LunaSentenceEncoder(nn.Module):
 
     def build_embedding(self, vocab_size, embedding_dim, padding_idx):
         embed_tokens = nn.Embedding(vocab_size, embedding_dim, padding_idx)
-        nn.init.normal_(embed_tokens.weight, mean=0, std=embedding_dim ** -0.5)
+        nn.init.normal_(embed_tokens.weight, mean=0, std=embedding_dim**-0.5)
         return embed_tokens
 
     def build_luna_sentence_encoder_layer(

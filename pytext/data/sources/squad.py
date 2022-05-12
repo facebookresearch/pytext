@@ -97,7 +97,7 @@ class SquadDataSource(DataSource):
         test_filename: Optional[str] = "dev-v2.0.json"
         eval_filename: Optional[str] = "dev-v2.0.json"
         ignore_impossible: bool = True
-        max_character_length: int = 2 ** 20
+        max_character_length: int = 2**20
         min_overlap: float = 0.1  # Expressed as a fraction of the max_character_length.
         delimiter: str = "\t"
         quoted: bool = False

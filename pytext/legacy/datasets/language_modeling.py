@@ -27,7 +27,7 @@ class LanguageModelingDataset(data.Dataset):
             for line in f:
                 text += text_field.preprocess(line)
                 if newline_eos:
-                    text.append(u"<eos>")
+                    text.append("<eos>")
 
         examples = [data.Example.fromlist([text], fields)]
         super(LanguageModelingDataset, self).__init__(examples, fields, **kwargs)

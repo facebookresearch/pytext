@@ -171,7 +171,7 @@ class BeamDecode(torch.nn.Module):
 
                         hypo_score = float(beam_scores[position][hyp_index])
                         if self.length_penalty != 0:
-                            hypo_score = hypo_score / (position ** self.length_penalty)
+                            hypo_score = hypo_score / (position**self.length_penalty)
 
                         end_states, min_score, min_index = self._add_to_end_states(
                             end_states,

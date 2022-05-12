@@ -152,7 +152,7 @@ class Dataset(torch.utils.data.Dataset):
         try:
             return len(self.examples)
         except TypeError:
-            return 2 ** 32
+            return 2**32
 
     def __iter__(self):
         for x in self.examples:

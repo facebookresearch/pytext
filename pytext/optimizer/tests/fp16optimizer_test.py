@@ -27,7 +27,7 @@ class TestFp16Optimizer(unittest.TestCase):
             self.fake_model,
             self.optim,
             "fake_opt",
-            init_scale=2 ** 6,
+            init_scale=2**6,
             memory_efficient=memory_efficient,
         )
 
@@ -165,14 +165,14 @@ class TestFp16Optimizer(unittest.TestCase):
         fake_optimizer = torch.optim.Adam(fake_parameters, lr=learning_rate)
         self.fake_model = torch.randn(rand_in, rand_in, requires_grad=True)
         self.fake_model, self.fake_fp16_optim = fp16_optimizer.initialize(
-            self.fake_model, fake_optimizer, "fake_opt", init_scale=2 ** 10
+            self.fake_model, fake_optimizer, "fake_opt", init_scale=2**10
         )
 
         self.pparameters = [ww1, ww2]
         self.ooptimizer = torch.optim.Adam(self.pparameters, lr=learning_rate)
         self.fake_model = torch.randn(rand_in, rand_in, requires_grad=True)
         self.fake_model, self.ffp16_optim = fp16_optimizer.initialize(
-            self.fake_model, self.ooptimizer, "fake_opt", init_scale=2 ** 10
+            self.fake_model, self.ooptimizer, "fake_opt", init_scale=2**10
         )
 
         # for memory efficient logic test preparation
@@ -180,7 +180,7 @@ class TestFp16Optimizer(unittest.TestCase):
             self.fake_model,
             self.optimizer,
             "fake_opt",
-            init_scale=2 ** 10,
+            init_scale=2**10,
             memory_efficient=True,
         )
         self.optimizer_c = self.inner_optimizer  # just change the name
@@ -188,7 +188,7 @@ class TestFp16Optimizer(unittest.TestCase):
             self.fake_model,
             self.optimizer_c,
             "fake_opt",
-            init_scale=2 ** 10,
+            init_scale=2**10,
             memory_efficient=True,
         )
 

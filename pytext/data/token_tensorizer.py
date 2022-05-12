@@ -234,7 +234,7 @@ class ScriptBasedTokenTensorizer(Tensorizer):
         self.add_bos_token = add_bos_token
         self.add_eos_token = add_eos_token
         self.use_eos_token_for_bos = use_eos_token_for_bos
-        self.max_seq_len = max_seq_len or 2 ** 30  # large number
+        self.max_seq_len = max_seq_len or 2**30  # large number
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
         self.vocab_file_delimiter = vocab_file_delimiter

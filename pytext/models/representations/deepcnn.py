@@ -150,7 +150,7 @@ def create_conv_package(
         """
 
         if dilated:
-            return 2 ** index
+            return 2**index
         return 1
 
     def _compute_padding(kernel_size, dilation, causal):

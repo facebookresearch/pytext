@@ -18,7 +18,7 @@ from pytext.metrics.intent_slot_metrics import (
 )
 from sklearn.metrics import accuracy_score
 
-BIT2BYTE_CONSTANT = 2 ** 23
+BIT2BYTE_CONSTANT = 2**23
 
 
 class MaskedSeq2SeqJointMetrics(NamedTuple):
@@ -256,8 +256,8 @@ def compute_nas_masked_metrics(
     #  where alpha is a hyper-parameter to determine the improtance of the second term
     norm_prod_model_param_frame_accuracy = (
         masked_seq2seq_joint_metrics.frame_accuracy
-        * ref_model_num_param ** param_importance
-    ) / (ref_frame_accuracy * model_num_param ** param_importance)
+        * ref_model_num_param**param_importance
+    ) / (ref_frame_accuracy * model_num_param**param_importance)
 
     return NASMaskedSeq2SeqJointMetrics(
         top_intent_accuracy=masked_seq2seq_joint_metrics.top_intent_accuracy,

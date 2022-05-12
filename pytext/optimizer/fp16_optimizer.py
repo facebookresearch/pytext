@@ -235,7 +235,7 @@ class MemoryEfficientFP16OptimizerFairseq(
 
     class Config(FP16Optimizer.Config):
         # initial loss scale
-        init_loss_scale: int = 2 ** 7
+        init_loss_scale: int = 2**7
         # determine when to increase loss scale,
         # represents: consecutive number of non-overflow steps
         scale_window: Optional[int] = None
@@ -266,7 +266,7 @@ class MemoryEfficientFP16OptimizerFairseq(
 
         if scale_window is None:
             scale_window = (
-                2 ** 14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
+                2**14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
             )
         else:
             scale_window = scale_window
@@ -324,7 +324,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
 
     class Config(FP16Optimizer.Config):
         # initial loss scale
-        init_loss_scale: int = 2 ** 7
+        init_loss_scale: int = 2**7
         # determine when to increase loss scale,
         # represents: consecutive number of non-overflow steps
         scale_window: Optional[int] = None
@@ -360,7 +360,7 @@ class FP16OptimizerFairseq(Fairseq_FP16OptimizerMixin, FP16Optimizer):
 
         if scale_window is None:
             scale_window = (
-                2 ** 14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
+                2**14 / cuda.DISTRIBUTED_WORLD_SIZE / num_accumulated_batches
             )
         else:
             scale_window = scale_window
@@ -649,7 +649,7 @@ def initialize(
     model,
     optimizer,
     opt_level,
-    init_scale=2 ** 16,
+    init_scale=2**16,
     scale_factor=2.0,
     scale_window=2000,
     memory_efficient=False,
@@ -691,7 +691,7 @@ loss.backward()          float()          step()               half()
 
 class PureFP16Optimizer(FP16OptimizerDeprecated):
     def __init__(
-        self, init_optimizer, init_scale=2.0 ** 16, scale_factor=2, scale_window=2000
+        self, init_optimizer, init_scale=2.0**16, scale_factor=2, scale_window=2000
     ):
         r"""Initialize the memory-efficient optimizer
 
@@ -783,7 +783,7 @@ class PureFP16Optimizer(FP16OptimizerDeprecated):
 
 class GeneratorFP16Optimizer(PureFP16Optimizer):
     def __init__(
-        self, init_optimizer, init_scale=2.0 ** 16, scale_factor=2, scale_window=2000
+        self, init_optimizer, init_scale=2.0**16, scale_factor=2, scale_window=2000
     ):
         r"""Initialize the generator implementation method of memory efficient optimizer.
 

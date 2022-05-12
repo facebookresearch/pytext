@@ -105,7 +105,7 @@ class TreeMask(MaskingFunction):
             return return_str.strip()
 
     def should_mask(self, depth=1):
-        return np.random.random() < 1.0 / (self.factor ** depth)
+        return np.random.random() < 1.0 / (self.factor**depth)
 
     def gen_masked_source_target(self, tokens: List[int], vocab: Vocabulary):
         cleaned_tokens = self.clean_eos_bos(tokens)
