@@ -7,7 +7,7 @@ import os
 from typing import Dict, Optional
 
 import torch
-from pytext.config import PyTextConfig, config_to_json, pytext_config_from_json
+from pytext.config import config_to_json, pytext_config_from_json, PyTextConfig
 from pytext.data import CommonMetadata
 from pytext.data.tensorizers import Tensorizer
 from pytext.models import Model

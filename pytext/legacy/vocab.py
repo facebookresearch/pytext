@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 import logging
-from collections import Counter
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import torch
 from torchtext.vocab import (

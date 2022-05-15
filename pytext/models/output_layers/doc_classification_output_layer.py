@@ -20,9 +20,7 @@ from pytext.loss import (
     LabelSmoothedCrossEntropyLoss,
     MultiLabelSoftMarginLoss,
 )
-from pytext.utils.label import (
-    get_custom_or_automatic_label_weights,
-)
+from pytext.utils.label import get_custom_or_automatic_label_weights
 from pytext.utils.typing import WeightingMethod
 from torch import jit
 

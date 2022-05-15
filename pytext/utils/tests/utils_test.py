@@ -18,7 +18,7 @@ from pytext.utils.data import (
     unkify,
 )
 from pytext.utils.distributed import get_shard_range
-from pytext.utils.file_io import PathManager, chunk_file
+from pytext.utils.file_io import chunk_file, PathManager
 from pytext.utils.meter import TimeMeter
 from pytext.utils.test import import_tests_module
 

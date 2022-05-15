@@ -2,19 +2,16 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import math
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
 
 import torch
 import torch.nn as nn
-from fairseq.modules import (
-    PositionalEmbedding,
-    LayerNorm,
-)
+from fairseq.modules import LayerNorm, PositionalEmbedding
 from pytext.models.module import create_module
 from pytext.models.seq_models.base import PlaceholderIdentity
 from pytext.models.seq_models.conv_encoder import (
-    LightConvEncoderLayer,
     ConvEncoderConfig,
+    LightConvEncoderLayer,
 )
 from pytext.models.seq_models.positional import (
     PostionalEmbedCombine,

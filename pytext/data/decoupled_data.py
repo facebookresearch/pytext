@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
-from typing import List, Dict, Optional, Type
+from typing import Dict, List, Optional, Type
 
 from . import Batcher, Data
 from .data import RowData

@@ -5,25 +5,25 @@ from .babi import BABI20
 from .imdb import IMDB
 from .language_modeling import (
     LanguageModelingDataset,
-    WikiText2,
-    WikiText103,
     PennTreebank,
+    WikiText103,
+    WikiText2,
 )  # NOQA
-from .nli import SNLI, MultiNLI, XNLI
-from .sequence_tagging import SequenceTaggingDataset, UDPOS, CoNLL2000Chunking  # NOQA
+from .nli import MultiNLI, SNLI, XNLI
+from .sequence_tagging import CoNLL2000Chunking, SequenceTaggingDataset, UDPOS  # NOQA
 from .sst import SST
 from .text_classification import (
-    TextClassificationDataset,
     AG_NEWS,
-    SogouNews,
-    DBpedia,
-    YelpReviewPolarity,
-    YelpReviewFull,
-    YahooAnswers,
-    AmazonReviewPolarity,
     AmazonReviewFull,
+    AmazonReviewPolarity,
+    DBpedia,
+    SogouNews,
+    TextClassificationDataset,
+    YahooAnswers,
+    YelpReviewFull,
+    YelpReviewPolarity,
 )
-from .translation import TranslationDataset, Multi30k, IWSLT, WMT14  # NOQA
+from .translation import IWSLT, Multi30k, TranslationDataset, WMT14  # NOQA
 from .trec import TREC
 from .unsupervised_learning import EnWik9
 

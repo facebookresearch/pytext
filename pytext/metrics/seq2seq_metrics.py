@@ -2,11 +2,9 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import collections
-from typing import NamedTuple, Dict
+from typing import Dict, NamedTuple
 
-from pytext.metrics import (
-    ClassificationMetrics,
-)
+from pytext.metrics import ClassificationMetrics
 
 
 class Seq2SeqMetrics(NamedTuple):

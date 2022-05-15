@@ -5,7 +5,7 @@ import unittest
 from typing import Union
 
 from pytext.config.component import Component, ComponentType, ConfigBase
-from pytext.config.serialize import ConfigParseError, config_from_json, config_to_json
+from pytext.config.serialize import config_from_json, config_to_json, ConfigParseError
 
 
 class Model(Component):

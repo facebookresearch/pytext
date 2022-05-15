@@ -10,14 +10,10 @@ from pytext.common.constants import (
     Stage,
 )
 from pytext.data.tensorizers import Tensorizer
-from pytext.metric_reporters.channel import (
-    Channel,
-    ConsoleChannel,
-    FileChannel,
-)
+from pytext.metric_reporters.channel import Channel, ConsoleChannel, FileChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
 from pytext.metrics import safe_division
-from pytext.metrics.seq2seq_metrics import Seq2SeqMetrics, compute_f1
+from pytext.metrics.seq2seq_metrics import compute_f1, Seq2SeqMetrics
 
 
 try:

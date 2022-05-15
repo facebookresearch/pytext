@@ -7,8 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 import torch
 from pytext import resources
-from pytext.common.constants import Stage
-from pytext.common.constants import TORCH_VERSION
+from pytext.common.constants import Stage, TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.data.roberta_tensorizer import (
     RoBERTaTensorizer,
@@ -24,14 +23,14 @@ from pytext.models.bert_classification_models import NewBertModel
 from pytext.models.bert_regression_model import NewBertRegressionModel
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.model import BaseModel
-from pytext.models.module import Module, create_module
+from pytext.models.module import create_module, Module
 from pytext.models.output_layers import WordTaggingOutputLayer
 from pytext.models.representations.transformer import (
     MultiheadLinearAttention,
-    QuantizedMultiheadLinearAttention,
     PassthroughEncoder,
     PassthroughTransformer,
     PostEncoder,
+    QuantizedMultiheadLinearAttention,
     SELFIETransformer,
     SentenceEncoder,
 )
@@ -50,8 +49,6 @@ from pytext.utils.usage import log_class_usage
 from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
 from pytorch.text.fb.nn.modules.transformer import (
     DEFAULT_MAX_SEQUENCE_LENGTH,
-)
-from pytorch.text.fb.nn.modules.transformer import (
     Transformer,
     TransformerLayer,
 )

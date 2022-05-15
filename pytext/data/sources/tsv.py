@@ -10,10 +10,10 @@ from typing import Dict, List, Optional, Type
 from pytext.utils.path import get_absolute_path
 
 from .data_source import (
+    generator_property,
     RootDataSource,
     SafeFileWrapper,
     ShardedDataSource,
-    generator_property,
 )
 from .session import SessionDataSource
 

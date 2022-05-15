@@ -5,16 +5,16 @@ from typing import Dict, List, NamedTuple, Optional, Sequence
 
 from pytext.metrics import (
     ClassificationMetrics,
-    LabelPrediction,
     compute_classification_metrics,
+    LabelPrediction,
 )
 from pytext.metrics.intent_slot_metrics import (
+    compute_all_metrics,
+    compute_frame_accuracy,
     FrameAccuraciesByDepth,
     FramePredictionPair,
     IntentSlotMetrics,
     Node,
-    compute_all_metrics,
-    compute_frame_accuracy,
 )
 from sklearn.metrics import accuracy_score
 

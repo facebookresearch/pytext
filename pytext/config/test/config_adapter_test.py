@@ -11,8 +11,8 @@ from pytext.config import LATEST_VERSION, pytext_config_from_json
 from pytext.config.config_adapter import (
     ADAPTERS,
     DOWNGRADE_ADAPTERS,
-    upgrade_one_version,
     downgrade_one_version,
+    upgrade_one_version,
 )
 from pytext.utils.file_io import PathManager
 

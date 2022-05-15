@@ -5,11 +5,11 @@ from .batch_sampler import (
     AlternatingRandomizedBatchSampler,
     BaseBatchSampler,
     EvalBatchSampler,
+    NaturalBatchSampler,
     RandomizedBatchSampler,
     RoundRobinBatchSampler,
-    NaturalBatchSampler,
 )
-from .data import Batcher, Data, PoolingBatcher, generator_iterator
+from .data import Batcher, Data, generator_iterator, PoolingBatcher
 from .data_handler import BatchIterator, CommonMetadata, DataHandler
 from .disjoint_multitask_data import DisjointMultitaskData
 from .disjoint_multitask_data_handler import DisjointMultitaskDataHandler

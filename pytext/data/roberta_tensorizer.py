@@ -14,7 +14,7 @@ from pytext.data.bert_tensorizer import (
     build_fairseq_vocab,
 )
 from pytext.data.tokenizers import GPT2BPETokenizer, Tokenizer
-from pytext.data.utils import VocabBuilder, Vocabulary, pad_and_tensorize
+from pytext.data.utils import pad_and_tensorize, VocabBuilder, Vocabulary
 from pytext.torchscript.tensorizer import ScriptRoBERTaTensorizer
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager

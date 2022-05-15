@@ -14,7 +14,7 @@ import torch
 from pytext import create_predictor
 from pytext.builtin_task import add_include
 from pytext.common.utils import eprint
-from pytext.config import LATEST_VERSION, ExportConfig, PyTextConfig
+from pytext.config import ExportConfig, LATEST_VERSION, PyTextConfig
 from pytext.config.component import register_tasks
 from pytext.config.config_adapter import upgrade_to_latest
 from pytext.config.serialize import (
@@ -29,11 +29,11 @@ from pytext.metric_reporters.channel import Channel, TensorBoardChannel
 from pytext.PreprocessingMap.ttypes import ModelType
 from pytext.task import load
 from pytext.utils.documentation import (
-    ROOT_CONFIG,
     find_config_class,
     get_subclasses,
     pretty_print_config_class,
     replace_components,
+    ROOT_CONFIG,
 )
 from pytext.utils.file_io import PathManager
 from pytext.workflow import (

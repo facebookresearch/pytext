@@ -9,12 +9,8 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import ModuleConfig
 from pytext.models.module import create_module
-from pytext.models.representations.transformer import (
-    PositionalEmbedding,
-)
-from pytext.models.seq_models.base import (
-    PlaceholderAttentionIdentity,
-)
+from pytext.models.representations.transformer import PositionalEmbedding
+from pytext.models.seq_models.base import PlaceholderAttentionIdentity
 from pytext.models.seq_models.positional import (
     PostionalEmbedCombine,
     PostionalEmbedType,
@@ -24,7 +20,7 @@ from torch import Tensor
 from torch.nn import LayerNorm
 
 from .attention import MultiheadAttention
-from .base import PyTextSeq2SeqModule, PlaceholderIdentity
+from .base import PlaceholderIdentity, PyTextSeq2SeqModule
 from .light_conv import LightweightConv
 from .nar_modules import NAREncoderUtility
 from .utils import Linear

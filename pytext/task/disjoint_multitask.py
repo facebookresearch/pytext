@@ -28,7 +28,7 @@ from pytext.optimizer.scheduler import Scheduler
 from pytext.utils import cuda
 from pytext.utils.usage import log_class_usage
 
-from . import NewTask, Task_Deprecated, TaskBase, _NewTask
+from . import _NewTask, NewTask, Task_Deprecated, TaskBase
 
 
 class DisjointMultitask(TaskBase):

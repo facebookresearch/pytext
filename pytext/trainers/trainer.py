@@ -22,7 +22,7 @@ from pytext.metric_reporters import MetricReporter
 from pytext.metrics.intent_slot_metrics import AllMetrics
 from pytext.models.distributed_model import DistributedModel
 from pytext.models.model import Model
-from pytext.optimizer import Adam, Optimizer, learning_rates
+from pytext.optimizer import Adam, learning_rates, Optimizer
 from pytext.optimizer.fp16_optimizer import FP16Optimizer, FP16OptimizerFairseq
 from pytext.optimizer.scheduler import Scheduler
 from pytext.optimizer.sparsifiers.sparsifier import Sparsifier

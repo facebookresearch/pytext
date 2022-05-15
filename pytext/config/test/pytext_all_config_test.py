@@ -9,7 +9,7 @@ import unittest
 from pytext.builtin_task import register_builtin_tasks
 from pytext.config.serialize import parse_config
 from pytext.utils.file_io import PathManager
-from pytext.utils.path import PYTEXT_HOME, get_absolute_path
+from pytext.utils.path import get_absolute_path, PYTEXT_HOME
 
 
 register_builtin_tasks()

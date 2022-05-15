@@ -5,31 +5,31 @@ from .loss import (
     AUCPRHingeLoss,
     BinaryCrossEntropyLoss,
     BinaryCrossEntropyWithLogitsLoss,
+    BinaryFocalLoss,
     CosineEmbeddingLoss,
     CrossEntropyLoss,
+    CTCLoss,
+    FocalLoss,
+    HingeLoss,
     KLDivergenceBCELoss,
     KLDivergenceCELoss,
     LabelSmoothedCrossEntropyLoss,
     Loss,
     MAELoss,
     MSELoss,
-    HingeLoss,
     MultiLabelSoftMarginLoss,
     NLLLoss,
     PairwiseRankingLoss,
     SourceType,
-    BinaryFocalLoss,
-    FocalLoss,
-    CTCLoss,
 )
 from .regularized_loss import (
     LabelSmoothingLoss,
-    SamplewiseLabelSmoothingLoss,
-    NARSequenceLoss,
     NARSamplewiseSequenceLoss,
+    NARSequenceLoss,
+    SamplewiseLabelSmoothingLoss,
 )
-from .regularizer import UniformRegularizer, EntropyRegularizer, AdaptiveRegularizer
-from .structured_loss import StructuredLoss, StructuredMarginLoss, CostFunctionType
+from .regularizer import AdaptiveRegularizer, EntropyRegularizer, UniformRegularizer
+from .structured_loss import CostFunctionType, StructuredLoss, StructuredMarginLoss
 
 
 __all__ = [

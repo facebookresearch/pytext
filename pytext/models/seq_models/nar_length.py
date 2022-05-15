@@ -5,9 +5,8 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.config.module_config import Activation
-from pytext.config.module_config import ModuleConfig
-from pytext.models.module import Module, create_module
+from pytext.config.module_config import Activation, ModuleConfig
+from pytext.models.module import create_module, Module
 from pytext.optimizer import get_activation
 from torch import Tensor
 

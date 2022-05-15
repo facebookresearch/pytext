@@ -16,10 +16,7 @@ the corresponding values in this implementation.
 
 from pytorch.text.fb.nn.modules.multihead_attention import MultiheadSelfAttention
 from pytorch.text.fb.nn.modules.positional_embedding import PositionalEmbedding
-from pytorch.text.fb.nn.modules.residual_mlp import (
-    ResidualMLP,
-    GeLU,
-)
+from pytorch.text.fb.nn.modules.residual_mlp import GeLU, ResidualMLP
 from pytorch.text.fb.nn.modules.transformer import (
     PassthroughTransformer,
     SELFIETransformer,
@@ -28,10 +25,7 @@ from pytorch.text.fb.nn.modules.transformer import (
     TransformerPrefixLayer,
 )
 
-from .luna_attention import (
-    LunarMultiheadAttention,
-    LunarCausalAttention,
-)
+from .luna_attention import LunarCausalAttention, LunarMultiheadAttention
 from .luna_sentence_encoder import LunaSentenceEncoder
 from .multihead_linear_attention import (
     MultiheadLinearAttention,

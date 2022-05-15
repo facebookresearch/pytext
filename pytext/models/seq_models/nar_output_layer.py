@@ -7,11 +7,7 @@ import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.utils import Vocabulary
-from pytext.loss import (
-    StructuredLoss,
-    NARSequenceLoss,
-    NARSamplewiseSequenceLoss,
-)
+from pytext.loss import NARSamplewiseSequenceLoss, NARSequenceLoss, StructuredLoss
 from pytext.models.output_layers import OutputLayerBase
 
 

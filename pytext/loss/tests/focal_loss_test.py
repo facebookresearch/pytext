@@ -5,7 +5,7 @@ import unittest
 
 import torch
 import torch.nn.functional as F
-from pytext.loss.loss import FocalLoss, BinaryFocalLoss
+from pytext.loss.loss import BinaryFocalLoss, FocalLoss
 
 
 class FocalLossTest(unittest.TestCase):

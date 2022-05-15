@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 import torch
 from fairseq import utils
-from fairseq.modules import LayerNorm, PositionalEmbedding, LayerDropModuleList
+from fairseq.modules import LayerDropModuleList, LayerNorm, PositionalEmbedding
 from fairseq.modules.fairseq_dropout import FairseqDropout
 from pytext.utils.usage import log_class_usage
 from torch import nn

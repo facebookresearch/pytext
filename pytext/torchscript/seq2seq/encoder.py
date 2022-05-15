@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import torch
 import torch.jit
 import torch.jit.quantized
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 
 class EncoderEnsemble(nn.Module):

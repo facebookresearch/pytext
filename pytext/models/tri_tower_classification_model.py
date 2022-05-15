@@ -4,8 +4,7 @@
 from typing import Dict, List, Optional, Tuple, Union
 
 import torch
-from pytext.common.constants import Stage
-from pytext.common.constants import TORCH_VERSION
+from pytext.common.constants import Stage, TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer

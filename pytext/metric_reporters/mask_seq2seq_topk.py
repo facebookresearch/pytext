@@ -20,9 +20,7 @@ from pytext.metric_reporters.seq2seq_metric_reporter import (  # noqa
 )
 from pytext.metric_reporters.seq2seq_utils import stringify
 from pytext.metrics import safe_division
-from pytext.metrics.mask_metrics import (
-    compute_length_metrics,
-)
+from pytext.metrics.mask_metrics import compute_length_metrics
 from pytext.metrics.seq2seq_metrics import MaskedSeq2SeqTopKMetrics
 
 

@@ -9,13 +9,13 @@ from pytext.data.tensorizers import TensorizerScriptImpl
 from pytext.data.tokenizers import Tokenizer
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
-from pytext.torchscript.utils import ScriptBatchInput, pad_2d
+from pytext.torchscript.utils import pad_2d, ScriptBatchInput
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
 
-from .tensorizers import Tensorizer, VocabConfig, tokenize
+from .tensorizers import Tensorizer, tokenize, VocabConfig
 from .utils import VocabBuilder, Vocabulary
 
 

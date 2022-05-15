@@ -6,9 +6,9 @@ from typing import Dict, List, Set, Union
 from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data import CommonMetadata
 from pytext.data.data_structures.annotation import (
+    Intent,
     REDUCE,
     SHIFT,
-    Intent,
     Slot,
     Token,
     Tree,
@@ -17,10 +17,10 @@ from pytext.data.data_structures.annotation import (
 from pytext.data.tensorizers import Tensorizer
 from pytext.data.tokenizers import Tokenizer
 from pytext.metrics.intent_slot_metrics import (
+    compute_all_metrics,
     FramePredictionPair,
     Node,
     Span,
-    compute_all_metrics,
 )
 
 from .channel import Channel, ConsoleChannel, FileChannel

@@ -6,8 +6,7 @@ import io
 import logging
 
 import torch
-from torchtext.data.utils import get_tokenizer
-from torchtext.data.utils import ngrams_iterator
+from torchtext.data.utils import get_tokenizer, ngrams_iterator
 from torchtext.utils import download_from_url, extract_archive
 from tqdm import tqdm
 

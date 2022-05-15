@@ -6,22 +6,22 @@ import json
 import os
 import sys
 import traceback
-from typing import IO, Any, Dict, Iterator, List, Optional, Tuple, Union, get_type_hints
+from typing import Any, Dict, get_type_hints, IO, Iterator, List, Optional, Tuple, Union
 
 import torch
 from pytext.common.constants import Stage
-from pytext.config import PyTextConfig, TestConfig, ExportConfig
+from pytext.config import ExportConfig, PyTextConfig, TestConfig
 from pytext.config.component import ComponentType, create_component, create_exporter
 from pytext.data.data import Batcher
 from pytext.data.data_handler import CommonMetadata
 from pytext.metric_reporters.channel import Channel
 from pytext.task import (
-    NewTask,
-    Task_Deprecated,
     create_task,
     get_latest_checkpoint_path,
     load,
+    NewTask,
     save,
+    Task_Deprecated,
 )
 from pytext.task.disjoint_multitask import NewDisjointMultitask
 from pytext.trainers import TrainingState

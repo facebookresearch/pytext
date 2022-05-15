@@ -8,8 +8,8 @@ from pytext.data import (
     BaseBatchSampler,
     Data,
     EvalBatchSampler,
-    RoundRobinBatchSampler,
     generator_iterator,
+    RoundRobinBatchSampler,
 )
 from pytext.data.data import BatchData
 

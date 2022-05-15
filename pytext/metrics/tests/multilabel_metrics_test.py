@@ -2,8 +2,8 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from pytext.metrics import (
-    LabelListPrediction,
     compute_multi_label_classification_metrics,
+    LabelListPrediction,
 )
 from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 

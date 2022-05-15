@@ -7,13 +7,8 @@ from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pytext.models.representations.transformer import (
-    PositionalEmbedding,
-)
+from pytext.models.representations.transformer import PositionalEmbedding
 from pytext.models.seq_models.base import PlaceholderIdentity
-from pytext.models.seq_models.base import (
-    PlaceholderIdentity,
-)
 from torch import Tensor
 
 from .utils import make_positions

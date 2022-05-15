@@ -10,12 +10,12 @@ from pytext.optimizer.fp16_optimizer import (  # noqa
 from pytext.optimizer.lamb import Lamb  # noqa
 from pytext.optimizer.madgrad import MADGRAD  # noqa
 from pytext.optimizer.optimizers import (  # noqa
-    SGD,
     Adagrad,
     Adam,
     AdamW,
-    Optimizer,
     learning_rates,
+    Optimizer,
+    SGD,
 )
 from pytext.optimizer.radam import RAdam  # noqa
 from pytext.optimizer.swa import StochasticWeightAveraging  # noqa

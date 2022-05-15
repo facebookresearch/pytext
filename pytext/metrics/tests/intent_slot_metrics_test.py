@@ -6,6 +6,14 @@ from typing import Any, Dict, List
 from pytext.data.data_structures.annotation import INVALID_TREE_INTENT
 from pytext.metrics import Confusions, MacroPRF1Scores
 from pytext.metrics.intent_slot_metrics import (
+    compare_frames,
+    compute_all_metrics,
+    compute_frame_accuracies_by_depth,
+    compute_frame_accuracy,
+    compute_intent_slot_metrics,
+    compute_percent_invalid_trees,
+    compute_percent_trees_wrong_label,
+    compute_top_intent_accuracy,
     FrameAccuracy,
     FramePredictionPair,
     IntentSlotConfusions,
@@ -14,14 +22,6 @@ from pytext.metrics.intent_slot_metrics import (
     PRF1Metrics,
     PRF1Scores,
     Span,
-    compare_frames,
-    compute_all_metrics,
-    compute_frame_accuracies_by_depth,
-    compute_frame_accuracy,
-    compute_intent_slot_metrics,
-    compute_top_intent_accuracy,
-    compute_percent_invalid_trees,
-    compute_percent_trees_wrong_label,
 )
 from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 

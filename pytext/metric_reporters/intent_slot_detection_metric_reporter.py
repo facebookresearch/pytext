@@ -4,12 +4,12 @@
 from typing import Dict, List, Optional
 
 from pytext.common.constants import DatasetFieldName, Stage
-from pytext.data.data_structures.annotation import CLOSE, OPEN, escape_brackets
+from pytext.data.data_structures.annotation import CLOSE, escape_brackets, OPEN
 from pytext.metrics.intent_slot_metrics import (
+    compute_all_metrics,
     FramePredictionPair,
     Node,
     Span,
-    compute_all_metrics,
 )
 from pytext.utils.data import (
     byte_length,

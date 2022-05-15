@@ -12,16 +12,13 @@ from accelerators.pytorch.lib.accelerator_lowering import (
 from accelerators.pytorch.lib.export_helper import AccelerateOptions
 from accelerators.pytorch.lib.model_rewriter import (
     find_module_instances,
-    rewrite_nnpi_modules,
     MODULE_TO_REWRITER,
+    rewrite_nnpi_modules,
     swap_modules,
 )
-from accelerators.pytorch.lib.quantize import (
-    quantize_statically,
-    quantize_fx,
-)
+from accelerators.pytorch.lib.quantize import quantize_fx, quantize_statically
 from pytext.common.constants import Stage
-from pytext.config import ConfigBase, PyTextConfig, ExportConfig
+from pytext.config import ConfigBase, ExportConfig, PyTextConfig
 from pytext.config.component import ComponentType, create_component, create_trainer
 from pytext.data.data import Data
 from pytext.data.sources.data_source import Schema
@@ -34,9 +31,9 @@ from pytext.trainers import TaskTrainer, TrainingState
 from pytext.utils import cuda, onnx, precision
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import (
+    log_accelerator_feature_usage,
     log_class_usage,
     log_feature_usage,
-    log_accelerator_feature_usage,
 )
 from torch import sort
 

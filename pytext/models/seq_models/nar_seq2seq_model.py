@@ -5,11 +5,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 from pytext.common.constants import Stage
 from pytext.data.masked_tensorizer import MaskedTokenTensorizer
-from pytext.data.tensorizers import (
-    Tensorizer,
-    TokenTensorizer,
-    GazetteerTensorizer,
-)
+from pytext.data.tensorizers import GazetteerTensorizer, Tensorizer, TokenTensorizer
 from pytext.data.utils import Vocabulary
 from pytext.models.embeddings.scriptable_embedding_list import ScriptableEmbeddingList
 from pytext.models.model import Model
@@ -17,7 +13,7 @@ from pytext.models.module import create_module
 
 from .conv_model import CNNModel, DecoupledCNNModel
 from .mask_generator import MaskedSequenceGenerator
-from .nar_length import MaskedLengthPredictionModule, ConvLengthPredictionModule
+from .nar_length import ConvLengthPredictionModule, MaskedLengthPredictionModule
 from .nar_output_layer import NARSeq2SeqOutputLayer
 from .seq2seq_model import Seq2SeqModel
 

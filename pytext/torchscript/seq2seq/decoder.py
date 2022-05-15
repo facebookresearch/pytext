@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 import torch
 import torch.jit
 import torch.jit.quantized
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 
 class DecoderBatchedStepEnsemble(nn.Module):

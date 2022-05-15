@@ -7,14 +7,8 @@ import torch
 from pytext.config import ConfigBase
 from pytext.config.component import create_loss
 
-from .loss import (
-    Loss,
-    NLLLoss,
-    HingeLoss,
-    maybe_log_normalize,
-    SourceType,
-)
-from .regularizer import UniformRegularizer, EntropyRegularizer, AdaptiveRegularizer
+from .loss import HingeLoss, Loss, maybe_log_normalize, NLLLoss, SourceType
+from .regularizer import AdaptiveRegularizer, EntropyRegularizer, UniformRegularizer
 from .structured_loss import StructuredLoss, StructuredMarginLoss
 
 

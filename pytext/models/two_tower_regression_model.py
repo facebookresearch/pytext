@@ -4,8 +4,7 @@
 from typing import Dict, List, Optional, Tuple
 
 import torch
-from pytext.common.constants import Stage
-from pytext.common.constants import TORCH_VERSION
+from pytext.common.constants import Stage, TORCH_VERSION
 from pytext.config import ConfigBase
 from pytext.data.roberta_tensorizer import RoBERTaTensorizer
 from pytext.data.tensorizers import (
@@ -20,9 +19,7 @@ from pytext.models.output_layers.doc_regression_output_layer import (
     RegressionOutputLayer,
 )
 from pytext.models.roberta import RoBERTaEncoder, RoBERTaEncoderBase
-from pytext.torchscript.module import (
-    ScriptPyTextTwoTowerModuleWithDense,
-)
+from pytext.torchscript.module import ScriptPyTextTwoTowerModuleWithDense
 from pytext.utils.usage import log_class_usage
 
 if TORCH_VERSION >= (1, 11):

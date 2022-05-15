@@ -4,7 +4,7 @@ import copy
 import json
 import re
 from collections import OrderedDict
-from typing import List, NamedTuple, Union, Optional
+from typing import List, NamedTuple, Optional, Union
 
 import torch
 from fairseq.data.encoders.gpt2_bpe import get_encoder as create_gpt2_bpe
@@ -15,10 +15,7 @@ from pytext.data.pickleable_gpt2bpe_encoder import PickleableGPT2BPEEncoder
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer, ScriptWordTokenizer
 from pytext.utils.file_io import PathManager
 from pytext.utils.usage import log_class_usage
-from transformers.tokenization_bert import (
-    BasicTokenizer,
-    WordpieceTokenizer,
-)
+from transformers.tokenization_bert import BasicTokenizer, WordpieceTokenizer
 
 
 torch.ops.load_library("//caffe2/torch/fb/nlp/operators:sentencepiece_tokenizer")

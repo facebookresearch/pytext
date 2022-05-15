@@ -7,8 +7,7 @@ from typing import Dict, List, Union
 import torch
 import torch.jit
 import torch.nn as nn
-from pytext.common.constants import Stage
-from pytext.common.constants import TORCH_VERSION
+from pytext.common.constants import Stage, TORCH_VERSION
 from pytext.config.component import Component, ComponentType
 from pytext.config.doc_classification import ModelInput
 from pytext.config.field_config import FeatureConfig

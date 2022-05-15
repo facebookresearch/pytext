@@ -11,7 +11,7 @@ import numpy as np
 import torch.nn.functional as F
 from caffe2.python import workspace
 from pytext.common.constants import Stage
-from pytext.config import LATEST_VERSION, ExportConfig, PyTextConfig
+from pytext.config import ExportConfig, LATEST_VERSION, PyTextConfig
 from pytext.data import Data, PoolingBatcher
 from pytext.data.sources import TSVDataSource
 from pytext.data.tensorizers import FloatListTensorizer

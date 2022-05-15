@@ -3,13 +3,13 @@
 
 from pytext.metrics import (
     ClassificationMetrics,
+    compute_classification_metrics,
+    compute_soft_metrics,
     LabelPrediction,
     MacroPRF1Metrics,
     MacroPRF1Scores,
     PRF1Scores,
     SoftClassificationMetrics,
-    compute_classification_metrics,
-    compute_soft_metrics,
 )
 from pytext.metrics.tests.metrics_test_base import MetricsTestBase
 

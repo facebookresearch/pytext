@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 import unittest
-from typing import Any, Dict, Union, List
+from typing import Any, Dict, List, Union
 
 from pytext.config import ConfigBase, pytext_config_from_json, serialize
 

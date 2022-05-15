@@ -5,18 +5,16 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from pytext.config import ExportConfig
 from pytext.torchscript.batchutils import (
-    input_size,
-    limit_list,
     clip_list,
-    limit_listlist,
     clip_listlist,
-    limit_listlist_float,
     clip_listlist_float,
+    destructure_any_list,
     destructure_tensor,
     destructure_tensor_list,
-    destructure_any_list,
-    zip_batch_any_list_list,
-    zip_batch_tensor_list,
+    input_size,
+    limit_list,
+    limit_listlist,
+    limit_listlist_float,
     make_batch_texts_dense,
     make_prediction_texts,
     make_prediction_texts_dense,
@@ -24,6 +22,8 @@ from pytext.torchscript.batchutils import (
     nonify_listlist_float,
     validate_dense_feat,
     validate_make_prediction_batch_element,
+    zip_batch_any_list_list,
+    zip_batch_tensor_list,
 )
 from pytext.torchscript.tensorizer.normalizer import VectorNormalizer
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer

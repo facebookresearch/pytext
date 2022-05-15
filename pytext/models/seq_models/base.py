@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 from pytext.config.module_config import ModuleConfig
 from pytext.models.module import Module
 from pytext.utils.usage import log_class_usage
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 from .utils import prepare_full_key
 

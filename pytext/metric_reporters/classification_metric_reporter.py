@@ -3,20 +3,20 @@
 
 from enum import Enum
 from itertools import tee, zip_longest
-from typing import Sequence, Generator, List, Optional
+from typing import Generator, List, Optional, Sequence
 
 import torch
 from pytext.common.constants import Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
-    safe_division,
     ClassificationMetrics,
-    RECALL_AT_PRECISION_THRESHOLDS,
+    compute_classification_metrics,
+    compute_multi_label_classification_metrics,
     LabelListPrediction,
     LabelPrediction,
     LabelTopKPrediction,
-    compute_classification_metrics,
-    compute_multi_label_classification_metrics,
+    RECALL_AT_PRECISION_THRESHOLDS,
+    safe_division,
 )
 from pytext.metrics.intent_slot_metrics import PerLabelConfusions
 

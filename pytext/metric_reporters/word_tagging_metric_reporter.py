@@ -9,17 +9,17 @@ from pytext.common.constants import DatasetFieldName, SpecialTokens, Stage
 from pytext.data import CommonMetadata
 from pytext.metrics import (
     AllConfusions,
+    compute_classification_metrics,
+    compute_multi_label_multi_class_soft_metrics,
     Confusions,
     LabelPrediction,
     PRF1Metrics,
-    compute_classification_metrics,
-    compute_multi_label_multi_class_soft_metrics,
 )
 from pytext.metrics.intent_slot_metrics import (
+    compute_prf1_metrics,
     Node,
     NodesPredictionPair,
     Span,
-    compute_prf1_metrics,
 )
 from pytext.utils.data import merge_token_labels_to_slot, parse_slot_string
 

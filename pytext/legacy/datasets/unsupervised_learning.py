@@ -4,8 +4,7 @@
 import os
 
 import torch
-from torchtext.data.functional import custom_replace
-from torchtext.data.functional import simple_space_split
+from torchtext.data.functional import custom_replace, simple_space_split
 from torchtext.utils import download_from_url, extract_archive
 
 from ..vocab import build_vocab_from_iterator

@@ -12,7 +12,6 @@ from pytext.data.decoupled_data import DecoupledSeq2SeqData
 from pytext.data.packed_lm_data import PackedLMData
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters import (
-    TopKClassificationMetricReporter,
     ClassificationMetricReporter,
     CompositionalMetricReporter,
     DenseRetrievalMetricReporter,
@@ -24,6 +23,7 @@ from pytext.metric_reporters import (
     RegressionMetricReporter,
     SequenceTaggingMetricReporter,
     SquadMetricReporter,
+    TopKClassificationMetricReporter,
 )
 from pytext.metric_reporters.channel import ConsoleChannel
 from pytext.metric_reporters.language_model_metric_reporter import (
@@ -61,8 +61,8 @@ from pytext.models.seq_models.contextual_intent_slot import (  # noqa
     ContextualIntentSlotModel,
 )
 from pytext.models.seq_models.nar_seq2seq_model import (
-    NARSeq2SeqModel,
     NARDecoupledSeq2SeqModel,
+    NARSeq2SeqModel,
 )
 from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
 from pytext.models.seq_models.seqnn import SeqNNModel

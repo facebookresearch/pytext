@@ -8,16 +8,9 @@ from typing import List, Optional, Tuple
 
 import torch
 from pytext.data.tensorizers import TensorizerScriptImpl
-from pytext.torchscript.module import (
-    PyTextEmbeddingModule,
-    ScriptPyTextEmbeddingModule,
-)
+from pytext.torchscript.module import PyTextEmbeddingModule, ScriptPyTextEmbeddingModule
 from pytext.torchscript.tensorizer.tensorizer import ScriptTensorizer, VocabLookup
-from pytext.torchscript.utils import (
-    pad_2d,
-    pad_2d_mask,
-    ScriptBatchInput,
-)
+from pytext.torchscript.utils import pad_2d, pad_2d_mask, ScriptBatchInput
 from pytext.torchscript.vocab import ScriptVocabulary
 
 

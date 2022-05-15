@@ -6,7 +6,7 @@ from collections import Counter, OrderedDict
 from itertools import chain
 
 import torch
-from torchtext.data.utils import get_tokenizer, dtype_to_attr, is_tokenizer_serializable
+from torchtext.data.utils import dtype_to_attr, get_tokenizer, is_tokenizer_serializable
 
 from ..vocab import Vocab
 from .dataset import Dataset

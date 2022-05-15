@@ -6,10 +6,7 @@ from unittest import TestCase
 from pytext.metric_reporters.classification_metric_reporter import (
     compute_topk_classification_metrics,
 )
-from pytext.metrics import (
-    LabelTopKPrediction,
-    ClassificationMetrics,
-)
+from pytext.metrics import ClassificationMetrics, LabelTopKPrediction
 
 
 class TestClassificationMetricReporter(TestCase):

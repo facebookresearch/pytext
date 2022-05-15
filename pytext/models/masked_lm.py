@@ -12,8 +12,8 @@ from pytext.data.tensorizers import Tensorizer
 from pytext.data.utils import Vocabulary
 from pytext.models.decoders.mlp_decoder import MLPDecoder
 from pytext.models.masking_utils import (
-    MaskingStrategy,
     frequency_based_masking,
+    MaskingStrategy,
     random_masking,
 )
 from pytext.models.model import BaseModel

@@ -8,11 +8,11 @@ from pytext.torchscript.batchutils import (
     destructure_any_list,
     destructure_dict_list,
     destructure_tensor_list,
-    make_prediction_tokens,
     make_prediction_texts,
     make_prediction_texts_dense,
-    zip_batch_tensor_list,
+    make_prediction_tokens,
     zip_batch_any_list_list,
+    zip_batch_tensor_list,
 )
 
 

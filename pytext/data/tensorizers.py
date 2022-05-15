@@ -9,16 +9,16 @@ from itertools import chain
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.common import Padding, constants
+from pytext.common import constants, Padding
 from pytext.config.component import Component, ComponentType, create_component
 from pytext.data.data_structures.annotation import (
-    REDUCE,
-    SHIFT,
     Annotation,
     is_intent_nonterminal,
     is_slot_nonterminal,
     is_unsupported,
     is_valid_nonterminal,
+    REDUCE,
+    SHIFT,
 )
 from pytext.data.sources.data_source import Gazetteer
 from pytext.data.tokenizers import Token, Tokenizer
@@ -29,7 +29,7 @@ from pytext.torchscript.tensorizer import (
     VectorNormalizer,
 )
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
-from pytext.torchscript.utils import ScriptBatchInput, pad_3d, validate_padding_control
+from pytext.torchscript.utils import pad_3d, ScriptBatchInput, validate_padding_control
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
@@ -39,6 +39,7 @@ from pytext.utils.precision import maybe_half
 from pytext.utils.usage import log_class_usage
 
 from .utils import (
+    align_target_label,
     BOL,
     BOS,
     BYTE_BOS,
@@ -46,10 +47,9 @@ from .utils import (
     EOL,
     EOS,
     PAD,
+    pad_and_tensorize,
     VocabBuilder,
     Vocabulary,
-    align_target_label,
-    pad_and_tensorize,
 )
 
 

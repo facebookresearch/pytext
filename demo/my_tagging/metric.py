@@ -5,7 +5,7 @@ import itertools
 
 from pytext.metric_reporters.channel import ConsoleChannel, TensorBoardChannel
 from pytext.metric_reporters.metric_reporter import MetricReporter
-from pytext.metrics import LabelPrediction, compute_classification_metrics
+from pytext.metrics import compute_classification_metrics, LabelPrediction
 
 
 class MyTaggingMetricReporter(MetricReporter):

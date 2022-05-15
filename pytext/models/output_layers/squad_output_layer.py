@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from pytext.config.component import create_loss
 from pytext.fields import FieldMeta
 from pytext.loss import (
-    CrossEntropyLoss,
-    KLDivergenceCELoss,
     BinaryFocalLoss,
+    CrossEntropyLoss,
     FocalLoss,
+    KLDivergenceCELoss,
     Loss,
 )
 from pytext.models.output_layers import OutputLayerBase

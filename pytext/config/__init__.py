@@ -3,9 +3,9 @@
 
 from .config_adapter import upgrade_to_latest  # noqa
 from .pytext_config import (  # noqa
-    LATEST_VERSION,
     ConfigBase,
     ExportConfig,
+    LATEST_VERSION,
     PyTextConfig,
     TestConfig,
 )

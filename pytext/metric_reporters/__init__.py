@@ -5,8 +5,8 @@ from .calibration_metric_reporter import CalibrationMetricReporter
 from .channel import Channel
 from .classification_metric_reporter import (
     ClassificationMetricReporter,
-    TopKClassificationMetricReporter,
     MultiLabelClassificationMetricReporter,
+    TopKClassificationMetricReporter,
 )
 from .compositional_metric_reporter import CompositionalMetricReporter
 from .dense_retrieval_metric_reporter import DenseRetrievalMetricReporter

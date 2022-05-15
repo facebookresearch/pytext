@@ -16,9 +16,9 @@ from pytext.data.roberta_tensorizer import (
 from pytext.data.sources import SquadDataSource
 from pytext.data.sources.data_source import (
     Gazetteer,
-    SafeFileWrapper,
-    load_float_list,
     load_2d_float_lists,
+    load_float_list,
+    SafeFileWrapper,
 )
 from pytext.data.sources.pandas import SessionPandasDataSource
 from pytext.data.sources.tsv import SessionTSVDataSource, TSVDataSource
@@ -36,17 +36,17 @@ from pytext.data.tensorizers import (
     FloatListSeqTensorizer,
     FloatListTensorizer,
     GazetteerTensorizer,
+    initialize_tensorizers,
     Integer1DListTensorizer,
+    LabelListRankTensorizer,
     LabelListTensorizer,
     LabelTensorizer,
+    lookup_tokens,
     SeqTokenTensorizer,
     String2DListTensorizer,
     TokenTensorizer,
     VocabConfig,
     VocabFileConfig,
-    LabelListRankTensorizer,
-    initialize_tensorizers,
-    lookup_tokens,
 )
 from pytext.data.token_tensorizer import ScriptBasedTokenTensorizer
 from pytext.data.tokenizers import (

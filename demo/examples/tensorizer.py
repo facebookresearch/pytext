@@ -2,7 +2,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
 from pytext.data.tensorizers import Tensorizer
-from pytext.data.utils import VocabBuilder, pad_and_tensorize
+from pytext.data.utils import pad_and_tensorize, VocabBuilder
 
 
 class MyWordTensorizer(Tensorizer):

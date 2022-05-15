@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Type, TypeVar
 
 from pytext.config.component import Component, ComponentType
 from pytext.data.utils import shard
-from pytext.utils.data import Slot, parse_slot_string
+from pytext.utils.data import parse_slot_string, Slot
 from pytext.utils.file_io import PathManager
 
 

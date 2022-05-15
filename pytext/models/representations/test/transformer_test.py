@@ -5,8 +5,6 @@ import unittest
 import torch
 from pytext.models.representations.transformer import (
     MultiheadSelfAttention,
-)
-from pytext.models.representations.transformer import (
     SentenceEncoder,
     Transformer,
     TransformerLayer,

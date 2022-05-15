@@ -8,12 +8,12 @@ from pytext.config import ConfigBase
 from pytext.config.component import Component, ComponentType, create_scheduler
 from pytext.optimizer import Optimizer
 from torch.optim.lr_scheduler import (
+    _LRScheduler,
     CosineAnnealingLR as TorchCosineAnnealingLR,
     CyclicLR as TorchCyclicLR,
     ExponentialLR as TorchExponentialLR,
     ReduceLROnPlateau as TorchReduceLROnPlateau,
     StepLR as TorchStepLR,
-    _LRScheduler,
 )
 
 

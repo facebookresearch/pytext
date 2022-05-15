@@ -5,7 +5,7 @@ import json
 import os
 from importlib import import_module
 
-from pytext.config import PyTextConfig, config_to_json
+from pytext.config import config_to_json, PyTextConfig
 from pytext.config.config_adapter import upgrade_to_latest
 from pytext.config.serialize import pytext_config_from_json
 from pytext.utils.file_io import PathManager

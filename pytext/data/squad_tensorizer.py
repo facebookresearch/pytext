@@ -8,7 +8,7 @@ from pytext.common.constants import SpecialTokens
 from pytext.config.component import ComponentType, create_component
 from pytext.data.tensorizers import TokenTensorizer
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
-from pytext.data.utils import VocabBuilder, Vocabulary, pad_and_tensorize
+from pytext.data.utils import pad_and_tensorize, VocabBuilder, Vocabulary
 
 
 class SquadTensorizer(TokenTensorizer):

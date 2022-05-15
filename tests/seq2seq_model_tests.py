@@ -11,8 +11,8 @@ from pytext.data.sources.tsv import TSVDataSource
 from pytext.data.tensorizers import (
     ByteTokenTensorizer,
     GazetteerTensorizer,
-    TokenTensorizer,
     initialize_tensorizers,
+    TokenTensorizer,
 )
 from pytext.models.embeddings import (
     ContextualTokenEmbedding,

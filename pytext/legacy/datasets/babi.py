@@ -6,7 +6,7 @@ from io import open
 
 import torch
 
-from ..data import Dataset, Field, Example, Iterator
+from ..data import Dataset, Example, Field, Iterator
 
 
 class BABI20Field(Field):

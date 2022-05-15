@@ -9,7 +9,7 @@ import torch
 from pytext.config.component import create_optimizer
 from pytext.optimizer.lamb import Lamb
 from pytext.optimizer.madgrad import MADGRAD
-from pytext.optimizer.optimizers import SGD, Adagrad, Adam, AdamW, Optimizer
+from pytext.optimizer.optimizers import Adagrad, Adam, AdamW, Optimizer, SGD
 from pytext.optimizer.radam import RAdam
 from torch.optim import Optimizer as PT_Optimizer
 

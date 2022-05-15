@@ -8,11 +8,11 @@ from typing import List, Tuple, Union
 from pytext.config.component import Component, ComponentType
 from pytext.config.pytext_config import ConfigBase
 from pytext.config.serialize import (
+    config_from_json,
+    config_to_json,
     ConfigParseError,
     MissingValueError,
     UnionTypeError,
-    config_from_json,
-    config_to_json,
 )
 
 

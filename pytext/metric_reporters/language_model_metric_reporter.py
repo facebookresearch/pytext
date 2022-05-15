@@ -11,8 +11,8 @@ from pytext.common.constants import Stage
 from pytext.config.module_config import PerplexityType
 from pytext.data import CommonMetadata
 from pytext.metrics.language_model_metrics import (
-    LanguageModelMetric,
     compute_language_model_metric,
+    LanguageModelMetric,
 )
 from pytext.utils import cuda
 

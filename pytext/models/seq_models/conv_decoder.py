@@ -9,13 +9,11 @@ import torch.nn.functional as F
 from pytext.config import ConfigBase
 from pytext.config.module_config import ModuleConfig
 from pytext.models.module import create_module
-from pytext.models.seq_models.base import (
-    PlaceholderAttentionIdentity,
-)
+from pytext.models.seq_models.base import PlaceholderAttentionIdentity
 from pytext.models.seq_models.positional import (
+    build_positional_embedding,
     PostionalEmbedCombine,
     PostionalEmbedType,
-    build_positional_embedding,
 )
 from pytext.models.seq_models.utils import Linear, log_and_overwrite
 from torch import Tensor
@@ -23,15 +21,12 @@ from torch.nn import LayerNorm
 
 from .attention import MultiheadAttention
 from .base import (
+    PlaceholderIdentity,
     PyTextIncrementalDecoderComponent,
     PyTextSeq2SeqModule,
-    PlaceholderIdentity,
 )
 from .light_conv import LightweightConv
-from .projection_layers import (
-    DecoderWithLinearOutputProjection,
-    DecoupledDecoderHead,
-)
+from .projection_layers import DecoderWithLinearOutputProjection, DecoupledDecoderHead
 from .utils import extract_ontology_vocab
 
 

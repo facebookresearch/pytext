@@ -6,6 +6,8 @@ from .contextual_token_embedding_field import ContextualTokenEmbeddingField
 from .dict_field import DictFeatureField
 from .field import (
     ActionField,
+    create_fields,
+    create_label_fields,
     DocLabelField,
     Field,
     FieldMeta,
@@ -18,8 +20,6 @@ from .field import (
     VocabUsingField,
     VocabUsingNestedField,
     WordLabelField,
-    create_fields,
-    create_label_fields,
 )
 from .text_field_with_special_unk import TextFeatureFieldWithSpecialUnk
 

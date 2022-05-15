@@ -8,7 +8,7 @@ from pytext.common.constants import (
     RawExampleFieldName,
     Stage,
 )
-from pytext.data.data_structures.annotation import INVALID_TREE_STR, Annotation
+from pytext.data.data_structures.annotation import Annotation, INVALID_TREE_STR
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters.channel import Channel, ConsoleChannel
 from pytext.metric_reporters.compositional_metric_reporter import (
@@ -19,7 +19,7 @@ from pytext.metric_reporters.seq2seq_metric_reporter import (
     Seq2SeqFileChannel,
     Seq2SeqMetricReporter,
 )
-from pytext.metrics.intent_slot_metrics import FramePredictionPair, compute_all_metrics
+from pytext.metrics.intent_slot_metrics import compute_all_metrics, FramePredictionPair
 
 from .seq2seq_utils import stringify
 

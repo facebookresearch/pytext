@@ -8,7 +8,7 @@ import random
 from typing import Any, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Type
 
 from pytext.common.constants import RawExampleFieldName, Stage
-from pytext.config.component import Component, ComponentType, Registry, create_component
+from pytext.config.component import Component, ComponentType, create_component, Registry
 from pytext.utils.usage import log_class_usage
 
 from .sources import DataSource, RawExample, TSVDataSource
@@ -17,7 +17,7 @@ from .sources.data_source import (
     RowShardedDataSource,
     ShardedDataSource,
 )
-from .tensorizers import MetricTensorizer, Tensorizer, initialize_tensorizers
+from .tensorizers import initialize_tensorizers, MetricTensorizer, Tensorizer
 
 
 class RowData(NamedTuple):

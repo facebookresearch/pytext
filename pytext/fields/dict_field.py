@@ -5,8 +5,7 @@ from typing import List, Tuple
 
 import torch
 from pytext.common.constants import VocabMeta
-from pytext.legacy import data as textdata
-from pytext.legacy import vocab
+from pytext.legacy import data as textdata, vocab
 from pytext.utils.data import no_tokenize
 
 from .field import VocabUsingField

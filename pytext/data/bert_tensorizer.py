@@ -13,7 +13,7 @@ from pytext.data.tensorizers import Tensorizer, TensorizerScriptImpl
 from pytext.data.tokenizers import Tokenizer, WordPieceTokenizer
 from pytext.data.utils import BOS, EOS, MASK, PAD, UNK, Vocabulary
 from pytext.torchscript.tensorizer.tensorizer import VocabLookup
-from pytext.torchscript.utils import ScriptBatchInput, pad_2d, pad_2d_mask
+from pytext.torchscript.utils import pad_2d, pad_2d_mask, ScriptBatchInput
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property

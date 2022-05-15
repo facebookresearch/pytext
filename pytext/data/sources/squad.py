@@ -8,9 +8,9 @@ from typing import List, Optional
 
 from pytext.data.sources.data_source import (
     DataSource,
+    generator_property,
     JSONString,
     SafeFileWrapper,
-    generator_property,
 )
 from pytext.data.sources.tsv import TSV
 from pytext.utils.file_io import PathManager

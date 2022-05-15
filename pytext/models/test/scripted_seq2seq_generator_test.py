@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import torch
 from pytext.data.sources.tsv import TSVDataSource
-from pytext.data.tensorizers import TokenTensorizer, initialize_tensorizers
+from pytext.data.tensorizers import initialize_tensorizers, TokenTensorizer
 from pytext.models.embeddings.word_embedding import WordEmbedding
 from pytext.models.seq_models.seq2seq_model import Seq2SeqModel
 from pytext.torchscript.seq2seq.scripted_seq2seq_generator import (

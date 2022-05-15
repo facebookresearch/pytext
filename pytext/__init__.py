@@ -16,7 +16,7 @@ from pytext.utils.file_io import PathManager, register_http_url_handler
 from pytext.workflow import _set_cuda
 
 from .builtin_task import register_builtin_tasks
-from .config import PyTextConfig, pytext_config_from_json
+from .config import pytext_config_from_json, PyTextConfig
 from .utils.onnx import CAFFE2_DB_TYPE, convert_caffe2_blob_name
 
 

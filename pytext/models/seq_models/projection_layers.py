@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple
 import torch
 import torch.nn.functional as F
 from pytext.models.seq_models.utils import Linear
-from torch import Tensor, nn
+from torch import nn, Tensor
 
 from .attention import DecoupledMultiheadAttention
 from .utils import verify_encoder_out
