@@ -39,6 +39,7 @@ class WordFeatConfig(ModuleConfig):
     cpu_only: bool = False
     skip_header: bool = True
     delimiter: str = " "
+    dedicated_context_embedding: bool = False  # Weather to use a dedicated embedding block for context input, otherwise shared with text input
 
 
 class MLPFeatConfig(ModuleConfig):
@@ -84,6 +85,7 @@ class CharFeatConfig(ModuleConfig):
     vocab_from_train_data: bool = True
     max_word_length: int = 20
     min_freq: int = 1
+    dedicated_context_embedding: bool = False  # whether to use a dedicated embedding block for context input, otherwise shared with text input
 
 
 class ContextualTokenEmbeddingConfig(ConfigBase):
