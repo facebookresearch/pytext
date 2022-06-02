@@ -63,11 +63,22 @@ class DictFeatConfig(ModuleConfig):
     use_weights: bool = True
 
 
+class ConnectionConfig(ConfigBase):
+    # Config for connection layers in embedding, Highway or Residual MLP
+    # Default is highway, see https://arxiv.org/abs/1508.06615
+    connection_type: str = "highway"
+    # Number of layers
+    num_layers: int = 0
+    # Dropout ratio for resmlp, default to pytorch default 0.1, ignored in highway
+    dropout: float = 0.1
+
+
 class CharFeatConfig(ModuleConfig):
     embed_dim: int = 100
     sparse: bool = False
     cnn: CNNParams = CNNParams()
-    highway_layers: int = 0
+    connection: ConnectionConfig = ConnectionConfig()
+    highway_layers: Optional[int] = None  # kept for backward-compatibility
     projection_dim: Optional[int] = None
     export_input_names: List[str] = ["char_vals"]
     vocab_from_train_data: bool = True

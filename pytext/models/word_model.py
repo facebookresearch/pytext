@@ -209,12 +209,12 @@ class WordTaggingLiteModel(WordTaggingModel):
     @classmethod
     def create_embedding(cls, config, tensorizers):
         return CharacterEmbedding(
-            tensorizers["token_bytes"].NUM_BYTES,
-            config.embedding.embed_dim,
-            config.embedding.cnn.kernel_num,
-            config.embedding.cnn.kernel_sizes,
-            config.embedding.highway_layers,
-            config.embedding.projection_dim,
+            num_embeddings=tensorizers["token_bytes"].NUM_BYTES,
+            embed_dim=config.embedding.embed_dim,
+            out_channels=config.embedding.cnn.kernel_num,
+            kernel_sizes=config.embedding.cnn.kernel_sizes,
+            highway_layers=config.embedding.connection.num_layers,
+            projection_dim=config.embedding.projection_dim,
         )
 
     def vocab_to_export(self, tensorizers):

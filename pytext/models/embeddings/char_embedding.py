@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+import warnings
 from typing import List, Optional
 
 import torch
@@ -45,13 +46,37 @@ class CharacterEmbedding(EmbeddingBase):
         if vocab_size is None:
             vocab_size = metadata.vocab_size
 
+        if config.highway_layers is not None:
+            warnings.warn(
+                "Specifying highway_layers is deprecated, use ConnectionConfig instead.",
+                DeprecationWarning,
+            )
+            highway_layers = config.highway_layers
+            resmlp_layers = 0
+            resmlp_dropout = 0
+        else:
+            if config.connection.connection_type == "highway":
+                highway_layers = config.connection.num_layers
+                resmlp_layers = 0
+                resmlp_dropout = 0
+            elif config.connection.connection_type == "resmlp":
+                highway_layers = 0
+                resmlp_layers = config.connection.num_layers
+                resmlp_dropout = config.connection.dropout
+            else:
+                raise NotImplementedError(
+                    "Connection type should be either 'highway' or 'resmlp'."
+                )
+
         return cls(
             vocab_size,
             config.embed_dim,
             config.cnn.kernel_num,
             config.cnn.kernel_sizes,
-            config.highway_layers,
+            highway_layers,
             config.projection_dim,
+            resmlp_layers,
+            resmlp_dropout,
         )
 
     def __init__(
@@ -62,6 +87,8 @@ class CharacterEmbedding(EmbeddingBase):
         kernel_sizes: List[int],
         highway_layers: int,
         projection_dim: Optional[int],
+        resmlp_layers: int = 0,
+        resmlp_dropout: float = 0.1,  # default to pytorch default
         *args,
         **kwargs,
     ) -> None:
@@ -78,6 +105,8 @@ class CharacterEmbedding(EmbeddingBase):
             kernel_sizes=kernel_sizes,
             highway_layers=highway_layers,
             projection_dim=projection_dim,
+            resmlp_layers=resmlp_layers,
+            resmlp_dropout=resmlp_dropout,
         )
         log_class_usage(__class__)
 
