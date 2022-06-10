@@ -81,7 +81,7 @@ class LightConvDecoderLayer(PyTextSeq2SeqModule):
             **config._asdict(),
             conv=conv,
             self_attention=self_attention,
-            attention=attention
+            attention=attention,
         )
 
     def __init__(

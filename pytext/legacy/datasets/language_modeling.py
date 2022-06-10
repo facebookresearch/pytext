@@ -47,7 +47,7 @@ class WikiText2(LanguageModelingDataset):
         train="wiki.train.tokens",
         validation="wiki.valid.tokens",
         test="wiki.test.tokens",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the WikiText-2 dataset.
 
@@ -70,7 +70,7 @@ class WikiText2(LanguageModelingDataset):
             validation=validation,
             test=test,
             text_field=text_field,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -122,7 +122,7 @@ class WikiText103(LanguageModelingDataset):
         train="wiki.train.tokens",
         validation="wiki.valid.tokens",
         test="wiki.test.tokens",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the WikiText-103 dataset.
 
@@ -145,7 +145,7 @@ class WikiText103(LanguageModelingDataset):
             validation=validation,
             test=test,
             text_field=text_field,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -206,7 +206,7 @@ class PennTreebank(LanguageModelingDataset):
         train="ptb.train.txt",
         validation="ptb.valid.txt",
         test="ptb.test.txt",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the Penn Treebank dataset.
 
@@ -225,7 +225,7 @@ class PennTreebank(LanguageModelingDataset):
             validation=validation,
             test=test,
             text_field=text_field,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

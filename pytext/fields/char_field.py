@@ -24,7 +24,7 @@ class CharFeatureField(VocabUsingField):
         batch_first=True,
         max_word_length=20,
         min_freq=1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             sequential=True,  # Otherwise pad is set to None in textdata.Field

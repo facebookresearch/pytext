@@ -58,7 +58,7 @@ class TranslationDataset(data.Dataset):
         train="train",
         validation="val",
         test="test",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of a TranslationDataset.
 
@@ -116,7 +116,7 @@ class Multi30k(TranslationDataset):
         train="train",
         validation="val",
         test="test2016",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the Multi30k dataset.
 
@@ -164,7 +164,7 @@ class IWSLT(TranslationDataset):
         train="train",
         validation="IWSLT16.TED.tst2013",
         test="IWSLT16.TED.tst2014",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the IWSLT dataset.
 
@@ -266,7 +266,7 @@ class WMT14(TranslationDataset):
         train="train.tok.clean.bpe.32000",
         validation="newstest2013.tok.bpe.32000",
         test="newstest2014.tok.bpe.32000",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the WMT 2014 dataset.
 

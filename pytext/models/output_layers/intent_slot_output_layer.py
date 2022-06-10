@@ -92,7 +92,7 @@ class IntentSlotOutputLayer(OutputLayerBase):
         targets: Tuple[torch.Tensor, torch.Tensor],
         context: Dict[str, Any] = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute and return the averaged intent and slot-filling loss.
 

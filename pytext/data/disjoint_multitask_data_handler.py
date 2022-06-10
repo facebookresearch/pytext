@@ -159,7 +159,7 @@ class DisjointMultitaskDataHandler(DataHandler):
         data_handlers: Dict[str, DataHandler],
         target_task_name: Optional[str] = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> None:
         super(DisjointMultitaskDataHandler, self).__init__(config, None, None, None)
         self.data_handlers = data_handlers

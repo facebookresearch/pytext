@@ -77,7 +77,7 @@ class MultiLabelClassificationLayer(OutputLayerBase):
         targets: List[torch.Tensor],
         context: Optional[Dict[str, Any]] = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """Compute and return the averaged intent and slot-filling loss.
 
@@ -111,7 +111,7 @@ class MultiLabelClassificationLayer(OutputLayerBase):
         targets: List[torch.Tensor],
         context: Optional[Dict[str, Any]] = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Compute and return prediction and scores from the model.
 

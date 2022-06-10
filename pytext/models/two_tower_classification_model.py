@@ -145,7 +145,7 @@ class TwoTowerClassificationModel(BaseModel):
         self,
         right_encoder_inputs: Tuple[torch.Tensor, ...],
         left_encoder_inputs: Tuple[torch.Tensor, ...],
-        *args
+        *args,
     ) -> List[torch.Tensor]:
         if self.use_shared_encoder:
             if self.right_encoder.output_encoded_layers:

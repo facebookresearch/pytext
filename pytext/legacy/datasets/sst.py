@@ -23,7 +23,7 @@ class SST(data.Dataset):
         label_field,
         subtrees=False,
         fine_grained=False,
-        **kwargs
+        **kwargs,
     ):
         """Create an SST dataset instance given a path and fields.
 
@@ -71,7 +71,7 @@ class SST(data.Dataset):
         validation="dev.txt",
         test="test.txt",
         train_subtrees=False,
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the SST dataset.
 
@@ -101,7 +101,7 @@ class SST(data.Dataset):
                 text_field,
                 label_field,
                 subtrees=train_subtrees,
-                **kwargs
+                **kwargs,
             )
         )
         val_data = (

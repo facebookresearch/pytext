@@ -61,7 +61,7 @@ class IMDB(data.Dataset):
             train=train,
             validation=None,
             test=test,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

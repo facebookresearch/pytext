@@ -54,7 +54,7 @@ class TREC(data.Dataset):
         root=".data",
         train="train_5500.label",
         test="TREC_10.label",
-        **kwargs
+        **kwargs,
     ):
         """Create dataset objects for splits of the TREC dataset.
 
@@ -75,7 +75,7 @@ class TREC(data.Dataset):
             train=train,
             validation=None,
             test=test,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod

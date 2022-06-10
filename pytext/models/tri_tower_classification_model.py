@@ -133,7 +133,7 @@ class TriTowerClassificationModel(BaseModel):
         right_encoder_inputs: Tuple[torch.Tensor, ...],
         middle_encoder_inputs: Tuple[torch.Tensor, ...],
         left_encoder_inputs: Tuple[torch.Tensor, ...],
-        *args
+        *args,
     ) -> List[torch.Tensor]:
 
         if self.right_encoder.output_encoded_layers:

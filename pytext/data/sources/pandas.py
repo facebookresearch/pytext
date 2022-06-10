@@ -46,7 +46,7 @@ class PandasDataSource(RootDataSource):
         train_df: Optional[DataFrame] = None,
         eval_df: Optional[DataFrame] = None,
         test_df: Optional[DataFrame] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.train_df = train_df

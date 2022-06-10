@@ -33,7 +33,7 @@ class OutputLayerBase(Module):
         target_names: Optional[List[str]] = None,
         loss_fn: Optional[Loss] = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__()
         self.target_names = target_names

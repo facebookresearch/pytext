@@ -63,7 +63,7 @@ class UDPOS(SequenceTaggingDataset):
         train="en-ud-tag.v2.train.txt",
         validation="en-ud-tag.v2.dev.txt",
         test="en-ud-tag.v2.test.txt",
-        **kwargs
+        **kwargs,
     ):
         """Downloads and loads the Universal Dependencies Version 2 POS Tagged
         data.
@@ -75,7 +75,7 @@ class UDPOS(SequenceTaggingDataset):
             train=train,
             validation=validation,
             test=test,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -97,7 +97,7 @@ class CoNLL2000Chunking(SequenceTaggingDataset):
         train="train.txt",
         test="test.txt",
         validation_frac=0.1,
-        **kwargs
+        **kwargs,
     ):
         """Downloads and loads the CoNLL 2000 Chunking dataset.
         NOTE: There is only a train and test dataset so we use 10% of the train set as validation

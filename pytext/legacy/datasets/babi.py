@@ -103,7 +103,7 @@ class BABI20(Dataset):
         train=None,
         validation=None,
         test=None,
-        **kwargs
+        **kwargs,
     ):
         assert isinstance(task, int) and 1 <= task <= 20
         if tenK:
@@ -145,7 +145,7 @@ class BABI20(Dataset):
             train=train,
             validation=validation,
             test=test,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -161,7 +161,7 @@ class BABI20(Dataset):
         sort=False,
         shuffle=False,
         device=None,
-        **kwargs
+        **kwargs,
     ):
         text = BABI20Field(memory_size)
         train, val, test = BABI20.splits(
@@ -171,7 +171,7 @@ class BABI20(Dataset):
             joint=joint,
             tenK=tenK,
             only_supporting=only_supporting,
-            **kwargs
+            **kwargs,
         )
         text.build_vocab(train)
         return Iterator.splits(
