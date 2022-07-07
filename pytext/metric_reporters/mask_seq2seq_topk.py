@@ -4,6 +4,8 @@ from collections import defaultdict
 from typing import Dict, List
 
 import numpy as np
+
+import torch
 from pytext.common.constants import Stage
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters.channel import ConsoleChannel
@@ -22,6 +24,12 @@ from pytext.metric_reporters.seq2seq_utils import stringify
 from pytext.metrics import safe_division
 from pytext.metrics.mask_metrics import compute_length_metrics
 from pytext.metrics.seq2seq_metrics import MaskedSeq2SeqTopKMetrics
+
+
+try:
+    from fairseq.scoring import bleu
+except ImportError:
+    from fairseq import bleu
 
 
 class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
@@ -113,6 +121,16 @@ class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
         total_exact_match = 0
         pred_exact_match = 0
         num_samples = len(self.all_target_trees)
+
+        trg_vocab = self.tensorizers["trg_seq_tokens"].vocab
+        bleu_scorer = bleu.Scorer(
+            bleu.BleuConfig(
+                pad=trg_vocab.get_pad_index(),
+                eos=trg_vocab.get_eos_index(),
+                unk=trg_vocab.get_unk_index(),
+            )
+        )
+
         for (beam_pred, target) in zip(self.all_beam_preds, self.all_target_trees):
             for (index, pred) in enumerate(beam_pred):
                 if self._compare_target_prediction_tokens(pred, target):
@@ -120,6 +138,16 @@ class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
                     if index == 0:
                         pred_exact_match += 1
                     break
+
+        for (beam_preds, target) in zip(self.all_preds, self.all_targets):
+            pred = beam_preds[0]
+            # Bleu Metric calculation is always done with tensors on CPU or
+            # type checks in fairseq/bleu.py:add() will fail
+            bleu_scorer.add(torch.IntTensor(target).cpu(), torch.IntTensor(pred).cpu())
+
+        bleu_score = round(
+            0.0 if len(self.all_beam_preds) == 0 else bleu_scorer.score(), 2
+        )
         exact_match = round(safe_division(pred_exact_match, num_samples) * 100.0, 2)
         exact_match_top_k = round(
             safe_division(total_exact_match, num_samples) * 100.0, 2
@@ -132,7 +160,7 @@ class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
             loss=self.calculate_loss(),
             exact_match=exact_match,
             f1=-1,
-            bleu=-1,
+            bleu=bleu_score,
             k=k,
             exact_match_top_k=exact_match_top_k,
             f1_top_k=-1,
