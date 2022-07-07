@@ -65,7 +65,7 @@ class MaskedTokenTensorizer(TokenTensorizer):
             is_input,
         )
         self.mask = mask
-        self.vocab_builder = MaskedVocabBuilder()
+        self.vocab_builder = MaskedVocabBuilder(self.vocab_file_delimiter)
         self.vocab_builder.use_bos = add_bos_token
         self.vocab_builder.use_eos = add_eos_token
 
