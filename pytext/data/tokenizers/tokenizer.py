@@ -313,16 +313,19 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
         sp_model_path: str = ""
         max_input_text_length: Optional[int] = None
         use_fb_sentencepiece: Optional[bool] = None
+        lowercase: bool = False
 
     def __init__(
         self,
         sp_model_path: str = "",
         max_input_text_length: Optional[int] = None,
         use_fb_sentencepiece: Optional[bool] = None,
+        lowercase: Optional[bool] = False,
     ):
         self.sp_model_path = sp_model_path
         self.max_input_text_length = max_input_text_length
         self.use_fb_sentencepiece = use_fb_sentencepiece
+        self.lowercase = lowercase
         self._load_processor()
         log_class_usage(__class__)
 
@@ -332,6 +335,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
             config.sp_model_path,
             config.max_input_text_length,
             config.use_fb_sentencepiece,
+            config.lowercase,
         )
 
     def tokenize(self, input_str: str) -> List[Token]:
@@ -340,6 +344,8 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
             and self.max_input_text_length is not None
         ):
             input_str = input_str[: self.max_input_text_length]
+        input_str = input_str.lower() if self.lowercase else input_str
+
         pieces = self.processor.EncodeAsPieces(input_str)
         tokens = []
         # calculate start and end indices of each piece.
