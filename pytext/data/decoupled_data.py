@@ -140,6 +140,7 @@ class DecoupledSeq2SeqData(Data):
         # For cloze-style parsing, ontology tokens appear in the source sequence, thus
         # this controls whether the source tensorizer will receive the merged vocab.
         merge_source_vocab: bool = False
+        merge_vocab: bool = True
 
     @classmethod
     def from_config(
@@ -164,6 +165,7 @@ class DecoupledSeq2SeqData(Data):
             noisy_decoupling=config.noisy_decoupling,
             filter_target_ood_slots=config.filter_target_ood_slots,
             merge_source_vocab=config.merge_source_vocab,
+            merge_vocab=config.merge_vocab,
             unk_token=config.unk_token,
             pad_token=config.pad_token,
             bos_token=config.bos_token,
@@ -204,6 +206,7 @@ class DecoupledSeq2SeqData(Data):
         noisy_decoupling: bool = False,
         filter_target_ood_slots: bool = True,
         merge_source_vocab: bool = False,
+        merge_vocab: bool = True,
         unk_token: str = Config.unk_token,
         pad_token: str = Config.pad_token,
         bos_token: str = Config.bos_token,
@@ -221,6 +224,8 @@ class DecoupledSeq2SeqData(Data):
         )
         self.filter_target_ood_slots = filter_target_ood_slots
         self.merge_source_vocab = merge_source_vocab
+        self.merge_vocab = merge_vocab
+
         if decoupled_source and noisy_decoupling:
             self.decoupled_func_source = get_noisy_decoupled
         elif decoupled_source:
@@ -251,31 +256,34 @@ class DecoupledSeq2SeqData(Data):
 
             # Merge source and target vocabs, keeping them aligned. This is required
             # by the implementation of the pointer mechanism in the model's decoder.
-            src_vocab = self.tensorizers["src_seq_tokens"].vocab
-            trg_vocab = self.tensorizers["trg_seq_tokens"].vocab
-            tokens_not_in_src = set(trg_vocab._vocab).difference(set(src_vocab._vocab))
-            merged_tokens = src_vocab._vocab.copy() + [
-                w for w in trg_vocab._vocab if w in tokens_not_in_src
-            ]  # Order stays consistent with trg vocab. No randomness from set.
-            merged_vocab = Vocabulary(
-                vocab_list=merged_tokens,
-                replacements=None,
-                unk_token=unk_token,
-                pad_token=pad_token,
-                bos_token=bos_token,
-                eos_token=eos_token,
-                mask_token=mask_token,
-            )
-            print(f"Source vocab: {len(src_vocab)} entries.")
-            print(f"Target vocab: {len(trg_vocab)} entries.")
-            print(f"Merged vocab: {len(merged_vocab)} entries.")
+            if merge_vocab:
+                src_vocab = self.tensorizers["src_seq_tokens"].vocab
+                trg_vocab = self.tensorizers["trg_seq_tokens"].vocab
+                tokens_not_in_src = set(trg_vocab._vocab).difference(
+                    set(src_vocab._vocab)
+                )
+                merged_tokens = src_vocab._vocab.copy() + [
+                    w for w in trg_vocab._vocab if w in tokens_not_in_src
+                ]  # Order stays consistent with trg vocab. No randomness from set.
+                merged_vocab = Vocabulary(
+                    vocab_list=merged_tokens,
+                    replacements=None,
+                    unk_token=unk_token,
+                    pad_token=pad_token,
+                    bos_token=bos_token,
+                    eos_token=eos_token,
+                    mask_token=mask_token,
+                )
+                print(f"Source vocab: {len(src_vocab)} entries.")
+                print(f"Target vocab: {len(trg_vocab)} entries.")
+                print(f"Merged vocab: {len(merged_vocab)} entries.")
 
-            if self.merge_source_vocab:
-                self.tensorizers["src_seq_tokens"].vocab = merged_vocab
-                print("\tInitialized source tensorizer with merged vocab.")
+                if self.merge_source_vocab:
+                    self.tensorizers["src_seq_tokens"].vocab = merged_vocab
+                    print("\tInitialized source tensorizer with merged vocab.")
 
-            self.tensorizers["trg_seq_tokens"].vocab = merged_vocab
-            print("\tInitialized target tensorizer with merged vocab.")
+                self.tensorizers["trg_seq_tokens"].vocab = merged_vocab
+                print("\tInitialized target tensorizer with merged vocab.")
 
     def numberize_rows(self, rows):
         source_column = getattr(self.tensorizers["src_seq_tokens"], "text_column", None)
