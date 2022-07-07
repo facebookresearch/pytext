@@ -155,6 +155,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
         scaling: Optional[float] = None
         normalize_before: bool = False
         skip_token_embed: bool = False
+        use_mixup: bool = False
 
     def __init__(  # noqa C901
         self,
@@ -232,6 +233,7 @@ class RoBERTaEncoder(RoBERTaEncoderBase):
                         max_seq_len=config.max_seq_len,
                         normalize_before=config.normalize_before,
                         token_embedding=token_embedding,
+                        use_mixup=config.use_mixup,
                     )
                 )
                 if not self.use_selfie_encoder
