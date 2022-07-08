@@ -6,7 +6,7 @@ from typing import Dict, List
 import numpy as np
 
 import torch
-from pytext.common.constants import Stage
+from pytext.common.constants import BatchContext, DatasetFieldName, Stage
 from pytext.data.tensorizers import Tensorizer
 from pytext.metric_reporters.channel import ConsoleChannel
 
@@ -30,6 +30,51 @@ try:
     from fairseq.scoring import bleu
 except ImportError:
     from fairseq import bleu
+
+
+class MaskedSeq2SeqFileChannel(Seq2SeqFileChannel):
+    def get_title(self, context_keys=()):
+        return (
+            "doc_index",
+            "raw_input",
+            "tokenized_input",
+            "prediction",
+            "tokenized_prediction",
+            "predictions_top_k",
+            "targets",
+        )
+
+    def gen_content(self, metrics, loss, preds, targets, scores, context):
+        batch_size = len(targets)
+        assert batch_size == len(context[DatasetFieldName.RAW_SEQUENCE]) == len(preds)
+        tokens_to_sentence = (
+            lambda tokens_str: ("".join(tokens_str.split()))
+            .replace("▁", " ")[1:]
+            .lower()
+        )
+        for i in range(batch_size):
+            yield [
+                context[BatchContext.INDEX][i],
+                context[DatasetFieldName.RAW_SEQUENCE][i],
+                self.tensorizers["src_seq_tokens"].stringify(
+                    context[DatasetFieldName.SOURCE_SEQ_FIELD][i]
+                ),
+                tokens_to_sentence(
+                    self.tensorizers["trg_seq_tokens"].stringify(preds[i][0])
+                ),
+                self.tensorizers["trg_seq_tokens"].stringify(preds[i][0]),
+                "|".join(
+                    [
+                        tokens_to_sentence(
+                            self.tensorizers["trg_seq_tokens"].stringify(preds[i][j])
+                        )
+                        for j in range(len(preds[i]))
+                    ]
+                ),
+                tokens_to_sentence(
+                    self.tensorizers["trg_seq_tokens"].stringify(targets[i])
+                ),
+            ]
 
 
 class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
@@ -64,7 +109,7 @@ class MaskedSeq2SeqTopKMetricReporter(Seq2SeqMetricReporter):
         channels = [ConsoleChannel()]
         if config.TEMP_DUMP_PREDICTIONS:
             channels.append(
-                Seq2SeqFileChannel([Stage.TEST], config.output_path, tensorizers),
+                MaskedSeq2SeqFileChannel([Stage.TEST], config.output_path, tensorizers),
             )
         return cls(
             channels,
