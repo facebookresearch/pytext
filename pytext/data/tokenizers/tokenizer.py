@@ -313,7 +313,7 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
         sp_model_path: str = ""
         max_input_text_length: Optional[int] = None
         use_fb_sentencepiece: Optional[bool] = None
-        lowercase: bool = False
+        lowercase: Optional[bool] = False
 
     def __init__(
         self,

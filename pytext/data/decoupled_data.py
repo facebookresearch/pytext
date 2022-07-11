@@ -140,7 +140,7 @@ class DecoupledSeq2SeqData(Data):
         # For cloze-style parsing, ontology tokens appear in the source sequence, thus
         # this controls whether the source tensorizer will receive the merged vocab.
         merge_source_vocab: bool = False
-        merge_vocab: bool = True
+        merge_vocab: Optional[bool] = True
 
     @classmethod
     def from_config(
@@ -206,7 +206,7 @@ class DecoupledSeq2SeqData(Data):
         noisy_decoupling: bool = False,
         filter_target_ood_slots: bool = True,
         merge_source_vocab: bool = False,
-        merge_vocab: bool = True,
+        merge_vocab: Optional[bool] = True,
         unk_token: str = Config.unk_token,
         pad_token: str = Config.pad_token,
         bos_token: str = Config.bos_token,
