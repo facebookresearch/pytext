@@ -101,6 +101,21 @@ class ClassificationMetricReporter(MetricReporter):
 
     @classmethod
     def from_config_and_label_names(cls, config, label_names: List[str]):
+        cls.assert_metric_and_label_details(config, label_names)
+
+        return cls(
+            label_names,
+            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
+            config.model_select_metric,
+            config.target_label,
+            config.text_column_names,
+            config.additional_column_names,
+            config.recall_at_precision_thresholds,
+            config.is_memory_efficient,
+        )
+
+    @classmethod
+    def assert_metric_and_label_details(cls, config, label_names):
         if config.model_select_metric in (
             ComparableClassificationMetric.LABEL_F1,
             ComparableClassificationMetric.LABEL_AVG_PRECISION,
@@ -117,17 +132,6 @@ class ClassificationMetricReporter(MetricReporter):
             assert (
                 len(label_names) == 2
             ), "selected metric is valid for binary labels only"
-
-        return cls(
-            label_names,
-            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
-            config.model_select_metric,
-            config.target_label,
-            config.text_column_names,
-            config.additional_column_names,
-            config.recall_at_precision_thresholds,
-            config.is_memory_efficient,
-        )
 
     def batch_context(self, raw_batch, batch):
         context = super().batch_context(raw_batch, batch)
@@ -292,7 +296,7 @@ class MultiLabelClassificationMetricReporter(ClassificationMetricReporter):
 
 
 class TopKClassificationMetricReporter(ClassificationMetricReporter):
-    class TopKConfig(ClassificationMetricReporter.Config):
+    class Config(ClassificationMetricReporter.Config):
         topk: int = 3
 
     def __init__(
@@ -303,13 +307,13 @@ class TopKClassificationMetricReporter(ClassificationMetricReporter):
             ComparableClassificationMetric.ACCURACY
         ),
         target_label: Optional[str] = None,
-        text_column_names: List[str] = TopKConfig.text_column_names,
-        additional_column_names: List[str] = TopKConfig.additional_column_names,
+        text_column_names: List[str] = Config.text_column_names,
+        additional_column_names: List[str] = Config.additional_column_names,
         recall_at_precision_thresholds: List[float] = (
-            TopKConfig.recall_at_precision_thresholds
+            Config.recall_at_precision_thresholds
         ),
-        is_memory_efficient: bool = TopKConfig.is_memory_efficient,
-        topk: int = TopKConfig.topk,
+        is_memory_efficient: bool = Config.is_memory_efficient,
+        topk: int = Config.topk,
     ) -> None:
         """
         A metric reporter specific for computing TopK accuracy for a multi-class task.
@@ -364,6 +368,22 @@ class TopKClassificationMetricReporter(ClassificationMetricReporter):
             n_batches, preds, targets, scores, loss, m_input, **context
         )
         self.aggregate_topkpreds(scores, context)
+
+    @classmethod
+    def from_config_and_label_names(cls, config, label_names: List[str]):
+        cls.assert_metric_and_label_details(config, label_names)
+
+        return cls(
+            label_names,
+            [ConsoleChannel(), FileChannel((Stage.TEST,), config.output_path)],
+            config.model_select_metric,
+            config.target_label,
+            config.text_column_names,
+            config.additional_column_names,
+            config.recall_at_precision_thresholds,
+            config.is_memory_efficient,
+            config.topk,
+        )
 
     def aggregate_topkpreds(self, batch_scores, batch_context=None):
         # first process the batch_scores so that it only contains the top k choices
