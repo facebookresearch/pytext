@@ -478,6 +478,8 @@ class TokenTensorizer(Tensorizer):
             )
             self.vocab_builder.use_bos = self.add_bos_token
             self.vocab_builder.use_eos = self.add_eos_token
+            if hasattr(self, "vocab_use_mask"):
+                self.vocab_builder.use_mask = self.vocab_use_mask
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
             if self.vocab_config.additional_tokens:
