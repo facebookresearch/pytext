@@ -379,6 +379,7 @@ class TokenTensorizer(Tensorizer):
         max_seq_len: Optional[int] = None
         vocab: VocabConfig = VocabConfig()
         vocab_file_delimiter: str = " "
+        vocab_use_mask: bool = False
 
     @classmethod
     def from_config(cls, config: Config):
@@ -393,6 +394,7 @@ class TokenTensorizer(Tensorizer):
             vocab_config=config.vocab,
             vocab_file_delimiter=config.vocab_file_delimiter,
             is_input=config.is_input,
+            vocab_use_mask=config.vocab_use_mask,
         )
 
     def __init__(
@@ -407,6 +409,7 @@ class TokenTensorizer(Tensorizer):
         vocab=None,
         vocab_file_delimiter=" ",
         is_input=Config.is_input,
+        vocab_use_mask=Config.vocab_use_mask,
     ):
         self.text_column = text_column
         self.tokenizer = tokenizer or Tokenizer()
@@ -418,6 +421,7 @@ class TokenTensorizer(Tensorizer):
         self.vocab_builder = None
         self.vocab_config = vocab_config or VocabConfig()
         self.vocab_file_delimiter = vocab_file_delimiter
+        self.vocab_use_mask = vocab_use_mask
         super().__init__(is_input)
 
     @property
@@ -478,8 +482,7 @@ class TokenTensorizer(Tensorizer):
             )
             self.vocab_builder.use_bos = self.add_bos_token
             self.vocab_builder.use_eos = self.add_eos_token
-            if hasattr(self, "vocab_use_mask"):
-                self.vocab_builder.use_mask = self.vocab_use_mask
+            self.vocab_builder.use_mask = self.vocab_use_mask
         if not self.vocab_config.build_from_data:
             self._add_vocab_from_files()
             if self.vocab_config.additional_tokens:
