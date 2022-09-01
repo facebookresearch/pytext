@@ -51,6 +51,12 @@ class ScriptVocabulary(nn.Module):
             result.append(self.lookup_indices_1d(value))
         return result
 
+    def lookup_indices_3d(self, values: List[List[List[str]]]) -> List[List[List[int]]]:
+        result: List[List[List[int]]] = []
+        for value in values:
+            result.append(self.lookup_indices_2d(value))
+        return result
+
     def lookup_words_1d(
         self,
         values: torch.Tensor,
