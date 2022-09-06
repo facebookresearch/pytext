@@ -238,7 +238,9 @@ def pad_3d(
     pad_to_2d: int = 0
     for tokens_length in tokens_lengths:
         pad_to_1d = max(pad_to_1d, len(tokens_length))
-        pad_to_2d = max(pad_to_2d, max(tokens_length))
+        # add empty list check here, since padding function can fail in certain cases where lists are empty
+        if len(tokens_length) > 0:
+            pad_to_2d = max(pad_to_2d, max(tokens_length))
     for sentence, sentence_len in zip(batch, tokens_lengths):
         for _ in range(pad_to_1d - len(sentence)):
             new_list: List[int] = []
