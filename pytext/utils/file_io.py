@@ -9,7 +9,7 @@ import os
 # the import everywhere in PyText
 # TODO: @stevenliu use PathManagerFactory after it's released to PyPI
 from iopath.common.file_io import HTTPURLHandler
-from pytorch.text.fb.utils import PATH_MANAGER as PathManager  # noqa
+from torchtext.utils import PATH_MANAGER as PathManager  # noqa
 
 
 def register_http_url_handler():
