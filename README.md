@@ -1,3 +1,17 @@
+<table align="center">
+<tr>
+<td>
+<h1 align="center">
+⚠️ Please migrate to <a href="https://github.com/pytorch/text"><b>torchtext</b></a> ⚠️
+</h1>
+<p align="center">
+PyText is deprecated and will no longer be actively maintained. Please check out <a href="https://github.com/pytorch/text">torchtext</a> and contribute there!
+</p>
+</td>
+</tr>
+</table>
+
+
 # Overview
 
 [![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.fb.com/support-ukraine)
