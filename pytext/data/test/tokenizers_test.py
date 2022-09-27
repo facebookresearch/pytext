@@ -6,6 +6,7 @@ import unittest
 from pytext.data.tokenizers import (
     GPT2BPETokenizer,
     SentencePieceTokenizer,
+    SPEandWordTokenizer,
     Tokenizer,
     WordPieceTokenizer,
 )
@@ -158,3 +159,41 @@ class SentencePieceTokenizerTest(unittest.TestCase):
         )
         tokens = sp_tokenizer.tokenize(sentence)
         self.assertEqual(tokens, expected)
+
+
+class SPEandWordTokenizerTest(unittest.TestCase):
+    def test_tokenize(self):
+        sentence = "Testing out sentencepiece"
+        expected = [
+            Token(value="testing", start=0, end=7),
+            Token(value="▁out", start=8, end=11),
+            Token(value="▁sen", start=12, end=15),
+            Token(value="t", start=15, end=16),
+            Token(value="ence", start=16, end=20),
+            Token(value="p", start=20, end=21),
+            Token(value="i", start=21, end=22),
+            Token(value="e", start=22, end=23),
+            Token(value="ce", start=23, end=25),
+        ]
+        sp_tokenizer = SPEandWordTokenizer.from_config(
+            SPEandWordTokenizer.Config(
+                sp_model_path="pytext/data/test/data/sentencepiece.model",
+                ontology_vocab_path="pytext/data/test/data/spm_ontology.txt",
+                ontology_vocab_lowercase=True,
+                lowercase=True,
+            )
+        )
+        tokens = sp_tokenizer.tokenize(sentence)
+        self.assertEqual(tokens, expected)
+
+    def test_stringify(self):
+        sp_tokenizer = SPEandWordTokenizer.from_config(
+            SPEandWordTokenizer.Config(
+                sp_model_path="pytext/data/test/data/sentencepiece.model",
+                ontology_vocab_path="pytext/data/test/data/spm_ontology.txt",
+                ontology_vocab_lowercase=True,
+                lowercase=True,
+            )
+        )
+        returned_str = sp_tokenizer.stringify(["testing", "▁out", "▁sen", "t", "ence"])
+        self.assertEqual(returned_str, "testing out sentence")

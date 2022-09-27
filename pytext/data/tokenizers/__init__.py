@@ -6,6 +6,7 @@ from .tokenizer import (
     DoNothingTokenizer,
     GPT2BPETokenizer,
     SentencePieceTokenizer,
+    SPEandWordTokenizer,
     Token,
     Tokenizer,
     WordPieceTokenizer,
@@ -19,5 +20,6 @@ __all__ = [
     "DoNothingTokenizer",
     "WordPieceTokenizer",
     "CppProcessorMixin",
+    "SPEandWordTokenizer",
     "SentencePieceTokenizer",
 ]

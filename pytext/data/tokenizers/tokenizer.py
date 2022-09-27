@@ -382,3 +382,120 @@ class SentencePieceTokenizer(Tokenizer, CppProcessorMixin):
 
     def torchscriptify(self):
         return ScriptDoNothingTokenizer()
+
+
+class SPEandWordTokenizer(SentencePieceTokenizer):
+    """
+    This tokenizer allows us to tokenize using both spm and word token boundaries. It works as below:
+    1) Splits the sentence into candidate tokens delimited by space
+    2) Checks if the given token is part of the word based ontology vocab. If yes, it tokenizes it as a
+       full word token
+    3) If no, it breaks it down using spm voabulary.
+    """
+
+    class Config(SentencePieceTokenizer.Config):
+        ontology_vocab_path: str = ""
+        ontology_vocab_lowercase: bool = True
+
+    @staticmethod
+    def load_ontology_vocab(vocab_file: str, ontology_vocab_lowercase: bool):
+        """
+        Loads a onto vocabulary file into a dictionary.
+        Args:
+            vocab_file: path of ontology vocab file
+            ontology_vocab_lowercase: convert ontology vocab to lowercase
+        Returns:
+            set of ontology vocab tokens
+        """
+        with PathManager.open(vocab_file, "r") as reader:
+            tokens = reader.readlines()
+        tokens = [token.rstrip("\n") for token in tokens]
+        if ontology_vocab_lowercase:
+            tokens = [token.lower() for token in tokens]
+
+        ontology_vocab = set(tokens)
+        return ontology_vocab
+
+    def __init__(
+        self,
+        ontology_vocab_path: str = "",
+        ontology_vocab_lowercase: bool = True,
+        *args,
+        **kwargs,
+    ):
+
+        super().__init__(
+            *args,
+            **kwargs,
+        )
+        self.ontology_vocab_path = ontology_vocab_path
+        self.ontology_vocab_lowercase = ontology_vocab_lowercase
+        self.ontology_vocab = self.load_ontology_vocab(
+            self.ontology_vocab_path, self.ontology_vocab_lowercase
+        )
+        log_class_usage(__class__)
+
+    @classmethod
+    def from_config(cls, config: Config):
+        return cls(**config._asdict())
+
+    def tokenize(self, input_str: str) -> List[Token]:
+        if (
+            hasattr(self, "max_input_text_length")
+            and self.max_input_text_length is not None
+        ):
+            input_str = input_str[: self.max_input_text_length]
+        input_str = input_str.lower() if self.lowercase else input_str
+
+        # Split the tokens using space
+        first_stage_tokens = input_str.split()
+
+        final_tokens = []
+        end = 0
+        for token in first_stage_tokens:
+            if token in self.ontology_vocab:
+                # Check if part of ontology vocab tokens. If yes, consider it as
+                # single word token
+                start = input_str.find(token, end)
+                end = start + len(token)
+                final_tokens.append(Token(token, start, end))
+
+            else:
+                # Break the token down using spm vocab
+                pieces = self.processor.EncodeAsPieces(" " + token)
+                for piece in pieces:
+                    original_piece = piece.lstrip("\u2581")
+                    start = input_str.find(original_piece, end)
+                    end = start + len(original_piece)
+                    final_tokens.append(Token(piece, start, end))
+
+        return final_tokens
+
+    def stringify(self, token_strs: List[str]):
+        """Creates the string format of the given list of tokens parsed by SPEandWordTokenizer
+        Args:
+            token_strs: List of string tokens accepted by SPEandWordTokenizer
+        Returns:
+            Final string format
+        """
+        token_list = []
+        spm_cont = ""
+        # Processes all tokens according to below logic
+        # 1) All ontology vocab tokens are treated as separate tokens to be joined by space
+        # 2) All other tokens are spm tokens which are conatenated together as one, and then
+        #    separated by space "_" is replaced by space
+        for token in token_strs:
+            if token.lower() in self.ontology_vocab:
+                if spm_cont:
+                    token_list.append(spm_cont)
+                    spm_cont = ""
+                token_list.append(token.lower())
+            else:
+                spm_cont += token.lower()
+        if spm_cont:
+            token_list.append(spm_cont)
+
+        token_str = " ".join(token_list).replace("▁", " ")
+        token_str = " ".join(token_str.split())
+
+        return token_str
