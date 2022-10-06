@@ -10,7 +10,6 @@ from pytext.torchscript.utils import (  # noqa
     long_tensor_2d,
     make_byte_inputs,
     make_sequence_lengths,
-    pad_2d,
     pad_2d_mask,
     utf8_chars,
 )

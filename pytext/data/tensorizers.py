@@ -29,7 +29,7 @@ from pytext.torchscript.tensorizer import (
     VectorNormalizer,
 )
 from pytext.torchscript.tokenizer import ScriptDoNothingTokenizer
-from pytext.torchscript.utils import pad_3d, ScriptBatchInput, validate_padding_control
+from pytext.torchscript.utils import ScriptBatchInput, validate_padding_control
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils import cuda, precision
 from pytext.utils.data import Slot
@@ -37,6 +37,7 @@ from pytext.utils.file_io import PathManager
 from pytext.utils.lazy import lazy_property
 from pytext.utils.precision import maybe_half
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.utils.transform_utils import pad_3d
 
 from .utils import (
     align_target_label,

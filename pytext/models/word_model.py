@@ -24,11 +24,11 @@ from pytext.models.representations.pass_through import PassThroughRepresentation
 from pytext.torchscript.utils import (
     make_byte_inputs,
     make_sequence_lengths,
-    pad_2d,
     truncate_tokens,
 )
 from pytext.torchscript.vocab import ScriptVocabulary
 from pytext.utils.usage import log_class_usage
+from pytorch.text.fb.utils.transform_utils import pad_2d
 
 
 class WordTaggingModel(Model):

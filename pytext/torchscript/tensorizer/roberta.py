@@ -4,7 +4,7 @@
 from typing import List, Optional, Tuple
 
 import torch
-from pytext.torchscript.utils import pad_2d, pad_2d_mask
+from pytext.torchscript.utils import pad_2d_mask
 
 from .bert import ScriptBERTTensorizerBase
 

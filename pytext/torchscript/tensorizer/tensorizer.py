@@ -5,12 +5,12 @@ from typing import List, Optional, Tuple
 
 import torch
 from pytext.torchscript.utils import (
-    pad_2d,
     pad_2d_float,
     pad_3d_float,
     validate_padding_control,
 )
 from pytext.torchscript.vocab import ScriptVocabulary
+from pytorch.text.fb.utils.transform_utils import pad_2d
 
 
 class ScriptTensorizer(torch.jit.ScriptModule):
