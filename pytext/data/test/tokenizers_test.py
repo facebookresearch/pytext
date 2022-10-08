@@ -186,7 +186,7 @@ class SPEandWordTokenizerTest(unittest.TestCase):
         tokens = sp_tokenizer.tokenize(sentence)
         self.assertEqual(tokens, expected)
 
-    def test_stringify(self):
+    def test_decode(self):
         sp_tokenizer = SPEandWordTokenizer.from_config(
             SPEandWordTokenizer.Config(
                 sp_model_path="pytext/data/test/data/sentencepiece.model",
@@ -195,5 +195,5 @@ class SPEandWordTokenizerTest(unittest.TestCase):
                 lowercase=True,
             )
         )
-        returned_str = sp_tokenizer.stringify(["testing", "▁out", "▁sen", "t", "ence"])
+        returned_str = sp_tokenizer.decode("testing ▁out ▁sen t ence")
         self.assertEqual(returned_str, "testing out sentence")

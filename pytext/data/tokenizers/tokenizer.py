@@ -471,7 +471,7 @@ class SPEandWordTokenizer(SentencePieceTokenizer):
 
         return final_tokens
 
-    def stringify(self, token_strs: List[str]):
+    def decode(self, sentence: str):
         """Creates the string format of the given list of tokens parsed by SPEandWordTokenizer
         Args:
             token_strs: List of string tokens accepted by SPEandWordTokenizer
@@ -484,7 +484,7 @@ class SPEandWordTokenizer(SentencePieceTokenizer):
         # 1) All ontology vocab tokens are treated as separate tokens to be joined by space
         # 2) All other tokens are spm tokens which are conatenated together as one, and then
         #    separated by space "_" is replaced by space
-        for token in token_strs:
+        for token in sentence.split():
             if token.lower() in self.ontology_vocab:
                 if spm_cont:
                     token_list.append(spm_cont)

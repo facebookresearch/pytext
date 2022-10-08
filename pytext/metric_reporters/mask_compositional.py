@@ -17,7 +17,6 @@ from pytext.metric_reporters.seq2seq_compositional import (  # noqa
     CompositionalSeq2SeqFileChannel,
     Seq2SeqCompositionalMetricReporter,
 )
-from pytext.metric_reporters.seq2seq_utils import stringify
 from pytext.metrics.intent_slot_metrics import FramePredictionPair
 from pytext.metrics.mask_metrics import (
     compute_masked_metrics,
@@ -255,15 +254,12 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         ]
         self.aggregate_data(self.all_preds, cleaned_preds)
 
-        pred_trees = [
-            self.stringify_annotation_tree(pred[0], target_vocab)
-            for pred in cleaned_preds
-        ]
+        pred_trees = [self.stringify_annotation_tree(pred[0]) for pred in cleaned_preds]
 
         beam_pred_trees = [
             [
                 CompositionalMetricReporter.tree_to_metric_node(
-                    self.stringify_annotation_tree(pred, target_vocab)
+                    self.stringify_annotation_tree(pred)
                 )
                 for pred in beam
             ]
@@ -273,7 +269,10 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
         top_non_invalid_trees = [
             self.get_annotation_from_string(
                 self.get_top_non_invalid(
-                    [stringify(pred, target_vocab) for pred in beam]
+                    [
+                        self.tensorizers["trg_seq_tokens"].stringify(pred)
+                        for pred in beam
+                    ]
                 )
             )
             for beam in cleaned_preds
@@ -281,7 +280,12 @@ class MaskedSeq2SeqCompositionalMetricReporter(Seq2SeqCompositionalMetricReporte
 
         top_extracted_trees = [
             self.get_annotation_from_string(
-                self.get_top_extract([stringify(pred, target_vocab) for pred in beam])
+                self.get_top_extract(
+                    [
+                        self.tensorizers["trg_seq_tokens"].stringify(pred)
+                        for pred in beam
+                    ]
+                )
             )
             for beam in cleaned_preds
         ]

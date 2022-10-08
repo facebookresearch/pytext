@@ -21,8 +21,6 @@ from pytext.metric_reporters.seq2seq_metric_reporter import (
 )
 from pytext.metrics.intent_slot_metrics import compute_all_metrics, FramePredictionPair
 
-from .seq2seq_utils import stringify
-
 
 class CompositionalSeq2SeqFileChannel(Seq2SeqFileChannel):
     def __init__(self, stages, file_path, tensorizers, accept_flat_intents_slots):
@@ -142,8 +140,7 @@ class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
         self.aggregate_data(self.all_target_lens, new_batch[1])
 
         target_trees = [
-            self.stringify_annotation_tree(target, target_vocab)
-            for target in cleaned_targets
+            self.stringify_annotation_tree(target) for target in cleaned_targets
         ]
 
         self.aggregate_data(self.all_target_trees, target_trees)
@@ -166,15 +163,12 @@ class Seq2SeqCompositionalMetricReporter(Seq2SeqMetricReporter):
 
         self.aggregate_data(self.all_preds, cleaned_preds)
 
-        pred_trees = [
-            self.stringify_annotation_tree(pred[0], target_vocab)
-            for pred in cleaned_preds
-        ]
+        pred_trees = [self.stringify_annotation_tree(pred[0]) for pred in cleaned_preds]
 
         self.aggregate_data(self.all_pred_trees, pred_trees)
 
-    def stringify_annotation_tree(self, tree_tokens, tree_vocab):
-        stringified_tree_str = stringify(tree_tokens, tree_vocab._vocab)
+    def stringify_annotation_tree(self, tree_tokens):
+        stringified_tree_str = self.tensorizers["trg_seq_tokens"].stringify(tree_tokens)
         return self.get_annotation_from_string(stringified_tree_str)
 
     def get_annotation_from_string(self, stringified_tree_str: str) -> Annotation:
