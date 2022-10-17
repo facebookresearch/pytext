@@ -110,9 +110,11 @@ class CharacterEmbedding(EmbeddingBase):
         )
         log_class_usage(__class__)
 
-    def forward(self, chars: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, chars: torch.Tensor, precomputed_embeddings: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """See CNNCharacterEmbedding.forward() for details"""
-        return self.embedding(chars)
+        return self.embedding(chars, precomputed_embeddings=precomputed_embeddings)
 
     def load_state_dict(self, loaded_module: nn.Module) -> None:
         """Add backward compatibility to load CharEmbedding from older versions
@@ -125,3 +127,10 @@ class CharacterEmbedding(EmbeddingBase):
         except RuntimeError:
             # if failed, perhaps loaded_module was old version, with weights like convs.0.weight
             self.embedding.load_state_dict(loaded_module)
+
+    def get_embedding_weights(self):
+        """
+        Returns the embedding weights of size (num_embeddings, embed_dim).
+        """
+
+        return self.embedding.char_embed.weight

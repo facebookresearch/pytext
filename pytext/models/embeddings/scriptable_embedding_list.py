@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import inspect
 from inspect import signature
-from typing import Dict, Iterable, List, Tuple
+from typing import Iterable, List, Tuple
 
 import torch
 from pytext.models.embeddings import EmbeddingBase
@@ -39,6 +40,14 @@ class ScriptableEmbeddingList(EmbeddingBase):
         def forward(self, xs: List[torch.Tensor]):
             return self._embedding(xs[0])
 
+    class Wrapper2(torch.nn.Module):
+        def __init__(self, embedding: EmbeddingBase):
+            super().__init__()
+            self._embedding = embedding
+
+        def forward(self, xs: List[torch.Tensor]):
+            return self._embedding(xs[0], xs[1])
+
     class Wrapper3(torch.nn.Module):
         def __init__(self, embedding: EmbeddingBase):
             super().__init__()
@@ -49,10 +58,18 @@ class ScriptableEmbeddingList(EmbeddingBase):
 
     @staticmethod
     def _adapt_embedding(embedding: torch.nn.Module) -> torch.nn.Module:
-        param_count = len(signature(embedding.forward).parameters)
+        param_count = len(
+            [
+                p
+                for p in signature(embedding.forward).parameters.values()
+                if p.default == inspect._empty
+            ]
+        )
 
         if param_count == 1:
             return ScriptableEmbeddingList.Wrapper1(embedding)
+        elif param_count == 2:
+            return ScriptableEmbeddingList.Wrapper2(embedding)
         elif param_count == 3:
             return ScriptableEmbeddingList.Wrapper3(embedding)
         raise AssertionError(
