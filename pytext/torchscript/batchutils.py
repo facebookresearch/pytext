@@ -370,7 +370,7 @@ def make_batch_texts(
 
     # TBD: allow model server to specify batch size in goals dictionary
     # the right batchsize depends on the target architecture and should
-    # be passed via the goals config doctionary
+    # be passed via the goals config dictionary
     max_bs = int(goals.get("batchsize", "4"))
     len_mb = len(mega_batch)
     num_batches = (len_mb + max_bs - 1) // max_bs
@@ -462,7 +462,7 @@ def make_batch_texts_dense(
 
     # TBD: allow model server to specify batch size in goals dictionary
     # the right batchsize depends on the target architecture and should
-    # be passed via the goals config doctionary
+    # be passed via the goals config dictionary
     max_bs = int(goals.get("batchsize", "4"))
     len_mb = len(mega_batch)
     num_batches = (len_mb + max_bs - 1) // max_bs

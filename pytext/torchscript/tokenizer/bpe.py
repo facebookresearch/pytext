@@ -137,7 +137,7 @@ class ScriptBPE(torch.jit.ScriptModule):
             # We structure the vocabulary to not have ties, but they can come up anyway,
             # for instance in cases with repeated tokens or when passing in vocabs not
             # created with BPE.load_vocab. In the case of a tie between the value of
-            # joined segments, they'll be joined proiritizing the first pair in the
+            # joined segments, they'll be joined prioritizing the first pair in the
             # token according to byte order, ie. left in LTR and right in RTL languages.
             # For instance, if the vocab contains "aa" but not "aaa", then
             # bpe_tokens("aaa") -> ["aa", "a"]. If the vocab contains "ab" and "bc"

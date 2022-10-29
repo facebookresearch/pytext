@@ -43,7 +43,7 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
         Args:
             config (Config): Configuration object specifying all the
             parameters of IntWeightedMultiCategoryEmbedding.
-            num_intput_features: Number of input features in forward.
+            num_input_features: Number of input features in forward.
 
         Returns:
             type: An instance of IntWeightedMultiCategoryEmbedding.
@@ -106,9 +106,9 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
             }
         )
 
-        self.num_intput_features = len(feature_buckets)
+        self.num_input_features = len(feature_buckets)
         input_dim = (
-            self.num_intput_features * embedding_dim
+            self.num_input_features * embedding_dim
             if self.pooling_type == "none"
             else embedding_dim
         )
@@ -128,7 +128,7 @@ class IntWeightedMultiCategoryEmbedding(EmbeddingBase):
             return self.mlp_layer_dims[-1]
 
         if self.pooling_type == "none":
-            return self.num_intput_features * self.embedding_dim
+            return self.num_input_features * self.embedding_dim
         elif self.pooling_type == "mean":
             return self.embedding_dim
         elif self.pooling_type == "max":
