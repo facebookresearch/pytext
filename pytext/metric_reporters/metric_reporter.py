@@ -18,6 +18,9 @@ from pytext.utils import cuda
 from pytext.utils.meter import TimeMeter
 
 
+DEFAULT_OUTPUT_PATH = "/tmp/test_out.txt"
+
+
 class MetricReporter(Component):
     """
     MetricReporter is responsible of three things:
@@ -47,7 +50,7 @@ class MetricReporter(Component):
     log_gradient: bool = False
 
     class Config(ConfigBase):
-        output_path: str = "/tmp/test_out.txt"
+        output_path: str = DEFAULT_OUTPUT_PATH
         pep_format: bool = False
         #: Useful for KD training, column names that used by student but not teacher.
         student_column_names: List[str] = []
