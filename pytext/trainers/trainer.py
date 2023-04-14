@@ -523,6 +523,8 @@ class Trainer(TrainerBase):
                 self.run_epoch(state, epoch_data, metric_reporter)
 
             if not self.config.do_eval:
+                if train_config.save_all_checkpoints:
+                    self.save_checkpoint(state, train_config)
                 continue
 
             with timing.time("eval epoch"):
